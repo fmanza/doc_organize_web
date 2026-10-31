@@ -1,5 +1,6 @@
 # Secretos (nunca se versionan; ver docs/plan/DECISIONES_Y_RIESGOS.md)
-secrets/
+secrets/*
+!secrets/.gitkeep
 .env
 .env.*
 !.env.example
@@ -21,13 +22,20 @@ frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
 
+# Ubicaciones de prueba de docker-compose.dev.yml (solo documentos sintéticos)
+dev-data/
+
 # Build y documentación generada
 build/
 dist/
 site/
+.cache/
 
 # Editores y SO
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claude Code: ajustes personales
+.claude/settings.local.json

@@ -1,0 +1,38 @@
+{
+  "app": { "title": "doc_organize web" },
+  "nav": {
+    "label": "Navegación principal",
+    "home": "Inicio",
+    "locations": "Ubicaciones",
+    "projects": "Proyectos",
+    "runs": "Ejecuciones",
+    "scan": "Escaneo",
+    "cache": "Documentos",
+    "duplicates": "Duplicados",
+    "context": "Contexto",
+    "ai": "IA",
+    "phase": "Fase {{phase}}"
+  },
+  "home": {
+    "title": "Inicio",
+    "intro": "Organización de documentos con doc_organize para varios usuarios: ubicaciones, proyectos y ejecuciones. Las secciones se habilitan fase a fase según el ROADMAP."
+  },
+  "health": {
+    "loading": "Comprobando el servicio…",
+    "ok": "Servicio operativo",
+    "degraded": "Servicio degradado",
+    "unreachable": "No se puede contactar con la API",
+    "unreachableBody": "Comprueba que el backend está en marcha.",
+    "appVersion": "Versión de la aplicación",
+    "libVersion": "Versión de doc_organize",
+    "notInstalled": "no instalada",
+    "database": "Base de datos de configuración",
+    "databaseOk": "correcta",
+    "databaseError": "sin respuesta"
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "body": "La dirección no corresponde a ninguna sección.",
+    "back": "Volver al inicio"
+  }
+}

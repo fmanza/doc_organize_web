@@ -1,8 +1,46 @@
 version: 2
-# Una vez al mes, un único PR por ecosistema contra develop, y solo versiones con ≥ 14 días (mismo criterio que
-# util_bbdd_web). Los ecosistemas uv (/backend), npm (/frontend) y docker (/docker) se añaden en la Fase 0, cuando
-# existan esas carpetas: declararlos antes hace fallar cada ejecución de Dependabot.
+# Una vez al mes, PR agrupados contra develop, y solo versiones con ≥ 14 días (mismo criterio que util_bbdd_web y
+# que exclude-newer / --before; SHARED § «Dependencias»).
 updates:
+  - package-ecosystem: uv
+    directory: /backend
+    target-branch: develop
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 14
+    ignore:
+      # doc_organize se sube a mano con su release (ADR-006); torch/torchvision siguen a docling.
+      - dependency-name: doc_organize
+      - dependency-name: torch
+      - dependency-name: torchvision
+    groups:
+      backend:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: develop
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 14
+    ignore:
+      # ADR-001: openapi-typescript 7.x exige TypeScript ^5 y typescript-eslint 8.x <6.1.
+      - dependency-name: typescript
+        versions: [">=6"]
+    groups:
+      frontend:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /docker
+    target-branch: develop
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 14
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop

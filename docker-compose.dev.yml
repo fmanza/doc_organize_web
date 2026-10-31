@@ -1,0 +1,20 @@
+# Desarrollo con Docker Desktop (D9): API con recarga en caliente sobre el código montado; el frontend corre en el
+# host con `npm run dev` (Vite hace de proxy de /api a http://127.0.0.1:8000).
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build web
+# Ubicaciones de prueba: carpetas locales de dev-data/locations/ (git-ignored) montadas bajo /mnt. Las pruebas con
+# carpetas de red se hacen en el servidor Linux (R1). Solo documentos sintéticos (repositorio público).
+
+services:
+  web:
+    environment:
+      DOW_ENVIRONMENT: development
+      DOW_LOG_LEVEL: DEBUG
+    read_only: false
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/alembic:/app/alembic:ro
+      - ./dev-data/locations/origen:/mnt/origen:ro
+      - ./dev-data/locations/destino:/mnt/destino
+    ports: !override
+      - "127.0.0.1:8000:8080"
+    command: ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--reload", "--reload-dir", "/app/app"]
