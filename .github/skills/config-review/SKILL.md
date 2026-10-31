@@ -1,3 +1,8 @@
+---
+name: config-review
+description: "Revisa la configuración IA (Claude Code y Copilot): duplicación, referencias huérfanas y coherencia entre commands, skills y agentes; veredicto GO, GO_CONDICIONAL o NO_GO."
+disable-model-invocation: true
+---
 # Prompt: config_review — Revisión de la configuración IA
 
 Revisa los ficheros de instrucciones IA de doc_organize_web (Claude Code + GitHub Copilot) y propone correcciones sin
@@ -9,7 +14,7 @@ duplicación. Agente: `.github/agents/config-reviewer.agent.md`.
 
 ## Ficheros a leer
 - `.github/SHARED_INSTRUCTIONS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.github/AGENTS.md`
-- `.github/instructions/*.instructions.md`, `.github/agents/*.agent.md`, `.github/prompts/*.prompt.md`
+- `.github/instructions/*.instructions.md`, `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`
 - `.claude/commands/*.md`, `.claude/settings.json`, `.ai/*.md`
 
 ## Devuelve en este orden
@@ -17,7 +22,7 @@ duplicación. Agente: `.github/agents/config-reviewer.agent.md`.
 2. **PLAN** — correcciones por fichero.
 3. **AUDIT_PLAN** — riesgos; **veredicto** `GO | GO_CONDICIONAL | NO_GO`.
 4. **IMPLEMENT** — solo con modo `completa` y aprobación.
-5. **AUDIT_CODE** — rutas existentes, commands ↔ prompts, hooks válidos, `% duplicación` final;
+5. **AUDIT_CODE** — rutas existentes, commands ↔ skills, hooks válidos, `% duplicación` final;
    veredicto `APROBADO | APROBADO CON CONDICIONES | RECHAZADO`.
 6. **VERSION** — commit `docs(ia): …`, changelog, rollback.
 

@@ -1,3 +1,8 @@
+---
+name: audit-code
+description: "Auditoría técnica de solo lectura con hallazgos verificables; veredicto APROBADO, APROBADO CON CONDICIONES o RECHAZADO."
+disable-model-invocation: true
+---
 # Prompt: audit_code (aplicación web)
 
 Auditoría técnica con veredicto final. Modo lectura: no edita código. Agente: Code Auditor (y Frontend Reviewer si

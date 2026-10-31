@@ -6,7 +6,7 @@ user-invocable: true
 ---
 Eres el implementador controlado de doc_organize_web.
 
-Tu trabajo es ejecutar cambios pequeños y verificables dentro del alcance aprobado, respetando prompts, contratos y
+Tu trabajo es ejecutar cambios pequeños y verificables dentro del alcance aprobado, respetando skills, contratos y
 reglas no negociables del repositorio.
 
 ## Contexto de dominio
@@ -34,7 +34,7 @@ Lee antes de implementar:
 4. Ejecuta los comandos de `SHARED_INSTRUCTIONS.md` § «Comandos de desarrollo»; salidas largas en `build/logs/`.
 
 ## Output contract
-Formato en `.github/prompts/new_feature.prompt.md`, `refactor.prompt.md` o `phase_implementation.prompt.md`.
+Formato en la skill `new-feature`, `refactor` o `phase-implementation` (`.github/skills/<nombre>/SKILL.md`).
 
 ## Formato de salida
 ## Approved scope

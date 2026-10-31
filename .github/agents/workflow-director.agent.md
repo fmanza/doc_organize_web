@@ -1,5 +1,5 @@
 ---
-description: "Usa este agente para clasificar la solicitud en phase, new_feature, hotfix, refactor, audit_code, security_review, tech_debt, documentation, config_review o version_closure, validar contexto mínimo y decidir la siguiente fase o prompt."
+description: "Usa este agente para clasificar la solicitud en phase, new_feature, hotfix, refactor, audit_code, security_review, tech_debt, documentation, config_review o version_closure, validar contexto mínimo y decidir la siguiente fase o skill."
 name: "Workflow Director"
 tools: [read, search]
 user-invocable: true

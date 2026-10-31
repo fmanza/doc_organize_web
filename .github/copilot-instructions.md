@@ -21,12 +21,12 @@ Copilot aplica automáticamente las de [`instructions/`](instructions/) según s
 | `docs.instructions.md` | `docs/**/*.md`, `README.md`, `CHANGELOG.md` |
 | `sync.instructions.md` | `CHANGELOG.md`, `backend/pyproject.toml`, `frontend/package.json` |
 
-## Agentes y prompts
+## Agentes y skills
 
 Registro completo en [`AGENTS.md`](AGENTS.md). Flujo recomendado en Copilot Chat:
 
 1. **Workflow Director** clasifica la solicitud.
-2. Usa el prompt de [`prompts/`](prompts/) que indique (p. ej. `phase_implementation` para una fase del ROADMAP).
+2. Usa la skill de [`skills/`](skills/) que indique (p. ej. `phase-implementation` para una fase del ROADMAP).
 3. Copilot revisa; la ejecución de tests y Docker se hace en terminal (`run_in_terminal`) o con Claude Code.
 
 ## Particularidades
@@ -38,4 +38,4 @@ Registro completo en [`AGENTS.md`](AGENTS.md). Flujo recomendado en Copilot Chat
 
 ---
 
-*Actualizado: 2026-10-31*
+*Actualizado: 2026-11-01*

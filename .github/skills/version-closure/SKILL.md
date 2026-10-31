@@ -1,3 +1,8 @@
+---
+name: version-closure
+description: "Cierra una versión, fase o sesión: CHANGELOG, TRACEABILITY, PARIDAD, compatibilidad, rollback y handoff."
+disable-model-invocation: true
+---
 # Prompt: version_closure (aplicación web)
 
 Cierre de versión, fase o sesión. Agente: `.github/agents/version-closer.agent.md`.

@@ -31,7 +31,7 @@ Lee antes de responder:
 6. Emite veredicto y correcciones requeridas.
 
 ## Output contract
-Formato en `.github/prompts/audit_code.prompt.md`.
+Formato en `.github/skills/audit-code/SKILL.md`.
 
 ## Formato de salida
 ## Scope reviewed

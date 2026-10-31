@@ -1,5 +1,5 @@
 ---
-description: "Usa este agente para revisar la configuración IA (SHARED_INSTRUCTIONS, CLAUDE.md, copilot-instructions, AGENTS.md, instructions, agentes, prompts, commands y hooks): DRY, referencias huérfanas, rutas existentes y coherencia entre Claude Code y Copilot."
+description: "Usa este agente para revisar la configuración IA (SHARED_INSTRUCTIONS, CLAUDE.md, copilot-instructions, AGENTS.md, instructions, agentes, skills, commands y hooks): DRY, referencias huérfanas, rutas existentes y coherencia entre Claude Code y Copilot."
 name: "Config Reviewer"
 tools: [read, search]
 user-invocable: true
@@ -23,9 +23,9 @@ Eres el revisor de configuración IA de doc_organize_web.
 1. Toda ruta citada existe (enlaces resueltos desde la carpeta del fichero) o va en `código` y llega en una fase
    posterior del ROADMAP.
 2. Los comandos de los hooks de `.claude/settings.json` existen y son los de «Comandos de desarrollo».
-3. Cada slash command tiene su prompt gemelo y viceversa (salvo `phase_implementation` ↔ `/phase`).
-4. Los agentes citados en prompts y commands existen.
+3. Cada slash command tiene su skill gemela y viceversa (salvo `phase-implementation` ↔ `/phase`).
+4. Los agentes citados en skills y commands existen.
 5. `% duplicación` = líneas `duplicado` / líneas auditadas (objetivo: 0 %).
 
 ## Formato de salida
-Definido en `.github/prompts/config_review.prompt.md`.
+Definido en `.github/skills/config-review/SKILL.md`.

@@ -188,7 +188,7 @@ PR de `develop` a `main` ni commits de merge. Pasos: [`docs/guides/publicar_vers
 PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION
 ```
 
-- Una fase del ROADMAP = un flujo `phase_implementation`. No adelantes historias de fases posteriores.
+- Una fase del ROADMAP = un flujo `phase-implementation`. No adelantes historias de fases posteriores.
 - Antes de planificar una fase, comprueba la columna «Requiere de doc_organize» del ROADMAP: si la versión necesaria
   no está publicada, el hueco va a `DOC_ORGANIZE_GAPS.md` con su rodeo temporal.
 - Detente tras AUDIT_PLAN y espera aprobación antes de IMPLEMENT.
@@ -204,8 +204,8 @@ PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION
 |---|---|---|
 | `.github/SHARED_INSTRUCTIONS.md` | Claude, Copilot | Fuente canónica |
 | `CLAUDE.md` | Claude Code | Slash commands y hooks (importa SHARED con `@`) |
-| `.github/copilot-instructions.md` | GitHub Copilot | Agentes y prompts en VS Code |
-| `.github/AGENTS.md` | Ambas | Registro de agentes, prompts y slash commands |
+| `.github/copilot-instructions.md` | GitHub Copilot | Agentes y skills en VS Code |
+| `.github/AGENTS.md` | Ambas | Registro de agentes, skills y slash commands |
 | `.github/instructions/*.instructions.md` | Copilot (por `applyTo`); Claude por referencia | Reglas por tipo de archivo |
 | `.ai/*.md`, `.ai/sessions/` | Ambas | Contexto persistente y sesiones |
 
@@ -216,9 +216,9 @@ PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION
 - [ ] Sin términos ni rutas heredados de util_bbdd_web (`UBW_`, `util_bbdd`, motores, conexiones, `UTIL_BBDD_GAPS`)
       ni de la web integrada de doc_organize (Jinja, WebSocket, `mkdocs.yml`); la documentación se publica con
       Zensical (`zensical.toml`)
-- [ ] Slash commands ↔ prompts ↔ `.github/AGENTS.md` coherentes
+- [ ] Slash commands ↔ skills ↔ `.github/AGENTS.md` coherentes
 - [ ] Revisión con Config Reviewer (`/config-review`)
 
 ---
 
-*Actualizado: 2026-10-31*
+*Actualizado: 2026-11-01*

@@ -29,7 +29,7 @@ Tu trabajo es formalizar el cierre con resumen, evidencias, limitaciones, pendie
 5. Deja handoff para la siguiente fase.
 
 ## Output contract
-Formato en `.github/prompts/version_closure.prompt.md`.
+Formato en `.github/skills/version-closure/SKILL.md`.
 
 ## Formato de salida
 ## Session summary
