@@ -11,6 +11,8 @@ ROADMAP (`0.<fase+1>.0`).
   que necesitan las Fases 3 y siguientes. Sin cambios funcionales en la web.
 - **docs**: `DOC_ORGANIZE_GAPS.md` pasa G1–G7, G13 y G15 a «Resueltos» por doc_organize 0.10.0 (G9 y G14 ya lo
   estaban); ADR-006 recoge el workflow de release de doc_organize.
+- **ci**: la suite corre en los PR y en `develop`, no en `main`. Los PR se fusionan con squash y `main` avanza por
+  fast-forward a un commit de `develop` con el CI en verde (rulesets; `docs/guides/publicar_version.md`).
 
 ## [0.3.0] - 2026-10-31
 
