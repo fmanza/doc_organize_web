@@ -5,6 +5,13 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **backend**: doc_organize **0.10.0** (wheel de su release, SHA-256 `4ca73b85…6fc2` en `uv.lock`), con la API pública
+  que necesitan las Fases 3 y siguientes. Sin cambios funcionales en la web.
+- **docs**: `DOC_ORGANIZE_GAPS.md` pasa G1–G7, G13 y G15 a «Resueltos» por doc_organize 0.10.0 (G9 y G14 ya lo
+  estaban); ADR-006 recoge el workflow de release de doc_organize.
+
 ## [0.3.0] - 2026-10-31
 
 Fase 2 — ubicaciones locales/red y ajustes administrables. Sigue con doc_organize **0.9.3**.

@@ -304,7 +304,7 @@ def test_capabilities_for_any_session(user_client: TestClient, fake_capabilities
     assert body["status"] == "ok"
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
-    assert body["doc_organize_version"] == "0.9.3"
+    assert body["doc_organize_version"] == "0.10.0"
 
 
 def test_admin_refreshes_capabilities(admin_client: TestClient, fake_capabilities: list[str]) -> None:

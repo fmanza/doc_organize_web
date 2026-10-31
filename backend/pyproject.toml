@@ -15,9 +15,10 @@ dependencies = [
     "sqlalchemy>=2.1",
     "alembic>=1.16",
     "pwdlib[argon2]>=0.3",  # Argon2id para contraseñas (ADR-003)
-    # doc_organize fijado por versión (ADR-006): wheel de la release v0.9.3 en GitHub, hash en uv.lock. Los extras
-    # export y site llegan con doc_organize 0.11.0 (L-7, L-8); rapidocr ya viene en sus dependencias base.
-    "doc_organize[ai,context]==0.9.3",
+    # doc_organize fijado por versión (ADR-006): wheel de la release v0.10.0 en GitHub, hash en uv.lock. El extra
+    # site (mkdocs) ya existe en 0.10.0 y export llega con 0.11.0 (L-7); se añaden en sus fases (7 y 5).
+    # rapidocr ya viene en sus dependencias base.
+    "doc_organize[ai,context]==0.10.0",
     # Llegan con docling; se declaran aquí porque uv solo aplica [tool.uv.sources] (índice CPU) a dependencias
     # directas. Mismas cotas que docling-slim[standard].
     "torch>=2.2.2,<3",
@@ -49,7 +50,7 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [tool.uv.sources]
-doc_organize = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl" }
+doc_organize = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" }
 torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
 
