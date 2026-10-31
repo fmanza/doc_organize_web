@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Los jobs backend, frontend e image (como util_bbdd_web) llegan en la Fase 0 con su código. En la Fase 0 este job
+  # pasa a `zensical build --strict`; mientras tanto valida los enlaces internos de la documentación.
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enlaces internos de la documentación
+        run: python3 scripts/check_doc_links.py
