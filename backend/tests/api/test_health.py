@@ -29,6 +29,7 @@ def test_health_degraded_without_database(client: TestClient, monkeypatch: pytes
         "version": None,
         "doc_organize_version": "0.9.3",
         "database": "error",
+        "locations": "unknown",
     }
 
 

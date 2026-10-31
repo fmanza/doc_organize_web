@@ -1,7 +1,7 @@
 """Modelos SQLAlchemy de ``config.db``.
 
-Fase 1: identidad (``tenants``, ``users``, ``sessions``, ``audit_log``). Solo tipos portables (D8): las fechas se
-guardan en UTC con ``UTCDateTime``.
+Fase 1: identidad (``tenants``, ``users``, ``sessions``, ``audit_log``). Fase 2: ``locations`` y ``app_settings``.
+Solo tipos portables (D8): las fechas se guardan en UTC con ``UTCDateTime``.
 """
 
 from __future__ import annotations
@@ -9,7 +9,19 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Final, Literal
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, TypeDecorator
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    TypeDecorator,
+    UniqueConstraint,
+)
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -121,3 +133,58 @@ class AuditEntry(Base):
     def actor_username(self) -> str | None:
         """Usuario que hizo la acción, si lo hay."""
         return self.actor.username if self.actor else None
+
+
+LocationKind = Literal["local", "network"]
+LocationUsage = Literal["source", "destination", "both"]
+LocationAccess = Literal["ro", "rw"]
+LocationStatus = Literal["unknown", "ok", "degraded", "unavailable"]
+
+
+class Location(Base):
+    """Carpeta raíz registrada por un admin bajo ``DOW_LOCATIONS_ROOT`` (ADR-007).
+
+    ``container_path`` es la ruta resuelta dentro del contenedor y no cambia tras crearla; ``display_path`` es solo
+    texto para el usuario y nunca se usa para acceder. El estado lo escribe el último sondeo.
+    """
+
+    __tablename__ = "locations"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_locations_tenant_name"),
+        CheckConstraint("kind IN ('local', 'network')", name="kind"),
+        CheckConstraint("usage IN ('source', 'destination', 'both')", name="usage"),
+        CheckConstraint("access IN ('ro', 'rw')", name="access"),
+        CheckConstraint("status IN ('unknown', 'ok', 'degraded', 'unavailable')", name="status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
+    name: Mapped[str] = mapped_column(String(128))
+    container_path: Mapped[str] = mapped_column(String(1024), unique=True)
+    display_path: Mapped[str | None] = mapped_column(String(1024), default=None)
+    kind: Mapped[str] = mapped_column(String(16))
+    usage: Mapped[str] = mapped_column(String(16))
+    access: Mapped[str] = mapped_column(String(8))
+    visibility: Mapped[str] = mapped_column(String(16), default="global")
+    status: Mapped[str] = mapped_column(String(16), default="unknown")
+    status_reasons: Mapped[list[str] | None] = mapped_column(JSON, default=None)
+    latency_ms: Mapped[float | None] = mapped_column(Float, default=None)
+    free_bytes: Mapped[int | None] = mapped_column(BigInteger, default=None)
+    writable: Mapped[bool | None] = mapped_column(default=None)
+    probed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class AppSetting(Base):
+    """Ajuste que un admin cambia desde la web (ADR-012); sin fila, vale la variable ``DOW_*``.
+
+    Solo admite las claves de ``app/domain/settings/service.py`` (no es un almacén genérico ni guarda secretos).
+    """
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[Any] = mapped_column(JSON)
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)

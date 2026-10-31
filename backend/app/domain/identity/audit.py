@@ -25,6 +25,11 @@ class AuditAction:
     USER_REACTIVATE: Final = "user.reactivate"
     USER_PASSWORD_RESET: Final = "user.password_reset"  # noqa: S105 (nombre de acción)
     USER_UNLOCK: Final = "user.unlock"
+    SETTINGS_UPDATE: Final = "settings.update"
+    LOCATION_CREATE: Final = "location.create"
+    LOCATION_UPDATE: Final = "location.update"
+    LOCATION_DELETE: Final = "location.delete"
+    LOCATION_PROBE: Final = "location.probe"
     SESSION_REVOKE: Final = "session.revoke"
 
 

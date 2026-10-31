@@ -26,7 +26,10 @@
       "resetPasswordHint": "Déjalo vacío para no cambiarla. Si la cambias, se cierran sus sesiones y se quita el bloqueo."
     },
     "sessions": {
-      "title": { "all": "Sesiones activas", "own": "Mis sesiones" },
+      "title": {
+        "all": "Sesiones activas",
+        "own": "Mis sesiones"
+      },
       "intro": {
         "all": "Sesiones abiertas de todos los usuarios. Revocar una cierra esa sesión de inmediato.",
         "own": "Tus sesiones abiertas en otros navegadores o equipos. Revocar una la cierra de inmediato."
@@ -62,7 +65,10 @@
       "target": "Objeto",
       "details": "Detalles",
       "system": "Sistema",
-      "outcomes": { "success": "Correcto", "failure": "Fallido" },
+      "outcomes": {
+        "success": "Correcto",
+        "failure": "Fallido"
+      },
       "actions": {
         "auth": {
           "login": "Inicio de sesión",
@@ -78,8 +84,151 @@
           "password_reset": "Contraseña restablecida",
           "unlock": "Desbloqueo"
         },
-        "session": { "revoke": "Sesión revocada" }
+        "session": {
+          "revoke": "Sesión revocada"
+        }
       }
     }
+  },
+  "status": {
+    "ok": "Disponible",
+    "degraded": "Degradada",
+    "unavailable": "No disponible",
+    "unknown": "Sin comprobar",
+    "reasons": {
+      "missing": "la carpeta no existe",
+      "unreadable": "no se puede leer",
+      "timeout": "no responde a tiempo",
+      "slow": "responde lento",
+      "low_space": "poco espacio libre",
+      "not_writable": "no se puede escribir"
+    }
+  },
+  "folders": {
+    "breadcrumbs": "Ruta de la carpeta",
+    "list": "Subcarpetas",
+    "up": "Subir un nivel",
+    "empty": "Esta carpeta no tiene subcarpetas.",
+    "select": "Elegir esta carpeta",
+    "selected": "Carpeta elegida: {{path}}",
+    "nothingSelected": "Aún no has elegido una carpeta."
+  },
+  "locations": {
+    "title": "Ubicaciones",
+    "new": "Nueva ubicación",
+    "intro": "Carpetas de documentos que la aplicación puede usar. Abre una para explorar sus carpetas.",
+    "introAdmin": "Carpetas montadas bajo /mnt que la aplicación puede usar como origen o destino. Las carpetas de red se montan en el servidor (ver la guía «Montar carpetas de red»).",
+    "empty": "Todavía no hay ubicaciones. Pide a un administrador que registre una.",
+    "emptyAdmin": "Todavía no hay ubicaciones. Registra la primera con «Nueva ubicación».",
+    "back": "← Volver a ubicaciones",
+    "browse": "Carpetas",
+    "probe": "Comprobar",
+    "probeLabel": "Comprobar {{name}}",
+    "editLabel": "Editar {{name}}",
+    "delete": "Borrar",
+    "deleteLabel": "Borrar {{name}}",
+    "deleteTitle": "Borrar ubicación",
+    "deleteBody": "Se quitará «{{name}}» de la aplicación. La carpeta y sus documentos no se tocan.",
+    "deleteConfirm": "Escribe «{{name}}» para confirmar",
+    "fields": {
+      "name": "Nombre",
+      "folder": "Carpeta",
+      "containerPath": "Carpeta en el contenedor",
+      "displayPath": "Ruta para mostrar",
+      "usage": "Uso",
+      "access": "Acceso",
+      "kind": "Tipo",
+      "status": "Estado",
+      "probedAt": "Última comprobación",
+      "latency": "Latencia",
+      "freeSpace": "Espacio libre"
+    },
+    "usage": {
+      "source": "Origen",
+      "destination": "Destino",
+      "both": "Origen y destino"
+    },
+    "access": {
+      "ro": "Solo lectura",
+      "rw": "Lectura y escritura"
+    },
+    "kind": {
+      "local": "Local",
+      "network": "Red"
+    },
+    "form": {
+      "createTitle": "Nueva ubicación",
+      "editTitle": "Editar ubicación {{name}}",
+      "create": "Registrar ubicación",
+      "folderHint": "Navega por /mnt y pulsa «Elegir esta carpeta». No se puede cambiar después.",
+      "pathRequired": "Elige una subcarpeta de /mnt",
+      "pathFixed": "No se puede cambiar: para usar otra carpeta, registra una ubicación nueva.",
+      "displayPathHint": "Opcional, solo informativo (por ejemplo \\\\nas.example.internal\\expedientes)."
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "intro": "Valores que se aplican sin reiniciar. Si no los cambias aquí, valen los de las variables DOW_* del servidor o los de por defecto.",
+    "setting": "Ajuste",
+    "value": "Valor",
+    "origin": "Origen",
+    "reset": "Restablecer",
+    "saveLabel": "Guardar {{label}}",
+    "resetLabel": "Restablecer {{label}}",
+    "defaultIs": "Sin cambio valdría {{value}}",
+    "source": {
+      "db": "Cambiado aquí",
+      "env": "Variable del servidor",
+      "default": "Por defecto"
+    },
+    "keys": {
+      "session_idle_minutes": {
+        "label": "Inactividad máxima de la sesión (min)",
+        "hint": "La sesión se cierra tras este tiempo sin actividad."
+      },
+      "session_absolute_hours": {
+        "label": "Duración máxima de la sesión (h)",
+        "hint": "Desde que se inicia, aunque haya actividad."
+      },
+      "login_max_attempts": {
+        "label": "Intentos fallidos antes del bloqueo",
+        "hint": "Fallos seguidos que bloquean la cuenta."
+      },
+      "login_lockout_minutes": {
+        "label": "Duración del bloqueo (min)",
+        "hint": "Tiempo que la cuenta queda bloqueada."
+      },
+      "password_min_length": {
+        "label": "Longitud mínima de contraseña",
+        "hint": "Se aplica a contraseñas nuevas (8–128)."
+      },
+      "location_probe_timeout_seconds": {
+        "label": "Tiempo máximo de comprobación (s)",
+        "hint": "Para sondeos y listados de ubicaciones; evita esperas con montajes colgados."
+      },
+      "location_latency_degraded_ms": {
+        "label": "Latencia para «degradada» (ms)",
+        "hint": "Por encima, la ubicación se marca como degradada."
+      },
+      "location_min_free_gb": {
+        "label": "Espacio libre mínimo (GB)",
+        "hint": "Por debajo, la ubicación se marca como degradada; 0 = no se comprueba."
+      }
+    }
+  },
+  "capabilities": {
+    "title": "Capacidades de la instancia",
+    "refresh": "Volver a comprobar",
+    "pending": "Comprobando… (puede tardar un minuto la primera vez)",
+    "error": "No se pudo comprobar",
+    "errorBody": "Se muestran los últimos datos conocidos. Revisa los logs del servidor.",
+    "gpu": "OCR con GPU",
+    "av": "Audio y vídeo (Whisper + ffmpeg)",
+    "ffmpeg": "ffmpeg",
+    "libreoffice": "LibreOffice (.xls antiguos)",
+    "yes": "Sí",
+    "no": "No",
+    "checkedAt": "Comprobado {{date}}",
+    "library": "doc_organize {{version}}"
   }
 }

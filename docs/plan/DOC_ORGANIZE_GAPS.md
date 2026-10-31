@@ -21,6 +21,7 @@ Fase 0: **0.9.3** (ver «Resueltos»).
 | G11 | Sin reintentos ante errores de E/S transitorios ni timeout por documento | Escaneos largos en red fallan enteros por un corte | Reintentar el run entero (incremental gracias a la caché) | Reintentos y timeout configurables | L-9 |
 | G12 | Detectores (`GpuStatus`, `AvStatus`, `OfficeStatus`) sin punto de entrada público | La ficha de capacidades duplicaría la detección | Importar los módulos internos desde la capa anticorrupción | `doc_organize.diagnostics` | L-9b |
 | G13 | `ScanCommand.run_streaming` tiene 12 parámetros posicionales | Fácil desordenarlos al llamar | Llamar siempre por nombre | `ScanOptions` (modelo) | L-1 / L-2 |
+| G15 | `doc_organize/__init__.py` importa el conversor: cualquier `import doc_organize…` (incluidos los detectores de `utils/`) carga Docling y torch (~4 300 módulos; 49 s en frío medido) | La API no puede usar ni los detectores ni utilidades ligeras sin cargar Docling | Capacidades en un subproceso con caché (`app/integrations/doc_organize/capabilities.py`, Fase 2) | `__init__` ligero (importaciones diferidas) y `doc_organize.diagnostics` sin Docling | L-1 / L-9b |
 | G14 | El tag `v0.9.2` no subió la versión del paquete (`pyproject.toml` seguía en `0.9.0`) | Un wheel construido desde el tag se llamaría 0.9.0 | — | Versión, `__version__` y tag alineados | release 0.9.3 |
 
 ## Resueltos

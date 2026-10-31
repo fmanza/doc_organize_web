@@ -37,7 +37,13 @@ export function stubApi(routes: Record<string, Handler>) {
 
 export const HEALTH = {
   'GET /api/health': {
-    body: { status: 'ok', version: '0.2.0', doc_organize_version: '0.9.3', database: 'ok' },
+    body: {
+      status: 'ok',
+      version: '0.3.0',
+      doc_organize_version: '0.9.3',
+      database: 'ok',
+      locations: 'none',
+    },
   },
 };
 

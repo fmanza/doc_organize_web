@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Estado del servicio
-         * @description Devuelve el estado de ``config.db`` y las versiones de la aplicación y de doc_organize (503 si degradado).
+         * @description Devuelve el estado de ``config.db``, de las ubicaciones y las versiones (503 si degradado).
          */
         get: operations["health_api_health_get"];
         put?: never;
@@ -22,6 +22,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/capabilities/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Volver a comprobar las capacidades
+         * @description Lanza en segundo plano un nuevo sondeo de capacidades (si no hay uno en curso).
+         */
+        post: operations["refresh_capabilities_api_v1_admin_capabilities_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/mounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explorar la raíz de ubicaciones
+         * @description Subcarpetas bajo ``DOW_LOCATIONS_ROOT`` para elegir la carpeta de una ubicación nueva.
+         */
+        get: operations["browse_mounts_api_v1_admin_mounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver ajustes administrables
+         * @description Ajustes con su valor efectivo, el de la variable ``DOW_*`` (o por defecto) y su origen.
+         */
+        get: operations["list_settings_api_v1_admin_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar ajustes administrables
+         * @description Aplica los cambios sin reiniciar; ``null`` devuelve el ajuste al valor de la variable o por defecto.
+         */
+        patch: operations["update_settings_api_v1_admin_settings_patch"];
         trace?: never;
     };
     "/api/v1/audit": {
@@ -140,6 +204,118 @@ export interface paths {
          * @description Cambia la contraseña y cierra las demás sesiones del usuario.
          */
         post: operations["change_password_api_v1_auth_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fs/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explorar carpetas de una ubicación
+         * @description Subcarpetas de ``path`` dentro de la ubicación, ordenadas por nombre.
+         */
+        get: operations["browse_api_v1_fs_browse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instance/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capacidades de la instancia
+         * @description GPU, audio/vídeo y LibreOffice. ``pending`` mientras se calcula la primera vez (tarda varios segundos).
+         */
+        get: operations["get_capabilities_api_v1_instance_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar ubicaciones
+         * @description Ubicaciones ordenadas por nombre, con su último estado.
+         */
+        get: operations["list_locations_api_v1_locations_get"];
+        put?: never;
+        /**
+         * Registrar ubicación
+         * @description Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea.
+         */
+        post: operations["create_location_api_v1_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver ubicación
+         * @description Detalle de una ubicación.
+         */
+        get: operations["get_location_api_v1_locations__location_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Borrar ubicación
+         * @description Quita la ubicación del registro; la carpeta y su contenido no se tocan.
+         */
+        delete: operations["delete_location_api_v1_locations__location_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar ubicación
+         * @description Cambia nombre, texto visible, tipo, uso o acceso (la carpeta del contenedor no se puede cambiar).
+         */
+        patch: operations["update_location_api_v1_locations__location_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/locations/{location_id}/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Comprobar ubicación
+         * @description Sondea la ubicación (existencia, lectura, latencia, espacio y escritura si es ``rw``) y guarda el estado.
+         */
+        post: operations["probe_location_api_v1_locations__location_id__probe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -281,12 +457,56 @@ export interface components {
             total: number;
         };
         /**
+         * CapabilitiesOut
+         * @description Capacidades de la instancia para convertir documentos.
+         */
+        CapabilitiesOut: {
+            /** Asr Installed */
+            asr_installed: boolean;
+            /** Av Ready */
+            av_ready: boolean;
+            /** Ffmpeg Installed */
+            ffmpeg_installed: boolean;
+            /** Gpu Active */
+            gpu_active: boolean;
+            /** Gpu Support Installed */
+            gpu_support_installed: boolean;
+            /** Libreoffice Installed */
+            libreoffice_installed: boolean;
+        };
+        /**
          * CsrfToken
          * @description Token CSRF para la cabecera ``X-CSRF-Token``.
          */
         CsrfToken: {
             /** Csrf Token */
             csrf_token: string;
+        };
+        /**
+         * FolderEntry
+         * @description Subcarpeta: nombre y ruta relativa a la raíz explorada.
+         */
+        FolderEntry: {
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+        };
+        /**
+         * FolderListing
+         * @description Subcarpetas de una carpeta, paginadas.
+         */
+        FolderListing: {
+            /** Items */
+            items: components["schemas"]["FolderEntry"][];
+            /** Location Id */
+            location_id: number | null;
+            /** Parent */
+            parent: string | null;
+            /** Path */
+            path: string;
+            /** Total */
+            total: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -298,10 +518,12 @@ export interface components {
          * @description Estado del servicio.
          *
          *     Attributes:
-         *         status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no.
+         *         status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no. Las ubicaciones no
+         *             cuentan: una carpeta de red caída no hace que Docker reinicie la aplicación.
          *         version: Versión de doc_organize_web.
          *         doc_organize_version: Versión instalada de doc_organize.
          *         database: Estado de ``config.db``.
+         *         locations: Peor estado del último sondeo de las ubicaciones (``none`` si no hay; ``unknown`` si no se pudo leer).
          */
         HealthStatus: {
             /**
@@ -312,12 +534,181 @@ export interface components {
             /** Doc Organize Version */
             doc_organize_version: string | null;
             /**
+             * Locations
+             * @enum {string}
+             */
+            locations: "none" | "ok" | "degraded" | "unavailable" | "unknown";
+            /**
              * Status
              * @enum {string}
              */
             status: "ok" | "degraded";
             /** Version */
             version: string;
+        };
+        /**
+         * InstanceCapabilities
+         * @description Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo.
+         */
+        InstanceCapabilities: {
+            capabilities: components["schemas"]["CapabilitiesOut"] | null;
+            /** Checked At */
+            checked_at: string | null;
+            /** Doc Organize Version */
+            doc_organize_version: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "ok" | "error";
+        };
+        /**
+         * LocationCreate
+         * @description Alta de ubicación. ``path`` es relativa a ``DOW_LOCATIONS_ROOT`` (``/mnt``) y no se puede cambiar después.
+         */
+        LocationCreate: {
+            /**
+             * Access
+             * @default ro
+             * @enum {string}
+             */
+            access: "ro" | "rw";
+            /** Display Path */
+            display_path?: string | null;
+            /**
+             * Kind
+             * @default local
+             * @enum {string}
+             */
+            kind: "local" | "network";
+            /** Name */
+            name: string;
+            /**
+             * Path
+             * @description Ruta relativa con «/»; vacía = la raíz
+             */
+            path: string;
+            /**
+             * Usage
+             * @enum {string}
+             */
+            usage: "source" | "destination" | "both";
+        };
+        /**
+         * LocationOut
+         * @description Ubicación vista por un administrador.
+         */
+        LocationOut: {
+            /**
+             * Access
+             * @enum {string}
+             */
+            access: "ro" | "rw";
+            /** Container Path */
+            container_path: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Display Path */
+            display_path: string | null;
+            /** Free Bytes */
+            free_bytes: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "local" | "network";
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Name */
+            name: string;
+            /** Probed At */
+            probed_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unknown" | "ok" | "degraded" | "unavailable";
+            /** Status Reasons */
+            status_reasons: string[] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Usage
+             * @enum {string}
+             */
+            usage: "source" | "destination" | "both";
+            /** Writable */
+            writable: boolean | null;
+        };
+        /**
+         * LocationPage
+         * @description Página de ubicaciones (``LocationOut`` para admin, ``LocationPublic`` para el resto).
+         */
+        LocationPage: {
+            /** Items */
+            items: (components["schemas"]["LocationOut"] | components["schemas"]["LocationPublic"])[];
+            /** Total */
+            total: number;
+        };
+        /**
+         * LocationPublic
+         * @description Ubicación vista por cualquier usuario: sin la ruta del contenedor.
+         */
+        LocationPublic: {
+            /**
+             * Access
+             * @enum {string}
+             */
+            access: "ro" | "rw";
+            /** Display Path */
+            display_path: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "local" | "network";
+            /** Name */
+            name: string;
+            /** Probed At */
+            probed_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unknown" | "ok" | "degraded" | "unavailable";
+            /** Status Reasons */
+            status_reasons: string[] | null;
+            /**
+             * Usage
+             * @enum {string}
+             */
+            usage: "source" | "destination" | "both";
+        };
+        /**
+         * LocationUpdate
+         * @description Edición parcial de ubicación (la carpeta del contenedor no se puede cambiar).
+         */
+        LocationUpdate: {
+            /** Access */
+            access?: ("ro" | "rw") | null;
+            /** Display Path */
+            display_path?: string | null;
+            /** Kind */
+            kind?: ("local" | "network") | null;
+            /** Name */
+            name?: string | null;
+            /** Usage */
+            usage?: ("source" | "destination" | "both") | null;
         };
         /**
          * LoginRequest
@@ -407,6 +798,41 @@ export interface components {
             items: components["schemas"]["SessionOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * SettingOut
+         * @description Ajuste administrable con su valor efectivo, el que tendría sin cambio en la web y su origen.
+         */
+        SettingOut: {
+            /** Default */
+            default: number;
+            /** Key */
+            key: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "db" | "env" | "default";
+            /** Value */
+            value: number;
+        };
+        /**
+         * SettingsPage
+         * @description Ajustes administrables.
+         */
+        SettingsPage: {
+            /** Items */
+            items: components["schemas"]["SettingOut"][];
+        };
+        /**
+         * SettingsUpdate
+         * @description Cambios de ajustes: ``clave → valor``; ``null`` vuelve al valor de la variable ``DOW_*`` o por defecto.
+         */
+        SettingsUpdate: {
+            /** Values */
+            values: {
+                [key: string]: number | null;
+            };
         };
         /**
          * UserCreate
@@ -545,6 +971,195 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthStatus"];
                 };
+            };
+        };
+    };
+    refresh_capabilities_api_v1_admin_capabilities_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    browse_mounts_api_v1_admin_mounts_get: {
+        parameters: {
+            query?: {
+                /** @description Ruta relativa a DOW_LOCATIONS_ROOT */
+                path?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderListing"];
+                };
+            };
+            /** @description Ruta no válida (absoluta, UNC, con «..» o «\») */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_settings_api_v1_admin_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_settings_api_v1_admin_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsPage"];
+                };
+            };
+            /** @description Ajuste desconocido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Valor no válido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -765,6 +1380,420 @@ export interface operations {
             };
             /** @description Token CSRF ausente o no válido */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    browse_api_v1_fs_browse_get: {
+        parameters: {
+            query: {
+                location_id: number;
+                /** @description Ruta relativa con «/»; vacía = la raíz */
+                path?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderListing"];
+                };
+            };
+            /** @description Ruta no válida (absoluta, UNC, con «..» o «\») */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_capabilities_api_v1_instance_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceCapabilities"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_locations_api_v1_locations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_location_api_v1_locations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description Carpeta no válida (fuera de la raíz, inexistente o solapada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre o carpeta ya registrados */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_location_api_v1_locations__location_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"] | components["schemas"]["LocationPublic"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_location_api_v1_locations__location_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_location_api_v1_locations__location_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre ya registrado */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probe_location_api_v1_locations__location_id__probe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
