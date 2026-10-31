@@ -11,7 +11,12 @@ cd doc_organize_web
 python3 scripts/generate_secrets.py      # crea secrets/app_secret_key.txt y secrets/fernet_keys.txt (0600 recomendado)
 docker compose up -d --build
 curl http://127.0.0.1:8080/api/health
+# primer administrador (no hay credenciales por defecto); la contraseña se pide por el terminal:
+docker compose exec web python -m app.cli create-admin --username <usuario>
 ```
+
+Después, entra en `http://127.0.0.1:8080` con ese usuario. Gestión de usuarios y sesiones:
+[usuarios y sesiones](usuarios_y_sesiones.md).
 
 `/api/health` responde `200` con `status: ok` cuando `config.db` responde y doc_organize está instalado; si no, `503`
 con `status: degraded`. El `HEALTHCHECK` de la imagen usa el mismo endpoint.
@@ -32,7 +37,7 @@ Docker secrets montados en `/run/secrets/`:
 
 | Secreto | Fichero | Uso |
 |---|---|---|
-| `dow_app_secret_key` | `secrets/app_secret_key.txt` | Firma CSRF (Fase 1) |
+| `dow_app_secret_key` | `secrets/app_secret_key.txt` | Firma del token CSRF de cada sesión |
 | `dow_fernet_keys` | `secrets/fernet_keys.txt` | Cifrado de credenciales IA (Fase 8); lista separada por comas para rotar |
 
 Sin ambos, la aplicación no arranca en producción. `secrets/` nunca se versiona. Guarda una copia segura: sin
@@ -58,6 +63,16 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_PORT` | `8080` | Puerto publicado en `127.0.0.1` |
 | `DOW_LOG_LEVEL` | `INFO` | Nivel de log (JSON por stdout) |
 | `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento) |
+
+Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`):
+
+| Variable | Por defecto | Uso |
+|---|---|---|
+| `DOW_SESSION_IDLE_MINUTES` | `60` | Cierre de sesión por inactividad |
+| `DOW_SESSION_ABSOLUTE_HOURS` | `12` | Duración máxima de una sesión |
+| `DOW_LOGIN_MAX_ATTEMPTS` | `5` | Fallos seguidos que bloquean la cuenta |
+| `DOW_LOGIN_LOCKOUT_MINUTES` | `15` | Duración del bloqueo |
+| `DOW_PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de contraseña |
 
 ## Detrás de un proxy TLS
 

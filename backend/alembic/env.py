@@ -6,6 +6,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
+import app.db.models  # noqa: F401  (registra los modelos en Base.metadata)
 from app.db.base import Base
 from app.db.session import get_engine
 
