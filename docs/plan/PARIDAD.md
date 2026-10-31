@@ -17,8 +17,8 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | `login.html.j2` | `/login` | 1 | Página de inicio de sesión |✅ 0.2.0 |
 | `change_password.html.j2` | `/change-password` | 1 | Cambio de contraseña |✅ 0.2.0 |
 | `admin_users.html.j2` | `/admin/users` | 1 | Admin de usuarios y sesiones |✅ 0.2.0 |
-| `_folder_browser_macros.html.j2` | — | 2 | Componente explorador de carpetas | ⬜ |
-| `_semaforo_macros.html.j2`, `_status_banner_macros.html.j2` | — | 2 | Semáforo de estado y ficha de capacidades | ⬜ |
+| `_folder_browser_macros.html.j2` | — | 2 | Componente explorador de carpetas |✅ 0.3.0 |
+| `_semaforo_macros.html.j2`, `_status_banner_macros.html.j2` | — | 2 | Semáforo de estado y ficha de capacidades |✅ 0.3.0 |
 | `project_selector.html.j2` | `/` | 3 | Lista y selector de proyectos | ⬜ |
 | `dashboard.html.j2` | `/projects/{name}` | 3 | Dashboard de proyecto | ⬜ |
 | `folder_selector.html.j2`, `_example_modal_macros.html.j2` | `/projects/{name}/scan` | 4 | Pantalla de escaneo con ayuda contextual | ⬜ |
@@ -42,7 +42,7 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `change_password.py` | POST | `/change-password` | 1 | `POST /api/v1/auth/password` |✅ 0.2.0 |
 | `admin.py` | GET, POST | `/api/users` | 1 | `/api/v1/users` |✅ 0.2.0 |
 | `admin.py` | GET, PATCH, DELETE | `/api/users/{user_id}` | 1 | `/api/v1/users/{id}` (desactivar en lugar de borrar) |✅ 0.2.0 |
-| `filesystem.py` | GET | `/api/fs/browse` | 2 | `GET /api/v1/fs/browse?location=&path=` (sin `Path.home()`) | ⬜ |
+| `filesystem.py` | GET | `/api/fs/browse` | 2 | `GET /api/v1/fs/browse?location=&path=` (sin `Path.home()`) |✅ 0.3.0 |
 | `projects.py` | GET, POST | `/api/projects` | 3 | `/api/v1/projects` | ⬜ |
 | `projects.py` | GET, DELETE | `/api/projects/{name}` | 3 | `/api/v1/projects/{id}` (borrado como run auditado) | ⬜ |
 | `projects.py` | GET | `/api/projects/{name}/impact` | 3 | Vista previa del borrado/movimiento | ⬜ |

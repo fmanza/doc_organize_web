@@ -7,7 +7,6 @@ import { useMe } from '../features/auth/useAuth';
 
 // Secciones del ROADMAP: se habilitan al implementar su fase.
 const SECTIONS: { key: string; phase: number }[] = [
-  { key: 'locations', phase: 2 },
   { key: 'projects', phase: 3 },
   { key: 'runs', phase: 3 },
   { key: 'scan', phase: 4 },
@@ -17,7 +16,7 @@ const SECTIONS: { key: string; phase: number }[] = [
   { key: 'ai', phase: 8 },
 ];
 
-const ADMIN_SECTIONS = ['users', 'sessions', 'audit'] as const;
+const ADMIN_SECTIONS = ['users', 'sessions', 'audit', 'settings'] as const;
 
 export function Layout() {
   const { t } = useTranslation();
@@ -35,6 +34,7 @@ export function Layout() {
       <AppShell.Navbar p="sm" aria-label={t('nav.label')}>
         <Stack gap={4}>
           <NavLink component={RouterNavLink} to="/" label={t('nav.home')} end />
+          <NavLink component={RouterNavLink} to="/locations" label={t('nav.locations')} />
           {SECTIONS.map((section) => (
             <NavLink
               key={section.key}

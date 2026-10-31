@@ -50,8 +50,8 @@ Sin ambos, la aplicación no arranca en producción. `secrets/` nunca se version
 | `data` | `/data` | `config.db` y, desde la Fase 3, `projects/<id>/cache.db`. Siempre en disco local, nunca NFS/CIFS |
 | `workspace` | `/workspace` | Artefactos de cada ejecución (Fase 3) |
 
-Las ubicaciones de documentos (carpetas locales o montajes SMB/NFS del host bajo `/mnt`) se configuran desde la
-Fase 2; la guía de montajes de red llegará con ella.
+Las ubicaciones de documentos (carpetas locales o montajes SMB/NFS del host) se pasan al contenedor bajo `/mnt` y se
+registran en la aplicación: [Montar carpetas de red](carpetas_de_red.md) y [Ubicaciones](ubicaciones.md).
 
 ## Variables
 
@@ -64,7 +64,9 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_LOG_LEVEL` | `INFO` | Nivel de log (JSON por stdout) |
 | `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento) |
 
-Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`):
+Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`). Los administradores pueden
+cambiarlas también desde **Administración → Ajustes** sin reiniciar; lo guardado allí tiene prioridad
+([ADR-012](../adr/ADR-012-ajustes-administrables.md)):
 
 | Variable | Por defecto | Uso |
 |---|---|---|
@@ -73,6 +75,9 @@ Variables de la aplicación (en `environment:` del servicio `web` en `docker-com
 | `DOW_LOGIN_MAX_ATTEMPTS` | `5` | Fallos seguidos que bloquean la cuenta |
 | `DOW_LOGIN_LOCKOUT_MINUTES` | `15` | Duración del bloqueo |
 | `DOW_PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de contraseña |
+| `DOW_LOCATION_PROBE_TIMEOUT_SECONDS` | `10` | Tiempo máximo de una comprobación o listado de ubicación |
+| `DOW_LOCATION_LATENCY_DEGRADED_MS` | `500` | Latencia a partir de la que una ubicación está degradada |
+| `DOW_LOCATION_MIN_FREE_GB` | `5` | Espacio libre mínimo de una ubicación (0 = no se comprueba) |
 
 ## Detrás de un proxy TLS
 

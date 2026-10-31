@@ -145,3 +145,134 @@ class AuditPage(BaseModel):
 
     items: list[AuditEntryOut]
     total: int
+
+
+# --- locations --------------------------------------------------------------------------------------------------
+
+LocationName = Annotated[str, Field(min_length=1, max_length=128)]
+DisplayPath = Annotated[str, Field(max_length=1024)]
+RelativePath = Annotated[str, Field(max_length=4096, description="Ruta relativa con «/»; vacía = la raíz")]
+LocationKind = Literal["local", "network"]
+LocationUsage = Literal["source", "destination", "both"]
+LocationAccess = Literal["ro", "rw"]
+LocationStatus = Literal["unknown", "ok", "degraded", "unavailable"]
+MAX_FOLDER_PAGE = 500
+
+
+class LocationPublic(_Out):
+    """Ubicación vista por cualquier usuario: sin la ruta del contenedor."""
+
+    id: int
+    name: str
+    display_path: str | None
+    kind: LocationKind
+    usage: LocationUsage
+    access: LocationAccess
+    status: LocationStatus
+    status_reasons: list[str] | None
+    probed_at: datetime | None
+
+
+class LocationOut(LocationPublic):
+    """Ubicación vista por un administrador."""
+
+    container_path: str
+    latency_ms: float | None
+    free_bytes: int | None
+    writable: bool | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class LocationCreate(BaseModel):
+    """Alta de ubicación. ``path`` es relativa a ``DOW_LOCATIONS_ROOT`` (``/mnt``) y no se puede cambiar después."""
+
+    name: LocationName
+    path: RelativePath
+    display_path: DisplayPath | None = None
+    kind: LocationKind = "local"
+    usage: LocationUsage
+    access: LocationAccess = "ro"
+
+
+class LocationUpdate(BaseModel):
+    """Edición parcial de ubicación (la carpeta del contenedor no se puede cambiar)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: LocationName | None = None
+    display_path: DisplayPath | None = None
+    kind: LocationKind | None = None
+    usage: LocationUsage | None = None
+    access: LocationAccess | None = None
+
+
+class LocationPage(BaseModel):
+    """Página de ubicaciones (``LocationOut`` para admin, ``LocationPublic`` para el resto)."""
+
+    items: list[LocationOut | LocationPublic]
+    total: int
+
+
+class FolderEntry(BaseModel):
+    """Subcarpeta: nombre y ruta relativa a la raíz explorada."""
+
+    name: str
+    path: str
+
+
+class FolderListing(BaseModel):
+    """Subcarpetas de una carpeta, paginadas."""
+
+    location_id: int | None
+    path: str
+    parent: str | None
+    items: list[FolderEntry]
+    total: int
+
+
+# --- settings ---------------------------------------------------------------------------------------------------
+
+
+class SettingOut(BaseModel):
+    """Ajuste administrable con su valor efectivo, el que tendría sin cambio en la web y su origen."""
+
+    key: str
+    value: int
+    default: int
+    source: Literal["db", "env", "default"]
+
+
+class SettingsPage(BaseModel):
+    """Ajustes administrables."""
+
+    items: list[SettingOut]
+
+
+class SettingsUpdate(BaseModel):
+    """Cambios de ajustes: ``clave → valor``; ``null`` vuelve al valor de la variable ``DOW_*`` o por defecto."""
+
+    values: dict[str, int | None]
+
+
+# --- instance ---------------------------------------------------------------------------------------------------
+
+
+class CapabilitiesOut(BaseModel):
+    """Capacidades de la instancia para convertir documentos."""
+
+    gpu_support_installed: bool
+    gpu_active: bool
+    asr_installed: bool
+    ffmpeg_installed: bool
+    av_ready: bool
+    libreoffice_installed: bool
+
+
+class InstanceCapabilities(BaseModel):
+    """Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo."""
+
+    status: Literal["pending", "ok", "error"]
+    checked_at: datetime | None
+    capabilities: CapabilitiesOut | None
+    doc_organize_version: str | None
