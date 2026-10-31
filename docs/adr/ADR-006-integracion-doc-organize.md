@@ -17,8 +17,11 @@ coincidía con la versión del paquete (G14).
 2. **Wheel de la release**: doc_organize **0.9.3** se publicó con wheel y sdist en GitHub Releases para la Fase 0.
    `[tool.uv.sources]` apunta a
    `https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl` y
-   `uv.lock` fija su SHA-256; `uv sync --frozen` rechaza un wheel con otro hash.
-3. **Extras**: `ai` y `context`. Los extras `export` y `site` llegarán con doc_organize 0.11.0 (L-7, L-8);
+   `uv.lock` fija su SHA-256; `uv sync --frozen` rechaza un wheel con otro hash. Desde la 0.10.0 el wheel lo publica
+   el workflow `release.yml` de doc_organize al crear el tag; la versión consumida está en `backend/pyproject.toml`
+   (0.10.0 desde 2026-10-31).
+3. **Extras**: `ai` y `context`. El extra `site` (mkdocs) existe desde 0.10.0 y `export` llegará con 0.11.0 (L-7);
+   se añaden en sus fases;
    RapidOCR ya viene en sus dependencias base (`docling[rapidocr]`).
 4. **torch CPU**: docling exige `torch` y `torchvision`; en Linux los de PyPI incluyen CUDA (varios GB). Se resuelven
    desde el índice CPU de PyTorch (`[[tool.uv.index]] pytorch-cpu`, `explicit = true`). La variante GPU (Fase 4)

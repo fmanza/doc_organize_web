@@ -348,8 +348,8 @@ wheels = [
 
 [[package]]
 name = "doc-organize"
-version = "0.9.3"
-source = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl" }
+version = "0.10.0"
+source = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
@@ -363,7 +363,7 @@ dependencies = [
     { name = "tzdata" },
 ]
 wheels = [
-    { url = "https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl", hash = "sha256:da158e4058af33b14d272aefe1ea0ec8234fb9c35f06bf01414cd357c4958fff" },
+    { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl", hash = "sha256:4ca73b85f4ccb0bb4b987c4205e882bcae5189882c2b0f416021c141fe1c6fc2" },
 ]
 
 [package.optional-dependencies]
@@ -392,9 +392,8 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'web'", specifier = ">=3.1.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.5" },
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.4" },
-    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.0" },
-    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.20" },
+    { name = "mkdocs", marker = "extra == 'site'", specifier = ">=1.4" },
+    { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "opencv-python", marker = "extra == 'ocr-gpu'", specifier = ">=4.8" },
     { name = "openpyxl", marker = "extra == 'web'", specifier = ">=3.1" },
@@ -419,8 +418,9 @@ requires-dist = [
     { name = "tzdata", specifier = ">=2024.1" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.23" },
+    { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.71" },
 ]
-provides-extras = ["dev", "docs", "web", "ocr-gpu", "av", "ai", "context"]
+provides-extras = ["dev", "docs", "site", "web", "ocr-gpu", "av", "ai", "context"]
 
 [[package]]
 name = "doc-organize-web"
@@ -456,7 +456,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
-    { name = "doc-organize", extras = ["ai", "context"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ai", "context"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3" },
     { name = "pydantic", specifier = ">=2.11" },

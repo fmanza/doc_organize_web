@@ -1,9 +1,10 @@
 """Capacidades de la instancia: GPU, audio/vídeo (Whisper + ffmpeg) y LibreOffice (rodeo de G12 y G15).
 
-doc_organize 0.9.3 no tiene un punto de entrada público para sus detectores (G12) e importar cualquiera de ellos carga
-el paquete entero, con Docling y torch (G15: ~4 300 módulos y decenas de segundos en frío). Por eso la API **nunca**
-los importa: lanza este módulo como subproceso (``python -m app.integrations.doc_organize.capabilities``), que imprime
-el resultado en JSON, y lo guarda en una caché de proceso. En la Fase 3 lo publicará cada worker.
+Hasta doc_organize 0.9.3, importar cualquier detector cargaba el paquete entero, con Docling (G15, resuelto en 0.10.0
+con importaciones diferidas). Sigue sin haber un módulo de diagnóstico propio (G12, L-9b en 0.11.0) y el detector de
+GPU importa torch, que tarda segundos en frío. Por eso la API **nunca** los importa: lanza este módulo como subproceso
+(``python -m app.integrations.doc_organize.capabilities``), que imprime el resultado en JSON, y lo guarda en una caché
+de proceso. En la Fase 3 lo publicará cada worker.
 """
 
 from __future__ import annotations
