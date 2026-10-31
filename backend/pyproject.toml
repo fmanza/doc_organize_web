@@ -1,0 +1,94 @@
+[project]
+name = "doc_organize_web"
+version = "0.1.0"
+description = "Aplicación web multiusuario sobre doc_organize: ubicaciones, proyectos y ejecuciones agrupadas."
+readme = "../README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Paco Manzano", email = "fmanzano.trabajo@gmail.com" }]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "sqlalchemy>=2.1",
+    "alembic>=1.16",
+    # doc_organize fijado por versión (ADR-006): wheel de la release v0.9.3 en GitHub, hash en uv.lock. Los extras
+    # export y site llegan con doc_organize 0.11.0 (L-7, L-8); rapidocr ya viene en sus dependencias base.
+    "doc_organize[ai,context]==0.9.3",
+    # Llegan con docling; se declaran aquí porque uv solo aplica [tool.uv.sources] (índice CPU) a dependencias
+    # directas. Mismas cotas que docling-slim[standard].
+    "torch>=2.2.2,<3",
+    "torchvision>=0.17,<1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-cov>=6.2",
+    "httpx>=0.28",
+    "ruff>=0.12",
+    "mypy>=1.17",
+]
+docs = [
+    "zensical>=0.0.67",  # sitio de documentación (zensical.toml en la raíz)
+]
+
+[tool.uv]
+package = false
+# Cadena de suministro: solo versiones publicadas antes de esta fecha (≥ 2 semanas). Se adelanta a mano al actualizar.
+exclude-newer = "2026-10-17T00:00:00Z"
+
+# docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). La imagen por
+# defecto es CPU (D6): se toman del índice CPU de PyTorch. La variante GPU tendrá su propia resolución (Fase 4).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+doc_organize = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.9.3/doc_organize-0.9.3-py3-none-any.whl" }
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "S", "ASYNC"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+# backend/alembic/ es la carpeta de migraciones; sin esto ruff toma el paquete alembic por first-party.
+known-third-party = ["alembic"]
+
+[tool.mypy]
+python_version = "3.12"
+# La aplicación solo corre en Linux (imagen Docker): el worker usa señales POSIX que no existen en Windows.
+platform = "linux"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "."
+packages = ["app"]
+
+[[tool.mypy.overrides]]
+# doc_organize solo se toca desde la capa anticorrupción; docling y sus dependencias no se siguen.
+module = ["docling.*", "doc_organize.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["integration: requiere doc_organize con conversión real, GPU o montajes de red (fuera del CI)"]
+addopts = "-m 'not integration'"
+filterwarnings = ["error::DeprecationWarning:app.*"]
+
+[tool.coverage.run]
+source = ["app"]

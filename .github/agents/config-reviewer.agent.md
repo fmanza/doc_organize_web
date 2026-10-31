@@ -21,7 +21,7 @@ Eres el revisor de configuración IA de doc_organize_web.
 
 ## Comprobaciones obligatorias
 1. Toda ruta citada existe (enlaces resueltos desde la carpeta del fichero) o va en `código` y llega en una fase
-   posterior del ROADMAP; `python scripts/check_doc_links.py` en verde.
+   posterior del ROADMAP.
 2. Los comandos de los hooks de `.claude/settings.json` existen y son los de «Comandos de desarrollo».
 3. Cada slash command tiene su prompt gemelo y viceversa (salvo `phase_implementation` ↔ `/phase`).
 4. Los agentes citados en prompts y commands existen.

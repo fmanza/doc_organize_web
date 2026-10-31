@@ -17,8 +17,7 @@ applyTo: "docs/**/*.md,README.md,CHANGELOG.md"
     - si un elemento de lista tiene varios párrafos o un bloque de código, línea en blanco entre elementos;
     - enlaces relativos solo dentro de `docs/`; a ficheros de fuera (README, CHANGELOG, `.github/`), URL absoluta
       `https://github.com/fmanza/doc_organize_web/blob/develop/…`.
-- Antes de cerrar un cambio de documentación: `zensical build --strict` (comando en SHARED) sin avisos; hasta que
-  exista `zensical.toml`, `python scripts/check_doc_links.py`.
+- Antes de cerrar un cambio de documentación: `zensical build --strict` (comando en SHARED) sin avisos.
 - Ejemplos sin credenciales, rutas internas ni servidores reales: `<usuario>`, `<contraseña>`,
   `//nas.example.internal/expedientes`.
 - Una decisión de arquitectura nueva o revertida → ADR nuevo (no se reescriben ADRs aceptados; se marcan como

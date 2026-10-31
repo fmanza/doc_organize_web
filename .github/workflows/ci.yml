@@ -12,12 +12,106 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_VERSION: "0.13.1"
+  NODE_VERSION: "24.21.0"
+
 jobs:
-  # Los jobs backend, frontend e image (como util_bbdd_web) llegan en la Fase 0 con su código. En la Fase 0 este job
-  # pasa a `zensical build --strict`; mientras tanto valida los enlaces internos de la documentación.
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen mypy
+      - run: uv run --frozen pytest
+      - name: Contrato OpenAPI al día
+        run: uv run --frozen python scripts/export_openapi.py --check
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Cliente generado al día
+        run: npm run gen:api && git diff --exit-code src/api/schema.d.ts
+      - run: npm run build
+
   docs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Enlaces internos de la documentación
-        run: python3 scripts/check_doc_links.py
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Sitio de documentación (enlaces y anclas)
+        run: uv run --frozen --project backend --only-group docs zensical build --strict
+
+  image:
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build de la imagen runtime
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: runtime
+          tags: doc_organize_web:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Tamaño de la imagen
+        run: docker image ls doc_organize_web:ci --format '{{.Size}}' | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Arranque y /api/health
+        run: |
+          python3 scripts/generate_secrets.py
+          DOW_TAG=ci docker compose up -d --no-build
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8080/api/health; then break; fi
+            if [ "$i" = 45 ]; then docker compose logs; exit 1; fi
+            sleep 2
+          done
+      - name: doc_organize y Docling se importan en la imagen
+        run: docker compose exec -T web python -c "import doc_organize.converter, docling.document_converter"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: E2E de humo (Playwright)
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          DOW_E2E_URL=http://127.0.0.1:8080 npm run e2e
+      - name: Logs de la aplicación
+        if: failure()
+        run: docker compose logs
