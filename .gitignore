@@ -1,0 +1,33 @@
+# Secretos (nunca se versionan; ver docs/plan/DECISIONES_Y_RIESGOS.md)
+secrets/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+
+# Build y documentación generada
+build/
+dist/
+site/
+
+# Editores y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
