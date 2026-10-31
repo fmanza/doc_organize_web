@@ -102,6 +102,12 @@ aunque cierre la pestaña, la cancelo y veo el historial **agrupado por ejecuci�
 
 ## Fase 4 — Escaneo y conversión
 
+> **Requisito de entrada (seguridad)**: Pillow ≥ 13.0.0, que corrige 41 alertas (5 críticas) en la lectura de JPEG,
+> TIFF, FlashPix y PDF. Exige docling-slim ≥ 2.142.0, docling-core ≥ 2.104.0, docling-parse ≥ 7.22.4 y
+> docling-ibm-models ≥ 4.0.4 (antes limitaban `pillow<13`), admisibles por la regla de 14 días desde el 2026-11-05:
+> adelantar `exclude-newer` en `backend/pyproject.toml`, `uv lock`, suite completa y tests de integración con
+> conversión real. Esta fase procesa ficheros de usuarios con Pillow; no empieza sin ello.
+
 **Historias**: escaneo una o varias carpetas del origen con las opciones actuales (OCR, GPU, audio/vídeo, extraer
 imágenes, descripción de imágenes, forzar); guardo carpetas frecuentes; veo errores de escaneo y el historial.
 

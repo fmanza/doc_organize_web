@@ -14,6 +14,13 @@ ROADMAP (`0.<fase+1>.0`).
 - **ci**: la suite corre en los PR y en `develop`, no en `main`. Los PR se fusionan con squash y `main` avanza por
   fast-forward a un commit de `develop` con el CI en verde (rulesets; `docs/guides/publicar_version.md`).
 
+### Security
+
+- **backend**: certifi 2026.10.18 (retira los raíz de emSign con intermedias comprometidas), filelock 4.2.1 (17
+  alertas) y setuptools 84.1.0, con excepción por paquete a `exclude-newer` en `backend/pyproject.toml`. Pillow
+  (41 alertas) queda para antes de la Fase 4: exige subir también la familia Docling, que limitaba `pillow<13` hasta
+  sus versiones del 2026-10-21/22.
+
 ## [0.3.0] - 2026-10-31
 
 Fase 2 — ubicaciones locales/red y ajustes administrables. Sigue con doc_organize **0.9.3**.
