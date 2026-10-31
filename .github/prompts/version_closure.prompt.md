@@ -9,7 +9,8 @@ Cierre de versión, fase o sesión. Agente: `.github/agents/version-closer.agent
 - **Sesión**: carpeta `.ai/sessions/<fecha>-<slug>/`
 
 ## Devuelve en este orden
-1. **Commit message** — Conventional Commits; releases: `release: vX.Y.Z - <resumen>`.
+1. **Commit message** — Conventional Commits; releases: `release: vX.Y.Z - <resumen>` (título del PR a `develop`, que se
+   fusiona con squash; publicación por fast-forward de `main`, ver `docs/guides/publicar_version.md`).
 2. **Changelog** — `Added / Changed / Fixed / Removed / Security` por área (backend, frontend, docker, docs).
 3. **Impacto en la API HTTP** — endpoints nuevos, cambiados o retirados.
 4. **Migraciones** — revisiones Alembic nuevas, cambios en volúmenes, montajes, secretos o variables `DOW_*`.

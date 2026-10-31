@@ -174,6 +174,12 @@ Las salidas largas de validación (`.txt`, informes) van a `build/logs/`.
 [Conventional Commits](https://www.conventionalcommits.org/) con scope opcional (`backend`, `frontend`, `docker`,
 `docs`, `ia`): `feat`, `fix`, `hotfix`, `security`, `perf`, `refactor`, `test`, `docs`, `chore`, `release`.
 
+### Ramas y publicación
+
+PR a `develop` fusionado con **squash** (un commit por PR, con el título del PR en Conventional Commits); `main` solo
+avanza por **fast-forward** a un commit de `develop` con el CI en verde, y el tag se crea sobre ese mismo commit. Sin
+PR de `develop` a `main` ni commits de merge. Pasos: [`docs/guides/publicar_version.md`](../docs/guides/publicar_version.md).
+
 ---
 
 ## Flujo de trabajo

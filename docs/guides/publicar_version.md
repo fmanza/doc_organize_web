@@ -30,14 +30,27 @@ Todos los comandos de «Comandos de desarrollo» de
 
 ## 3. Publicar
 
+El commit de release (`release: vX.Y.Z - <resumen>`) llega a `develop` por PR como cualquier otro cambio, fusionado con
+**squash**. Cuando el CI de ese commit en `develop` está en verde, `main` avanza por **fast-forward** hasta él: sin PR
+de `develop` a `main`, sin commit de merge y sin volver a ejecutar la suite.
+
 ```bash
 git switch develop && git pull
-# PR develop → main con el título "release: vX.Y.Z - <resumen>"; tras fusionarlo:
-git switch main && git pull
-git tag -a vX.Y.Z -m "vX.Y.Z"
+sha=$(git rev-parse HEAD)
+gh run list --branch develop --commit "$sha" --workflow CI     # debe estar en «completed / success»
+git push origin "$sha:main"                                    # fast-forward; el ruleset lo rechaza sin CI verde
+git tag -a vX.Y.Z -m "vX.Y.Z" "$sha"
 git push origin vX.Y.Z
 gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <notas extraídas del CHANGELOG>
 ```
+
+Reglas de las ramas (rulesets del repositorio):
+
+- **CI en verde** (`main` y `develop`, sin excepciones): checks `backend`, `frontend`, `docs` e `image` en el commit,
+  rama al día, sin force-push ni borrado.
+- **PR obligatorio en `develop`**, sin excepciones; solo se admite squash y la rama se borra al fusionar.
+- **PR obligatorio en `main`**, con excepción solo para los administradores del repositorio, para el fast-forward.
+  `main` nunca recibe un commit que no esté ya en `develop`.
 
 ## Cambiar la versión de doc_organize
 

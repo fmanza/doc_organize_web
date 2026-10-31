@@ -1,8 +1,11 @@
 name: CI
 
+# La suite corre en cada PR y una vez en el commit de develop que resulta del squash. main no la repite: avanza por
+# fast-forward a un commit de develop que ya la pasó, y el ruleset de main exige esos checks en verde
+# (docs/guides/publicar_version.md).
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
 
 permissions:
