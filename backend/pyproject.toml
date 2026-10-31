@@ -1,6 +1,6 @@
 [project]
 name = "doc_organize_web"
-version = "0.1.0"
+version = "0.2.0"
 description = "Aplicación web multiusuario sobre doc_organize: ubicaciones, proyectos y ejecuciones agrupadas."
 readme = "../README.md"
 requires-python = ">=3.12,<3.13"
@@ -14,6 +14,7 @@ dependencies = [
     "pydantic-settings>=2.10",
     "sqlalchemy>=2.1",
     "alembic>=1.16",
+    "pwdlib[argon2]>=0.3",  # Argon2id para contraseñas (ADR-003)
     # doc_organize fijado por versión (ADR-006): wheel de la release v0.9.3 en GitHub, hash en uv.lock. Los extras
     # export y site llegan con doc_organize 0.11.0 (L-7, L-8); rapidocr ya viene en sus dependencias base.
     "doc_organize[ai,context]==0.9.3",

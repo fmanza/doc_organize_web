@@ -5,9 +5,14 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, detecta duplicados y genera un contexto navegable por dominios, con proyectos,
 miembros y ejecuciones en segundo plano.
 
-> **Estado: Fase 0 (fundaciones, 0.1.0).** La aplicación arranca, sirve la SPA y comprueba su salud. Las
+> **Estado: Fase 1 (identidad y multiusuario, 0.2.0).** Inicio de sesión, usuarios, sesiones y auditoría. Las
 > funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
 > la interfaz hasta alcanzar la [paridad](plan/PARIDAD.md).
+
+## Uso
+
+- [Usuarios y sesiones](guides/usuarios_y_sesiones.md): primer administrador, inicio de sesión, contraseñas,
+  administración de usuarios, sesiones y auditoría.
 
 ## Operación
 

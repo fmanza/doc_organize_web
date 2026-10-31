@@ -1,1 +1,85 @@
-{}
+{
+  "admin": {
+    "users": {
+      "title": "Usuarios",
+      "new": "Nuevo usuario",
+      "create": "Crear usuario",
+      "createTitle": "Nuevo usuario",
+      "editTitle": "Editar usuario {{username}}",
+      "editLabel": "Editar {{username}}",
+      "search": "Buscar por usuario o nombre",
+      "empty": "No hay usuarios que coincidan.",
+      "displayName": "Nombre visible",
+      "role": "Rol",
+      "status": "Estado",
+      "createdAt": "Alta",
+      "active": "Cuenta activa",
+      "activeHint": "Al desactivarla se cierran sus sesiones; puede reactivarse después. Los usuarios no se borran.",
+      "activeBadge": "Activo",
+      "inactive": "Desactivado",
+      "locked": "Bloqueado",
+      "lockedTitle": "Cuenta bloqueada por intentos fallidos",
+      "lockedBody": "Se desbloquea sola a las {{until}}.",
+      "unlock": "Quitar el bloqueo ahora",
+      "usernameRule": "De 3 a 64 caracteres: letras, números, punto, guion o guion bajo",
+      "resetPassword": "Restablecer contraseña",
+      "resetPasswordHint": "Déjalo vacío para no cambiarla. Si la cambias, se cierran sus sesiones y se quita el bloqueo."
+    },
+    "sessions": {
+      "title": { "all": "Sesiones activas", "own": "Mis sesiones" },
+      "intro": {
+        "all": "Sesiones abiertas de todos los usuarios. Revocar una cierra esa sesión de inmediato.",
+        "own": "Tus sesiones abiertas en otros navegadores o equipos. Revocar una la cierra de inmediato."
+      },
+      "empty": "No hay sesiones activas.",
+      "ip": "IP",
+      "userAgent": "Navegador",
+      "createdAt": "Inicio",
+      "lastSeen": "Última actividad",
+      "expiresAt": "Caduca",
+      "current": "Esta sesión",
+      "revoke": "Revocar",
+      "revokeLabel": "Revocar sesión de {{username}}",
+      "confirmTitle": "Revocar sesión",
+      "confirmBody": "Se cerrará la sesión de {{username}} desde {{ip}}.",
+      "confirmCurrent": "Es tu sesión actual: tendrás que volver a iniciar sesión."
+    },
+    "audit": {
+      "title": "Auditoría",
+      "filter": "Tipo de acción",
+      "actorFilter": "Usuario que actuó",
+      "filters": {
+        "all": "Todas",
+        "auth": "Autenticación",
+        "user": "Usuarios",
+        "session": "Sesiones"
+      },
+      "empty": "No hay eventos.",
+      "ts": "Fecha",
+      "action": "Acción",
+      "outcome": "Resultado",
+      "actor": "Quién",
+      "target": "Objeto",
+      "details": "Detalles",
+      "system": "Sistema",
+      "outcomes": { "success": "Correcto", "failure": "Fallido" },
+      "actions": {
+        "auth": {
+          "login": "Inicio de sesión",
+          "lockout": "Bloqueo de cuenta",
+          "logout": "Cierre de sesión",
+          "password_change": "Cambio de contraseña"
+        },
+        "user": {
+          "create": "Alta de usuario",
+          "update": "Edición de usuario",
+          "deactivate": "Desactivación",
+          "reactivate": "Reactivación",
+          "password_reset": "Contraseña restablecida",
+          "unlock": "Desbloqueo"
+        },
+        "session": { "revoke": "Sesión revocada" }
+      }
+    }
+  }
+}

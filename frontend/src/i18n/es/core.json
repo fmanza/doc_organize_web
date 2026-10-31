@@ -1,5 +1,17 @@
 {
   "app": { "title": "doc_organize web" },
+  "common": {
+    "loading": "Cargando…",
+    "error": "Se ha producido un error",
+    "errorBody": "Inténtalo de nuevo más tarde.",
+    "noPermission": "Sin permiso",
+    "noPermissionBody": "Esta sección es solo para administradores.",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "edit": "Editar",
+    "actions": "Acciones"
+  },
+  "roles": { "admin": "Administrador", "user": "Usuario" },
   "nav": {
     "label": "Navegación principal",
     "home": "Inicio",
@@ -11,7 +23,31 @@
     "duplicates": "Duplicados",
     "context": "Contexto",
     "ai": "IA",
-    "phase": "Fase {{phase}}"
+    "phase": "Fase {{phase}}",
+    "admin": "Administración",
+    "users": "Usuarios",
+    "sessions": "Sesiones",
+    "audit": "Auditoría"
+  },
+  "auth": {
+    "loginIntro": "Inicia sesión con tu usuario.",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "userMenu": "Menú de usuario de {{name}}",
+    "required": "Campo obligatorio",
+    "changePassword": "Cambiar contraseña",
+    "mySessions": "Mis sesiones",
+    "changePasswordIntro": "Al cambiarla se cierran tus sesiones abiertas en otros navegadores.",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Contraseña nueva",
+    "confirmPassword": "Repite la contraseña nueva",
+    "passwordHint": "Mínimo {{min}} caracteres y que no sea una contraseña habitual. Mejor una frase larga que una palabra compleja.",
+    "passwordTooShort": "Debe tener al menos {{min}} caracteres",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "passwordChanged": "Contraseña cambiada",
+    "passwordChangedBody": "Las demás sesiones se han cerrado."
   },
   "home": {
     "title": "Inicio",

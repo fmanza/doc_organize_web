@@ -7,7 +7,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | Fase | Nombre | Versión | Requiere de doc_organize |
 |---|---|---|---|
 | 0 | Fundaciones ✅ (2026-10-31) | 0.1.0 | 0.9.3 (wheel de la release) |
-| 1 | Identidad y multiusuario | 0.2.0 | — |
+| 1 | Identidad y multiusuario ✅ (2026-10-31) | 0.2.0 | — |
 | 2 | Ubicaciones locales/red y ajustes | 0.3.0 | — |
 | 3 | Proyectos y motor de ejecuciones | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
 | 4 | Escaneo y conversión | 0.5.0 | 0.10.0 (L-2, L-6b) |
@@ -54,6 +54,8 @@ guía de usuario de lo implementado, `TRACEABILITY.md` de la sesión y fila de `
 - WD-0.5 `docker-compose.dev.yml` para Docker Desktop con carpetas locales como ubicaciones de prueba.
 
 ## Fase 1 — Identidad y multiusuario
+
+> **Cerrada el 2026-10-31 (0.2.0).** Sesión: `.ai/sessions/2026-10-31-fase1/`.
 
 **Historias**: como admin creo, desactivo y reactivo usuarios y asigno `admin`/`user`; como usuario inicio y cierro
 sesión y cambio mi contraseña; como admin veo y revoco sesiones y consulto la auditoría.
