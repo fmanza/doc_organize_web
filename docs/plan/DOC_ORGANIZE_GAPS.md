@@ -3,7 +3,8 @@
 Mismo contrato que `UTIL_BBDD_GAPS.md`: **no se parchea doc_organize desde la web**; cada hueco tiene un rodeo en
 `backend/app/integrations/doc_organize/` hasta que la librería lo resuelva (tareas `L-*` de `TAREAS_DOC_ORGANIZE.md`).
 
-Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 2026-10-31).
+Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 2026-10-31). Versión consumida desde la
+Fase 0: **0.9.3** (ver «Resueltos»).
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
@@ -20,3 +21,12 @@ Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 20
 | G11 | Sin reintentos ante errores de E/S transitorios ni timeout por documento | Escaneos largos en red fallan enteros por un corte | Reintentar el run entero (incremental gracias a la caché) | Reintentos y timeout configurables | L-9 |
 | G12 | Detectores (`GpuStatus`, `AvStatus`, `OfficeStatus`) sin punto de entrada público | La ficha de capacidades duplicaría la detección | Importar los módulos internos desde la capa anticorrupción | `doc_organize.diagnostics` | L-9b |
 | G13 | `ScanCommand.run_streaming` tiene 12 parámetros posicionales | Fácil desordenarlos al llamar | Llamar siempre por nombre | `ScanOptions` (modelo) | L-1 / L-2 |
+| G14 | El tag `v0.9.2` no subió la versión del paquete (`pyproject.toml` seguía en `0.9.0`) | Un wheel construido desde el tag se llamaría 0.9.0 | — | Versión, `__version__` y tag alineados | release 0.9.3 |
+
+## Resueltos
+
+| # | Resuelto en | Cómo | Rodeo retirado |
+|---|---|---|---|
+| G1 (parcial) | doc_organize 0.9.3 | `__version__` = versión del paquete. Sigue abierto: `__all__` sin `ScanCommand`, `ContextBuilder`, eventos… (L-1) | La web lee igualmente `importlib.metadata` (no importa Docling para leer un número) |
+| G9 | doc_organize 0.9.3 (2026-10-31) | Wheel y sdist en GitHub Releases; la web lo fija por URL y hash en `uv.lock` (ADR-006) | No hizo falta vendorizar |
+| G14 | doc_organize 0.9.3 (2026-10-31) | Versión 0.9.3 en `pyproject.toml`, `__version__` y tag `v0.9.3` | — |

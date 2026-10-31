@@ -1,6 +1,8 @@
 # Runtime (contexto para IAs)
 
-> Previsto en la Fase 0 (`docs/plan/ARQUITECTURA_PROPUESTA.md`); actualizar con lo realmente implementado al cerrarla.
+> Implementado en la Fase 0 (0.1.0): `web`, `worker` (perfil, sin operaciones), volúmenes `data`/`workspace` y los dos
+> primeros secretos. El worker GPU, el volumen `models`, `dow_metrics_token` y las variantes llegan en fases
+> posteriores. Imagen `runtime` CPU: 3,01 GB.
 
 ## Procesos
 

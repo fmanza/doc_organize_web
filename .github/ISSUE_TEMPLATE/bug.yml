@@ -1,0 +1,32 @@
+name: Error
+description: Algo no funciona como se espera
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No incluyas documentos, rutas internas, nombres de servidores ni credenciales reales**: este repositorio es
+        público. Las vulnerabilidades se reportan en privado (ver SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: La que muestra la portada o `/api/health` (aplicación y doc_organize)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasa y qué esperabas
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs o respuesta de error
+      description: Líneas JSON del log y `request_id` del *problem details*, saneadas
+      render: text

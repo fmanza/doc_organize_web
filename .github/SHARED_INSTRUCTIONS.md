@@ -102,8 +102,7 @@ Reglas por tipo de archivo: [`.github/instructions/`](instructions/).
 
 ### Comandos de desarrollo
 
-Se activan a medida que la Fase 0 crea `backend/` y `frontend/`. Hasta entonces el CI solo valida los enlaces de la
-documentación (`python scripts/check_doc_links.py`).
+Son los mismos que ejecuta el CI (`.github/workflows/ci.yml`: jobs `backend`, `frontend`, `docs` e `image`).
 
 Backend (desde `backend/`, con [uv](https://docs.astral.sh/uv/) local):
 

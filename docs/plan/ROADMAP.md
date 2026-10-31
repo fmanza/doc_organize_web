@@ -6,7 +6,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 
 | Fase | Nombre | Versión | Requiere de doc_organize |
 |---|---|---|---|
-| 0 | Fundaciones | 0.1.0 | 0.9.x (wheel) |
+| 0 | Fundaciones ✅ (2026-10-31) | 0.1.0 | 0.9.3 (wheel de la release) |
 | 1 | Identidad y multiusuario | 0.2.0 | — |
 | 2 | Ubicaciones locales/red y ajustes | 0.3.0 | — |
 | 3 | Proyectos y motor de ejecuciones | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
@@ -25,6 +25,9 @@ guía de usuario de lo implementado, `TRACEABILITY.md` de la sesión y fila de `
 ---
 
 ## Fase 0 — Fundaciones
+
+> **Cerrada el 2026-10-31 (0.1.0)** con doc_organize 0.9.3, publicada para esta fase (G9 y G14). Sesión:
+> `.ai/sessions/2026-10-31-fase0/`.
 
 **Backend**
 - WB-0.1 Estructura `backend/app` (capas de `ARQUITECTURA_PROPUESTA.md`), `pyproject.toml` con uv, `exclude-newer`.

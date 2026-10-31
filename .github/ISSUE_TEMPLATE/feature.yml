@@ -1,0 +1,18 @@
+name: Mejora
+description: Propón una funcionalidad o un cambio
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Qué necesitas y para qué
+    validations:
+      required: true
+  - type: input
+    id: phase
+    attributes:
+      label: Fase del ROADMAP relacionada (si la hay)
+  - type: textarea
+    id: notes
+    attributes:
+      label: Alternativas o notas

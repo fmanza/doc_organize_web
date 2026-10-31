@@ -1,0 +1,58 @@
+# doc_organize_web — despliegue en el servidor Linux (D9) o local.
+#   python scripts/generate_secrets.py   # una vez: crea secrets/*.txt (git-ignored)
+#   docker compose up -d --build
+#   http://127.0.0.1:8080
+# El worker (Fase 3) se arranca con: docker compose --profile worker up -d
+# Las ubicaciones (carpetas locales o montajes SMB/NFS del host) se montan bajo /mnt a partir de la Fase 2
+# (docs/guides/despliegue.md).
+
+x-app: &app
+  image: doc_organize_web:${DOW_TAG:-dev}
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  environment:
+    DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
+  volumes:
+    - data:/data
+    - workspace:/workspace
+  secrets:
+    - dow_app_secret_key
+    - dow_fernet_keys
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    ports:
+      # Solo localhost por defecto; en el servidor, detrás de un proxy inverso con TLS (docs/guides/despliegue.md).
+      - "127.0.0.1:${DOW_PORT:-8080}:8080"
+
+  worker:
+    <<: *app
+    profiles: ["worker"]
+    command: ["python", "-m", "app.jobs.worker"]
+    # Docling consume mucha memoria por documento (R3): límite explícito, ajustable por instancia.
+    mem_limit: ${DOW_WORKER_MEM_LIMIT:-6g}
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  data:
+  workspace:
+
+secrets:
+  dow_app_secret_key:
+    file: ./secrets/app_secret_key.txt
+  dow_fernet_keys:
+    file: ./secrets/fernet_keys.txt
