@@ -126,6 +126,45 @@
         "title": "AuditPage",
         "type": "object"
       },
+      "CapabilitiesOut": {
+        "description": "Capacidades de la instancia para convertir documentos.",
+        "properties": {
+          "asr_installed": {
+            "title": "Asr Installed",
+            "type": "boolean"
+          },
+          "av_ready": {
+            "title": "Av Ready",
+            "type": "boolean"
+          },
+          "ffmpeg_installed": {
+            "title": "Ffmpeg Installed",
+            "type": "boolean"
+          },
+          "gpu_active": {
+            "title": "Gpu Active",
+            "type": "boolean"
+          },
+          "gpu_support_installed": {
+            "title": "Gpu Support Installed",
+            "type": "boolean"
+          },
+          "libreoffice_installed": {
+            "title": "Libreoffice Installed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "gpu_support_installed",
+          "gpu_active",
+          "asr_installed",
+          "ffmpeg_installed",
+          "av_ready",
+          "libreoffice_installed"
+        ],
+        "title": "CapabilitiesOut",
+        "type": "object"
+      },
       "CsrfToken": {
         "description": "Token CSRF para la cabecera ``X-CSRF-Token``.",
         "properties": {
@@ -138,6 +177,76 @@
           "csrf_token"
         ],
         "title": "CsrfToken",
+        "type": "object"
+      },
+      "FolderEntry": {
+        "description": "Subcarpeta: nombre y ruta relativa a la raíz explorada.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "FolderEntry",
+        "type": "object"
+      },
+      "FolderListing": {
+        "description": "Subcarpetas de una carpeta, paginadas.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FolderEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "location_id",
+          "path",
+          "parent",
+          "items",
+          "total"
+        ],
+        "title": "FolderListing",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -154,7 +263,7 @@
         "type": "object"
       },
       "HealthStatus": {
-        "description": "Estado del servicio.\n\nAttributes:\n    status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no.\n    version: Versión de doc_organize_web.\n    doc_organize_version: Versión instalada de doc_organize.\n    database: Estado de ``config.db``.",
+        "description": "Estado del servicio.\n\nAttributes:\n    status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no. Las ubicaciones no\n        cuentan: una carpeta de red caída no hace que Docker reinicie la aplicación.\n    version: Versión de doc_organize_web.\n    doc_organize_version: Versión instalada de doc_organize.\n    database: Estado de ``config.db``.\n    locations: Peor estado del último sondeo de las ubicaciones (``none`` si no hay; ``unknown`` si no se pudo leer).",
         "properties": {
           "database": {
             "enum": [
@@ -175,6 +284,17 @@
             ],
             "title": "Doc Organize Version"
           },
+          "locations": {
+            "enum": [
+              "none",
+              "ok",
+              "degraded",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Locations",
+            "type": "string"
+          },
           "status": {
             "enum": [
               "ok",
@@ -192,9 +312,485 @@
           "status",
           "version",
           "doc_organize_version",
-          "database"
+          "database",
+          "locations"
         ],
         "title": "HealthStatus",
+        "type": "object"
+      },
+      "InstanceCapabilities": {
+        "description": "Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo.",
+        "properties": {
+          "capabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapabilitiesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "doc_organize_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Organize Version"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checked_at",
+          "capabilities",
+          "doc_organize_version"
+        ],
+        "title": "InstanceCapabilities",
+        "type": "object"
+      },
+      "LocationCreate": {
+        "description": "Alta de ubicación. ``path`` es relativa a ``DOW_LOCATIONS_ROOT`` (``/mnt``) y no se puede cambiar después.",
+        "properties": {
+          "access": {
+            "default": "ro",
+            "enum": [
+              "ro",
+              "rw"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "display_path": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Path"
+          },
+          "kind": {
+            "default": "local",
+            "enum": [
+              "local",
+              "network"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "description": "Ruta relativa con «/»; vacía = la raíz",
+            "maxLength": 4096,
+            "title": "Path",
+            "type": "string"
+          },
+          "usage": {
+            "enum": [
+              "source",
+              "destination",
+              "both"
+            ],
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "usage"
+        ],
+        "title": "LocationCreate",
+        "type": "object"
+      },
+      "LocationOut": {
+        "description": "Ubicación vista por un administrador.",
+        "properties": {
+          "access": {
+            "enum": [
+              "ro",
+              "rw"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "container_path": {
+            "title": "Container Path",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Path"
+          },
+          "free_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Bytes"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "local",
+              "network"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "probed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probed At"
+          },
+          "status": {
+            "enum": [
+              "unknown",
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_reasons": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reasons"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "usage": {
+            "enum": [
+              "source",
+              "destination",
+              "both"
+            ],
+            "title": "Usage",
+            "type": "string"
+          },
+          "writable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writable"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "display_path",
+          "kind",
+          "usage",
+          "access",
+          "status",
+          "status_reasons",
+          "probed_at",
+          "container_path",
+          "latency_ms",
+          "free_bytes",
+          "writable",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "LocationOut",
+        "type": "object"
+      },
+      "LocationPage": {
+        "description": "Página de ubicaciones (``LocationOut`` para admin, ``LocationPublic`` para el resto).",
+        "properties": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LocationOut"
+                },
+                {
+                  "$ref": "#/components/schemas/LocationPublic"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LocationPage",
+        "type": "object"
+      },
+      "LocationPublic": {
+        "description": "Ubicación vista por cualquier usuario: sin la ruta del contenedor.",
+        "properties": {
+          "access": {
+            "enum": [
+              "ro",
+              "rw"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "display_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Path"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "local",
+              "network"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "probed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probed At"
+          },
+          "status": {
+            "enum": [
+              "unknown",
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_reasons": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reasons"
+          },
+          "usage": {
+            "enum": [
+              "source",
+              "destination",
+              "both"
+            ],
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "display_path",
+          "kind",
+          "usage",
+          "access",
+          "status",
+          "status_reasons",
+          "probed_at"
+        ],
+        "title": "LocationPublic",
+        "type": "object"
+      },
+      "LocationUpdate": {
+        "additionalProperties": false,
+        "description": "Edición parcial de ubicación (la carpeta del contenedor no se puede cambiar).",
+        "properties": {
+          "access": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ro",
+                  "rw"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access"
+          },
+          "display_path": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Path"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "local",
+                  "network"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "source",
+                  "destination",
+                  "both"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage"
+          }
+        },
+        "title": "LocationUpdate",
         "type": "object"
       },
       "LoginRequest": {
@@ -373,6 +969,81 @@
           "total"
         ],
         "title": "SessionPage",
+        "type": "object"
+      },
+      "SettingOut": {
+        "description": "Ajuste administrable con su valor efectivo, el que tendría sin cambio en la web y su origen.",
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "db",
+              "env",
+              "default"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "default",
+          "source"
+        ],
+        "title": "SettingOut",
+        "type": "object"
+      },
+      "SettingsPage": {
+        "description": "Ajustes administrables.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SettingOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SettingsPage",
+        "type": "object"
+      },
+      "SettingsUpdate": {
+        "description": "Cambios de ajustes: ``clave → valor``; ``null`` vuelve al valor de la variable ``DOW_*`` o por defecto.",
+        "properties": {
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "title": "SettingsUpdate",
         "type": "object"
       },
       "UserCreate": {
@@ -623,13 +1294,13 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
     "/api/health": {
       "get": {
-        "description": "Devuelve el estado de ``config.db`` y las versiones de la aplicación y de doc_organize (503 si degradado).",
+        "description": "Devuelve el estado de ``config.db``, de las ubicaciones y las versiones (503 si degradado).",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -656,6 +1327,187 @@
         "summary": "Estado del servicio",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/admin/capabilities/refresh": {
+      "post": {
+        "description": "Lanza en segundo plano un nuevo sondeo de capacidades (si no hay uno en curso).",
+        "operationId": "refresh_capabilities_api_v1_admin_capabilities_refresh_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          }
+        },
+        "summary": "Volver a comprobar las capacidades",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/mounts": {
+      "get": {
+        "description": "Subcarpetas bajo ``DOW_LOCATIONS_ROOT`` para elegir la carpeta de una ubicación nueva.",
+        "operationId": "browse_mounts_api_v1_admin_mounts_get",
+        "parameters": [
+          {
+            "description": "Ruta relativa a DOW_LOCATIONS_ROOT",
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Ruta relativa a DOW_LOCATIONS_ROOT",
+              "maxLength": 4096,
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderListing"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida (absoluta, UNC, con «..» o «\\»)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Explorar la raíz de ubicaciones",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "description": "Ajustes con su valor efectivo, el de la variable ``DOW_*`` (o por defecto) y su origen.",
+        "operationId": "list_settings_api_v1_admin_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          }
+        },
+        "summary": "Ver ajustes administrables",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "description": "Aplica los cambios sin reiniciar; ``null`` devuelve el ajuste al valor de la variable o por defecto.",
+        "operationId": "update_settings_api_v1_admin_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ajuste desconocido"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "422": {
+            "description": "Valor no válido"
+          }
+        },
+        "summary": "Cambiar ajustes administrables",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -972,6 +1824,456 @@
         "summary": "Cambiar mi contraseña",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/fs/browse": {
+      "get": {
+        "description": "Subcarpetas de ``path`` dentro de la ubicación, ordenadas por nombre.",
+        "operationId": "browse_api_v1_fs_browse_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Location Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Ruta relativa con «/»; vacía = la raíz",
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Ruta relativa con «/»; vacía = la raíz",
+              "maxLength": 4096,
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderListing"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida (absoluta, UNC, con «..» o «\\»)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Explorar carpetas de una ubicación",
+        "tags": [
+          "filesystem"
+        ]
+      }
+    },
+    "/api/v1/instance/capabilities": {
+      "get": {
+        "description": "GPU, audio/vídeo y LibreOffice. ``pending`` mientras se calcula la primera vez (tarda varios segundos).",
+        "operationId": "get_capabilities_api_v1_instance_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceCapabilities"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          }
+        },
+        "summary": "Capacidades de la instancia",
+        "tags": [
+          "instance"
+        ]
+      }
+    },
+    "/api/v1/locations": {
+      "get": {
+        "description": "Ubicaciones ordenadas por nombre, con su último estado.",
+        "operationId": "list_locations_api_v1_locations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Listar ubicaciones",
+        "tags": [
+          "locations"
+        ]
+      },
+      "post": {
+        "description": "Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea.",
+        "operationId": "create_location_api_v1_locations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Carpeta no válida (fuera de la raíz, inexistente o solapada)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "409": {
+            "description": "Nombre o carpeta ya registrados"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Registrar ubicación",
+        "tags": [
+          "locations"
+        ]
+      }
+    },
+    "/api/v1/locations/{location_id}": {
+      "delete": {
+        "description": "Quita la ubicación del registro; la carpeta y su contenido no se tocan.",
+        "operationId": "delete_location_api_v1_locations__location_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Borrar ubicación",
+        "tags": [
+          "locations"
+        ]
+      },
+      "get": {
+        "description": "Detalle de una ubicación.",
+        "operationId": "get_location_api_v1_locations__location_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LocationOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LocationPublic"
+                    }
+                  ],
+                  "title": "Response Get Location Api V1 Locations  Location Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver ubicación",
+        "tags": [
+          "locations"
+        ]
+      },
+      "patch": {
+        "description": "Cambia nombre, texto visible, tipo, uso o acceso (la carpeta del contenedor no se puede cambiar).",
+        "operationId": "update_location_api_v1_locations__location_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "409": {
+            "description": "Nombre ya registrado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Editar ubicación",
+        "tags": [
+          "locations"
+        ]
+      }
+    },
+    "/api/v1/locations/{location_id}/probe": {
+      "post": {
+        "description": "Sondea la ubicación (existencia, lectura, latencia, espacio y escritura si es ``rw``) y guarda el estado.",
+        "operationId": "probe_location_api_v1_locations__location_id__probe_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comprobar ubicación",
+        "tags": [
+          "locations"
         ]
       }
     },

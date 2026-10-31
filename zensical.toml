@@ -19,9 +19,11 @@ nav = [
   { "Inicio" = "README.md" },
   { "Uso" = [
     "guides/usuarios_y_sesiones.md",
+    "guides/ubicaciones.md",
   ] },
   { "Operación" = [
     "guides/despliegue.md",
+    "guides/carpetas_de_red.md",
     "guides/publicar_version.md",
   ] },
   { "Desarrollo" = [
@@ -33,6 +35,8 @@ nav = [
       "adr/ADR-004-cifrado-secretos.md",
       "adr/ADR-005-workspace-estado-y-salidas.md",
       "adr/ADR-006-integracion-doc-organize.md",
+      "adr/ADR-007-ubicaciones.md",
+      "adr/ADR-012-ajustes-administrables.md",
     ] },
     { "Plan" = [
       "plan/README.md",

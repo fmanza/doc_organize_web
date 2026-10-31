@@ -24,6 +24,7 @@ from app.core.logging import configure_logging
 from app.db.session import get_engine
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
+from app.domain.settings.service import effective_settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,10 @@ def _read_password(from_stdin: bool) -> str:
 
 def create_admin(username: str, display_name: str | None, *, password_stdin: bool) -> int:
     """Crea un usuario ``admin``; devuelve el código de salida."""
-    settings = get_settings()
     password = _read_password(password_stdin)
     factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
     with factory() as db:
+        settings = effective_settings(db, get_settings())
         try:
             user = create_user(
                 db,

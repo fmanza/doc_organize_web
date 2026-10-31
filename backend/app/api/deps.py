@@ -13,12 +13,20 @@ from app.db.models import User, UserSession
 from app.db.session import get_session
 from app.domain.identity.audit import RequestContext
 from app.domain.identity.sessions import resolve_session
+from app.domain.settings.service import effective_settings
 
 CSRF_HEADER = "X-CSRF-Token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
 DbSession = Annotated[Session, Depends(get_session)]
-SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def get_effective_settings(db: DbSession) -> Settings:
+    """Ajustes del proceso con los administrables de ``app_settings`` aplicados (ADR-012), leídos en cada petición."""
+    return effective_settings(db, get_settings())
+
+
+SettingsDep = Annotated[Settings, Depends(get_effective_settings)]
 
 
 def request_context(request: Request) -> RequestContext:

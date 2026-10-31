@@ -39,6 +39,16 @@ export const routes: RouteObject[] = [
             ...page(async () => (await import('../features/admin/SessionsPage')).SessionsPage),
           },
           {
+            path: 'locations',
+            ...page(async () => (await import('../features/locations/LocationsPage')).LocationsPage),
+          },
+          {
+            path: 'locations/:locationId',
+            ...page(
+              async () => (await import('../features/locations/LocationDetailPage')).LocationDetailPage,
+            ),
+          },
+          {
             path: 'admin',
             element: <RequireAdmin />,
             children: [
@@ -48,6 +58,10 @@ export const routes: RouteObject[] = [
                 ...page(async () => (await import('../features/admin/SessionsPage')).SessionsPage),
               },
               { path: 'audit', ...page(async () => (await import('../features/admin/AuditPage')).AuditPage) },
+              {
+                path: 'settings',
+                ...page(async () => (await import('../features/admin/SettingsPage')).SettingsPage),
+              },
             ],
           },
           { path: '*', element: <NotFoundPage /> },

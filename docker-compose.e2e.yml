@@ -1,0 +1,9 @@
+# E2E (CI y local): monta una carpeta de prueba como ubicación bajo /mnt, en solo lectura.
+#   mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
+# Solo carpetas sintéticas creadas por el propio CI (repositorio público).
+
+services:
+  web:
+    volumes:
+      - ./dev-data/e2e:/mnt/e2e:ro

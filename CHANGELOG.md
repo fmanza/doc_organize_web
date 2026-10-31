@@ -5,6 +5,41 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
+Fase 2 — ubicaciones locales/red y ajustes administrables. Sigue con doc_organize **0.9.3**.
+
+### Added
+
+- **backend**: migración `0003_locations_settings` (`locations`, `app_settings`). Ubicaciones registradas por un admin
+  bajo `DOW_LOCATIONS_ROOT` (`/mnt`) con uso (origen/destino/ambas), acceso (`ro`/`rw`), tipo (local/red) y ruta para
+  mostrar; la carpeta del contenedor es inmutable y se rechazan solapes, la propia `/mnt` y carpetas que contengan
+  `data`/`workspace` ([ADR-007](docs/adr/ADR-007-ubicaciones.md)).
+- **backend**: resolvedor único de rutas (`app/domain/locations/paths.py`): solo rutas relativas; rechaza absolutas,
+  UNC, unidades, `\`, `..` y bytes nulos (400); `resolve(strict)` + `is_relative_to` contra enlaces simbólicos;
+  mismo 404 para «fuera de la ubicación» y «no existe»; montaje caído o colgado → 503 con timeout de E/S.
+- **backend**: sondeo de ubicaciones (`ok`/`degraded`/`unavailable`: existencia, lectura, latencia, espacio libre y
+  escritura en `rw`) bajo demanda; `/api/health` añade el peor estado agregado (`locations`).
+- **backend**: `/api/v1/locations` (CRUD admin, lectura para cualquier sesión sin la ruta del contenedor),
+  `/api/v1/fs/browse` (sustituye a `/api/fs/browse`), `/api/v1/admin/mounts`, `/api/v1/admin/settings` y
+  `/api/v1/instance/capabilities` + `/api/v1/admin/capabilities/refresh`.
+- **backend**: ajustes administrables sin reiniciar con precedencia BD > `DOW_*` > defecto
+  ([ADR-012](docs/adr/ADR-012-ajustes-administrables.md)): sesión, bloqueo, contraseña y umbrales del sondeo; auditados.
+- **backend**: ficha de capacidades (GPU, Whisper + ffmpeg, LibreOffice) obtenida en un **subproceso** con caché de 1 h:
+  importar los detectores de doc_organize carga Docling y torch (G15).
+- **frontend**: «Ubicaciones» (lista con semáforo de estado accesible, detalle con explorador), alta/edición con el
+  explorador de `/mnt`, «Comprobar» y borrado con confirmación por nombre; componentes `FolderBrowser` y `StatusLight`;
+  «Administración → Ajustes» con origen de cada valor y ficha de capacidades.
+- **ci**: `docker-compose.e2e.yml` monta una carpeta sintética en `/mnt/e2e` y un E2E registra y explora una ubicación.
+- **docs**: ADR-007, ADR-012, guías [Ubicaciones](docs/guides/ubicaciones.md) y
+  [Montar carpetas de red](docs/guides/carpetas_de_red.md); hueco G15 en `DOC_ORGANIZE_GAPS.md`; PARIDAD del
+  explorador y del semáforo.
+
+### Changed
+
+- **backend**: las dependencias de la API y el CLI reciben los ajustes efectivos (`SettingsDep` = `Settings` con
+  `app_settings` aplicado).
+
 ## [0.2.0] - 2026-10-31
 
 Fase 1 — identidad y multiusuario. Sigue con doc_organize **0.9.3** (esta fase no usa su API).

@@ -8,7 +8,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 |---|---|---|---|
 | 0 | Fundaciones ✅ (2026-10-31) | 0.1.0 | 0.9.3 (wheel de la release) |
 | 1 | Identidad y multiusuario ✅ (2026-10-31) | 0.2.0 | — |
-| 2 | Ubicaciones locales/red y ajustes | 0.3.0 | — |
+| 2 | Ubicaciones locales/red y ajustes ✅ (2026-10-31) | 0.3.0 | — |
 | 3 | Proyectos y motor de ejecuciones | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
 | 4 | Escaneo y conversión | 0.5.0 | 0.10.0 (L-2, L-6b) |
 | 5 | Caché, resultados y descargas | 0.6.0 | 0.11.0 (L-7) |
@@ -68,6 +68,9 @@ sesión y cambio mi contraseña; como admin veo y revoco sesiones y consulto la 
 - Tests: hash, bloqueo, CSRF, flags de cookie, IDOR, E2E de login.
 
 ## Fase 2 — Ubicaciones locales/red y ajustes administrables
+
+> **Cerrada el 2026-10-31 (0.3.0).** Sesión: `.ai/sessions/2026-10-31-fase2/`. Sondeo bajo demanda (el periódico pasa
+> al worker en la Fase 3); capacidades en subproceso por G15.
 
 **Historias**: como admin registro ubicaciones (origen/destino, local/red, `ro`/`rw`), las pruebo y veo su estado;
 como usuario exploro carpetas dentro de las ubicaciones a las que tengo acceso; como admin cambio ajustes sin reiniciar.

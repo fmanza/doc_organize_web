@@ -34,6 +34,11 @@ class Settings(BaseSettings):
         login_max_attempts: Intentos fallidos seguidos que bloquean la cuenta.
         login_lockout_minutes: Duración del bloqueo temporal.
         password_min_length: Longitud mínima de contraseña (la máxima es fija, 128).
+        location_probe_timeout_seconds: Tiempo máximo de un sondeo o listado de una ubicación (montajes colgados).
+        location_latency_degraded_ms: Latencia de ``stat`` a partir de la que una ubicación está ``degraded``.
+        location_min_free_gb: Espacio libre por debajo del que una ubicación está ``degraded`` (0 = no se comprueba).
+
+    Los ajustes de identidad y de sondeo son administrables desde la web (ADR-012): estos valores son el defecto.
     """
 
     model_config = SettingsConfigDict(env_prefix="DOW_", secrets_dir=None, extra="ignore")
@@ -52,6 +57,9 @@ class Settings(BaseSettings):
     login_max_attempts: int = Field(default=5, ge=1, le=100)
     login_lockout_minutes: int = Field(default=15, ge=1, le=24 * 60)
     password_min_length: int = Field(default=12, ge=8, le=128)
+    location_probe_timeout_seconds: int = Field(default=10, ge=1, le=120)
+    location_latency_degraded_ms: int = Field(default=500, ge=10, le=60_000)
+    location_min_free_gb: int = Field(default=5, ge=0, le=100_000)
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> Self:

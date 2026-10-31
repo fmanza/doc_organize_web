@@ -27,7 +27,8 @@
     "admin": "Administración",
     "users": "Usuarios",
     "sessions": "Sesiones",
-    "audit": "Auditoría"
+    "audit": "Auditoría",
+    "settings": "Ajustes"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",
