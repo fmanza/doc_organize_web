@@ -5,7 +5,7 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, duplicados y contexto navegable por dominios, con proyectos, miembros y
 ejecuciones en segundo plano.
 
-> **Estado: 0.1.0 — Fase 0 (fundaciones).** La aplicación arranca, sirve la SPA y comprueba su salud. Las
+> **Estado: 0.2.0 — Fase 1 (identidad y multiusuario).** Inicio de sesión, usuarios, sesiones y auditoría. Las
 > funcionalidades llegan fase a fase según el [ROADMAP](docs/plan/ROADMAP.md); hasta alcanzar la
 > [paridad](docs/plan/PARIDAD.md), la interfaz de doc_organize sigue siendo su web integrada.
 
@@ -14,8 +14,11 @@ ejecuciones en segundo plano.
 ```bash
 python3 scripts/generate_secrets.py
 docker compose up -d --build
-curl http://127.0.0.1:8080/api/health     # y http://127.0.0.1:8080 en el navegador
+curl http://127.0.0.1:8080/api/health
+docker compose exec web python -m app.cli create-admin --username <usuario>   # primer administrador
 ```
+
+Después, abre http://127.0.0.1:8080 e inicia sesión.
 
 Más en [docs/guides/despliegue.md](docs/guides/despliegue.md).
 

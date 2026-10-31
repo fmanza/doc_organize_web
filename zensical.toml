@@ -17,6 +17,9 @@ copyright = "MIT — doc_organize_web"
 
 nav = [
   { "Inicio" = "README.md" },
+  { "Uso" = [
+    "guides/usuarios_y_sesiones.md",
+  ] },
   { "Operación" = [
     "guides/despliegue.md",
     "guides/publicar_version.md",

@@ -106,12 +106,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: E2E de humo (Playwright)
+      - name: Admin para los E2E (CLI, contraseña por stdin)
+        run: |
+          password="e2e-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          printf '%s\n' "$password" | docker compose exec -T web python -m app.cli create-admin --username e2e-admin --password-stdin
+          echo "DOW_E2E_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
+      - name: E2E (Playwright)
         working-directory: frontend
+        env:
+          DOW_E2E_URL: http://127.0.0.1:8080
+          DOW_E2E_ADMIN_USER: e2e-admin
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
-          DOW_E2E_URL=http://127.0.0.1:8080 npm run e2e
+          npm run e2e
       - name: Logs de la aplicación
         if: failure()
         run: docker compose logs

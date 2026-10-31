@@ -14,9 +14,9 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | Plantilla | Ruta actual | Fase | Sustituto en doc_organize_web | Estado |
 |---|---|---|---|---|
 | `base.html.j2`, `_nav_macros.html.j2`, `_shared_scripts.html.j2` | — | 0 | `Layout` (AppShell con navegación por fases) | ✅ 0.1.0 |
-| `login.html.j2` | `/login` | 1 | Página de inicio de sesión | ⬜ |
-| `change_password.html.j2` | `/change-password` | 1 | Cambio de contraseña | ⬜ |
-| `admin_users.html.j2` | `/admin/users` | 1 | Admin de usuarios y sesiones | ⬜ |
+| `login.html.j2` | `/login` | 1 | Página de inicio de sesión |✅ 0.2.0 |
+| `change_password.html.j2` | `/change-password` | 1 | Cambio de contraseña |✅ 0.2.0 |
+| `admin_users.html.j2` | `/admin/users` | 1 | Admin de usuarios y sesiones |✅ 0.2.0 |
 | `_folder_browser_macros.html.j2` | — | 2 | Componente explorador de carpetas | ⬜ |
 | `_semaforo_macros.html.j2`, `_status_banner_macros.html.j2` | — | 2 | Semáforo de estado y ficha de capacidades | ⬜ |
 | `project_selector.html.j2` | `/` | 3 | Lista y selector de proyectos | ⬜ |
@@ -37,11 +37,11 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 
 | Módulo | Método | Ruta actual | Fase | Sustituto previsto | Estado |
 |---|---|---|---|---|---|
-| `auth.py` | POST | `/login` | 1 | `POST /api/v1/auth/login` | ⬜ |
-| `auth.py` | POST | `/logout` | 1 | `POST /api/v1/auth/logout` | ⬜ |
-| `change_password.py` | POST | `/change-password` | 1 | `POST /api/v1/auth/password` | ⬜ |
-| `admin.py` | GET, POST | `/api/users` | 1 | `/api/v1/users` | ⬜ |
-| `admin.py` | GET, PATCH, DELETE | `/api/users/{user_id}` | 1 | `/api/v1/users/{id}` (desactivar en lugar de borrar) | ⬜ |
+| `auth.py` | POST | `/login` | 1 | `POST /api/v1/auth/login` |✅ 0.2.0 |
+| `auth.py` | POST | `/logout` | 1 | `POST /api/v1/auth/logout` |✅ 0.2.0 |
+| `change_password.py` | POST | `/change-password` | 1 | `POST /api/v1/auth/password` |✅ 0.2.0 |
+| `admin.py` | GET, POST | `/api/users` | 1 | `/api/v1/users` |✅ 0.2.0 |
+| `admin.py` | GET, PATCH, DELETE | `/api/users/{user_id}` | 1 | `/api/v1/users/{id}` (desactivar en lugar de borrar) |✅ 0.2.0 |
 | `filesystem.py` | GET | `/api/fs/browse` | 2 | `GET /api/v1/fs/browse?location=&path=` (sin `Path.home()`) | ⬜ |
 | `projects.py` | GET, POST | `/api/projects` | 3 | `/api/v1/projects` | ⬜ |
 | `projects.py` | GET, DELETE | `/api/projects/{name}` | 3 | `/api/v1/projects/{id}` (borrado como run auditado) | ⬜ |
@@ -84,3 +84,4 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | Deduplicar dentro del escaneo moviendo en el origen | Sustituido por vista previa + aplicar grupos confirmados (ADR-009, G6) |
 | Rutas libres desde `Path.home()` en el explorador | Sustituido por ubicaciones registradas por un admin (ADR-007) |
 | Registro de proyectos en `~/.doc_organize/projects.json` | Proyectos en `config.db`, empezando limpio (D4) |
+| Borrar usuarios (`DELETE /api/users/{user_id}`) | Se desactivan: la auditoría conserva quién hizo cada cosa (decisión de la Fase 1) |
