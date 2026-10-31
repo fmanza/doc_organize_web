@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -d backend && command -v uv >/dev/null 2>&1 && cd backend && uv run --frozen --quiet ruff check . --quiet 2>&1 | head -15 || true"
+          },
+          {
+            "type": "command",
+            "command": "test -d backend && command -v uv >/dev/null 2>&1 && cd backend && uv run --frozen --quiet mypy --no-error-summary 2>&1 | head -10 || true"
+          },
+          {
+            "type": "command",
+            "command": "test -d frontend/node_modules && npm --prefix frontend run -s lint 2>&1 | tail -15 || true"
+          },
+          {
+            "type": "command",
+            "command": "test -d frontend/node_modules && npm --prefix frontend run -s typecheck 2>&1 | tail -10 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
