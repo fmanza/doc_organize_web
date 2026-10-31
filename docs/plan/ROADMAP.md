@@ -45,7 +45,7 @@ guía de usuario de lo implementado, `TRACEABILITY.md` de la sesión y fila de `
 - WD-0.2 CI (backend, frontend, imagen + health), Dependabot con *cooldown* 14 días.
 - WD-0.3 Configuración IA completa (ver `INSTRUCCIONES_IA.md`), ADR-001…006, ROADMAP, `DOC_ORGANIZE_GAPS.md`,
   `PARIDAD.md` (L-0); documentación con Zensical (`zensical.toml`, `zensical build --strict` en CI).
-- WD-0.4 **Repositorio público**: `.gitignore` de secretos desde el primer commit, *secret scanning* + *push
+- WD-0.4 **Repositorio público** (adelantado el 2026-10-31: ramas protegidas, *secret scanning*, Dependabot, CodeQL, `SECURITY.md` y CI `docs` ya activos; queda añadir `backend`/`frontend`/`image` como checks obligatorios): `.gitignore` de secretos desde el primer commit, *secret scanning* + *push
   protection*, CodeQL (Python y TS), Dependabot *alerts*, `SECURITY.md` con reporte privado, protección de
   `main`/`develop`, fixtures sintéticos (detalle en `DECISIONES_Y_RIESGOS.md`).
 - WD-0.5 `docker-compose.dev.yml` para Docker Desktop con carpetas locales como ubicaciones de prueba.
