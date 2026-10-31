@@ -41,6 +41,15 @@ docs = [
 package = false
 # Cadena de suministro: solo versiones publicadas antes de esta fecha (≥ 2 semanas). Se adelanta a mano al actualizar.
 exclude-newer = "2026-10-17T00:00:00Z"
+# Excepciones de seguridad (2026-10-31), solo para el paquete nombrado: correcciones de alertas de Dependabot
+# publicadas después de la fecha de corte. Se retiran al adelantar exclude-newer más allá de su fecha.
+#   certifi 2026.10.18: retira los raíz de emSign con intermedias comprometidas (alerta crítica).
+#   filelock 4.2.1: 17 alertas de bloqueos con enlaces simbólicos u otro usuario local (1 alta).
+#   setuptools 84.1.0: escape de ruta en Windows al instalar wheels antiguos (baja).
+[tool.uv.exclude-newer-package]
+certifi = "2026-10-19T00:00:00Z"
+filelock = "2026-10-18T00:00:00Z"
+setuptools = "2026-10-19T20:30:00Z"
 
 # docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). La imagen por
 # defecto es CPU (D6): se toman del índice CPU de PyTorch. La variante GPU tendrá su propia resolución (Fase 4).
