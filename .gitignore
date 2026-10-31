@@ -31,3 +31,6 @@ site/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claude Code: ajustes personales
+.claude/settings.local.json
