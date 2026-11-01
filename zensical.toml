@@ -20,6 +20,8 @@ nav = [
   { "Uso" = [
     "guides/usuarios_y_sesiones.md",
     "guides/ubicaciones.md",
+    "guides/proyectos.md",
+    "guides/ejecuciones.md",
   ] },
   { "Operación" = [
     "guides/despliegue.md",
@@ -36,6 +38,7 @@ nav = [
       "adr/ADR-005-workspace-estado-y-salidas.md",
       "adr/ADR-006-integracion-doc-organize.md",
       "adr/ADR-007-ubicaciones.md",
+      "adr/ADR-008-progreso-sse.md",
       "adr/ADR-012-ajustes-administrables.md",
     ] },
     { "Plan" = [

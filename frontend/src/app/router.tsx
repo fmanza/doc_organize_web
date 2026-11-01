@@ -49,6 +49,19 @@ export const routes: RouteObject[] = [
             ),
           },
           {
+            path: 'projects',
+            ...page(async () => (await import('../features/projects/ProjectsPage')).ProjectsPage),
+          },
+          {
+            path: 'projects/:projectId',
+            ...page(async () => (await import('../features/projects/ProjectDetailPage')).ProjectDetailPage),
+          },
+          { path: 'runs', ...page(async () => (await import('../features/runs/RunsPage')).RunsPage) },
+          {
+            path: 'runs/:runId',
+            ...page(async () => (await import('../features/runs/RunDetailPage')).RunDetailPage),
+          },
+          {
             path: 'admin',
             element: <RequireAdmin />,
             children: [

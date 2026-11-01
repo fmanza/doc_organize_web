@@ -1,4 +1,4 @@
-"""``/api/v1/admin``: ajustes administrables (ADR-012), montajes disponibles y refresco de capacidades (solo admin)."""
+"""``/api/v1/admin``: ajustes administrables (ADR-012), montajes, workers y refresco de capacidades (solo admin)."""
 
 from __future__ import annotations
 
@@ -8,12 +8,20 @@ from fastapi import APIRouter, Query, status
 
 from app.api.deps import AdminUser, Context, DbSession, SettingsDep
 from app.api.v1.fs import FS_ERRORS, listing
-from app.api.v1.schemas import MAX_FOLDER_PAGE, FolderListing, SettingOut, SettingsPage, SettingsUpdate
+from app.api.v1.schemas import (
+    MAX_FOLDER_PAGE,
+    FolderListing,
+    SettingOut,
+    SettingsPage,
+    SettingsUpdate,
+    WorkerList,
+    WorkerOut,
+)
 from app.core.config import get_settings
 from app.domain.locations import service as locations
+from app.domain.runs import workers
 from app.domain.settings import service as settings_service
 from app.domain.settings.service import SettingView
-from app.integrations.doc_organize import capabilities_cache
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -67,6 +75,26 @@ def browse_mounts(
     summary="Volver a comprobar las capacidades",
     responses=_ERRORS,
 )
-def refresh_capabilities(_: AdminUser) -> None:
-    """Lanza en segundo plano un nuevo sondeo de capacidades (si no hay uno en curso)."""
-    capabilities_cache.refresh()
+def refresh_capabilities(admin: AdminUser, db: DbSession, ctx: Context) -> None:
+    """Pide a los workers vivos que vuelvan a sondear sus capacidades (lo hacen en su siguiente latido)."""
+    workers.request_refresh(db, actor=admin, ctx=ctx)
+
+
+@router.get("/workers", response_model=WorkerList, summary="Ver workers", responses=_ERRORS)
+def list_workers(_: AdminUser, db: DbSession, settings: SettingsDep) -> WorkerList:
+    """Workers registrados con sus colas, latido y si siguen vivos."""
+    return WorkerList(
+        items=[
+            WorkerOut(
+                id=w.id,
+                queues=w.queues,
+                version=w.version,
+                doc_organize_version=w.doc_organize_version,
+                started_at=w.started_at,
+                heartbeat_at=w.heartbeat_at,
+                alive=workers.is_alive(w, settings),
+                capabilities_at=w.capabilities_at,
+            )
+            for w in workers.list_workers(db)
+        ]
+    )

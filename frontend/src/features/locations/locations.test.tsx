@@ -180,8 +180,15 @@ describe('SettingsPage', () => {
       'GET /api/v1/admin/settings': { body: SETTINGS },
       'PATCH /api/v1/admin/settings': { body: SETTINGS },
       'GET /api/v1/instance/capabilities': {
-        body: { status: 'pending', checked_at: null, capabilities: null, doc_organize_version: '0.9.3' },
+        body: {
+          status: 'pending',
+          checked_at: null,
+          capabilities: null,
+          queues: ['cpu'],
+          doc_organize_version: '0.10.0',
+        },
       },
+      'GET /api/v1/admin/workers': { body: { items: [] } },
     });
     const user = userEvent.setup();
 
@@ -196,7 +203,7 @@ describe('SettingsPage', () => {
     const [save, reset] = callsTo(fetchMock, 'PATCH', '/api/v1/admin/settings');
     expect(await save?.json()).toEqual({ values: { login_max_attempts: 3 } });
     expect(await reset?.json()).toEqual({ values: { password_min_length: null } });
-    expect(screen.getByText('Comprobando… (puede tardar un minuto la primera vez)')).toBeInTheDocument();
+    expect(screen.getByText('Comprobando… (el worker tarda un minuto la primera vez)')).toBeInTheDocument();
   });
 
   it('muestra la ficha de capacidades', async () => {
@@ -207,7 +214,8 @@ describe('SettingsPage', () => {
         body: {
           status: 'ok',
           checked_at: '2026-10-31T08:00:00Z',
-          doc_organize_version: '0.9.3',
+          queues: ['cpu'],
+          doc_organize_version: '0.10.0',
           capabilities: {
             gpu_support_installed: true,
             gpu_active: false,
@@ -218,6 +226,22 @@ describe('SettingsPage', () => {
           },
         },
       },
+      'GET /api/v1/admin/workers': {
+        body: {
+          items: [
+            {
+              id: 'worker-1:7',
+              queues: ['cpu'],
+              version: '0.4.0',
+              doc_organize_version: '0.10.0',
+              started_at: '2026-10-31T08:00:00Z',
+              heartbeat_at: '2026-10-31T08:00:00Z',
+              alive: true,
+              capabilities_at: '2026-10-31T08:00:00Z',
+            },
+          ],
+        },
+      },
     });
 
     renderRoute('/admin/settings');
@@ -226,6 +250,9 @@ describe('SettingsPage', () => {
     expect(within(gpu.parentElement as HTMLElement).getByText('No')).toBeInTheDocument();
     const ffmpeg = screen.getByText('ffmpeg');
     expect(within(ffmpeg.parentElement as HTMLElement).getByText('Sí')).toBeInTheDocument();
-    expect(screen.getByText(/doc_organize 0\.9\.3/)).toBeInTheDocument();
+    expect(screen.getByText(/doc_organize 0\.10\.0/)).toBeInTheDocument();
+    expect(screen.getByText('Colas atendidas: cpu')).toBeInTheDocument();
+    expect(await screen.findByText('worker-1:7')).toBeInTheDocument();
+    expect(screen.getByText('En marcha')).toBeInTheDocument();
   });
 });

@@ -43,6 +43,7 @@ export const HEALTH = {
       doc_organize_version: '0.9.3',
       database: 'ok',
       locations: 'none',
+      worker: 'ok',
     },
   },
 };

@@ -20,7 +20,13 @@ test('el admin registra una ubicación y la explora', async ({ page }) => {
   await login(page, ADMIN_USER ?? '', ADMIN_PASSWORD ?? '');
   await page.getByRole('link', { name: 'Ubicaciones' }).click();
 
-  // Una ubicación por carpeta: si un E2E anterior ya registró /mnt/e2e/expedientes, se borra antes.
+  // Una ubicación por carpeta: si un E2E anterior ya registró /mnt/e2e/expedientes, se borra antes (una vez cargada
+  // la lista: contar antes daría 0).
+  await expect(
+    page
+      .getByRole('columnheader', { name: 'Última comprobación' })
+      .or(page.getByText(/^Todavía no hay ubicaciones/)),
+  ).toBeVisible();
   const previous = page.getByRole('button', { name: /^Borrar E2E/ });
   if (await previous.count()) {
     const existing = (await previous.first().getAttribute('aria-label'))?.replace('Borrar ', '') ?? '';
@@ -32,7 +38,7 @@ test('el admin registra una ubicación y la explora', async ({ page }) => {
   await page.getByRole('button', { name: 'Nueva ubicación' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: /^Nombre/ }).fill(name);
-  await dialog.getByRole('button', { name: /e2e/ }).click();
+  await dialog.getByRole('button', { name: /^e2e$/ }).click();
   await dialog.getByRole('button', { name: /expedientes/ }).click();
   await dialog.getByRole('button', { name: 'Elegir esta carpeta' }).click();
   await dialog.getByRole('button', { name: 'Registrar ubicación' }).click();

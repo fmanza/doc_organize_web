@@ -22,6 +22,15 @@ export function useUpdateSettings() {
   });
 }
 
+/** Workers registrados (solo admin), refrescados cada 30 s. */
+export function useWorkers() {
+  return useQuery({
+    queryKey: ['admin', 'workers'],
+    queryFn: async () => unwrap(await api.GET('/api/v1/admin/workers')),
+    refetchInterval: 30_000,
+  });
+}
+
 /** Capacidades de la instancia; mientras están `pending`, se vuelven a pedir cada 5 s. */
 export function useCapabilities() {
   return useQuery({

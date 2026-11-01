@@ -35,6 +35,9 @@ ADMIN_KEYS: Final[tuple[str, ...]] = (
     "location_probe_timeout_seconds",
     "location_latency_degraded_ms",
     "location_min_free_gb",
+    "location_probe_interval_minutes",
+    "run_retention_days",
+    "user_quota_mb",
 )
 
 Source = Literal["db", "env", "default"]

@@ -5,8 +5,48 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
+Fase 3 — proyectos y motor de ejecuciones. Con doc_organize **0.10.0**.
+
+### Added
+
+- **backend**: migración `0004_projects_runs` (`projects`, `project_members`, `runs`, `run_events`, `artifacts`,
+  `workers`, `periodic_tasks`). Proyectos con origen (ubicación + hasta 20 carpetas) y una carpeta de salidas **propia**
+  en una ubicación de destino `rw` (nueva o vacía al crearla), estado de doc_organize en `/data/projects/<id>`
+  (`ProjectLayout` con `state_root`, L-5); miembros `owner`/`editor`/`viewer` (cualquier usuario crea proyectos y queda
+  como propietario; un admin actúa como propietario de todos); proyecto ajeno o borrado → 404.
+- **backend**: motor de ejecuciones ([ADR-002](docs/adr/ADR-002-ejecucion-de-jobs.md)): cola sobre `runs` con reclamo
+  atómico (`UPDATE … RETURNING`), colas `cpu`/`gpu`, un subproceso *spawn* por job que recibe solo el `run_id`,
+  latido, huérfanos, cancelación cooperativa con terminación forzada fuera de las fases críticas, timeout, una
+  escritura por proyecto garantizada por un índice único parcial (`409 write_locked`), tope de 5 runs activos por
+  usuario, tareas periódicas (sondeo de ubicaciones, purga del workspace, capacidades) y `run.json`/`run.log` por run.
+- **backend**: progreso por **SSE** en `GET /api/v1/runs/{id}/events`, reanudable con `Last-Event-ID`
+  ([ADR-008](docs/adr/ADR-008-progreso-sse.md)); historial, detalle, cancelación y descarga de artefactos (adjunto,
+  `nosniff`, tipo fijo; 410 tras la retención).
+- **backend**: operaciones `noop` (prueba del motor), `history_clear` (`ProjectHistoryCleaner` con `state_root`),
+  `project_move` (renombrado atómico o copia → cambio en la BD → borrado del origen, con vuelta atrás si la copia
+  falla) y `project_delete` (con o sin las salidas). Las tres que mueven o borran exigen una **vista previa**
+  (`dry_run`) de menos de 15 min sin escrituras posteriores y el nombre del proyecto tecleado, rechazan una carpeta de
+  salidas sustituida por un enlace y se auditan.
+- **backend**: `/api/v1/projects` (+ miembros y lanzar runs), `/api/v1/runs`, `/api/v1/users/lookup`,
+  `/api/v1/admin/workers`; ajustes administrables `location_probe_interval_minutes`, `run_retention_days` y
+  `user_quota_mb`; `/api/health` añade `worker` (`ok`/`stale`/`none`).
+- **frontend**: «Proyectos» (lista, alta con exploradores de origen y destino, dashboard con últimas ejecuciones,
+  miembros y zona de peligro con vista previa y confirmación por nombre) y «Ejecuciones» (historial con filtros,
+  detalle con progreso en vivo por `EventSource`, anuncios `aria-live` por fase y cada 10 %, avisos, resultado,
+  ficheros y cancelación); tarjeta de workers en Ajustes; estado del worker en Inicio.
+- **ci**: el E2E levanta `web` + `worker` con un origen de solo lectura y un destino de escritura sintéticos: crea un
+  proyecto, sigue el progreso en vivo y cancela una ejecución tras cerrar la pestaña.
+- **docs**: ADR-008, notas de implementación en ADR-002/005/007, guías [Proyectos](docs/guides/proyectos.md) y
+  [Ejecuciones](docs/guides/ejecuciones.md), despliegue con el worker.
+
 ### Changed
 
+- **docker**: el servicio `worker` arranca por defecto (sale del perfil `worker`) y monta las mismas ubicaciones que
+  `web`; publica las capacidades de su contenedor y la API deja de lanzar su propio subproceso de capacidades.
+- **backend**: borrar una ubicación que usa algún proyecto responde 409.
+- **frontend**: la ficha de capacidades indica si no hay worker en marcha y las colas atendidas.
 - **backend**: doc_organize **0.10.0** (wheel de su release, SHA-256 `4ca73b85…6fc2` en `uv.lock`), con la API pública
   que necesitan las Fases 3 y siguientes. Sin cambios funcionales en la web.
 - **docs**: `DOC_ORGANIZE_GAPS.md` pasa G1–G7, G13 y G15 a «Resueltos» por doc_organize 0.10.0 (G9 y G14 ya lo

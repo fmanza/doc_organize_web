@@ -2,8 +2,8 @@
 #   python scripts/generate_secrets.py   # una vez: crea secrets/*.txt (git-ignored)
 #   docker compose up -d --build
 #   http://127.0.0.1:8080
-# El worker (Fase 3) se arranca con: docker compose --profile worker up -d
-# Las ubicaciones (carpetas locales o montajes SMB/NFS del host) se montan bajo /mnt a partir de la Fase 2
+# `web` sirve la API y la SPA; `worker` ejecuta las operaciones en cola (ADR-002). Las ubicaciones (carpetas locales o
+# montajes SMB/NFS del host) se montan bajo /mnt **en los dos servicios**, con las mismas rutas
 # (docs/guides/despliegue.md).
 
 x-app: &app
@@ -37,12 +37,18 @@ services:
 
   worker:
     <<: *app
-    profiles: ["worker"]
     command: ["python", "-m", "app.jobs.worker"]
+    environment:
+      DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
+      DOW_WORKER_QUEUES: cpu
+    # El worker cierra sus subprocesos al recibir SIGTERM; tiempo para que los runs queden marcados.
+    stop_grace_period: 30s
     # Docling consume mucha memoria por documento (R3): límite explícito, ajustable por instancia.
     mem_limit: ${DOW_WORKER_MEM_LIMIT:-6g}
+    # Sin HTTP: su salud se ve en /api/health (`worker`) y en Administración → Ajustes.
     healthcheck:
       disable: true
+    # Espera a que `web` aplique las migraciones (los dos ejecutan `alembic upgrade head` al arrancar).
     depends_on:
       web:
         condition: service_healthy

@@ -30,6 +30,17 @@ class AuditAction:
     LOCATION_UPDATE: Final = "location.update"
     LOCATION_DELETE: Final = "location.delete"
     LOCATION_PROBE: Final = "location.probe"
+    PROJECT_CREATE: Final = "project.create"
+    PROJECT_UPDATE: Final = "project.update"
+    PROJECT_MEMBER_ADD: Final = "project.member_add"
+    PROJECT_MEMBER_UPDATE: Final = "project.member_update"
+    PROJECT_MEMBER_REMOVE: Final = "project.member_remove"
+    PROJECT_HISTORY_CLEAR: Final = "project.history_clear"
+    PROJECT_MOVE: Final = "project.move"
+    PROJECT_DELETE: Final = "project.delete"
+    RUN_ENQUEUE: Final = "run.enqueue"
+    RUN_CANCEL: Final = "run.cancel"
+    WORKER_CAPABILITIES_REFRESH: Final = "worker.capabilities_refresh"
     SESSION_REVOKE: Final = "session.revoke"
 
 

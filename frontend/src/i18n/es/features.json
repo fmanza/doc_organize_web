@@ -213,15 +213,25 @@
       "location_min_free_gb": {
         "label": "Espacio libre mínimo (GB)",
         "hint": "Por debajo, la ubicación se marca como degradada; 0 = no se comprueba."
+      },
+      "location_probe_interval_minutes": {
+        "label": "Sondeo periódico de ubicaciones (min)",
+        "hint": "Cada cuánto comprueba el worker las ubicaciones; 0 = nunca."
+      },
+      "run_retention_days": {
+        "label": "Retención de ejecuciones (días)",
+        "hint": "Pasado este plazo se borran los ficheros de las ejecuciones terminadas (el historial se conserva)."
+      },
+      "user_quota_mb": {
+        "label": "Cuota de ficheros por usuario (MB)",
+        "hint": "Espacio de artefactos por usuario en el workspace; 0 = sin límite."
       }
     }
   },
   "capabilities": {
     "title": "Capacidades de la instancia",
     "refresh": "Volver a comprobar",
-    "pending": "Comprobando… (puede tardar un minuto la primera vez)",
-    "error": "No se pudo comprobar",
-    "errorBody": "Se muestran los últimos datos conocidos. Revisa los logs del servidor.",
+    "pending": "Comprobando… (el worker tarda un minuto la primera vez)",
     "gpu": "OCR con GPU",
     "av": "Audio y vídeo (Whisper + ffmpeg)",
     "ffmpeg": "ffmpeg",
@@ -229,6 +239,207 @@
     "yes": "Sí",
     "no": "No",
     "checkedAt": "Comprobado {{date}}",
-    "library": "doc_organize {{version}}"
+    "library": "doc_organize {{version}}",
+    "noWorker": "No hay ningún worker en marcha",
+    "noWorkerBody": "Las capacidades las publica el worker; se muestran los últimos datos conocidos, si los hay.",
+    "queues": "Colas atendidas: {{queues}}"
+  },
+  "workers": {
+    "title": "Workers",
+    "empty": "No hay workers registrados. Sin worker las ejecuciones esperan en la cola.",
+    "id": "Worker",
+    "queues": "Colas",
+    "state": "Estado",
+    "heartbeat": "Último latido",
+    "alive": "En marcha",
+    "stale": "Sin latido"
+  },
+  "projects": {
+    "title": "Proyectos",
+    "intro": "Cada proyecto lee de una ubicación de origen y escribe sus resultados en una carpeta propia de una ubicación de destino.",
+    "new": "Nuevo proyecto",
+    "search": "Buscar por nombre",
+    "empty": "Todavía no participas en ningún proyecto. Crea uno o pide a su propietario que te invite.",
+    "noMatches": "Ningún proyecto coincide con la búsqueda.",
+    "noRuns": "Sin ejecuciones",
+    "back": "← Proyectos",
+    "yourRole": "Tu rol: {{role}}",
+    "recentRuns": "Últimas ejecuciones",
+    "allRuns": "Ver todas",
+    "testEngine": "Probar el motor",
+    "roles": {
+      "owner": "Propietario",
+      "editor": "Editor",
+      "viewer": "Lector"
+    },
+    "fields": {
+      "name": "Nombre",
+      "description": "Descripción",
+      "source": "Origen",
+      "destination": "Destino",
+      "sourceLocation": "Ubicación de origen",
+      "sourceSubpaths": "Carpetas de origen",
+      "destinationLocation": "Ubicación de destino",
+      "role": "Rol",
+      "lastRun": "Última ejecución"
+    },
+    "form": {
+      "createTitle": "Nuevo proyecto",
+      "create": "Crear proyecto",
+      "sourceHint": "Ubicaciones registradas como origen.",
+      "destinationHint": "Ubicaciones de destino con lectura y escritura.",
+      "noLocations": "No hay ubicaciones disponibles: pide a un administrador que las registre.",
+      "noSources": "Navega y pulsa «Elegir esta carpeta» para añadir carpetas.",
+      "wholeLocation": "(toda la ubicación)",
+      "removeSource": "Quitar {{path}}",
+      "sourceRequired": "Añade al menos una carpeta de origen",
+      "folderMode": "Carpeta de salidas",
+      "modeNew": "Crear carpeta nueva",
+      "modeExisting": "Usar una carpeta vacía",
+      "parentFolder": "Dónde crearla",
+      "parentHint": "Elige la carpeta que la contendrá (la raíz si no eliges ninguna).",
+      "emptyFolder": "Carpeta vacía",
+      "emptyHint": "Debe estar vacía: el proyecto será su dueño y podrá vaciarla o borrarla.",
+      "existingRequired": "Elige una carpeta vacía",
+      "newFolder": "Nombre de la carpeta nueva",
+      "newFolderHint": "Sin / \\ : * ? \" < > |; no puede existir ya.",
+      "folderRequired": "Escribe el nombre de la carpeta"
+    },
+    "edit": {
+      "title": "Editar proyecto",
+      "renameHint": "Cambiar el nombre no renombra la carpeta de salidas."
+    },
+    "members": {
+      "title": "Miembros",
+      "user": "Usuario",
+      "invite": "Invitar a",
+      "inviteHint": "Escribe al menos dos letras del usuario o del nombre.",
+      "add": "Añadir",
+      "remove": "Quitar",
+      "removeLabel": "Quitar a {{name}}",
+      "roleOf": "Rol de {{name}}",
+      "noUsers": "Ningún usuario activo coincide."
+    },
+    "danger": {
+      "title": "Zona de peligro",
+      "intro": "Estas operaciones mueven o borran ficheros. Primero verás una vista previa sin cambios y después tendrás que escribir el nombre del proyecto.",
+      "busy": "Hay una ejecución en marcha: espera a que termine.",
+      "preview": "Ver vista previa",
+      "previewRunning": "Calculando la vista previa…",
+      "previewFailed": "La vista previa ha fallado",
+      "previewResult": "Esto es lo que se hará:",
+      "confirmName": "Escribe «{{name}}» para confirmar",
+      "change": "Cambiar opciones",
+      "history_clear": {
+        "button": "Vaciar histórico",
+        "title": "Vaciar el histórico de «{{name}}»",
+        "body": "Se borran las salidas (Markdown, JSON, imágenes, duplicados) y la caché del proyecto. El proyecto y sus miembros se conservan.",
+        "confirm": "Vaciar histórico"
+      },
+      "project_move": {
+        "button": "Mover salidas",
+        "title": "Mover las salidas de «{{name}}»",
+        "body": "La carpeta de salidas se mueve a una carpeta nueva del destino elegido. Entre ubicaciones distintas se copia y después se borra el origen.",
+        "confirm": "Mover"
+      },
+      "project_delete": {
+        "button": "Borrar proyecto",
+        "title": "Borrar «{{name}}»",
+        "body": "El proyecto desaparece de la lista; su historial de ejecuciones se conserva. La caché se borra siempre.",
+        "outputs": "Borrar también la carpeta de salidas",
+        "outputsHint": "Si no la marcas, las salidas se quedan en el destino.",
+        "confirm": "Borrar proyecto"
+      },
+      "previewReady": "Vista previa lista: revisa el resultado y escribe el nombre del proyecto."
+    }
+  },
+  "runs": {
+    "title": "Ejecuciones",
+    "intro": "Historial de las ejecuciones de tus proyectos, de la más reciente a la más antigua. Siguen en marcha aunque cierres la pestaña.",
+    "empty": "No hay ejecuciones.",
+    "all": "Todas",
+    "preview": "(vista previa)",
+    "backToProject": "← {{name}}",
+    "queuedHint": "En cola: empezará cuando haya un worker libre.",
+    "failed": "La ejecución ha fallado",
+    "cancel": "Cancelar ejecución",
+    "cancelRequested": "Cancelación pedida",
+    "cancelTitle": "¿Cancelar la ejecución?",
+    "cancelBody": "Se detendrá en el siguiente punto seguro; lo ya hecho se conserva.",
+    "progressLabel": "Progreso",
+    "progressOf": "{{processed}} de {{total}}",
+    "progressCount": "{{processed}} procesados",
+    "announce": "{{phase}}: {{percent}} %",
+    "announceNoTotal": "{{phase}}: {{processed}} procesados",
+    "resultTitle": "Resultado",
+    "logTitle": "Avisos",
+    "artifactsTitle": "Ficheros",
+    "noArtifacts": "Esta ejecución no ha dejado ficheros.",
+    "purged": "Los ficheros se borraron al cumplirse la retención.",
+    "artifactKinds": {
+      "log": "registro",
+      "output": "resultado",
+      "report": "informe"
+    },
+    "status": {
+      "queued": "En cola",
+      "running": "En marcha",
+      "succeeded": "Terminada",
+      "failed": "Fallida",
+      "cancelled": "Cancelada"
+    },
+    "operations": {
+      "noop": "Prueba del motor",
+      "history_clear": "Vaciar histórico",
+      "project_move": "Mover salidas",
+      "project_delete": "Borrar proyecto"
+    },
+    "phases": {
+      "noop": "Prueba",
+      "measure_outputs": "Contando salidas",
+      "measure_state": "Contando caché",
+      "clear": "Vaciando",
+      "move": "Moviendo",
+      "copy": "Copiando",
+      "delete_source": "Borrando la carpeta anterior",
+      "delete_outputs": "Borrando salidas",
+      "delete_state": "Borrando caché",
+      "rollback": "Deshaciendo la copia"
+    },
+    "fields": {
+      "operation": "Operación",
+      "project": "Proyecto",
+      "status": "Estado",
+      "createdAt": "Lanzada",
+      "startedAt": "Empezó",
+      "finishedAt": "Terminó",
+      "duration": "Duración",
+      "createdBy": "Lanzada por",
+      "queue": "Cola"
+    },
+    "result": {
+      "steps": "Pasos",
+      "output_files": "Ficheros de salidas",
+      "output_bytes": "Tamaño de salidas",
+      "state_files": "Ficheros de caché",
+      "state_bytes": "Tamaño de caché",
+      "files": "Ficheros",
+      "bytes": "Tamaño",
+      "free_bytes": "Espacio libre en el destino",
+      "same_filesystem": "Mismo disco (movimiento instantáneo)",
+      "destination_location": "Ubicación de destino",
+      "destination_subpath": "Carpeta de destino",
+      "delete_outputs": "Borrar salidas",
+      "leftovers": "Elementos que no se pudieron borrar"
+    },
+    "errors": {
+      "internal": "Error interno al ejecutar la operación.",
+      "orphaned": "El worker dejó de responder.",
+      "timeout": "Superó el tiempo máximo.",
+      "crashed": "La operación terminó de forma inesperada.",
+      "interrupted": "El worker se detuvo.",
+      "spawn_failed": "No se pudo iniciar la operación.",
+      "folder_replaced": "La carpeta de salidas ya no es la registrada; no se ha tocado."
+    }
   }
 }

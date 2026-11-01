@@ -1,9 +1,17 @@
-# E2E (CI y local): monta una carpeta de prueba como ubicación bajo /mnt, en solo lectura.
-#   mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025
+# E2E (CI y local): carpetas sintéticas como ubicaciones bajo /mnt, montadas igual en `web` y `worker`.
+#   mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025 dev-data/e2e/proyectos/2024 dev-data/e2e-out
+#   chmod 777 dev-data/e2e-out          # el contenedor escribe con el uid 10001
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
 # Solo carpetas sintéticas creadas por el propio CI (repositorio público).
 
+x-e2e-volumes: &e2e-volumes
+  - data:/data
+  - workspace:/workspace
+  - ./dev-data/e2e:/mnt/e2e:ro
+  - ./dev-data/e2e-out:/mnt/e2e-out
+
 services:
   web:
-    volumes:
-      - ./dev-data/e2e:/mnt/e2e:ro
+    volumes: *e2e-volumes
+  worker:
+    volumes: *e2e-volumes

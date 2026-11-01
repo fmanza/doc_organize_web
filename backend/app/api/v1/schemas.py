@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
@@ -270,9 +270,204 @@ class CapabilitiesOut(BaseModel):
 
 
 class InstanceCapabilities(BaseModel):
-    """Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo."""
+    """Ficha de capacidades publicada por los workers: ``pending`` mientras el worker vivo no las ha calculado;
+    ``no_worker`` si no hay worker vivo (con las últimas conocidas, si las hay)."""
 
-    status: Literal["pending", "ok", "error"]
+    status: Literal["ok", "pending", "no_worker"]
     checked_at: datetime | None
     capabilities: CapabilitiesOut | None
+    queues: list[str]
     doc_organize_version: str | None
+
+
+class WorkerOut(_Out):
+    """Worker registrado (solo admin)."""
+
+    id: str
+    queues: list[str]
+    version: str
+    doc_organize_version: str | None
+    started_at: datetime
+    heartbeat_at: datetime
+    alive: bool
+    capabilities_at: datetime | None
+
+
+class WorkerList(BaseModel):
+    """Workers registrados."""
+
+    items: list[WorkerOut]
+
+
+# --- projects ---------------------------------------------------------------------------------------------------
+
+ProjectName = Annotated[str, Field(min_length=1, max_length=128)]
+MemberRole = Literal["owner", "editor", "viewer"]
+RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
+Operation = Literal["noop", "history_clear", "project_move", "project_delete"]
+
+
+class LocationRef(_Out):
+    """Ubicación referida por un proyecto: nombre y estado, nunca la ruta del contenedor."""
+
+    id: int
+    name: str
+    access: LocationAccess
+    status: LocationStatus
+
+
+class RunBrief(_Out):
+    """Resumen de un run para listas."""
+
+    id: str
+    operation: Operation
+    status: RunStatus
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class ProjectOut(BaseModel):
+    """Proyecto con las rutas relativas a sus ubicaciones y el rol del usuario."""
+
+    id: int
+    name: str
+    description: str | None
+    source_location: LocationRef
+    source_subpaths: list[str]
+    destination_location: LocationRef
+    destination_subpath: str
+    role: MemberRole
+    created_at: datetime
+    updated_at: datetime
+    last_run: RunBrief | None = None
+    active_run: bool = False
+
+
+class ProjectPage(BaseModel):
+    """Página de proyectos."""
+
+    items: list[ProjectOut]
+    total: int
+
+
+class ProjectCreate(BaseModel):
+    """Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,
+    ``destination_parent`` (que debe estar vacía)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: ProjectName
+    description: Annotated[str, Field(max_length=1024)] | None = None
+    source_location_id: int = Field(ge=1)
+    source_subpaths: list[RelativePath] = Field(min_length=1, max_length=20)
+    destination_location_id: int = Field(ge=1)
+    destination_parent: RelativePath = ""
+    new_folder: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+
+
+class ProjectUpdate(BaseModel):
+    """Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: ProjectName | None = None
+    description: Annotated[str, Field(max_length=1024)] | None = None
+    source_subpaths: list[RelativePath] | None = Field(default=None, min_length=1, max_length=20)
+
+
+class MemberOut(BaseModel):
+    """Miembro de un proyecto."""
+
+    user_id: int
+    username: str
+    display_name: str
+    role: MemberRole
+    added_at: datetime
+
+
+class MemberList(BaseModel):
+    """Miembros de un proyecto."""
+
+    items: list[MemberOut]
+
+
+class MemberCreate(BaseModel):
+    """Alta de miembro."""
+
+    user_id: int = Field(ge=1)
+    role: MemberRole = "viewer"
+
+
+class MemberUpdate(BaseModel):
+    """Cambio de rol de un miembro."""
+
+    role: MemberRole
+
+
+class UserBrief(_Out):
+    """Usuario activo para invitar a un proyecto."""
+
+    id: int
+    username: str
+    display_name: str
+
+
+class UserLookup(BaseModel):
+    """Resultado de la búsqueda de usuarios."""
+
+    items: list[UserBrief]
+
+
+# --- runs -------------------------------------------------------------------------------------------------------
+
+
+class ArtifactOut(_Out):
+    """Fichero de un run, descargable mientras no lo purgue la retención."""
+
+    id: int
+    name: str
+    kind: Literal["log", "output", "report"]
+    size_bytes: int
+    content_type: str
+    created_at: datetime
+
+
+class RunProgress(BaseModel):
+    """Último progreso publicado."""
+
+    phase: str
+    processed: int
+    total: int | None = None
+    current: str | None = None
+
+
+class RunOut(BaseModel):
+    """Ejecución con su estado, progreso, resultado y artefactos."""
+
+    id: str
+    project_id: int | None
+    project_name: str | None
+    operation: Operation
+    queue: Literal["cpu", "gpu"]
+    status: RunStatus
+    is_write: bool
+    params: dict[str, Any]
+    progress: RunProgress | None
+    result: dict[str, Any] | None
+    error_code: str | None
+    error_message: str | None
+    cancel_requested: bool
+    created_by_username: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    workspace_purged: bool
+    artifacts: list[ArtifactOut]
+    can_cancel: bool
+
+
+class RunPage(BaseModel):
+    """Página del historial de ejecuciones."""
+
+    items: list[RunOut]
+    total: int

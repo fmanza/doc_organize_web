@@ -1,6 +1,7 @@
 """Modelos SQLAlchemy de ``config.db``.
 
 Fase 1: identidad (``tenants``, ``users``, ``sessions``, ``audit_log``). Fase 2: ``locations`` y ``app_settings``.
+Fase 3: ``projects``, ``project_members``, ``runs``, ``run_events``, ``artifacts``, ``workers`` y ``periodic_tasks``.
 Solo tipos portables (D8): las fechas se guardan en UTC con ``UTCDateTime``.
 """
 
@@ -21,6 +22,7 @@ from sqlalchemy import (
     String,
     TypeDecorator,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -188,3 +190,177 @@ class AppSetting(Base):
     value: Mapped[Any] = mapped_column(JSON)
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+ProjectStatus = Literal["active", "deleted"]
+MemberRole = Literal["owner", "editor", "viewer"]
+MEMBER_ROLES: tuple[MemberRole, ...] = ("owner", "editor", "viewer")
+
+
+class Project(Base):
+    """Proyecto: lee de una ubicación origen y escribe sus salidas en una carpeta propia de una ubicación destino.
+
+    Las rutas se guardan **relativas** a su ubicación (``source_subpaths``, ``destination_subpath``) y se vuelven a
+    resolver en cada uso. El estado de doc_organize vive en ``DOW_DATA_DIR/projects/<id>`` (ADR-005). Borrar un proyecto
+    es lógico (``status = deleted``): sus runs y la auditoría siguen apuntando a él.
+    """
+
+    __tablename__ = "projects"
+    __table_args__ = (CheckConstraint("status IN ('active', 'deleted')", name="status"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str | None] = mapped_column(String(1024), default=None)
+    source_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="RESTRICT"), index=True)
+    source_subpaths: Mapped[list[str]] = mapped_column(JSON)
+    destination_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="RESTRICT"), index=True)
+    destination_subpath: Mapped[str] = mapped_column(String(4096))
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+
+    source_location: Mapped[Location] = relationship(foreign_keys=[source_location_id], lazy="joined")
+    destination_location: Mapped[Location] = relationship(foreign_keys=[destination_location_id], lazy="joined")
+    members: Mapped[list[ProjectMember]] = relationship(
+        back_populates="project", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class ProjectMember(Base):
+    """Usuario con acceso a un proyecto: ``owner`` lo gestiona, ``editor`` lanza runs y ``viewer`` solo consulta."""
+
+    __tablename__ = "project_members"
+    __table_args__ = (CheckConstraint("role IN ('owner', 'editor', 'viewer')", name="role"),)
+
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True)
+    role: Mapped[str] = mapped_column(String(16))
+    added_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    added_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    project: Mapped[Project] = relationship(back_populates="members")
+    user: Mapped[User] = relationship(foreign_keys=[user_id], lazy="joined")
+
+
+RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
+RunQueue = Literal["cpu", "gpu"]
+ACTIVE_RUN_STATUSES: tuple[RunStatus, ...] = ("queued", "running")
+FINISHED_RUN_STATUSES: tuple[RunStatus, ...] = ("succeeded", "failed", "cancelled")
+
+
+class Run(Base):
+    """Ejecución encolada (ADR-002): la API la crea, un worker la reclama y su subproceso la ejecuta.
+
+    ``params`` y ``result`` nunca contienen secretos ni rutas del contenedor. El índice único parcial
+    ``uq_runs_project_write`` garantiza en la BD una sola operación de escritura activa por proyecto.
+    """
+
+    __tablename__ = "runs"
+    __table_args__ = (
+        CheckConstraint("status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled')", name="status"),
+        CheckConstraint("queue IN ('cpu', 'gpu')", name="queue"),
+        Index("ix_runs_claim", "status", "queue", "created_at"),
+        Index("ix_runs_project_created", "project_id", "created_at"),
+        Index(
+            "uq_runs_project_write",
+            "project_id",
+            unique=True,
+            sqlite_where=text("is_write AND status IN ('queued', 'running')"),
+            postgresql_where=text("is_write AND status IN ('queued', 'running')"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), default=None)
+    operation: Mapped[str] = mapped_column(String(32))
+    queue: Mapped[str] = mapped_column(String(8), default="cpu")
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    is_write: Mapped[bool] = mapped_column(default=False)
+    params: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    progress: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    error_code: Mapped[str | None] = mapped_column(String(64), default=None)
+    error_message: Mapped[str | None] = mapped_column(String(1024), default=None)
+    cancel_requested: Mapped[bool] = mapped_column(default=False)
+    #: Fase crítica (borrar, mover): el worker no termina el subproceso por una cancelación, solo por el timeout.
+    uninterruptible: Mapped[bool] = mapped_column(default=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    worker_id: Mapped[str | None] = mapped_column(String(128), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    workspace_purged_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+
+    creator: Mapped[User | None] = relationship(lazy="joined")
+    artifacts: Mapped[list[Artifact]] = relationship(
+        back_populates="run", cascade="all, delete-orphan", passive_deletes=True, order_by="Artifact.id"
+    )
+
+    @property
+    def created_by_username(self) -> str | None:
+        """Usuario que lanzó el run, si lo hay."""
+        return self.creator.username if self.creator else None
+
+
+class RunEvent(Base):
+    """Evento de un run, fuente del SSE: ``seq`` es el ``id`` del evento y permite reanudar con ``Last-Event-ID``."""
+
+    __tablename__ = "run_events"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    ts: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    type: Mapped[str] = mapped_column(String(16))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+ArtifactKind = Literal["log", "output", "report"]
+
+
+class Artifact(Base):
+    """Fichero que deja un run en su carpeta del workspace; se descarga solo por id (ADR-005)."""
+
+    __tablename__ = "artifacts"
+    __table_args__ = (CheckConstraint("kind IN ('log', 'output', 'report')", name="kind"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(16))
+    rel_path: Mapped[str] = mapped_column(String(1024))
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    content_type: Mapped[str] = mapped_column(String(128))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    run: Mapped[Run] = relationship(back_populates="artifacts")
+
+
+class Worker(Base):
+    """Proceso worker vivo o reciente: colas que atiende, latido y capacidades de su contenedor (pendiente de F2)."""
+
+    __tablename__ = "workers"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    queues: Mapped[list[str]] = mapped_column(JSON)
+    version: Mapped[str] = mapped_column(String(32))
+    doc_organize_version: Mapped[str | None] = mapped_column(String(32), default=None)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    heartbeat_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    capabilities: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    capabilities_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    refresh_requested: Mapped[bool] = mapped_column(default=False)
+
+
+class PeriodicTask(Base):
+    """Marca de la última ejecución de una tarea periódica del worker; con varios workers solo uno la reclama."""
+
+    __tablename__ = "periodic_tasks"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    claimed_by: Mapped[str | None] = mapped_column(String(128), default=None)

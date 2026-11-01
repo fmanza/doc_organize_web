@@ -1,6 +1,6 @@
 # ADR-005 — Workspace, estado y salidas: tres zonas
 
-- **Estado**: Aceptado (volúmenes desde la Fase 0; layout de proyectos y runs en la Fase 3)
+- **Estado**: Aceptado (volúmenes desde la Fase 0; layout de proyectos y runs implementado en la Fase 3, 0.4.0)
 - **Fecha**: 2026-10-31
 
 ## Contexto
@@ -31,3 +31,16 @@ Tres zonas con propósitos y volúmenes distintos:
   estado queda en el destino (rodeo de G5).
 - Backup: `config.db` y cada `cache.db` con `sqlite3 .backup` (Fase 10); las salidas, con el backup del almacenamiento
   donde residan.
+
+## Notas de implementación (Fase 3, 0.4.0)
+
+- Con doc_organize 0.10.0 (`ProjectLayout(output_root, state_root=)`, L-5) **todo** el estado de un proyecto (caché,
+  historial y errores de escaneo, carpetas guardadas, informes de deduplicación) vive en `DOW_DATA_DIR/projects/<id>/`:
+  el rodeo de G5 ya no hace falta.
+- La **carpeta de salidas pertenece al proyecto**: al crearlo debe ser nueva o estar vacía (decisión del mantenedor,
+  2026-11-01), de modo que vaciar o borrar el proyecto no toca ficheros ajenos. Se guarda relativa a su ubicación y se
+  vuelve a resolver con el resolvedor de ubicaciones en cada uso (también en el worker).
+- **Workspace**: `runs/<uuid>/{run.json, logs/run.log, outputs/}`, rutas construidas solo con el UUID. Los artefactos
+  se descargan por id con `Content-Disposition: attachment`, `nosniff` y tipo fijo (`application/octet-stream` salvo
+  texto, JSON, CSV y ZIP). La purga por `run_retention_days` borra la carpeta y deja el run en el historial (descarga →
+  410). `user_quota_mb` limita la suma de artefactos vivos por usuario (409 `quota_exceeded` al encolar).

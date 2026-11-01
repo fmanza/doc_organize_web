@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-
 from fastapi import APIRouter
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, DbSession, SettingsDep
 from app.api.v1.schemas import CapabilitiesOut, InstanceCapabilities
-from app.integrations.doc_organize import capabilities_cache, library_version
+from app.domain.runs import workers
+from app.integrations.doc_organize import library_version
 
 router = APIRouter(prefix="/instance", tags=["instance"])
 
@@ -19,12 +18,13 @@ router = APIRouter(prefix="/instance", tags=["instance"])
     summary="Capacidades de la instancia",
     responses={401: {"description": "No autenticado"}},
 )
-def get_capabilities(_: CurrentUser) -> InstanceCapabilities:
-    """GPU, audio/vídeo y LibreOffice. ``pending`` mientras se calcula la primera vez (tarda varios segundos)."""
-    snapshot = capabilities_cache.get()
+def get_capabilities(_: CurrentUser, db: DbSession, settings: SettingsDep) -> InstanceCapabilities:
+    """GPU, audio/vídeo y LibreOffice según los workers (los que convierten); colas con algún worker vivo."""
+    view = workers.capabilities(db, settings)
     return InstanceCapabilities(
-        status=snapshot.status,
-        checked_at=snapshot.checked_at,
-        capabilities=CapabilitiesOut(**asdict(snapshot.capabilities)) if snapshot.capabilities else None,
+        status=view.status,
+        checked_at=view.checked_at,
+        capabilities=CapabilitiesOut(**view.capabilities) if view.capabilities else None,
+        queues=view.queues,
         doc_organize_version=library_version(),
     )

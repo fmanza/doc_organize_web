@@ -41,3 +41,10 @@ la API.
 - Un hilo colgado en un montaje caído no se puede matar: queda ocupado hasta que el sistema operativo devuelva el
   control (el *pool* está acotado a 8 hilos).
 - `/api/health` publica solo el peor estado agregado de las ubicaciones, sin nombres ni rutas.
+
+## Notas de implementación (Fase 3, 0.4.0)
+
+- **Sondeo periódico** en el worker cada `location_probe_interval_minutes` (administrable; 0 = desactivado). El sondeo
+  bajo demanda de la Fase 2 sigue igual.
+- **Borrar una ubicación** que usa algún proyecto (también borrado, que conserva su historial) responde 409.
+- Las ubicaciones se montan **igual en `web` y en `worker`**: la API valida y explora; el worker lee y escribe.

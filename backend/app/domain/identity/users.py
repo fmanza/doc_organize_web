@@ -65,6 +65,26 @@ def list_users(db: Session, *, q: str | None, limit: int, offset: int) -> tuple[
     return list(rows), total
 
 
+def lookup_users(db: Session, *, q: str, limit: int = 20) -> list[User]:
+    """Usuarios **activos** cuyo usuario o nombre visible empieza por ``q`` (para invitar a un proyecto)."""
+    prefix = q.strip().lower()
+    if not prefix:
+        return []
+    query = (
+        select(User)
+        .where(
+            User.is_active.is_(True),
+            or_(
+                User.username.startswith(prefix, autoescape=True),
+                func.lower(User.display_name).startswith(prefix, autoescape=True),
+            ),
+        )
+        .order_by(User.username)
+        .limit(limit)
+    )
+    return list(db.scalars(query))
+
+
 def _active_admins(db: Session) -> int:
     return db.scalar(select(func.count()).where(User.role == "admin", User.is_active.is_(True))) or 0
 

@@ -19,8 +19,8 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | `admin_users.html.j2` | `/admin/users` | 1 | Admin de usuarios y sesiones |✅ 0.2.0 |
 | `_folder_browser_macros.html.j2` | — | 2 | Componente explorador de carpetas |✅ 0.3.0 |
 | `_semaforo_macros.html.j2`, `_status_banner_macros.html.j2` | — | 2 | Semáforo de estado y ficha de capacidades |✅ 0.3.0 |
-| `project_selector.html.j2` | `/` | 3 | Lista y selector de proyectos | ⬜ |
-| `dashboard.html.j2` | `/projects/{name}` | 3 | Dashboard de proyecto | ⬜ |
+| `project_selector.html.j2` | `/` | 3 | Lista y selector de proyectos |✅ 0.4.0 |
+| `dashboard.html.j2` | `/projects/{name}` | 3 | Dashboard de proyecto |✅ 0.4.0 |
 | `folder_selector.html.j2`, `_example_modal_macros.html.j2` | `/projects/{name}/scan` | 4 | Pantalla de escaneo con ayuda contextual | ⬜ |
 | `scan_errors.html.j2` | `/projects/{name}/scan-errors` | 4 | Errores de escaneo | ⬜ |
 | `duplicates_resolver.html.j2` | `/projects/{name}/duplicates` | 6 | Resolutor de duplicados en dos pasos | ⬜ |
@@ -43,11 +43,11 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `admin.py` | GET, POST | `/api/users` | 1 | `/api/v1/users` |✅ 0.2.0 |
 | `admin.py` | GET, PATCH, DELETE | `/api/users/{user_id}` | 1 | `/api/v1/users/{id}` (desactivar en lugar de borrar) |✅ 0.2.0 |
 | `filesystem.py` | GET | `/api/fs/browse` | 2 | `GET /api/v1/fs/browse?location=&path=` (sin `Path.home()`) |✅ 0.3.0 |
-| `projects.py` | GET, POST | `/api/projects` | 3 | `/api/v1/projects` | ⬜ |
-| `projects.py` | GET, DELETE | `/api/projects/{name}` | 3 | `/api/v1/projects/{id}` (borrado como run auditado) | ⬜ |
-| `projects.py` | GET | `/api/projects/{name}/impact` | 3 | Vista previa del borrado/movimiento | ⬜ |
-| `projects.py` | POST | `/api/projects/{name}/move` | 3 | Run `project_move` | ⬜ |
-| `projects.py` | POST | `/api/projects/{name}/clear-history` | 3 | Run `history_clear` | ⬜ |
+| `projects.py` | GET, POST | `/api/projects` | 3 | `/api/v1/projects` |✅ 0.4.0 |
+| `projects.py` | GET, DELETE | `/api/projects/{name}` | 3 | `GET /api/v1/projects/{id}`; borrado como run `project_delete` auditado |✅ 0.4.0 |
+| `projects.py` | GET | `/api/projects/{name}/impact` | 3 | Vista previa: run con `dry_run` de la operación |✅ 0.4.0 |
+| `projects.py` | POST | `/api/projects/{name}/move` | 3 | Run `project_move` |✅ 0.4.0 |
+| `projects.py` | POST | `/api/projects/{name}/clear-history` | 3 | Run `history_clear` |✅ 0.4.0 |
 | `scan.py` | WEBSOCKET | `/api/projects/{name}/scan` | 4 | Run `scan` + SSE | ⬜ |
 | `scan.py` | GET, POST, DELETE | `/api/projects/{name}/folders/library` | 4 | `/api/v1/projects/{id}/scanned-folders` | ⬜ |
 | `scan.py` | POST | `/api/projects/{name}/folders/validate` | 4 | Validación por el resolvedor de ubicaciones | ⬜ |
@@ -85,3 +85,5 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | Rutas libres desde `Path.home()` en el explorador | Sustituido por ubicaciones registradas por un admin (ADR-007) |
 | Registro de proyectos en `~/.doc_organize/projects.json` | Proyectos en `config.db`, empezando limpio (D4) |
 | Borrar usuarios (`DELETE /api/users/{user_id}`) | Se desactivan: la auditoría conserva quién hizo cada cosa (decisión de la Fase 1) |
+| Carpeta del proyecto = `<base>/<nombre>` y crear proyectos solo admin | La carpeta de salidas es nueva o vacía y no lleva el nombre (renombrar no la toca); cualquier usuario crea proyectos (decisión de la Fase 3) |
+| Mover, vaciar o borrar con un modal de confirmación | Vista previa (`dry_run`) obligatoria + nombre tecleado + auditoría (regla 7, Fase 3) |

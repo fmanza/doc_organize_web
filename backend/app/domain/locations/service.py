@@ -226,7 +226,16 @@ def update_location(
 
 
 def delete_location(db: Session, location: Location, *, actor: User, ctx: RequestContext) -> None:
-    """Borra el registro de la ubicación (nunca la carpeta). En la Fase 3, 409 si un proyecto la usa."""
+    """Borra el registro de la ubicación (nunca la carpeta).
+
+    Raises:
+        LocationConflictError: Algún proyecto la usa como origen o destino (también los borrados, que conservan su
+            historial de ejecuciones).
+    """
+    from app.domain.projects.service import projects_using_location
+
+    if projects_using_location(db, location.id):
+        raise LocationConflictError("Hay proyectos que usan esta ubicación.")
     audit.record(
         db,
         action=AuditAction.LOCATION_DELETE,
@@ -256,6 +265,20 @@ def probe_location(
     )
     db.commit()
     return location
+
+
+def probe_all(db: Session, settings: Settings) -> dict[str, int]:
+    """Sondea todas las ubicaciones y guarda su estado (tarea periódica del worker; sin auditoría por ser del sistema).
+
+    Returns:
+        Recuento de ubicaciones por estado.
+    """
+    counts: dict[str, int] = {}
+    for location in db.scalars(select(Location).where(Location.tenant_id == DEFAULT_TENANT_ID)):
+        _apply_probe(location, settings)
+        counts[location.status] = counts.get(location.status, 0) + 1
+        db.commit()
+    return counts
 
 
 def _page(resolved: ResolvedPath, settings: Settings, *, limit: int, offset: int) -> FolderPage:
