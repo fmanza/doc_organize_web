@@ -1,3 +1,8 @@
+---
+name: refactor
+description: "Refactoriza sin cambios funcionales y con el contrato HTTP estable salvo justificación; veredicto GO, GO_CONDICIONAL o NO_GO."
+disable-model-invocation: true
+---
 # Prompt: refactor (aplicación web)
 
 Refactor sin cambios funcionales. Contrato HTTP estable salvo justificación explícita.

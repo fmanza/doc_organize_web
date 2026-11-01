@@ -1,7 +1,12 @@
+---
+name: new-feature
+description: "Planifica e implementa una funcionalidad fuera del ROADMAP o dentro de una fase ya cerrada, sin refactorizar código no relacionado; veredicto GO, GO_CONDICIONAL o NO_GO."
+disable-model-invocation: true
+---
 # Prompt: new_feature (aplicación web)
 
 Nueva funcionalidad fuera del ROADMAP o dentro de una fase ya cerrada. Política: **prohibido refactorizar** código no
-relacionado. Para implementar una fase completa usa `phase_implementation.prompt.md`.
+relacionado. Para implementar una fase completa usa la skill `phase-implementation`.
 Agentes: Plan Architect (PLAN + AUDIT_PLAN) → Feature Implementer (IMPLEMENT) → Code Auditor (AUDIT_CODE) →
 Version Closer (VERSION).
 

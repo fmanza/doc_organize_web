@@ -1,3 +1,8 @@
+---
+name: security-review
+description: "Auditoría de seguridad de solo lectura (OWASP ASVS nivel 2): rutas y ubicaciones, autenticación, secretos y contenedor; un hallazgo CRITICAL bloquea el merge."
+disable-model-invocation: true
+---
 # Prompt: security_review (aplicación web)
 
 Auditoría de seguridad independiente (OWASP ASVS nivel 2 como referencia). Hallazgos verificables por severidad.

@@ -1,3 +1,8 @@
+---
+name: tech-debt
+description: "Inventario priorizado de deuda técnica de un área, sin mezclar con funcionalidades; veredicto LIMPIO, DEUDA_MENOR, DEUDA_SIGNIFICATIVA o CRÍTICO."
+disable-model-invocation: true
+---
 # Prompt: tech_debt (aplicación web)
 
 Inventario de deuda técnica. No mezclar con nuevas features en el mismo PLAN.

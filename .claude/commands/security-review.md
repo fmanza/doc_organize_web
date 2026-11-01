@@ -5,12 +5,12 @@ Auditoría de seguridad, solo lectura. Los CRITICAL bloquean el merge.
 ## Contexto obligatorio
 
 Lee y aplica, en este orden:
-1. `.github/prompts/security_review.prompt.md` — inputs, contrato de salida y reglas (manda sobre este fichero)
+1. `.github/skills/security-review/SKILL.md` — inputs, contrato de salida y reglas (manda sobre este fichero)
 2. Agentes: Security Reviewer (`.github/agents/`)
 
 ## Reglas de ejecución
 
-- Si falta algún input del prompt, DETENTE y aclara antes de emitir PLAN.
+- Si falta algún input de la skill, DETENTE y aclara antes de emitir PLAN.
 - En flujos con IMPLEMENT, detente tras AUDIT_PLAN y espera aprobación explícita.
 
 ## Ejemplo de entrada

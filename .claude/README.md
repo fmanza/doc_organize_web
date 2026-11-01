@@ -4,7 +4,7 @@
 .claude/
   settings.json         ← hooks PostToolUse compartidos (versionado)
   settings.local.json   ← permisos y ajustes personales (git-ignored)
-  commands/             ← slash commands (envoltorios de .github/prompts/)
+  commands/             ← slash commands (envoltorios de .github/skills/)
 ```
 
 ## Hooks (tras cada `Edit`/`Write`, informativos)

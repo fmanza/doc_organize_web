@@ -8,9 +8,9 @@
 | `.github/SHARED_INSTRUCTIONS.md` | Fuente canónica. Rol: ingeniero web senior que conoce doc_organize **como librería consumida**. Reglas no negociables (abajo), arquitectura, comandos de desarrollo, tests, dependencias, commits |
 | `.github/copilot-instructions.md`, `.github/AGENTS.md` | Entry points de Copilot y agentes genéricos que remiten a SHARED |
 | `.github/instructions/` | `backend`, `frontend`, `api_contract`, `docker`, `security`, `tests`, `docs`, `sync` (≈ UBW) **+ `filesystem.instructions.md`** (ubicaciones, resolución segura de rutas, red, `ro`/`rw`) **+ `jobs.instructions.md`** (colas cpu/gpu, cancelación, progreso) |
-| `.github/prompts/` | `phase_implementation`, `new_feature`, `hotfix`, `refactor`, `audit_code`, `security_review`, `tech_debt`, `config_review`, `version_closure` |
+| `.github/skills/` | `phase-implementation`, `new-feature`, `hotfix`, `refactor`, `audit-code`, `security-review`, `tech-debt`, `config-review`, `version-closure` (`<nombre>/SKILL.md`; antes `.github/prompts/`) |
 | `.github/agents/` | Los 11 de UBW (`plan-architect`, `feature-implementer`, `frontend-reviewer`, `code-auditor`, `security-reviewer`…) |
-| `.claude/commands/` | `phase`, `new-feature`, `hotfix`, `refactor`, `audit-code`, `security-review`, `tech-debt`, `config-review`, `version-closure` (envoltorios finos de los prompts) |
+| `.claude/commands/` | `phase`, `new-feature`, `hotfix`, `refactor`, `audit-code`, `security-review`, `tech-debt`, `config-review`, `version-closure` (envoltorios finos de las skills) |
 | `.claude/settings.json` | Hooks PostToolUse informativos: ruff + mypy del backend (si hay uv) y lint + typecheck del frontend |
 | `.claude/README.md` | Hooks y `settings.local.json` |
 | `.ai/` | `architecture.md`, `glossary.md` (proyecto, ubicación, run, artefacto, grupo de duplicados, contexto, taxonomía, familia IA, tenant), `product.md`, `runtime.md`, `standards.md`, `sessions/TEMPLATE/` |

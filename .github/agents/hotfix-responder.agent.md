@@ -25,7 +25,7 @@ Tu trabajo es diagnosticar la causa raíz y aplicar el cambio mínimo que la cor
 4. Comandos de validación en verde.
 
 ## Output contract
-Formato en `.github/prompts/hotfix.prompt.md`.
+Formato en `.github/skills/hotfix/SKILL.md`.
 
 ## Formato de salida
 ## Incident

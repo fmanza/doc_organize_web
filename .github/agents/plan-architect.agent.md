@@ -36,7 +36,7 @@ Lee antes de planificar:
 6. Emite veredicto.
 
 ## Output contract
-Formato definido en `.github/prompts/new_feature.prompt.md`, `refactor.prompt.md` o `phase_implementation.prompt.md`.
+Formato definido en la skill `new-feature`, `refactor` o `phase-implementation` (`.github/skills/<nombre>/SKILL.md`).
 
 ## Formato de salida
 ## Objective

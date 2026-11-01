@@ -1,4 +1,4 @@
-# Agentes, prompts y slash commands
+# Agentes, skills y slash commands
 
 Registro de la configuración IA de doc_organize_web. Flujo: PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION.
 
@@ -6,7 +6,7 @@ Registro de la configuración IA de doc_organize_web. Flujo: PLAN → AUDIT_PLAN
 
 - **Claude Code**: `/phase`, `/new-feature`, `/hotfix`, `/refactor`, `/audit-code`, `/security-review`, `/tech-debt`,
   `/config-review`, `/version-closure` (`.claude/commands/`).
-- **GitHub Copilot Chat**: agente por nombre (`.github/agents/`) + prompt (`.github/prompts/`).
+- **GitHub Copilot Chat**: agente por nombre (`.github/agents/`) + skill (`.github/skills/`).
 
 ## Agentes (`.github/agents/`)
 
@@ -24,19 +24,19 @@ Registro de la configuración IA de doc_organize_web. Flujo: PLAN → AUDIT_PLAN
 | Config Reviewer | configuración IA | read, search | DRY y referencias huérfanas |
 | Explore | apoyo | read, search | Localizar código (solo lectura) |
 
-## Prompts (`.github/prompts/`) y slash commands
+## Skills (`.github/skills/`) y slash commands
 
-| Prompt | Slash command | Agentes |
+| Skill | Slash command | Agentes |
 |---|---|---|
-| `phase_implementation` | `/phase` | Plan Architect → Feature Implementer → Code Auditor + Frontend Reviewer (+ Security Reviewer) → Version Closer |
-| `new_feature` | `/new-feature` | Plan Architect → Feature Implementer → Code Auditor → Version Closer |
+| `phase-implementation` | `/phase` | Plan Architect → Feature Implementer → Code Auditor + Frontend Reviewer (+ Security Reviewer) → Version Closer |
+| `new-feature` | `/new-feature` | Plan Architect → Feature Implementer → Code Auditor → Version Closer |
 | `hotfix` | `/hotfix` | Hotfix Responder → Code Auditor → Version Closer |
 | `refactor` | `/refactor` | Plan Architect → Feature Implementer → Code Auditor → Version Closer |
-| `audit_code` | `/audit-code` | Code Auditor (+ Frontend Reviewer) |
-| `security_review` | `/security-review` | Security Reviewer |
-| `tech_debt` | `/tech-debt` | Plan Architect (→ IMPLEMENT si se autoriza) |
-| `config_review` | `/config-review` | Config Reviewer |
-| `version_closure` | `/version-closure` | Version Closer |
+| `audit-code` | `/audit-code` | Code Auditor (+ Frontend Reviewer) |
+| `security-review` | `/security-review` | Security Reviewer |
+| `tech-debt` | `/tech-debt` | Plan Architect (→ IMPLEMENT si se autoriza) |
+| `config-review` | `/config-review` | Config Reviewer |
+| `version-closure` | `/version-closure` | Version Closer |
 
 Documentation Generator, Explore y Workflow Director no tienen slash command: se invocan por lenguaje natural
 (Claude Code) o por nombre (Copilot Chat).
@@ -50,4 +50,4 @@ lugar de escritura en BD destino, y doc_organize como librería consumida.
 
 ---
 
-*Actualizado: 2026-10-31*
+*Actualizado: 2026-11-01*

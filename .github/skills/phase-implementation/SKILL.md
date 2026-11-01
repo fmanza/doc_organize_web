@@ -1,3 +1,8 @@
+---
+name: phase-implementation
+description: "Implementa una fase completa del ROADMAP (PLAN, AUDIT_PLAN, IMPLEMENT, AUDIT_CODE y VERSION) con su Definición de Hecho; veredicto GO, GO_CONDICIONAL o NO_GO."
+disable-model-invocation: true
+---
 # Prompt: phase_implementation — Implementar una fase del ROADMAP
 
 Implementa **una** fase de `docs/plan/ROADMAP.md` completa, con su Definición de Hecho (DoD común del ROADMAP).

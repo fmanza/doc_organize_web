@@ -1,3 +1,8 @@
+---
+name: hotfix
+description: "Corrige un bug P1/P2 con el fix mínimo (RCA, test de regresión, cierre), sin refactorizar ni optimizar."
+disable-model-invocation: true
+---
 # Prompt: hotfix (aplicación web)
 
 Corrección acotada de un bug P1/P2. Política: **solo fix mínimo; prohibido refactorizar y optimizar**.

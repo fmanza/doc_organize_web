@@ -40,7 +40,7 @@ Tu trabajo es identificar vulnerabilidades explotables y riesgos de seguridad co
     secretos, rutas internas ni documentos reales versionados.
 
 ## Output contract
-Formato en `.github/prompts/security_review.prompt.md`.
+Formato en `.github/skills/security-review/SKILL.md`.
 
 ## Formato de salida
 ## Scope
