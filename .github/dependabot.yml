@@ -1,6 +1,6 @@
 version: 2
-# Una vez al mes, PR agrupados contra develop, y solo versiones con ≥ 14 días (mismo criterio que util_bbdd_web y
-# que exclude-newer / --before; SHARED § «Dependencias»).
+# Una vez al mes, PR agrupados contra develop. Sin `cooldown`: la regla de versiones con ≥ 14 días está suspendida
+# hasta la 1.0 (SHARED § «Dependencias»); la Fase 10 lo vuelve a poner (`cooldown: default-days: 14`).
 updates:
   - package-ecosystem: uv
     directory: /backend
@@ -8,8 +8,6 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 2
-    cooldown:
-      default-days: 14
     ignore:
       # doc_organize se sube a mano con su release (ADR-006); torch/torchvision siguen a docling.
       - dependency-name: doc_organize
@@ -24,8 +22,6 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 2
-    cooldown:
-      default-days: 14
     ignore:
       # ADR-001: openapi-typescript 7.x exige TypeScript ^5 y typescript-eslint 8.x <6.1.
       - dependency-name: typescript
@@ -39,16 +35,12 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 1
-    cooldown:
-      default-days: 14
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
     schedule:
       interval: monthly
     open-pull-requests-limit: 1
-    cooldown:
-      default-days: 14
     groups:
       github-actions:
         patterns: ["*"]

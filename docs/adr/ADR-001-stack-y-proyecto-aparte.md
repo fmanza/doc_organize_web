@@ -27,7 +27,9 @@ problema se resolvió en util_bbdd con util_bbdd_web (D1).
 5. **Versiones como util_bbdd_web 1.10.1** para no divergir: Python 3.12.14, Node 24.21.0, uv 0.13.1, React 19.3,
    Mantine 9.6, TypeScript 5.9 (openapi-typescript 7 exige `^5` y typescript-eslint 8 `<6.1`).
 6. **Cadena de suministro**: solo versiones publicadas hace ≥ 2 semanas (`exclude-newer` en uv, `--before` en npm,
-   *cooldown* de 14 días en Dependabot), lockfiles con hash e imágenes base con versión exacta.
+   *cooldown* de 14 días en Dependabot), lockfiles con hash e imágenes base con versión exacta. **Suspendida hasta la
+   1.0** (decisión del mantenedor, 2026-11-01): se mantienen lockfiles con hash y versiones exactas, y la Fase 10 la
+   reactiva.
 
 ## Consecuencias
 

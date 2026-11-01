@@ -5,6 +5,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **backend**, **ci**: regla de versiones con ≥ 2 semanas suspendida hasta la 1.0 (decisión del mantenedor): sin
+  `exclude-newer` ni sus excepciones por paquete en `backend/pyproject.toml` (el `uv.lock` no cambia de versiones),
+  sin `--before` en npm y sin `cooldown` en Dependabot. La Fase 10 la reactiva.
+
 ### Fixed
 
 - **docker**: variante GPU probada con una GPU NVIDIA real (RTX 5070, `sm_120`, driver 616.92): EasyOCR fallaba en
