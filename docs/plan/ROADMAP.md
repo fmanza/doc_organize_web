@@ -119,11 +119,10 @@ aunque cierre la pestaña, la cancelo y veo el historial **agrupado por ejecuci�
 > Huecos nuevos: G16 (caché solo al final), G17 (carpeta de modelos), G18 (salidas sin el nombre de la carpeta: cada
 > carpeta de origen es un ámbito propio, decisión del mantenedor) y G19 (listado fallido = carpeta vacía).
 
-> **Requisito de entrada (seguridad)**: Pillow ≥ 13.0.0, que corrige 41 alertas (5 críticas) en la lectura de JPEG,
-> TIFF, FlashPix y PDF. Exige docling-slim ≥ 2.142.0, docling-core ≥ 2.104.0, docling-parse ≥ 7.22.4 y
-> docling-ibm-models ≥ 4.0.4 (antes limitaban `pillow<13`), admisibles por la regla de 14 días desde el 2026-11-05:
-> adelantar `exclude-newer` en `backend/pyproject.toml`, `uv lock`, suite completa y tests de integración con
-> conversión real. Esta fase procesa ficheros de usuarios con Pillow; no empieza sin ello.
+> **Requisito de entrada (seguridad)** ✅: Pillow ≥ 13.0.0 (41 alertas, 5 críticas) con docling-slim 2.142.0,
+> docling-core 2.104.0, docling-parse 7.22.4 y docling-ibm-models 4.0.4, que levantan `pillow<13`. Cumplido en la
+> 0.5.0 con excepciones por paquete a `exclude-newer`, retiradas el 2026-11-01 al suspenderse la regla de 14 días
+> hasta la 1.0.
 
 **Historias**: escaneo una o varias carpetas del origen con las opciones actuales (OCR, GPU, audio/vídeo, extraer
 imágenes, descripción de imágenes, forzar); guardo carpetas frecuentes; veo errores de escaneo y el historial.
@@ -138,6 +137,9 @@ imágenes, descripción de imágenes, forzar); guardo carpetas frecuentes; veo e
 - Tests: escaneo incremental (sin cambios = 0 conversiones), cancelación a mitad, documento que supera el timeout.
 
 ## Fase 5 — Caché, resultados y descargas
+
+> **Decisión del mantenedor (2026-11-01)**: antes de la fase se implementa L-7 en doc_organize (`doc_organize.export`)
+> y se publica la **0.11.0**; la web la consume sin el rodeo de G8 (copiar `web/routes/downloads.py`).
 
 - WB-5.1 Lectura paginada y con búsqueda de `cache.db` (`CacheManager.count_entries`/`load_cache_page`).
 - WB-5.2 Vista de un documento convertido (Markdown/JSON/imágenes) servida con rutas seguras y `Content-Type` fijo.
@@ -188,6 +190,9 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
 - E2E de todos los flujos; prueba de carga con el objetivo de diseño (100 000 documentos, listados paginados de
   caché y duplicados a ese tamaño); variantes GPU, LibreOffice y AV verificadas en el servidor Linux.
 - doc_organize 1.0.0 publicada (L-11…L-15) y fijada en `uv.lock`.
+- Reactivar la regla de versiones con ≥ 2 semanas (suspendida el 2026-11-01): `exclude-newer` en
+  `backend/pyproject.toml` + `uv lock`, `--before` en npm, `cooldown: default-days: 14` en Dependabot; SHARED
+  § «Dependencias», ADR-001 §6, `docs/guides/desarrollo.md` y `DEPENDENCIAS.md`.
 
 ## Mejoras opcionales (decidir al planificar)
 

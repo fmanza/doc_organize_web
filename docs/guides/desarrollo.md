@@ -51,8 +51,8 @@ npm run gen:api        # tras exportar openapi/openapi.json
 npm run build
 ```
 
-Las dependencias nuevas se instalan con fecha de corte (versiones con ≥ 2 semanas):
-`npm install <paquete>@<versión> --before=<fecha>`.
+Las dependencias nuevas se instalan con versión exacta: `npm install <paquete>@<versión>`. La fecha de corte
+(`--before=<fecha>`, versiones con ≥ 2 semanas) está suspendida hasta la 1.0.
 
 ## Con Docker Desktop
 

@@ -164,10 +164,11 @@ Las salidas largas de validación (`.txt`, informes) van a `build/logs/`.
 
 ### Dependencias
 
-- Python: `uv.lock` con `exclude-newer` (solo versiones de ≥ 2 semanas; excepciones justificadas en `pyproject.toml`).
-  doc_organize como wheel de su release en GitHub con hash (ADR-006).
-- npm: `package-lock.json`, versiones exactas, instalación con `--before=<fecha>`.
-- Imágenes base con versión exacta en `docker/Dockerfile`; Dependabot con *cooldown* de 14 días.
+- **Regla de versiones con ≥ 2 semanas suspendida hasta la 1.0** (decisión del mantenedor, 2026-11-01): sin
+  `exclude-newer` en uv, sin `--before` en npm y sin *cooldown* en Dependabot. La Fase 10 la reactiva (ADR-001 §6).
+- Python: `uv.lock` con versiones y hashes fijados. doc_organize como wheel de su release en GitHub con hash (ADR-006).
+- npm: `package-lock.json`, versiones exactas.
+- Imágenes base con versión exacta en `docker/Dockerfile`.
 
 ### Formato de commits
 

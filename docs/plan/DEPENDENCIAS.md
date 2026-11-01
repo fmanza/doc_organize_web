@@ -2,6 +2,7 @@
 
 Política (≈ util_bbdd_web): `uv.lock` con `exclude-newer` (≥ 2 semanas, excepciones justificadas en
 `pyproject.toml`), npm con versiones exactas e instalación `--before=<fecha>`, imágenes base con versión exacta.
+La regla de ≥ 2 semanas está **suspendida hasta la 1.0** (2026-11-01); la Fase 10 la reactiva.
 Las versiones concretas se fijan en la Fase 0 a partir de las de util_bbdd_web 1.10.1 para no divergir.
 
 ## Backend (`backend/pyproject.toml`)

@@ -10,7 +10,7 @@ applyTo: "docker/**,docker-compose*.yml,.dockerignore"
   `backend-dev` añade el grupo `dev` para CI y equipos sin uv.
 - Variantes por `build-arg`: `WITH_LIBREOFFICE=true` (`libreoffice-calc-nogui`, `.xls` legado) y `WITH_AV=true`
   (extra `av`, `ffmpeg`, modelo Whisper). El tamaño de cada variante se mide y se anota en el CHANGELOG.
-- Versiones exactas de `python`, `node`, `uv` y CUDA en los `ARG` del Dockerfile; al subirlas, versión con ≥ 2 semanas.
+- Versiones exactas de `python`, `node`, `uv` y CUDA en los `ARG` del Dockerfile (la regla de ≥ 2 semanas está suspendida hasta la 1.0).
 - Librerías nativas en `runtime`: `libmagic1` y lo que exija Docling (verificado, no supuesto).
 - Modelos de Docling/RapidOCR/EasyOCR/Whisper precargados en `/models` durante el build (o volumen `models` de solo
   lectura); `HF_HUB_OFFLINE=1` y cachés de HF/torch apuntando a `/models` (ADR-011).

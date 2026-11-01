@@ -51,25 +51,8 @@ gpu = [
 package = false
 default-groups = ["dev", "cpu"]
 conflicts = [[{ group = "cpu" }, { group = "gpu" }]]
-# Cadena de suministro: solo versiones publicadas antes de esta fecha (≥ 2 semanas). Se adelanta a mano al actualizar.
-exclude-newer = "2026-10-17T00:00:00Z"
-# Excepciones de seguridad (2026-10-31), solo para el paquete nombrado: correcciones de alertas de Dependabot
-# publicadas después de la fecha de corte. Se retiran al adelantar exclude-newer más allá de su fecha.
-#   certifi 2026.10.18: retira los raíz de emSign con intermedias comprometidas (alerta crítica).
-#   filelock 4.2.1: 17 alertas de bloqueos con enlaces simbólicos u otro usuario local (1 alta).
-#   setuptools 84.1.0: escape de ruta en Windows al instalar wheels antiguos (baja).
-# Excepciones de seguridad (2026-11-01, Fase 4): Pillow 13.0.0 (41 alertas, 5 críticas) ya entra por fecha, pero los
-# docling anteriores lo limitaban a pillow<13. Solo las versiones que levantan ese límite:
-#   docling y docling-slim 2.142.0, docling-core 2.104.0, docling-parse 7.22.4, docling-ibm-models 4.0.4.
-[tool.uv.exclude-newer-package]
-certifi = "2026-10-19T00:00:00Z"
-filelock = "2026-10-18T00:00:00Z"
-setuptools = "2026-10-19T20:30:00Z"
-docling = "2026-10-22T15:00:00Z"
-docling-slim = "2026-10-22T15:00:00Z"
-docling-core = "2026-10-22T15:00:00Z"
-docling-parse = "2026-10-21T12:30:00Z"
-docling-ibm-models = "2026-10-21T12:00:00Z"
+# Cadena de suministro: la regla de versiones con ≥ 2 semanas (`exclude-newer`) está suspendida hasta la 1.0
+# (decisión del mantenedor, 2026-11-01); la Fase 10 la reactiva. El lock sigue fijando versiones y hashes.
 
 # docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). Cada variante
 # los toma de su índice de PyTorch (grupos `cpu` y `gpu`).
