@@ -11,7 +11,33 @@ Lo comprueba ``tests/unit/test_architecture.py``.
 """
 
 from app.integrations.doc_organize.capabilities import Capabilities, run_probe
+from app.integrations.doc_organize.models import ModelsStatus
+from app.integrations.doc_organize.models import status as models_status
 from app.integrations.doc_organize.projects import DocOrganizeOperationError, clear_project_history
+from app.integrations.doc_organize.scan import (
+    ScanFailure,
+    ScanOutcome,
+    ScanProgress,
+    ScanRequest,
+    cached_paths,
+    conversion_dir,
+    run_scan,
+)
 from app.integrations.doc_organize.version import library_version
 
-__all__ = ["Capabilities", "DocOrganizeOperationError", "clear_project_history", "library_version", "run_probe"]
+__all__ = [
+    "Capabilities",
+    "DocOrganizeOperationError",
+    "ModelsStatus",
+    "ScanFailure",
+    "ScanOutcome",
+    "ScanProgress",
+    "ScanRequest",
+    "cached_paths",
+    "clear_project_history",
+    "conversion_dir",
+    "library_version",
+    "models_status",
+    "run_probe",
+    "run_scan",
+]

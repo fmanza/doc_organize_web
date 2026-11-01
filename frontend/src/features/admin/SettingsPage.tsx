@@ -123,10 +123,12 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
       )}
       {caps && (
         <>
-          <YesNo ok={caps.gpu_active} label={t('capabilities.gpu')} />
+          <YesNo ok={caps.gpu_ready} label={t('capabilities.gpu')} />
           <YesNo ok={caps.av_ready} label={t('capabilities.av')} />
           <YesNo ok={caps.ffmpeg_installed} label={t('capabilities.ffmpeg')} />
           <YesNo ok={caps.libreoffice_installed} label={t('capabilities.libreoffice')} />
+          <YesNo ok={caps.models_ready} label={t('capabilities.models')} />
+          <YesNo ok={caps.picture_description_ready} label={t('capabilities.pictureDescription')} />
           <Text size="xs" c="dimmed">
             {t('capabilities.checkedAt', { date: formatDateTime(data.checked_at) })} ·{' '}
             {t('capabilities.library', { version: data.doc_organize_version ?? '—' })}

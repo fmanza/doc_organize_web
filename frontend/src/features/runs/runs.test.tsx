@@ -155,6 +155,8 @@ describe('RunDetailPage', () => {
 
     renderRoute(`/runs/${RUN_ID}`);
 
-    expect(await screen.findByText('Superó el tiempo máximo.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Superó el tiempo máximo; se guardó lo hecho hasta parar.'),
+    ).toBeInTheDocument();
   });
 });

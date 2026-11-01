@@ -21,13 +21,16 @@ import { FolderBrowser } from '../../components/FolderBrowser';
 import { useLocations } from '../locations/useLocations';
 import { RunResult } from '../runs/RunResult';
 import { isActive, useRun } from '../runs/useRuns';
+import { DEFAULT_SCAN_OPTIONS, type ScanOptions } from '../scan/useScan';
 import { type ProjectOut, type RunRequest, useEnqueueRun } from './useProjects';
 
-export type DangerousOperation = 'history_clear' | 'project_move' | 'project_delete';
+export type DangerousOperation = 'history_clear' | 'project_move' | 'project_delete' | 'scan_force';
 
 interface DangerousOperationModalProps {
   project: ProjectOut;
   operation: DangerousOperation;
+  /** Opciones del escaneo para `scan_force` (siempre con todas las carpetas). */
+  scanOptions?: ScanOptions;
   onClose: () => void;
 }
 
@@ -40,7 +43,12 @@ function lastSegment(path: string): string {
  * se tocará; después, escribiendo el nombre del proyecto, la operación real con la vista previa como prueba. Cambiar
  * las opciones obliga a repetir la vista previa.
  */
-export function DangerousOperationModal({ project, operation, onClose }: DangerousOperationModalProps) {
+export function DangerousOperationModal({
+  project,
+  operation,
+  scanOptions,
+  onClose,
+}: DangerousOperationModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const enqueue = useEnqueueRun(project.id);
@@ -65,6 +73,16 @@ export function DangerousOperationModal({ project, operation, onClose }: Dangero
       : { dry_run: false, preview_run_id: previewId, confirm_name: confirmName };
     if (operation === 'project_delete') {
       return { operation, delete_outputs: deleteOutputs, ...common };
+    }
+    if (operation === 'scan_force') {
+      // «Forzar» vacía toda la caché: siempre todas las carpetas (`folders` vacío).
+      return {
+        operation: 'scan',
+        folders: [],
+        ...(scanOptions ?? DEFAULT_SCAN_OPTIONS),
+        force: true,
+        ...common,
+      };
     }
     if (operation === 'project_move') {
       return {

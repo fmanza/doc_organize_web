@@ -19,6 +19,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { StatusLight } from '../../components/StatusLight';
+import { useMe } from '../auth/useAuth';
 import { RunsTable } from '../runs/RunsTable';
 import { useRuns } from '../runs/useRuns';
 import { type DangerousOperation, DangerousOperationModal } from './DangerousOperationModal';
@@ -70,13 +71,14 @@ function EditProjectModal({ project, onClose }: { project: ProjectOut; onClose: 
   );
 }
 
-/** Dashboard del proyecto (sustituye a `dashboard.html.j2`): origen y destino, últimas ejecuciones, miembros y zona
- * de peligro. */
+/** Dashboard del proyecto (sustituye a `dashboard.html.j2`): origen y destino, acceso al escaneo, últimas ejecuciones,
+ * miembros y zona de peligro. «Probar el motor» queda para administradores desde que existe el escaneo (Fase 4). */
 export function ProjectDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const id = Number(useParams().projectId);
   const { data: project, isPending, isError, error } = useProject(id);
+  const { data: me } = useMe();
   const runs = useRuns({ project_id: id }, 1, RECENT_RUNS);
   const enqueue = useEnqueueRun(id);
   const [editing, setEditing] = useState(false);
@@ -151,9 +153,12 @@ export function ProjectDetailPage() {
             {t('projects.recentRuns')}
           </Title>
           <Group>
-            {canDo(project, 'editor') && (
+            <Button component={Link} to={`/projects/${project.id}/scan`}>
+              {canDo(project, 'editor') ? t('projects.scan') : t('projects.scanView')}
+            </Button>
+            {me?.role === 'admin' && (
               <Button
-                variant="light"
+                variant="default"
                 loading={enqueue.isPending}
                 onClick={() =>
                   enqueue.mutate(NOOP_RUN, { onSuccess: (run) => void navigate(`/runs/${run.id}`) })

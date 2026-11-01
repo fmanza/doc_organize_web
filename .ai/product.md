@@ -2,8 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 0.4.0 (Fase 3, proyectos y motor de ejecuciones), con doc_organize 0.10.0. Siguiente: Fase 4
-  (escaneo y conversión; exige antes Pillow ≥ 13).
+- **Versión actual**: 0.5.0 (Fase 4, escaneo y conversión), con doc_organize 0.10.0 y Pillow 13. Siguiente: Fase 5
+  (caché, resultados y descargas; requiere doc_organize 0.11.0, L-7).
   Plan: `docs/plan/ROADMAP.md`.
 - **Usuarios**: equipos que organizan grandes fondos documentales en una red interna; rol `admin` y rol `user`;
   miembros de proyecto `owner`/`editor`/`viewer`. Multi-tenant en la Fase 9.

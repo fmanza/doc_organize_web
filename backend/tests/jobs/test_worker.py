@@ -105,9 +105,11 @@ def test_cooperative_cancellation(worker: JobWorker, user_client: TestClient, pr
     assert run.status == "cancelled"
 
 
-def test_timeout_terminates_subprocess(
+def test_timeout_stops_the_job_in_order(
     worker: JobWorker, user_client: TestClient, project_id: int, db: Session
 ) -> None:
+    """Al vencer el plazo el worker pide una parada ordenada (para que un escaneo guarde su caché, G16) y el run
+    acaba ``failed``/``timeout`` aunque la operación parase por sí misma."""
     worker.settings = worker.settings.model_copy(update={"job_timeout_seconds": 1})
     run_id = _enqueue(user_client, project_id, operation="noop", steps=100, step_seconds=10)
 
@@ -115,6 +117,8 @@ def test_timeout_terminates_subprocess(
 
     assert run.status == "failed"
     assert run.error_code == "timeout"
+    assert run.cancel_reason == "timeout"
+    assert "se guardó lo hecho" in (run.error_message or "")
 
 
 def test_orphans_are_closed_on_start(migrated: Settings, db: Session, user_client: TestClient, project_id: int) -> None:

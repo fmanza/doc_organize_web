@@ -117,7 +117,10 @@ export function useRunEvents(runId: string, enabled: boolean, active: boolean) {
     source.addEventListener('artifact', refresh);
     source.addEventListener('end', () => {
       refresh();
+      // Al terminar cambian el proyecto (`active_run`), sus carpetas escaneadas y los errores de escaneo.
       void queryClient.invalidateQueries({ queryKey: ['runs', 'list'] });
+      void queryClient.invalidateQueries({ queryKey: ['projects'] });
+      void queryClient.invalidateQueries({ queryKey: ['scan-errors'] });
       source.close();
     });
     return () => source.close();

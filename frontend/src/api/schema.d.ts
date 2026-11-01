@@ -259,7 +259,8 @@ export interface paths {
         };
         /**
          * Capacidades de la instancia
-         * @description GPU, audio/vídeo y LibreOffice según los workers (los que convierten); colas con algún worker vivo.
+         * @description GPU, audio/vídeo, LibreOffice y modelos según los workers (los que convierten); colas con algún worker vivo y
+         *     opciones de escaneo disponibles.
          */
         get: operations["get_capabilities_api_v1_instance_capabilities_get"];
         put?: never;
@@ -458,6 +459,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/scan-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Errores del último escaneo
+         * @description Documentos que no se pudieron convertir en el último escaneo terminado del proyecto.
+         */
+        get: operations["list_project_scan_errors_api_v1_projects__project_id__scan_errors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/scanned-folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver carpetas de origen
+         * @description Carpetas de origen con su estado en los escaneos y si existen ahora en el origen.
+         */
+        get: operations["list_scanned_folders_api_v1_projects__project_id__scanned_folders_get"];
+        put?: never;
+        /**
+         * Añadir carpeta de origen
+         * @description Añade una carpeta de la ubicación de origen (``owner``); no puede estar dentro de otra ni contenerla.
+         */
+        post: operations["add_scanned_folder_api_v1_projects__project_id__scanned_folders_post"];
+        /**
+         * Quitar carpeta de origen
+         * @description Quita una carpeta de origen (``owner``). No borra ficheros: si ya se escaneó, sus salidas siguen en el destino.
+         */
+        delete: operations["remove_scanned_folder_api_v1_projects__project_id__scanned_folders_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -550,6 +599,26 @@ export interface paths {
          * @description Eventos ``status``, ``progress``, ``log``, ``artifact`` y ``end`` del run (``id`` = número de evento).
          */
         get: operations["run_events_api_v1_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/scan-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Errores de un escaneo
+         * @description Documentos que no se pudieron convertir en este run (vacío si no es un escaneo).
+         */
+        get: operations["list_scan_errors_api_v1_runs__run_id__scan_errors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -749,10 +818,25 @@ export interface components {
             ffmpeg_installed: boolean;
             /** Gpu Active */
             gpu_active: boolean;
+            /**
+             * Gpu Ready
+             * @default false
+             */
+            gpu_ready: boolean;
             /** Gpu Support Installed */
             gpu_support_installed: boolean;
             /** Libreoffice Installed */
             libreoffice_installed: boolean;
+            /**
+             * Models Ready
+             * @default false
+             */
+            models_ready: boolean;
+            /**
+             * Picture Description Ready
+             * @default false
+             */
+            picture_description_ready: boolean;
         };
         /**
          * CsrfToken
@@ -867,6 +951,7 @@ export interface components {
             doc_organize_version: string | null;
             /** Queues */
             queues: string[];
+            scan_options: components["schemas"]["ScanOptionsAvailability"];
             /**
              * Status
              * @enum {string}
@@ -1326,7 +1411,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan";
             /**
              * Status
              * @enum {string}
@@ -1365,7 +1450,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -1417,6 +1502,150 @@ export interface components {
             processed: number;
             /** Total */
             total?: number | null;
+        };
+        /**
+         * ScanErrorOut
+         * @description Documento que no se pudo convertir (ruta relativa a la ubicación de origen, mensaje sin rutas del contenedor).
+         */
+        ScanErrorOut: {
+            /** Capped */
+            capped: boolean;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /** Path */
+            path: string;
+            /** Retry Count */
+            retry_count: number;
+        };
+        /**
+         * ScanErrorPage
+         * @description Página de errores de un escaneo; ``run`` es el escaneo al que pertenecen (``None`` si aún no hay ninguno).
+         */
+        ScanErrorPage: {
+            /** Items */
+            items: components["schemas"]["ScanErrorOut"][];
+            run: components["schemas"]["RunBrief"] | null;
+            /** Total */
+            total: number;
+        };
+        /**
+         * ScanOptionsAvailability
+         * @description Opciones de escaneo que algún worker vivo de su cola puede atender ahora (la API lo vuelve a comprobar).
+         */
+        ScanOptionsAvailability: {
+            /** Include Audio Video */
+            include_audio_video: boolean;
+            /** Use Gpu */
+            use_gpu: boolean;
+            /** Use Picture Description */
+            use_picture_description: boolean;
+        };
+        /**
+         * ScanParams
+         * @description Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).
+         *
+         *     ``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que
+         *     ya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa
+         *     (``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.
+         */
+        ScanParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Extract Images
+             * @default false
+             */
+            extract_images: boolean;
+            /** Folders */
+            folders?: string[];
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /**
+             * Include Audio Video
+             * @default false
+             */
+            include_audio_video: boolean;
+            /**
+             * Operation
+             * @default scan
+             * @constant
+             */
+            operation: "scan";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+            /**
+             * Use Gpu
+             * @default false
+             */
+            use_gpu: boolean;
+            /**
+             * Use Ocr
+             * @default true
+             */
+            use_ocr: boolean;
+            /**
+             * Use Picture Description
+             * @default false
+             */
+            use_picture_description: boolean;
+        };
+        /**
+         * ScannedFolderCreate
+         * @description Carpeta de origen nueva, relativa a la ubicación de origen del proyecto.
+         */
+        ScannedFolderCreate: {
+            /** Subpath */
+            subpath: string;
+        };
+        /**
+         * ScannedFolderList
+         * @description Carpetas de origen del proyecto y su ubicación.
+         */
+        ScannedFolderList: {
+            /** Items */
+            items: components["schemas"]["ScannedFolderOut"][];
+            location: components["schemas"]["LocationRef"];
+        };
+        /**
+         * ScannedFolderOut
+         * @description Carpeta de origen del proyecto con su estado en los escaneos (ruta relativa a la ubicación de origen).
+         */
+        ScannedFolderOut: {
+            /**
+             * Added At
+             * Format: date-time
+             */
+            added_at: string;
+            /** Available */
+            available: boolean;
+            /** Last Run Id */
+            last_run_id: string | null;
+            /** Last Scanned At */
+            last_scanned_at: string | null;
+            /** Subpath */
+            subpath: string;
+            /** Used */
+            used: boolean;
+        };
+        /**
+         * ScannedFolderRemoved
+         * @description Resultado de quitar una carpeta: si ya se había escaneado, sus salidas siguen en el destino.
+         */
+        ScannedFolderRemoved: {
+            /** Subpath */
+            subpath: string;
+            /** Used */
+            used: boolean;
         };
         /**
          * SessionOut
@@ -3055,7 +3284,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"];
             };
         };
         responses: {
@@ -3103,14 +3332,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Escaneo no válido (option_unavailable, folder_not_saved, force_requires_all_folders) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
             /** @description Ubicación no disponible */
             503: {
@@ -3121,12 +3348,256 @@ export interface operations {
             };
         };
     };
+    list_project_scan_errors_api_v1_projects__project_id__scan_errors_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanErrorPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scanned_folders_api_v1_projects__project_id__scanned_folders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScannedFolderList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_scanned_folder_api_v1_projects__project_id__scanned_folders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScannedFolderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScannedFolderOut"];
+                };
+            };
+            /** @description Ruta no válida (absoluta, UNC, con «..» o «\») */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ya guardada, solapada con salidas o con ejecuciones en marcha */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Anidada con otra carpeta (nested_folders) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_scanned_folder_api_v1_projects__project_id__scanned_folders_delete: {
+        parameters: {
+            query: {
+                /** @description Carpeta relativa a la ubicación de origen */
+                subpath: string;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScannedFolderRemoved"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Única carpeta (last_folder) o ejecuciones en marcha */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_runs_api_v1_runs_get: {
         parameters: {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan") | null;
                 limit?: number;
                 offset?: number;
             };
@@ -3372,6 +3843,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_scan_errors_api_v1_runs__run_id__scan_errors_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanErrorPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ejecución no encontrada (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

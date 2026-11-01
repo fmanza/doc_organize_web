@@ -56,10 +56,22 @@ export const routes: RouteObject[] = [
             path: 'projects/:projectId',
             ...page(async () => (await import('../features/projects/ProjectDetailPage')).ProjectDetailPage),
           },
+          {
+            path: 'projects/:projectId/scan',
+            ...page(async () => (await import('../features/scan/ScanPage')).ScanPage),
+          },
+          {
+            path: 'projects/:projectId/scan-errors',
+            ...page(async () => (await import('../features/scan/ScanErrorsPage')).ScanErrorsPage),
+          },
           { path: 'runs', ...page(async () => (await import('../features/runs/RunsPage')).RunsPage) },
           {
             path: 'runs/:runId',
             ...page(async () => (await import('../features/runs/RunDetailPage')).RunDetailPage),
+          },
+          {
+            path: 'runs/:runId/errors',
+            ...page(async () => (await import('../features/scan/ScanErrorsPage')).ScanErrorsPage),
           },
           {
             path: 'admin',

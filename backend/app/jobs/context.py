@@ -28,16 +28,29 @@ CANCEL_POLL_SECONDS: Final = 2.0
 
 
 class JobCancelled(Exception):
-    """El usuario pidió cancelar y la operación paró en un punto seguro."""
+    """Se pidió parar (cancelación o timeout) y la operación paró en un punto seguro.
+
+    Attributes:
+        result: Lo hecho hasta parar (p. ej. los recuentos de un escaneo), que se guarda en el run.
+    """
+
+    def __init__(self, result: dict[str, Any] | None = None) -> None:
+        super().__init__("cancelled")
+        self.result = result
 
 
 class JobFailed(Exception):
-    """Fallo esperado de una operación, con código y mensaje aptos para el usuario (sin rutas del contenedor)."""
+    """Fallo esperado de una operación, con código y mensaje aptos para el usuario (sin rutas del contenedor).
 
-    def __init__(self, code: str, message: str) -> None:
+    Attributes:
+        result: Lo hecho antes de fallar (p. ej. las carpetas ya escaneadas), que se guarda en el run.
+    """
+
+    def __init__(self, code: str, message: str, *, result: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.result = result
 
 
 @dataclass

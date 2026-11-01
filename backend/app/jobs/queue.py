@@ -54,6 +54,19 @@ def cancel_requested(db: Session, run_ids: list[str]) -> set[str]:
     return set(db.scalars(query))
 
 
+def request_stop(db: Session, run_id: str, *, reason: str) -> None:
+    """Pide al run en marcha que pare en su siguiente punto seguro (``cancel_requested``), con el motivo.
+
+    No cambia el motivo de una parada ya pedida (una cancelación del usuario sigue siendo cancelación).
+    """
+    db.execute(
+        update(Run)
+        .where(Run.id == run_id, Run.status == "running", Run.cancel_reason.is_(None))
+        .values(cancel_requested=True, cancel_reason=reason)
+    )
+    db.commit()
+
+
 def finish(db: Session, run_id: str, status: str, *, code: str | None = None, message: str | None = None) -> bool:
     """Cierra un run en marcha con ``status`` y emite ``status`` + ``end``; ``False`` si ya estaba cerrado.
 

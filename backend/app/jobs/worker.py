@@ -4,7 +4,9 @@
   **no importa doc_organize** (memoria): solo lo hacen los subprocesos.
 - Latido de los runs y del propio worker; al arrancar cierra los runs huérfanos (latido caducado).
 - Cancelación: el subproceso la atiende en un punto seguro; si no lo hace en ``DOW_CANCEL_GRACE_SECONDS`` se termina.
-  Pasado ``DOW_JOB_TIMEOUT_SECONDS`` también se termina (``timeout``).
+- Pasado ``DOW_JOB_TIMEOUT_SECONDS`` se pide una parada ordenada (como al cancelar, con ``cancel_reason=timeout``) para
+  que la operación guarde lo hecho (la caché de un escaneo, G16); si no para en ``DOW_TIMEOUT_GRACE_SECONDS``, se
+  termina. El run acaba ``failed``/``timeout`` en los dos casos.
 - Tareas periódicas en un hilo aparte (con varios workers solo uno las hace): sondeo de ubicaciones, purga del
   workspace y publicación de las capacidades del contenedor.
 
@@ -50,6 +52,7 @@ CAPABILITIES_EVERY: Final = timedelta(hours=1)
 PURGE_EVERY: Final = timedelta(hours=1)
 ORPHANS_EVERY: Final = timedelta(minutes=1)
 STALE_WORKER_ROWS: Final = timedelta(days=1)
+TIMEOUT_MESSAGE: Final = "La operación superó el tiempo máximo."
 
 
 @dataclass
@@ -60,6 +63,7 @@ class Slot:
     process: BaseProcess
     started: float = field(default_factory=time.monotonic)
     cancel_seen: float | None = None
+    timeout_seen: float | None = None
     stop_reason: tuple[str, str | None, str | None] | None = None
 
 
@@ -187,8 +191,14 @@ class JobWorker:
                 if now - slot.started > 0 and slot.process.is_alive():
                     slot.process.kill()
                 continue
-            if now - slot.started > self.settings.job_timeout_seconds:
-                self._stop(slot, ("failed", "timeout", "La operación superó el tiempo máximo."))
+            if slot.timeout_seen is not None:
+                if now - slot.timeout_seen > self.settings.timeout_grace_seconds:
+                    self._stop(slot, ("failed", "timeout", TIMEOUT_MESSAGE))
+            elif now - slot.started > self.settings.job_timeout_seconds:
+                slot.timeout_seen = now
+                with self.factory() as db:
+                    queue.request_stop(db, run_id, reason="timeout")
+                logger.warning("Run fuera de tiempo: parada ordenada pedida", extra={"run_id": run_id})
             elif run_id in requested:
                 slot.cancel_seen = slot.cancel_seen or now
                 if now - slot.cancel_seen > self.settings.cancel_grace_seconds:

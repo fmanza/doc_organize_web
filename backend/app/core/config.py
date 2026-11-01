@@ -43,6 +43,8 @@ class Settings(BaseSettings):
         worker_heartbeat_seconds: Intervalo del latido del worker y de sus runs.
         job_timeout_seconds: Duración máxima de un run; después se termina su subproceso.
         cancel_grace_seconds: Plazo para que un run atienda la cancelación antes de terminar su subproceso.
+        timeout_grace_seconds: Plazo para la parada ordenada al vencer el timeout: doc_organize solo para entre
+            documentos y un PDF grande con OCR tarda minutos (si no para, se pierde la caché en curso, G16).
         run_retention_days: Días que se conservan las carpetas del workspace de los runs terminados.
         user_quota_mb: Espacio máximo de artefactos por usuario en el workspace (0 = sin límite).
 
@@ -75,6 +77,7 @@ class Settings(BaseSettings):
     worker_heartbeat_seconds: int = Field(default=10, ge=2, le=60)
     job_timeout_seconds: int = Field(default=21_600, ge=60, le=7 * 24 * 3600)
     cancel_grace_seconds: int = Field(default=30, ge=5, le=600)
+    timeout_grace_seconds: int = Field(default=600, ge=5, le=3600)
     run_retention_days: int = Field(default=30, ge=1, le=3650)
     user_quota_mb: int = Field(default=0, ge=0, le=10_000_000)
 

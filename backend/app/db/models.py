@@ -2,6 +2,7 @@
 
 Fase 1: identidad (``tenants``, ``users``, ``sessions``, ``audit_log``). Fase 2: ``locations`` y ``app_settings``.
 Fase 3: ``projects``, ``project_members``, ``runs``, ``run_events``, ``artifacts``, ``workers`` y ``periodic_tasks``.
+Fase 4: ``scanned_folders`` y ``scan_errors``.
 Solo tipos portables (D8): las fechas se guardan en UTC con ``UTCDateTime``.
 """
 
@@ -285,6 +286,9 @@ class Run(Base):
     error_code: Mapped[str | None] = mapped_column(String(64), default=None)
     error_message: Mapped[str | None] = mapped_column(String(1024), default=None)
     cancel_requested: Mapped[bool] = mapped_column(default=False)
+    #: Por qué se pidió parar: ``user`` (cancelación) o ``timeout`` (el worker agota el tiempo y pide una parada
+    #: ordenada antes de terminar el subproceso, para que la operación guarde lo hecho).
+    cancel_reason: Mapped[str | None] = mapped_column(String(16), default=None)
     #: Fase crítica (borrar, mover): el worker no termina el subproceso por una cancelación, solo por el timeout.
     uninterruptible: Mapped[bool] = mapped_column(default=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
@@ -364,3 +368,39 @@ class PeriodicTask(Base):
     name: Mapped[str] = mapped_column(String(64), primary_key=True)
     last_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     claimed_by: Mapped[str | None] = mapped_column(String(128), default=None)
+
+
+class ScannedFolder(Base):
+    """Estado de una carpeta de origen del proyecto (``projects.source_subpaths``) en los escaneos (Fase 4).
+
+    Sustituye a ``ScannedFoldersStore`` (JSON) de la web integrada. ``used`` es permanente: la carpeta ya se escaneó
+    alguna vez, así que tiene salidas en el destino.
+    """
+
+    __tablename__ = "scanned_folders"
+
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    subpath: Mapped[str] = mapped_column(String(4096), primary_key=True)
+    used: Mapped[bool] = mapped_column(default=False)
+    added_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    added_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    last_scanned_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    last_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+
+
+class ScanError(Base):
+    """Documento que no se pudo convertir en un run ``scan`` (``ScanErrorReport`` de doc_organize).
+
+    ``path`` es relativa a la ubicación de origen y ``message`` ya está saneado (sin rutas del contenedor).
+    """
+
+    __tablename__ = "scan_errors"
+    __table_args__ = (Index("ix_scan_errors_project_run", "project_id", "run_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    path: Mapped[str] = mapped_column(String(4096))
+    message: Mapped[str] = mapped_column(String(2000))
+    retry_count: Mapped[int] = mapped_column(Integer, default=1)
+    capped: Mapped[bool] = mapped_column(default=False)

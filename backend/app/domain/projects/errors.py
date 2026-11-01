@@ -28,6 +28,15 @@ class InvalidProjectError(AppError):
     title = "Proyecto no válido"
 
 
+class NestedFoldersError(AppError):
+    """Dos carpetas de origen anidadas: doc_organize deriva la ruta de cada salida de la carpeta escaneada, así que
+    una carpeta dentro de otra haría que un mismo documento acabara en dos salidas distintas."""
+
+    status = 422
+    title = "Carpetas de origen anidadas"
+    code = "nested_folders"
+
+
 class ProjectConflictError(AppError):
     """Ya existe un proyecto con ese nombre o la carpeta de salidas no está libre."""
 

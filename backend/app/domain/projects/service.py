@@ -26,6 +26,7 @@ from app.db.models import (
     Project,
     ProjectMember,
     Run,
+    ScannedFolder,
     User,
     utcnow,
 )
@@ -45,11 +46,12 @@ from app.domain.projects.errors import (
     InvalidProjectError,
     MemberConflictError,
     MemberNotFoundError,
+    NestedFoldersError,
     ProjectConflictError,
     ProjectForbiddenError,
     ProjectNotFoundError,
 )
-from app.domain.projects.folders import folder_name_problem, nested, without_nested
+from app.domain.projects.folders import folder_name_problem, nested, nested_pair
 
 MAX_SOURCE_SUBPATHS: Final = 20
 ROLE_RANK: Final[dict[str, int]] = {"viewer": 1, "editor": 2, "owner": 3}
@@ -187,10 +189,11 @@ def destination_location(db: Session, location_id: int) -> Location:
 
 
 def resolve_sources(location: Location, subpaths: list[str], settings: Settings) -> list[str]:
-    """Subcarpetas de origen resueltas dentro de la ubicación, sin repetidas ni contenidas en otra.
+    """Subcarpetas de origen resueltas dentro de la ubicación, sin repetidas y en orden alfabético.
 
     Raises:
         InvalidProjectError: Ninguna o más de ``MAX_SOURCE_SUBPATHS``.
+        NestedFoldersError: Una está dentro de otra (cambiaría la ruta de las salidas, Fase 4).
         InvalidRelativePathError, FolderNotFoundError, LocationUnavailableError: Del resolvedor.
     """
     if not subpaths or len(subpaths) > MAX_SOURCE_SUBPATHS:
@@ -198,7 +201,24 @@ def resolve_sources(location: Location, subpaths: list[str], settings: Settings)
     _check_reachable(location)
     root = Path(location.container_path)
     timeout = settings.location_probe_timeout_seconds
-    return without_nested([resolve_within(root, sub, timeout=timeout).relative for sub in subpaths])
+    resolved = sorted({resolve_within(root, sub, timeout=timeout).relative for sub in subpaths}, key=str.casefold)
+    pair = nested_pair(resolved)
+    if pair:
+        outer, inner = (part or "(raíz)" for part in pair)
+        raise NestedFoldersError(f"«{inner}» está dentro de «{outer}»: elige solo una de las dos.")
+    return resolved
+
+
+def sync_scanned_folders(db: Session, project: Project, *, actor_id: int | None) -> None:
+    """Deja en ``scanned_folders`` una fila por cada carpeta de origen (conserva el estado de las que siguen)."""
+    rows = db.scalars(select(ScannedFolder).where(ScannedFolder.project_id == project.id))
+    current = {row.subpath: row for row in rows}
+    for subpath, row in current.items():
+        if subpath not in project.source_subpaths:
+            db.delete(row)
+    for subpath in project.source_subpaths:
+        if subpath not in current:
+            db.add(ScannedFolder(project_id=project.id, subpath=subpath, added_by=actor_id))
 
 
 def _is_empty_dir(path: Path) -> bool:
@@ -357,6 +377,7 @@ def create_project(
         db.add(project)
         db.flush()
         db.add(ProjectMember(project_id=project.id, user_id=actor.id, role="owner", added_by=actor.id))
+        sync_scanned_folders(db, project, actor_id=actor.id)
         state_dir(settings, project.id).mkdir(parents=True, exist_ok=True)
         audit.record(
             db,
@@ -425,6 +446,7 @@ def update_project(
                 exclude_project_id=project.id,
             )
             project.source_subpaths = sources
+            sync_scanned_folders(db, project, actor_id=actor.id)
             changed.append("source_subpaths")
     if changed:
         project.updated_at = utcnow()

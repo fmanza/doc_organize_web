@@ -163,6 +163,11 @@ export function RunDetailPage() {
             {t('runs.resultTitle')}
           </Title>
           <RunResult result={run.result} />
+          {run.operation === 'scan' && typeof run.result.errors === 'number' && run.result.errors > 0 && (
+            <Anchor component={Link} to={`/runs/${run.id}/errors`} mt="sm" display="inline-block">
+              {t('runs.scanErrorsLink', { count: run.result.errors })}
+            </Anchor>
+          )}
         </Card>
       )}
       {live.log.length > 0 && (

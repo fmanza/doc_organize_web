@@ -190,12 +190,27 @@
             "title": "Gpu Active",
             "type": "boolean"
           },
+          "gpu_ready": {
+            "default": false,
+            "title": "Gpu Ready",
+            "type": "boolean"
+          },
           "gpu_support_installed": {
             "title": "Gpu Support Installed",
             "type": "boolean"
           },
           "libreoffice_installed": {
             "title": "Libreoffice Installed",
+            "type": "boolean"
+          },
+          "models_ready": {
+            "default": false,
+            "title": "Models Ready",
+            "type": "boolean"
+          },
+          "picture_description_ready": {
+            "default": false,
+            "title": "Picture Description Ready",
             "type": "boolean"
           }
         },
@@ -460,6 +475,9 @@
             "title": "Queues",
             "type": "array"
           },
+          "scan_options": {
+            "$ref": "#/components/schemas/ScanOptionsAvailability"
+          },
           "status": {
             "enum": [
               "ok",
@@ -475,7 +493,8 @@
           "checked_at",
           "capabilities",
           "queues",
-          "doc_organize_version"
+          "doc_organize_version",
+          "scan_options"
         ],
         "title": "InstanceCapabilities",
         "type": "object"
@@ -1542,7 +1561,8 @@
               "noop",
               "history_clear",
               "project_move",
-              "project_delete"
+              "project_delete",
+              "scan"
             ],
             "title": "Operation",
             "type": "string"
@@ -1650,7 +1670,8 @@
               "noop",
               "history_clear",
               "project_move",
-              "project_delete"
+              "project_delete",
+              "scan"
             ],
             "title": "Operation",
             "type": "string"
@@ -1826,6 +1847,289 @@
           "processed"
         ],
         "title": "RunProgress",
+        "type": "object"
+      },
+      "ScanErrorOut": {
+        "description": "Documento que no se pudo convertir (ruta relativa a la ubicación de origen, mensaje sin rutas del contenedor).",
+        "properties": {
+          "capped": {
+            "title": "Capped",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "message",
+          "retry_count",
+          "capped"
+        ],
+        "title": "ScanErrorOut",
+        "type": "object"
+      },
+      "ScanErrorPage": {
+        "description": "Página de errores de un escaneo; ``run`` es el escaneo al que pertenecen (``None`` si aún no hay ninguno).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScanErrorOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run",
+          "items",
+          "total"
+        ],
+        "title": "ScanErrorPage",
+        "type": "object"
+      },
+      "ScanOptionsAvailability": {
+        "description": "Opciones de escaneo que algún worker vivo de su cola puede atender ahora (la API lo vuelve a comprobar).",
+        "properties": {
+          "include_audio_video": {
+            "title": "Include Audio Video",
+            "type": "boolean"
+          },
+          "use_gpu": {
+            "title": "Use Gpu",
+            "type": "boolean"
+          },
+          "use_picture_description": {
+            "title": "Use Picture Description",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "use_gpu",
+          "include_audio_video",
+          "use_picture_description"
+        ],
+        "title": "ScanOptionsAvailability",
+        "type": "object"
+      },
+      "ScanParams": {
+        "additionalProperties": false,
+        "description": "Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).\n\n``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que\nya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa\n(``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.",
+        "properties": {
+          "confirm_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Name"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "extract_images": {
+            "default": false,
+            "title": "Extract Images",
+            "type": "boolean"
+          },
+          "folders": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Folders",
+            "type": "array"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "include_audio_video": {
+            "default": false,
+            "title": "Include Audio Video",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "scan",
+            "default": "scan",
+            "title": "Operation",
+            "type": "string"
+          },
+          "preview_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Run Id"
+          },
+          "use_gpu": {
+            "default": false,
+            "title": "Use Gpu",
+            "type": "boolean"
+          },
+          "use_ocr": {
+            "default": true,
+            "title": "Use Ocr",
+            "type": "boolean"
+          },
+          "use_picture_description": {
+            "default": false,
+            "title": "Use Picture Description",
+            "type": "boolean"
+          }
+        },
+        "title": "ScanParams",
+        "type": "object"
+      },
+      "ScannedFolderCreate": {
+        "description": "Carpeta de origen nueva, relativa a la ubicación de origen del proyecto.",
+        "properties": {
+          "subpath": {
+            "maxLength": 4096,
+            "title": "Subpath",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subpath"
+        ],
+        "title": "ScannedFolderCreate",
+        "type": "object"
+      },
+      "ScannedFolderList": {
+        "description": "Carpetas de origen del proyecto y su ubicación.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScannedFolderOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationRef"
+          }
+        },
+        "required": [
+          "location",
+          "items"
+        ],
+        "title": "ScannedFolderList",
+        "type": "object"
+      },
+      "ScannedFolderOut": {
+        "description": "Carpeta de origen del proyecto con su estado en los escaneos (ruta relativa a la ubicación de origen).",
+        "properties": {
+          "added_at": {
+            "format": "date-time",
+            "title": "Added At",
+            "type": "string"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "last_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run Id"
+          },
+          "last_scanned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scanned At"
+          },
+          "subpath": {
+            "title": "Subpath",
+            "type": "string"
+          },
+          "used": {
+            "title": "Used",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subpath",
+          "used",
+          "added_at",
+          "last_scanned_at",
+          "last_run_id",
+          "available"
+        ],
+        "title": "ScannedFolderOut",
+        "type": "object"
+      },
+      "ScannedFolderRemoved": {
+        "description": "Resultado de quitar una carpeta: si ya se había escaneado, sus salidas siguen en el destino.",
+        "properties": {
+          "subpath": {
+            "title": "Subpath",
+            "type": "string"
+          },
+          "used": {
+            "title": "Used",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subpath",
+          "used"
+        ],
+        "title": "ScannedFolderRemoved",
         "type": "object"
       },
       "SessionOut": {
@@ -2371,7 +2675,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3026,7 +3330,7 @@
     },
     "/api/v1/instance/capabilities": {
       "get": {
-        "description": "GPU, audio/vídeo y LibreOffice según los workers (los que convierten); colas con algún worker vivo.",
+        "description": "GPU, audio/vídeo, LibreOffice y modelos según los workers (los que convierten); colas con algún worker vivo y\nopciones de escaneo disponibles.",
         "operationId": "get_capabilities_api_v1_instance_capabilities_get",
         "responses": {
           "200": {
@@ -3915,6 +4219,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/ProjectDeleteParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ScanParams"
                   }
                 ],
                 "title": "Body"
@@ -3950,6 +4257,77 @@
             "description": "Escritura en curso (write_locked), vista previa necesaria (preview_required) o cuota"
           },
           "422": {
+            "description": "Escaneo no válido (option_unavailable, folder_not_saved, force_requires_all_folders)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Lanzar ejecución",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/scan-errors": {
+      "get": {
+        "description": "Documentos que no se pudieron convertir en el último escaneo terminado del proyecto.",
+        "operationId": "list_project_scan_errors_api_v1_projects__project_id__scan_errors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanErrorPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
             "content": {
               "application/json": {
                 "schema": {
@@ -3958,12 +4336,188 @@
               }
             },
             "description": "Validation Error"
+          }
+        },
+        "summary": "Errores del último escaneo",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/scanned-folders": {
+      "delete": {
+        "description": "Quita una carpeta de origen (``owner``). No borra ficheros: si ya se escaneó, sus salidas siguen en el destino.",
+        "operationId": "remove_scanned_folder_api_v1_projects__project_id__scanned_folders_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Carpeta relativa a la ubicación de origen",
+            "in": "query",
+            "name": "subpath",
+            "required": true,
+            "schema": {
+              "description": "Carpeta relativa a la ubicación de origen",
+              "maxLength": 4096,
+              "title": "Subpath",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannedFolderRemoved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Única carpeta (last_folder) o ejecuciones en marcha"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quitar carpeta de origen",
+        "tags": [
+          "projects"
+        ]
+      },
+      "get": {
+        "description": "Carpetas de origen con su estado en los escaneos y si existen ahora en el origen.",
+        "operationId": "list_scanned_folders_api_v1_projects__project_id__scanned_folders_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannedFolderList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver carpetas de origen",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "description": "Añade una carpeta de la ubicación de origen (``owner``); no puede estar dentro de otra ni contenerla.",
+        "operationId": "add_scanned_folder_api_v1_projects__project_id__scanned_folders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScannedFolderCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannedFolderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida (absoluta, UNC, con «..» o «\\»)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "409": {
+            "description": "Ya guardada, solapada con salidas o con ejecuciones en marcha"
+          },
+          "422": {
+            "description": "Anidada con otra carpeta (nested_folders)"
           },
           "503": {
             "description": "Ubicación no disponible"
           }
         },
-        "summary": "Lanzar ejecución",
+        "summary": "Añadir carpeta de origen",
         "tags": [
           "projects"
         ]
@@ -4025,7 +4579,8 @@
                     "noop",
                     "history_clear",
                     "project_move",
-                    "project_delete"
+                    "project_delete",
+                    "scan"
                   ],
                   "type": "string"
                 },
@@ -4327,6 +4882,78 @@
           }
         },
         "summary": "Progreso en vivo (SSE)",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/scan-errors": {
+      "get": {
+        "description": "Documentos que no se pudieron convertir en este run (vacío si no es un escaneo).",
+        "operationId": "list_scan_errors_api_v1_runs__run_id__scan_errors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanErrorPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ejecución no encontrada (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Errores de un escaneo",
         "tags": [
           "runs"
         ]

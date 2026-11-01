@@ -186,6 +186,7 @@ describe('SettingsPage', () => {
           capabilities: null,
           queues: ['cpu'],
           doc_organize_version: '0.10.0',
+          scan_options: { use_gpu: false, include_audio_video: false, use_picture_description: false },
         },
       },
       'GET /api/v1/admin/workers': { body: { items: [] } },
@@ -223,7 +224,11 @@ describe('SettingsPage', () => {
             ffmpeg_installed: true,
             av_ready: false,
             libreoffice_installed: false,
+            models_ready: true,
+            picture_description_ready: false,
+            gpu_ready: false,
           },
+          scan_options: { use_gpu: false, include_audio_video: false, use_picture_description: false },
         },
       },
       'GET /api/v1/admin/workers': {
@@ -246,7 +251,7 @@ describe('SettingsPage', () => {
 
     renderRoute('/admin/settings');
 
-    const gpu = await screen.findByText('OCR con GPU');
+    const gpu = await screen.findByText('OCR con GPU (EasyOCR)');
     expect(within(gpu.parentElement as HTMLElement).getByText('No')).toBeInTheDocument();
     const ffmpeg = screen.getByText('ffmpeg');
     expect(within(ffmpeg.parentElement as HTMLElement).getByText('Sí')).toBeInTheDocument();

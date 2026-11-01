@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # doc_organize_web — imagen única para API (target "runtime") y worker (mismo target, otro comando).
 # Build:  docker compose build            (o docker build -f docker/Dockerfile .)
-# Variantes previstas (Fase 4, D6): runtime-gpu, WITH_LIBREOFFICE=true, WITH_AV=true.
+# Variantes (D6): runtime (CPU, por defecto: es la última etapa) y runtime-gpu (CUDA 13.0, driver NVIDIA >= 580;
+# Fase 4). Pendientes: WITH_LIBREOFFICE=true, WITH_AV=true.
 
 ARG PYTHON_IMAGE=python:3.12.14-slim-bookworm
 ARG NODE_IMAGE=node:24.21.0-alpine
@@ -18,7 +19,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---------- 2. Dependencias Python ----------
-# torch y torchvision (vía docling) salen del índice CPU de PyTorch (backend/pyproject.toml).
+# torch y torchvision (vía docling) salen del índice CPU de PyTorch: grupo `cpu`, por defecto (backend/pyproject.toml).
 FROM ${PYTHON_IMAGE} AS backend-build
 COPY --from=uv /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
@@ -37,16 +38,23 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
 ENV PATH=/opt/venv/bin:$PATH
 CMD ["uv", "run", "--frozen", "pytest"]
 
-# ---------- 3. Runtime (CPU) ----------
-# libmagic1: python-magic (doc_organize). libgl1 y libglib2.0-0: OpenCV, que llega con RapidOCR.
-FROM ${PYTHON_IMAGE} AS runtime
+# ---------- 2c. Dependencias de la variante GPU ----------
+# Grupo `gpu`: torch del índice CUDA 13.0 de PyTorch y doc_organize[ocr-gpu] (EasyOCR). Varios GB: fuera del CI.
+FROM backend-build AS backend-build-gpu
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-group cpu --group gpu
+
+# ---------- 3. Base común de runtime ----------
+# libmagic1: python-magic (doc_organize). libgl1 y libglib2.0-0: OpenCV, que llega con RapidOCR (y EasyOCR en GPU).
+# Modelos sin Internet (ADR-011): el worker no descarga nada (HF_HUB_OFFLINE=1); los modelos van al volumen /models
+# con el servicio models-init (python -m app.integrations.doc_organize.models download), que sí tiene red.
+FROM ${PYTHON_IMAGE} AS runtime-base
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libmagic1 libgl1 libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
  && mkdir -p /data /workspace /models /mnt \
- && chown app:app /data /workspace
+ && chown app:app /data /workspace /models
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -56,10 +64,11 @@ ENV PATH=/opt/venv/bin:$PATH \
     DOW_WORKSPACE_DIR=/workspace \
     DOW_LOCATIONS_ROOT=/mnt \
     DOW_MODELS_DIR=/models \
-    DOW_STATIC_DIR=/app/static
+    DOW_STATIC_DIR=/app/static \
+    HF_HOME=/models/hf \
+    HF_HUB_OFFLINE=1
 
 WORKDIR /app
-COPY --from=backend-build /opt/venv /opt/venv
 COPY --chown=app:app backend/app ./app
 COPY --chown=app:app backend/alembic ./alembic
 COPY --chown=app:app backend/alembic.ini ./alembic.ini
@@ -68,8 +77,17 @@ COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 USER app
 EXPOSE 8080
-VOLUME ["/data", "/workspace"]
+VOLUME ["/data", "/workspace", "/models"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["python", "-c", "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=4); sys.exit(0 if json.load(r)['status']=='ok' else 1)"]
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--no-server-header"]
+
+# ---------- 4. Runtime GPU (worker de la cola gpu) ----------
+# docker build -f docker/Dockerfile --target runtime-gpu -t doc_organize_web:gpu .   (compose: perfil `gpu`)
+FROM runtime-base AS runtime-gpu
+COPY --from=backend-build-gpu /opt/venv /opt/venv
+
+# ---------- 5. Runtime CPU (por defecto: última etapa) ----------
+FROM runtime-base AS runtime
+COPY --from=backend-build /opt/venv /opt/venv

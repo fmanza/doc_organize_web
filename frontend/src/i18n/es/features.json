@@ -232,7 +232,7 @@
     "title": "Capacidades de la instancia",
     "refresh": "Volver a comprobar",
     "pending": "Comprobando… (el worker tarda un minuto la primera vez)",
-    "gpu": "OCR con GPU",
+    "gpu": "OCR con GPU (EasyOCR)",
     "av": "Audio y vídeo (Whisper + ffmpeg)",
     "ffmpeg": "ffmpeg",
     "libreoffice": "LibreOffice (.xls antiguos)",
@@ -242,7 +242,9 @@
     "library": "doc_organize {{version}}",
     "noWorker": "No hay ningún worker en marcha",
     "noWorkerBody": "Las capacidades las publica el worker; se muestran los últimos datos conocidos, si los hay.",
-    "queues": "Colas atendidas: {{queues}}"
+    "queues": "Colas atendidas: {{queues}}",
+    "models": "Modelos de Docling (PDF e imágenes)",
+    "pictureDescription": "Descripción de imágenes (modelo de visión)"
   },
   "workers": {
     "title": "Workers",
@@ -350,8 +352,16 @@
         "outputsHint": "Si no la marcas, las salidas se quedan en el destino.",
         "confirm": "Borrar proyecto"
       },
-      "previewReady": "Vista previa lista: revisa el resultado y escribe el nombre del proyecto."
-    }
+      "previewReady": "Vista previa lista: revisa el resultado y escribe el nombre del proyecto.",
+      "scan_force": {
+        "button": "Forzar reconversión",
+        "title": "Forzar la reconversión de «{{name}}»",
+        "body": "Se vacía la caché y se vuelven a convertir todos los documentos de todas las carpetas. Las salidas de documentos que ya no están en el origen se borran.",
+        "confirm": "Forzar reconversión"
+      }
+    },
+    "scan": "Escanear",
+    "scanView": "Ver escaneo"
   },
   "runs": {
     "title": "Ejecuciones",
@@ -392,7 +402,8 @@
       "noop": "Prueba del motor",
       "history_clear": "Vaciar histórico",
       "project_move": "Mover salidas",
-      "project_delete": "Borrar proyecto"
+      "project_delete": "Borrar proyecto",
+      "scan": "Escaneo"
     },
     "phases": {
       "noop": "Prueba",
@@ -404,7 +415,12 @@
       "delete_source": "Borrando la carpeta anterior",
       "delete_outputs": "Borrando salidas",
       "delete_state": "Borrando caché",
-      "rollback": "Deshaciendo la copia"
+      "rollback": "Deshaciendo la copia",
+      "discovery": "Buscando documentos",
+      "conversion": "Convirtiendo",
+      "ocr": "Aplicando OCR",
+      "done": "Terminando",
+      "preview": "Revisando la caché"
     },
     "fields": {
       "operation": "Operación",
@@ -430,16 +446,131 @@
       "destination_location": "Ubicación de destino",
       "destination_subpath": "Carpeta de destino",
       "delete_outputs": "Borrar salidas",
-      "leftovers": "Elementos que no se pudieron borrar"
+      "leftovers": "Elementos que no se pudieron borrar",
+      "folders": "Carpetas",
+      "force": "Reconversión forzada",
+      "scanned": "Documentos encontrados",
+      "new": "Nuevos",
+      "modified": "Modificados",
+      "unchanged": "Sin cambios",
+      "converted": "Convertidos",
+      "conversion_errors": "Errores de conversión",
+      "ocr_required": "Necesitaban OCR",
+      "ocr_processed": "Con OCR aplicado",
+      "error_retries": "Reintentos de errores anteriores",
+      "error_retries_capped": "Sin reintentar (demasiados fallos)",
+      "errors": "Documentos con errores",
+      "warnings": "Avisos",
+      "duration_seconds": "Duración de doc_organize",
+      "discovery_duration_seconds": "Tiempo buscando documentos",
+      "total_conversion_seconds": "Tiempo convirtiendo",
+      "cached": "Documentos en la caché",
+      "orphaned": "Salidas que se borrarán (el documento ya no está)"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
       "orphaned": "El worker dejó de responder.",
-      "timeout": "Superó el tiempo máximo.",
+      "timeout": "Superó el tiempo máximo; se guardó lo hecho hasta parar.",
       "crashed": "La operación terminó de forma inesperada.",
       "interrupted": "El worker se detuvo.",
       "spawn_failed": "No se pudo iniciar la operación.",
-      "folder_replaced": "La carpeta de salidas ya no es la registrada; no se ha tocado."
+      "folder_replaced": "La carpeta de salidas ya no es la registrada; no se ha tocado.",
+      "option_unavailable": "El worker no puede atender alguna de las opciones del escaneo.",
+      "folder_not_saved": "Alguna carpeta ya no es una carpeta de origen del proyecto.",
+      "folder_missing": "La carpeta ya no existe en el origen.",
+      "scan_failed": "doc_organize no pudo completar el escaneo.",
+      "location_unavailable": "La ubicación no está disponible.",
+      "location_read_only": "La ubicación de destino es de solo lectura.",
+      "project_missing": "El proyecto ya no existe."
+    },
+    "scanErrorsLink": "Ver los {{count}} documentos con errores"
+  },
+  "scan": {
+    "title": "Escanear «{{name}}»",
+    "intro": "El escaneo busca los documentos de las carpetas de origen y convierte a Markdown y JSON los nuevos o modificados. Es incremental: lo que no ha cambiado no se vuelve a convertir. Sigue en marcha aunque cierres la pestaña.",
+    "readOnly": "Puedes ver las carpetas y el historial; para escanear hace falta el rol de editor.",
+    "busy": "Hay una ejecución en marcha en el proyecto: espera a que termine.",
+    "errorsLink": "Errores del último escaneo",
+    "help": "Ayuda sobre «{{option}}»",
+    "optionsTitle": "Opciones",
+    "launchAll": "Escanear todas las carpetas",
+    "launchSome_one": "Escanear {{count}} carpeta",
+    "launchSome_other": "Escanear {{count}} carpetas",
+    "folders": {
+      "title": "Carpetas de origen en «{{location}}»",
+      "scan": "Escanear",
+      "folder": "Carpeta",
+      "lastScan": "Último escaneo",
+      "never": "Nunca",
+      "used": "escaneada",
+      "missing": "no existe",
+      "include": "Incluir {{folder}} en el escaneo",
+      "add": "Añadir carpeta",
+      "addTitle": "Añadir carpeta de origen",
+      "addHint": "Elige una carpeta de la ubicación de origen. No puede estar dentro de otra carpeta del proyecto ni contenerla: cada documento tiene que convertirse siempre a la misma ruta.",
+      "browse": "Carpetas de «{{location}}»",
+      "selected": "Seleccionada:",
+      "remove": "Quitar",
+      "removeTitle": "Quitar la carpeta {{folder}}",
+      "removeBody": "La carpeta deja de escanearse en este proyecto. No se borra ningún fichero.",
+      "usedTitle": "Esta carpeta ya se escaneó",
+      "usedBody": "Sus salidas siguen en el destino. Si quieres borrarlas, usa «Forzar reconversión» (borra las salidas de lo que ya no está en las carpetas) o «Vaciar histórico».",
+      "removeLabel": "Quitar {{folder}}"
+    },
+    "options": {
+      "use_ocr": {
+        "label": "OCR (reconocer texto en imágenes y PDF escaneados)",
+        "help": "Extrae el texto de páginas que son imágenes. Sin OCR, un PDF escaneado sale vacío.",
+        "example": "Ejemplo: una factura escaneada en PDF o una foto de un contrato.",
+        "unavailable": ""
+      },
+      "use_gpu": {
+        "label": "Usar GPU para el OCR",
+        "help": "El OCR usa EasyOCR en la GPU, mucho más rápido con miles de páginas escaneadas. El escaneo va a la cola gpu.",
+        "example": "Ejemplo: un archivo histórico de 50 000 páginas escaneadas.",
+        "unavailable": "No hay ningún worker con GPU y los modelos de EasyOCR."
+      },
+      "include_audio_video": {
+        "label": "Incluir audio y vídeo",
+        "help": "Transcribe grabaciones con Whisper. Es lento: úsalo solo si hay grabaciones que interesen.",
+        "example": "Ejemplo: actas de reuniones grabadas en .mp3 o .mp4.",
+        "unavailable": "La instancia no tiene Whisper y ffmpeg."
+      },
+      "extract_images": {
+        "label": "Extraer imágenes",
+        "help": "Guarda las imágenes de cada documento junto a su Markdown (carpeta img/).",
+        "example": "Ejemplo: planos o gráficos que quieres consultar aparte.",
+        "unavailable": ""
+      },
+      "use_picture_description": {
+        "label": "Describir imágenes",
+        "help": "Un modelo de visión añade al Markdown una descripción de cada imagen de PDF e imágenes sueltas. Es lento.",
+        "example": "Ejemplo: fotografías de obra sin texto que quieres poder buscar.",
+        "unavailable": "La instancia no tiene el modelo de visión descargado."
+      }
+    },
+    "force": {
+      "title": "Forzar reconversión",
+      "intro": "Vacía la caché y vuelve a convertir todos los documentos de todas las carpetas con las opciones elegidas arriba. Borra las salidas de documentos que ya no están en el origen. Primero verás una vista previa."
+    },
+    "capabilitiesError": "No se pudieron comprobar las capacidades de la instancia: las opciones que dependen de ellas quedan desactivadas.",
+    "capabilitiesLoading": "Comprobando qué opciones admite la instancia…"
+  },
+  "scanErrors": {
+    "title": "Documentos con errores",
+    "backToScan": "← Escaneo",
+    "backToRun": "← Ejecución",
+    "ofRun": "Escaneo terminado el {{date}}.",
+    "openRun": "Ver la ejecución",
+    "noScan": "Aún no se ha escaneado este proyecto.",
+    "empty": "Todos los documentos se convirtieron sin errores.",
+    "total_one": "{{formatted}} documento no se pudo convertir.",
+    "total_other": "{{formatted}} documentos no se pudieron convertir.",
+    "capped": "no se reintenta",
+    "fields": {
+      "path": "Documento",
+      "message": "Error",
+      "retries": "Fallos seguidos"
     }
   }
 }

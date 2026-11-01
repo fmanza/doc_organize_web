@@ -23,9 +23,10 @@ coincidía con la versión del paquete (G14).
 3. **Extras**: `ai` y `context`. El extra `site` (mkdocs) existe desde 0.10.0 y `export` llegará con 0.11.0 (L-7);
    se añaden en sus fases;
    RapidOCR ya viene en sus dependencias base (`docling[rapidocr]`).
-4. **torch CPU**: docling exige `torch` y `torchvision`; en Linux los de PyPI incluyen CUDA (varios GB). Se resuelven
-   desde el índice CPU de PyTorch (`[[tool.uv.index]] pytorch-cpu`, `explicit = true`). La variante GPU (Fase 4)
-   tendrá su propia resolución.
+4. **torch CPU y GPU**: docling exige `torch` y `torchvision`; en Linux los de PyPI incluyen CUDA (varios GB). Desde
+   la Fase 4 son dos grupos de dependencias incompatibles (`[tool.uv] conflicts`) en el mismo `uv.lock`: `cpu` (por
+   defecto, `default-groups`; índice `pytorch-cpu`) y `gpu` (índice `pytorch-cu130` y `doc_organize[ocr-gpu]` con
+   EasyOCR), que instala la etapa `runtime-gpu` del Dockerfile con `uv sync --no-group cpu --group gpu`.
 5. **Versión de la librería** leída de los metadatos (`importlib.metadata`), no de `doc_organize.__version__` (G1) y
    sin importar Docling.
 6. **Actualizar doc_organize**: comprobar que la release tiene el wheel, cambiar la versión en `dependencies` y la URL

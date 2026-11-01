@@ -10,7 +10,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 1 | Identidad y multiusuario ✅ (2026-10-31) | 0.2.0 | — |
 | 2 | Ubicaciones locales/red y ajustes ✅ (2026-10-31) | 0.3.0 | — |
 | 3 | Proyectos y motor de ejecuciones ✅ (2026-11-01) | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
-| 4 | Escaneo y conversión | 0.5.0 | 0.10.0 (L-2, L-6b) |
+| 4 | Escaneo y conversión ✅ (2026-11-01) | 0.5.0 | 0.10.0 (L-2, L-6b) |
 | 5 | Caché, resultados y descargas | 0.6.0 | 0.11.0 (L-7) |
 | 6 | Duplicados | 0.7.0 | 0.10.0 (L-6) |
 | 7 | Contexto y taxonomías | 0.8.0 | 0.11.0 (L-8) |
@@ -107,6 +107,16 @@ aunque cierre la pestaña, la cancelo y veo el historial **agrupado por ejecuci�
   miembros, historial de ejecuciones, detalle con progreso en vivo (`aria-live`) y cancelación.
 
 ## Fase 4 — Escaneo y conversión
+
+> **Cerrada el 2026-11-01 (0.5.0)** con doc_organize 0.10.0. Sesión: `.ai/sessions/2026-11-01-fase4/`. Requisito de
+> entrada cumplido con una excepción de seguridad por paquete a `exclude-newer` (docling/docling-slim 2.142.0,
+> docling-core 2.104.0, docling-parse 7.22.4, docling-ibm-models 4.0.4) y Pillow 13.0.0; conversión real probada.
+> Decisiones del mantenedor: las carpetas guardadas son las carpetas de origen del proyecto, sin anidar; «forzar»
+> exige propietario, todas las carpetas, vista previa y confirmación; quitar una carpeta ya escaneada se permite con
+> aviso; modelos en el volumen `/models` con `models-init` (ADR-011). Mejora opcional incluida: variante GPU
+> (grupos `cpu`/`gpu` en el lock, imagen `runtime-gpu`, `worker-gpu`), **pendiente de probar con una GPU real**.
+> Huecos nuevos: G16 (caché solo al final), G17 (carpeta de modelos), G18 (salidas sin el nombre de la carpeta: cada
+> carpeta de origen es un ámbito propio, decisión del mantenedor) y G19 (listado fallido = carpeta vacía).
 
 > **Requisito de entrada (seguridad)**: Pillow ≥ 13.0.0, que corrige 41 alertas (5 críticas) en la lectura de JPEG,
 > TIFF, FlashPix y PDF. Exige docling-slim ≥ 2.142.0, docling-core ≥ 2.104.0, docling-parse ≥ 7.22.4 y

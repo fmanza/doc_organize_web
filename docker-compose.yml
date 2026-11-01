@@ -5,6 +5,8 @@
 # `web` sirve la API y la SPA; `worker` ejecuta las operaciones en cola (ADR-002). Las ubicaciones (carpetas locales o
 # montajes SMB/NFS del host) se montan bajo /mnt **en los dos servicios**, con las mismas rutas
 # (docs/guides/despliegue.md).
+# Modelos de Docling (ADR-011), una vez y al actualizar:  docker compose --profile setup run --rm models-init
+# Worker con GPU (cola gpu, driver NVIDIA >= 580):       docker compose --profile gpu up -d --build
 
 x-app: &app
   image: doc_organize_web:${DOW_TAG:-dev}
@@ -16,6 +18,7 @@ x-app: &app
   volumes:
     - data:/data
     - workspace:/workspace
+    - models:/models:ro
   secrets:
     - dow_app_secret_key
     - dow_fernet_keys
@@ -53,9 +56,62 @@ services:
       web:
         condition: service_healthy
 
+  worker-gpu:
+    <<: *app
+    image: doc_organize_web-gpu:${DOW_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: runtime-gpu
+    profiles: ["gpu"]
+    command: ["python", "-m", "app.jobs.worker"]
+    environment:
+      DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
+      DOW_WORKER_QUEUES: gpu
+      DOW_WORKER_CONCURRENCY: "1"
+    stop_grace_period: 30s
+    mem_limit: ${DOW_WORKER_GPU_MEM_LIMIT:-8g}
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # Descarga los modelos de Docling al volumen `models` (con red); el worker los usa sin Internet (ADR-011).
+  # Opcionales: añade `--picture-description` (describir imágenes) o `--easyocr` (OCR con GPU) al comando.
+  # Sin secretos ni `config.db` (no pasa por el entrypoint de migraciones): solo red y el volumen de modelos.
+  models-init:
+    image: doc_organize_web:${DOW_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    profiles: ["setup"]
+    entrypoint: ["python", "-m", "app.integrations.doc_organize.models"]
+    command: ["download"]
+    environment:
+      HF_HUB_OFFLINE: "0"
+    volumes:
+      - models:/models
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
 volumes:
   data:
   workspace:
+  models:
 
 secrets:
   dow_app_secret_key:

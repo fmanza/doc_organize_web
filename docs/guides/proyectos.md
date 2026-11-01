@@ -15,8 +15,9 @@ en su propio disco.
 **Proyectos → Nuevo proyecto** (cualquier usuario; quien lo crea queda como **propietario**):
 
 1. Nombre y, si quieres, una descripción.
-2. **Ubicación de origen** y sus carpetas: navega y pulsa «Elegir esta carpeta» en cada una (hasta 20). Si eliges una
-   carpeta y otra que está dentro de ella, se queda solo la de fuera.
+2. **Ubicación de origen** y sus carpetas: navega y pulsa «Elegir esta carpeta» en cada una (hasta 20). Una carpeta no
+   puede estar dentro de otra de la lista: cada documento se convierte a una ruta que depende de su carpeta
+   ([Escaneo](escaneo.md)).
 3. **Ubicación de destino** y la carpeta de salidas, de una de estas formas:
     - **Crear carpeta nueva**: elige dónde y escribe el nombre. No puede existir ya.
     - **Usar una carpeta vacía**: tiene que estar vacía.
@@ -29,9 +30,9 @@ la de otro proyecto.
 
 | Rol | Puede |
 |---|---|
-| Lector | Ver el proyecto, sus miembros y sus ejecuciones, y descargar sus ficheros |
-| Editor | Lo anterior y lanzar y cancelar sus ejecuciones |
-| Propietario | Todo: editar el proyecto, gestionar miembros, cancelar cualquier ejecución, mover, vaciar y borrar |
+| Lector | Ver el proyecto, sus miembros, sus ejecuciones y los errores de escaneo, y descargar sus ficheros |
+| Editor | Lo anterior, escanear y cancelar sus ejecuciones |
+| Propietario | Todo: editar el proyecto y sus carpetas de origen, gestionar miembros, cancelar cualquier ejecución, forzar la reconversión, mover, vaciar y borrar |
 
 Los administradores ven todos los proyectos y actúan como propietarios. Un proyecto del que no eres miembro no aparece
 y su enlace responde «Proyecto no encontrado».
@@ -42,7 +43,7 @@ queda al menos un propietario.
 ## Editar
 
 «Editar» cambia el nombre y la descripción. **Cambiar el nombre no renombra la carpeta de salidas.** Las carpetas de
-origen se pueden cambiar mientras no haya una ejecución en marcha.
+origen se añaden y se quitan desde la pantalla de **Escanear**, sin ejecuciones en marcha.
 
 ## Mover, vaciar y borrar (zona de peligro)
 
@@ -62,5 +63,6 @@ Todas quedan en la auditoría con quién, cuándo y cuántos ficheros.
 
 ## Probar el motor
 
-Mientras no llegue el escaneo (Fase 4), «Probar el motor» lanza una ejecución de prueba (cinco pasos de un segundo)
-que no toca los documentos: sirve para comprobar que el worker está en marcha y ver el progreso en vivo.
+«Probar el motor» (solo administradores) lanza una ejecución de prueba (cinco pasos de un segundo) que no toca los
+documentos: sirve para comprobar que el worker está en marcha y ver el progreso en vivo. Para convertir documentos,
+**Escanear** ([Escaneo](escaneo.md)).

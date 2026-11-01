@@ -13,6 +13,8 @@ docker compose up -d --build
 curl http://127.0.0.1:8080/api/health
 # primer administrador (no hay credenciales por defecto); la contraseña se pide por el terminal:
 docker compose exec web python -m app.cli create-admin --username <usuario>
+# modelos de Docling para PDF e imágenes (necesita red una vez; el worker trabaja sin Internet, ADR-011):
+docker compose --profile setup run --rm models-init
 ```
 
 Después, entra en `http://127.0.0.1:8080` con ese usuario. Gestión de usuarios y sesiones:
@@ -26,7 +28,9 @@ con `status: degraded`. El `HEALTHCHECK` de la imagen usa el mismo endpoint.
 | Servicio | Proceso | Cuándo |
 |---|---|---|
 | `web` | API + SPA en el puerto 8080, publicado solo en `127.0.0.1` | siempre |
-| `worker` | `python -m app.jobs.worker`: ejecuta las operaciones en cola, un subproceso por operación | siempre (desde la Fase 3); arranca cuando `web` está sano |
+| `worker` | `python -m app.jobs.worker`: ejecuta las operaciones en cola (`cpu`), un subproceso por operación | siempre (desde la Fase 3); arranca cuando `web` está sano |
+| `worker-gpu` | El mismo worker con la imagen `runtime-gpu`, cola `gpu` (escaneos con «Usar GPU») | perfil `gpu` |
+| `models-init` | Descarga los modelos de Docling al volumen `models` y termina | perfil `setup`, a mano |
 
 Ambos usan la misma imagen, con usuario no root (uid 10001), sistema de ficheros de solo lectura, `tmpfs` en `/tmp`,
 sin capacidades y `no-new-privileges`.
@@ -34,7 +38,38 @@ sin capacidades y `no-new-privileges`.
 Sin `worker` la aplicación funciona, pero las ejecuciones se quedan **en cola**. `/api/health` indica su estado en
 `worker` (`ok`, `stale` si dejó de latir, `none` si no hay ninguno) sin cambiar el `status` general, y
 **Administración → Ajustes** lista los workers con su último latido. El worker publica también la ficha de
-capacidades (GPU, audio/vídeo, LibreOffice) y sondea las ubicaciones cada `location_probe_interval_minutes`.
+capacidades (GPU, audio/vídeo, LibreOffice, modelos) y sondea las ubicaciones cada
+`location_probe_interval_minutes`.
+
+### Modelos de Docling
+
+Los PDF y las imágenes necesitan modelos (maquetación, tablas, OCR). El worker corre con `HF_HUB_OFFLINE=1` y los lee
+del volumen `models` (solo lectura); los descarga `models-init`, que sí tiene red
+([ADR-011](../adr/ADR-011-modelos-sin-internet.md)):
+
+```bash
+docker compose --profile setup run --rm models-init      # base (~1 GB)
+docker compose --profile setup run --rm models-init \
+  python -m app.integrations.doc_organize.models download --picture-description --easyocr   # + visión y EasyOCR
+docker compose restart worker                            # vuelve a publicar las capacidades
+```
+
+Repítelo al actualizar la aplicación si cambia la versión de Docling (CHANGELOG). Sin modelos, el resto de formatos se
+convierte y los PDF e imágenes quedan como errores del escaneo.
+
+### Worker con GPU
+
+Para escanear con «Usar GPU» hace falta un worker de la cola `gpu` en una máquina con GPU NVIDIA, **driver ≥ 580**
+(CUDA 13.0) y [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/):
+
+```bash
+docker compose --profile setup run --rm models-init \
+  python -m app.integrations.doc_organize.models download --easyocr   # modelos de EasyOCR
+docker compose --profile gpu up -d --build                             # construye runtime-gpu (varios GB)
+```
+
+La imagen `runtime-gpu` lleva torch con CUDA y EasyOCR; el CI no la construye por tamaño. Con una sola GPU, deja
+`DOW_WORKER_CONCURRENCY=1` en `worker-gpu` (valor por defecto) para no agotar su memoria.
 
 Las ubicaciones se montan **igual en `web` y en `worker`** (mismas rutas bajo `/mnt`): la API valida y explora y el
 worker lee y escribe. Al detener el worker (`docker compose stop worker`) las operaciones en marcha se interrumpen y
@@ -58,6 +93,7 @@ Sin ambos, la aplicación no arranca en producción. `secrets/` nunca se version
 |---|---|---|
 | `data` | `/data` | `config.db` y `projects/<id>/` (caché e historial de doc_organize de cada proyecto). Siempre en disco local, nunca NFS/CIFS |
 | `workspace` | `/workspace` | Una carpeta por ejecución (`runs/<id>/`: `run.json`, `logs/run.log`, ficheros resultado); se purga según `run_retention_days` |
+| `models` | `/models` | Modelos de Docling (ADR-011); solo lectura en `web` y en los workers, escritura en `models-init` (que no recibe secretos ni `config.db`) |
 
 Las ubicaciones de documentos (carpetas locales o montajes SMB/NFS del host) se pasan al contenedor bajo `/mnt` y se
 registran en la aplicación: [Montar carpetas de red](carpetas_de_red.md) y [Ubicaciones](ubicaciones.md).
@@ -72,6 +108,7 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_PORT` | `8080` | Puerto publicado en `127.0.0.1` |
 | `DOW_LOG_LEVEL` | `INFO` | Nivel de log (JSON por stdout) |
 | `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento) |
+| `DOW_WORKER_GPU_MEM_LIMIT` | `8g` | Límite de memoria de `worker-gpu` |
 
 Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`). Los administradores pueden
 cambiarlas también desde **Administración → Ajustes** sin reiniciar; lo guardado allí tiene prioridad
@@ -95,11 +132,12 @@ Variables del worker (en `environment:` del servicio `worker`; no son administra
 
 | Variable | Por defecto | Uso |
 |---|---|---|
-| `DOW_WORKER_QUEUES` | `cpu` | Colas que atiende (`cpu`, `gpu`; la de GPU llega con el escaneo, Fase 4) |
+| `DOW_WORKER_QUEUES` | `cpu` | Colas que atiende (`cpu`, `gpu`; `worker-gpu` atiende `gpu`) |
 | `DOW_WORKER_CONCURRENCY` | `1` | Operaciones simultáneas (Docling consume mucha memoria) |
 | `DOW_WORKER_HEARTBEAT_SECONDS` | `10` | Latido; un run sin latido durante 3 intervalos se da por huérfano |
-| `DOW_JOB_TIMEOUT_SECONDS` | `21600` | Duración máxima de una operación (6 h) |
+| `DOW_JOB_TIMEOUT_SECONDS` | `21600` | Duración máxima de una operación (6 h); al vencer se pide una parada ordenada y lo hecho se guarda |
 | `DOW_CANCEL_GRACE_SECONDS` | `30` | Plazo para atender una cancelación antes de terminar el subproceso |
+| `DOW_TIMEOUT_GRACE_SECONDS` | `600` | Plazo de la parada ordenada al vencer el tiempo máximo (un PDF grande con OCR tarda minutos; si no para, se pierde la caché de la carpeta en curso) |
 
 ## Detrás de un proxy TLS
 

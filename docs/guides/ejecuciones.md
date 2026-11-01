@@ -28,8 +28,10 @@ estado, cuándo se lanzó, cuánto duró y quién la lanzó.
 - **Progreso**: fase, elementos procesados (de un total, si se conoce) y elemento actual. Se actualiza solo; los
   lectores de pantalla anuncian los cambios de fase y cada 10 %.
 - **Avisos**: mensajes de la operación (p. ej. «Cancelación solicitada»).
-- **Resultado**: recuentos al terminar (ficheros, tamaños…).
-- **Ficheros**: lo que deja la ejecución (resultados y su registro, `run.log`) para descargar. Se borran pasados
+- **Resultado**: recuentos al terminar (ficheros, tamaños, documentos convertidos…). En un escaneo, enlace a los
+  documentos con errores ([Escaneo](escaneo.md)).
+- **Ficheros**: lo que deja la ejecución (resultados y su registro, `run.log`, sin rutas internas del servidor ni
+  trazas de error, con un máximo de 20 MB) para descargar. Se borran pasados
   `run_retention_days` días (30 por defecto); el historial se conserva.
 
 ## Cancelar
@@ -44,7 +46,8 @@ al momento. Si estaba en marcha, se detiene en el siguiente punto seguro y lo ya
 |---|---|
 | El worker dejó de responder | El worker se cayó con la ejecución en marcha; se marcó al volver a arrancar |
 | El worker se detuvo | Se paró el worker (p. ej. en un despliegue) |
-| Superó el tiempo máximo | Duró más de `DOW_JOB_TIMEOUT_SECONDS` (6 h por defecto) |
+| Superó el tiempo máximo; se guardó lo hecho hasta parar | Duró más de `DOW_JOB_TIMEOUT_SECONDS` (6 h por defecto). Se pidió una parada ordenada: un escaneo conserva lo convertido y el siguiente continúa desde ahí |
+| El worker no puede atender alguna de las opciones del escaneo | El worker que la reclamó no tiene GPU, audio/vídeo o el modelo pedido |
 | La ubicación «…» no está disponible | El origen o el destino no respondía |
 
 Se puede volver a lanzar. Si una ejecución se queda en cola mucho tiempo, comprueba en **Inicio** que el worker está
