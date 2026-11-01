@@ -21,8 +21,8 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | `_semaforo_macros.html.j2`, `_status_banner_macros.html.j2` | — | 2 | Semáforo de estado y ficha de capacidades |✅ 0.3.0 |
 | `project_selector.html.j2` | `/` | 3 | Lista y selector de proyectos |✅ 0.4.0 |
 | `dashboard.html.j2` | `/projects/{name}` | 3 | Dashboard de proyecto |✅ 0.4.0 |
-| `folder_selector.html.j2`, `_example_modal_macros.html.j2` | `/projects/{name}/scan` | 4 | Pantalla de escaneo con ayuda contextual | ⬜ |
-| `scan_errors.html.j2` | `/projects/{name}/scan-errors` | 4 | Errores de escaneo | ⬜ |
+| `folder_selector.html.j2`, `_example_modal_macros.html.j2` | `/projects/{name}/scan` | 4 | Pantalla de escaneo con ayuda contextual |✅ 0.5.0 |
+| `scan_errors.html.j2` | `/projects/{name}/scan-errors` | 4 | Errores de escaneo |✅ 0.5.0 |
 | `duplicates_resolver.html.j2` | `/projects/{name}/duplicates` | 6 | Resolutor de duplicados en dos pasos | ⬜ |
 | `context.html.j2` | `/projects/{name}/context` | 7 | Página de contexto | ⬜ |
 | `taxonomy_templates_admin.html.j2` | `/admin/plantillas-taxonomia` | 7 | Admin de plantillas de taxonomía | ⬜ |
@@ -48,9 +48,9 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `projects.py` | GET | `/api/projects/{name}/impact` | 3 | Vista previa: run con `dry_run` de la operación |✅ 0.4.0 |
 | `projects.py` | POST | `/api/projects/{name}/move` | 3 | Run `project_move` |✅ 0.4.0 |
 | `projects.py` | POST | `/api/projects/{name}/clear-history` | 3 | Run `history_clear` |✅ 0.4.0 |
-| `scan.py` | WEBSOCKET | `/api/projects/{name}/scan` | 4 | Run `scan` + SSE | ⬜ |
-| `scan.py` | GET, POST, DELETE | `/api/projects/{name}/folders/library` | 4 | `/api/v1/projects/{id}/scanned-folders` | ⬜ |
-| `scan.py` | POST | `/api/projects/{name}/folders/validate` | 4 | Validación por el resolvedor de ubicaciones | ⬜ |
+| `scan.py` | WEBSOCKET | `/api/projects/{name}/scan` | 4 | Run `scan` + SSE |✅ 0.5.0 |
+| `scan.py` | GET, POST, DELETE | `/api/projects/{name}/folders/library` | 4 | `/api/v1/projects/{id}/scanned-folders` |✅ 0.5.0 |
+| `scan.py` | POST | `/api/projects/{name}/folders/validate` | 4 | Validación por el resolvedor de ubicaciones |✅ 0.5.0 |
 | `cache.py` | GET | `/api/projects/{name}/cache` | 5 | `/api/v1/projects/{id}/documents` paginado | ⬜ |
 | `downloads.py` | GET | `/downloads/projects/{name}/export-preview` | 5 | Vista previa de tamaño del ZIP | ⬜ |
 | `downloads.py` | GET | `/downloads/projects/{name}/export.zip` | 5 | Run `export_zip` + artefacto | ⬜ |
@@ -82,6 +82,8 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 |---|---|
 | Escaneo que se cancela al cerrar la pestaña (WebSocket) | Sustituido a propósito: el run sigue en el worker (ADR-008) |
 | Deduplicar dentro del escaneo moviendo en el origen | Sustituido por vista previa + aplicar grupos confirmados (ADR-009, G6) |
+| Quitar de la lista una carpeta ya escaneada (prohibido en la web integrada) | Permitido al propietario con aviso: sus salidas siguen en el destino (decisión de la Fase 4) |
+| Carpetas guardadas libres (cualquier subcarpeta del origen) | Las carpetas guardadas son las carpetas de origen del proyecto, sin anidar: la ruta de cada salida depende de la carpeta escaneada (Fase 4) |
 | Rutas libres desde `Path.home()` en el explorador | Sustituido por ubicaciones registradas por un admin (ADR-007) |
 | Registro de proyectos en `~/.doc_organize/projects.json` | Proyectos en `config.db`, empezando limpio (D4) |
 | Borrar usuarios (`DELETE /api/users/{user_id}`) | Se desactivan: la auditoría conserva quién hizo cada cosa (decisión de la Fase 1) |

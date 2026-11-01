@@ -38,10 +38,16 @@ from app.domain.runs.operations import (
     OPERATIONS,
     ProjectMoveParams,
     RunParams,
+    ScanParams,
     is_write,
+    min_role,
+    needs_preview,
     preview_matches,
+    queue_for,
     stored_params,
 )
+from app.domain.scan.errors import FolderNotSavedError, ForceRequiresAllFoldersError
+from app.domain.scan.options import check_options
 
 #: Vigencia de una vista previa para lanzar la operación real.
 PREVIEW_TTL: Final = timedelta(minutes=15)
@@ -83,7 +89,8 @@ def _check_preview(db: Session, project: Project, params: RunParams) -> None:
         Run.is_write.is_(True),
         Run.status.in_(ACTIVE_RUN_STATUSES) | (Run.created_at > preview.created_at) | (Run.finished_at >= since),
     )
-    if db.scalar(newer.limit(1)) is not None:
+    # Cambiar las carpetas de origen no es un run, pero cambia lo que haría «forzar»: también invalida.
+    if db.scalar(newer.limit(1)) is not None or project.updated_at > preview.created_at:
         raise PreviewRequiredError("El proyecto ha cambiado desde la vista previa: vuelve a lanzarla.")
 
 
@@ -116,6 +123,29 @@ def _validate_move(db: Session, project: Project, params: ProjectMoveParams, set
     return params.model_copy(update={"destination_parent": resolved.relative})
 
 
+def _validate_scan(db: Session, project: Project, params: ScanParams, settings: Settings) -> ScanParams:
+    """Normaliza las carpetas del escaneo (vacío = todas) y comprueba ``force`` y las opciones.
+
+    Raises:
+        FolderNotSavedError: Alguna carpeta no es de origen del proyecto.
+        ForceRequiresAllFoldersError: ``force`` con un subconjunto de carpetas.
+        OptionUnavailableError: Ningún worker de la cola puede con alguna opción.
+    """
+    folders = sorted({normalize_relative(f) for f in params.folders}, key=str.casefold)
+    unknown = [f or "(raíz)" for f in folders if f not in project.source_subpaths]
+    if unknown:
+        raise FolderNotSavedError(f"No son carpetas de origen del proyecto: {', '.join(unknown)}.")
+    if set(folders) == set(project.source_subpaths):
+        folders = []
+    if params.force and folders:
+        raise ForceRequiresAllFoldersError(
+            "«Forzar reconversión» vacía toda la caché: escanea todas las carpetas del proyecto."
+        )
+    params = params.model_copy(update={"folders": folders})
+    check_options(db, settings, params)
+    return params
+
+
 def enqueue(
     db: Session, access: ProjectAccess, params: RunParams, *, settings: Settings, actor: User, ctx: RequestContext
 ) -> Run:
@@ -127,10 +157,11 @@ def enqueue(
         PreviewRequiredError: Operación destructiva sin vista previa vigente o sin el nombre confirmado.
         WriteLockedError: Ya hay una escritura en cola o en marcha en el proyecto.
         InvalidProjectError, ProjectConflictError: Destino de un movimiento no válido.
+        FolderNotSavedError, ForceRequiresAllFoldersError, OptionUnavailableError: Escaneo no válido.
     """
     project = access.project
     spec = OPERATIONS[params.operation]
-    if ROLE_RANK[access.role] < ROLE_RANK[spec.min_role]:
+    if ROLE_RANK[access.role] < ROLE_RANK[min_role(params)]:
         raise ProjectForbiddenError()
     active = select(func.count()).where(Run.created_by == actor.id, Run.status.in_(ACTIVE_RUN_STATUSES))
     if (db.scalar(active) or 0) >= MAX_ACTIVE_RUNS_PER_USER:
@@ -145,13 +176,15 @@ def enqueue(
         raise QuotaExceededError(f"Has llegado a tu cuota de {settings.user_quota_mb} MB en el workspace.")
     if isinstance(params, ProjectMoveParams):
         params = _validate_move(db, project, params, settings)
-    if spec.destructive and is_write(params):
+    if isinstance(params, ScanParams):
+        params = _validate_scan(db, project, params, settings)
+    if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(
         id=str(uuid.uuid4()),
         project_id=project.id,
         operation=params.operation,
-        queue=spec.queue,
+        queue=queue_for(params),
         is_write=is_write(params),
         params=stored_params(params),
         created_by=actor.id,
@@ -249,10 +282,14 @@ def cancel(db: Session, run: Run, *, role: MemberRole | None, actor: User, ctx: 
     claimed = db.execute(
         update(Run)
         .where(Run.id == run.id, Run.status == "queued")
-        .values(status="cancelled", finished_at=now, cancel_requested=True)
+        .values(status="cancelled", finished_at=now, cancel_requested=True, cancel_reason="user")
     )
     if not claimed.rowcount:  # type: ignore[attr-defined]
-        db.execute(update(Run).where(Run.id == run.id, Run.status == "running").values(cancel_requested=True))
+        db.execute(
+            update(Run)
+            .where(Run.id == run.id, Run.status == "running")
+            .values(cancel_requested=True, cancel_reason="user")
+        )
     audit.record(
         db,
         action=AuditAction.RUN_CANCEL,

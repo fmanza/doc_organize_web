@@ -101,6 +101,7 @@ jobs:
           python3 scripts/generate_secrets.py
           mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025 dev-data/e2e/proyectos/2024 dev-data/e2e-out
           echo "documento sintético" > dev-data/e2e/proyectos/2024/factura.txt
+          echo "<html><body><h1>Nota sintética</h1><p>Escaneo E2E.</p></body></html>" > dev-data/e2e/proyectos/2024/nota.html
           chmod 777 dev-data/e2e-out
           DOW_TAG=ci docker compose up -d --no-build
           for i in $(seq 1 45); do

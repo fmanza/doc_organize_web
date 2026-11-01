@@ -1,6 +1,7 @@
 # ADR-002 — Ejecución de jobs: cola propia, colas cpu/gpu y un subproceso por job
 
-- **Estado**: Aceptado (esqueleto del worker en la Fase 0; cola y operaciones implementadas en la Fase 3, 0.4.0)
+- **Estado**: Aceptado (esqueleto del worker en la Fase 0; cola y operaciones implementadas en la Fase 3, 0.4.0;
+  escaneo, cola `gpu` y timeout ordenado en la Fase 4, 0.5.0)
 - **Fecha**: 2026-10-31
 
 ## Contexto
@@ -62,3 +63,24 @@ perfil `worker`.
   ejecute en cada intervalo): sondeo de ubicaciones, purga del workspace por retención y capacidades del contenedor.
 - **Operaciones de la Fase 3**: `noop` (prueba del motor), `history_clear`, `project_move` y `project_delete`, estas
   tres con vista previa obligatoria (regla 7).
+
+## Notas de implementación (Fase 4, 0.5.0)
+
+- **Operación `scan`** (`app/jobs/operations/scan.py`): cada carpeta de origen es un ámbito propio de doc_organize
+  (caché en `/data/projects/<id>/folders/<clave>/`, salidas en `Conversión/<carpeta>/`, G18) y se escanea con su propia
+  llamada (la caché solo se guarda al final de cada llamada, G16); «forzar» también va carpeta a carpeta. Si una
+  carpeta falla, se siguen las demás y el run acaba `failed`/`scan_failed` con el resultado parcial. Escribe en el
+  proyecto (`is_write`).
+- **Cola `gpu`**: un escaneo con «usar GPU» va a la cola `gpu`, que atiende `worker-gpu` (imagen `runtime-gpu`, perfil
+  `gpu` de compose). La API acepta las opciones solo si algún worker vivo de esa cola las confirma en sus capacidades.
+- **Timeout ordenado**: al vencer `DOW_JOB_TIMEOUT_SECONDS` el worker ya no termina el subproceso en el acto: pide la
+  parada (`cancel_requested`, `cancel_reason = timeout`) para que la operación guarde lo hecho (la caché de un
+  escaneo) y espera `DOW_TIMEOUT_GRACE_SECONDS` (10 min: doc_organize solo para entre documentos); si no para, lo
+  termina. Una cancelación previa del usuario conserva su motivo. El run acaba `failed`/`timeout` en los dos
+  casos, con el resultado parcial si lo hay. Una cancelación del usuario lleva `cancel_reason = user`.
+- La cancelación se comprueba también en cada evento de progreso de doc_organize, no solo con el sondeo de 2 s: la
+  parada llega antes del siguiente documento.
+- **`run.log` descargable**: el handler del subproceso solo guarda los registros de `app.*` y los avisos o errores de
+  las librerías, sin rutas del contenedor (`app/core/redact.py`) ni trazas (solo el tipo de excepción), y rota a 20 MB.
+  Los mensajes de error de conversión que se guardan en `scan_errors` pasan por el mismo enmascarado (máx. 10 000 por
+  run).

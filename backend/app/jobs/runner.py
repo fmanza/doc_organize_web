@@ -7,14 +7,17 @@ estado final. Es el único proceso que llega a importar doc_organize (a través 
 from __future__ import annotations
 
 import logging
+import logging.handlers
+import sys
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 
-from app.core.config import get_settings
-from app.core.logging import JsonFormatter, configure_logging
+from app.core.config import Settings, get_settings
+from app.core.logging import configure_logging
+from app.core.redact import PathRedactor, RedactingJsonFormatter, RunLogFilter
 from app.db.models import Project, Run
 from app.db.session import get_engine
 from app.domain.runs.operations import RUN_PARAMS
@@ -25,6 +28,22 @@ from app.jobs.operations import REGISTRY
 from app.workspace import runs as workspace
 
 logger = logging.getLogger(__name__)
+
+TIMEOUT_MESSAGE = "La operación superó el tiempo máximo; se guardó lo hecho hasta parar."
+RUN_LOG_MAX_BYTES = 20 * 1024 * 1024
+
+
+def container_redactor(settings: Settings) -> PathRedactor:
+    """Etiquetas de las carpetas del contenedor para el ``run.log`` descargable."""
+    return PathRedactor(
+        [
+            (str(settings.locations_root), "«ubicaciones»"),
+            (str(settings.data_dir), "«datos»"),
+            (str(settings.workspace_dir), "«workspace»"),
+            (str(settings.models_dir), "«modelos»"),
+            (sys.prefix, "«python»"),
+        ]
+    )
 
 
 def _summary(run: Run, status: str, result: dict[str, Any] | None, error: str | None) -> dict[str, Any]:
@@ -59,8 +78,13 @@ def main(run_id: str) -> None:
         db.expunge(run)
 
     workdir = workspace.ensure(settings, run_id)
-    file_handler = logging.FileHandler(workdir / workspace.LOG_REL, encoding="utf-8")
-    file_handler.setFormatter(JsonFormatter())
+    # `run.log` se descarga (cualquier miembro del proyecto): sin rutas del contenedor ni trazas, solo los registros de
+    # la aplicación y los avisos de las librerías, y con un tamaño máximo.
+    file_handler = logging.handlers.RotatingFileHandler(
+        workdir / workspace.LOG_REL, maxBytes=RUN_LOG_MAX_BYTES, backupCount=1, encoding="utf-8"
+    )
+    file_handler.setFormatter(RedactingJsonFormatter(container_redactor(settings)))
+    file_handler.addFilter(RunLogFilter())
     logging.getLogger().addHandler(file_handler)
     logger.info("Run iniciado", extra={"run_id": run_id, "operation": run.operation})
     workspace.write_run_json(settings, run_id, _summary(run, "running", None, None))
@@ -77,9 +101,14 @@ def main(run_id: str) -> None:
         params = RUN_PARAMS.validate_python(run.params)
         result = REGISTRY[run.operation](ctx, params, project)
         status, code, message = "succeeded", None, None
-    except JobCancelled:
+    except JobCancelled as exc:
+        result = exc.result
         status, code, message = "cancelled", None, None
+        with factory() as db:
+            if db.scalar(select(Run.cancel_reason).where(Run.id == run_id)) == "timeout":
+                status, code, message = "failed", "timeout", TIMEOUT_MESSAGE
     except JobFailed as exc:
+        result = exc.result
         code, message = exc.code, exc.message
         logger.warning("Run fallido", extra={"run_id": run_id, "error_code": exc.code})
     except Exception as exc:  # noqa: BLE001 - cualquier fallo cierra el run; el detalle va al log, no al usuario

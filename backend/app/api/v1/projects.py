@@ -1,4 +1,5 @@
-"""``/api/v1/projects``: proyectos, miembros y lanzamiento de ejecuciones (Fase 3).
+"""``/api/v1/projects``: proyectos, miembros y lanzamiento de ejecuciones (Fase 3); carpetas guardadas y errores de
+escaneo (Fase 4).
 
 Un proyecto ajeno (o borrado) da 404; un miembro con rol insuficiente, 403. Las respuestas nunca llevan rutas del
 contenedor: solo el nombre de las ubicaciones y rutas relativas a ellas.
@@ -26,12 +27,21 @@ from app.api.v1.schemas import (
     ProjectUpdate,
     RunBrief,
     RunOut,
+    ScanErrorOut,
+    ScanErrorPage,
+    ScannedFolderCreate,
+    ScannedFolderList,
+    ScannedFolderOut,
+    ScannedFolderRemoved,
 )
 from app.db.models import ProjectMember, Run
 from app.domain.projects import service
 from app.domain.projects.service import ProjectAccess, ProjectChanges
 from app.domain.runs import service as runs
 from app.domain.runs.operations import RunParams
+from app.domain.scan import folders as scan_folders
+from app.domain.scan import scan_errors
+from app.domain.scan.folders import FolderStatus
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -190,6 +200,108 @@ def remove_member(project_id: int, user_id: int, user: CurrentUser, db: DbSessio
     service.remove_member(db, access.project, user_id=user_id, actor=user, ctx=ctx)
 
 
+# --- carpetas guardadas y errores de escaneo (Fase 4) ---------------------------------------------------------
+
+
+def _folder_out(status: FolderStatus) -> ScannedFolderOut:
+    folder = status.folder
+    return ScannedFolderOut(
+        subpath=folder.subpath,
+        used=folder.used,
+        added_at=folder.added_at,
+        last_scanned_at=folder.last_scanned_at,
+        last_run_id=folder.last_run_id,
+        available=status.available,
+    )
+
+
+@router.get(
+    "/{project_id}/scanned-folders",
+    response_model=ScannedFolderList,
+    summary="Ver carpetas de origen",
+    responses=_ERRORS,
+)
+def list_scanned_folders(project_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep) -> ScannedFolderList:
+    """Carpetas de origen con su estado en los escaneos y si existen ahora en el origen."""
+    access = service.get_access(db, project_id, user)
+    statuses = scan_folders.list_folders(db, access.project, settings)
+    return ScannedFolderList(
+        location=LocationRef.model_validate(access.project.source_location),
+        items=[_folder_out(s) for s in statuses],
+    )
+
+
+@router.post(
+    "/{project_id}/scanned-folders",
+    response_model=ScannedFolderOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir carpeta de origen",
+    responses={
+        **_ERRORS,
+        **FS_ERRORS,
+        409: {"description": "Ya guardada, solapada con salidas o con ejecuciones en marcha"},
+        422: {"description": "Anidada con otra carpeta (nested_folders)"},
+    },
+)
+def add_scanned_folder(
+    project_id: int, body: ScannedFolderCreate, user: CurrentUser, db: DbSession, settings: SettingsDep, ctx: Context
+) -> ScannedFolderOut:
+    """Añade una carpeta de la ubicación de origen (``owner``); no puede estar dentro de otra ni contenerla."""
+    access = service.get_access(db, project_id, user, min_role="owner")
+    folder = scan_folders.add_folder(db, access, body.subpath, settings=settings, actor=user, ctx=ctx)
+    return ScannedFolderOut(
+        subpath=folder.subpath,
+        used=folder.used,
+        added_at=folder.added_at,
+        last_scanned_at=folder.last_scanned_at,
+        last_run_id=folder.last_run_id,
+        available=True,
+    )
+
+
+@router.delete(
+    "/{project_id}/scanned-folders",
+    response_model=ScannedFolderRemoved,
+    summary="Quitar carpeta de origen",
+    responses={**_ERRORS, 409: {"description": "Única carpeta (last_folder) o ejecuciones en marcha"}},
+)
+def remove_scanned_folder(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    ctx: Context,
+    subpath: Annotated[str, Query(max_length=4096, description="Carpeta relativa a la ubicación de origen")],
+) -> ScannedFolderRemoved:
+    """Quita una carpeta de origen (``owner``). No borra ficheros: si ya se escaneó, sus salidas siguen en el destino."""
+    access = service.get_access(db, project_id, user, min_role="owner")
+    used = scan_folders.remove_folder(db, access, subpath, actor=user, ctx=ctx)
+    return ScannedFolderRemoved(subpath=subpath, used=used)
+
+
+@router.get(
+    "/{project_id}/scan-errors",
+    response_model=ScanErrorPage,
+    summary="Errores del último escaneo",
+    responses=_ERRORS,
+)
+def list_project_scan_errors(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ScanErrorPage:
+    """Documentos que no se pudieron convertir en el último escaneo terminado del proyecto."""
+    service.get_access(db, project_id, user)
+    run = scan_errors.last_scan(db, project_id)
+    if run is None:
+        return ScanErrorPage(run=None, items=[], total=0)
+    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset)
+    return ScanErrorPage(
+        run=RunBrief.model_validate(run), items=[ScanErrorOut.model_validate(r) for r in rows], total=total
+    )
+
+
 # --- ejecuciones -------------------------------------------------------------------------------------------------
 
 
@@ -202,6 +314,7 @@ def remove_member(project_id: int, user_id: int, user: CurrentUser, db: DbSessio
         **_ERRORS,
         400: {"description": "Destino de un movimiento no válido"},
         409: {"description": "Escritura en curso (write_locked), vista previa necesaria (preview_required) o cuota"},
+        422: {"description": "Escaneo no válido (option_unavailable, folder_not_saved, force_requires_all_folders)"},
         503: {"description": "Ubicación no disponible"},
     },
 )

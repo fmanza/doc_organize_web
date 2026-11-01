@@ -5,6 +5,62 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-01
+
+Fase 4 — escaneo y conversión. Con doc_organize **0.10.0**.
+
+### Added
+
+- **backend**: operación `scan` ([guía](docs/guides/escaneo.md)): `ScanCommand.run_streaming` con `ScanOptions`,
+  `on_progress` y `CancelToken` en la capa anticorrupción; incremental (solo nuevos o modificados); cada carpeta de
+  origen es un ámbito propio (su caché y sus salidas en `Conversión/<carpeta>/`) para que documentos con el mismo
+  nombre en carpetas distintas no se pisen (G18) y para no perder la caché de las terminadas (G16); si una carpeta
+  falla se siguen las demás; progreso por fases (`discovery`, `conversion`,
+  `ocr`) con el documento actual y rutas relativas a la ubicación; recuentos y duraciones (`ScanSummary`,
+  `ScanRunReport`) en el resultado del run y errores (`ScanErrorReport`) en la tabla `scan_errors`, sin rutas del
+  contenedor.
+- **backend**: «forzar reconversión» (`force`): solo propietarios, todas las carpetas, vista previa (`dry_run`: caché,
+  documentos que ya no existen y tamaño de las salidas; caduca si cambian las carpetas) y confirmación con el nombre;
+  carpeta a carpeta; se niega si una carpeta no se puede leer o su caché tiene documentos de fuera (G19); auditado.
+- **backend**: opciones del escaneo validadas contra las capacidades publicadas por los workers vivos de su cola
+  (`422 option_unavailable`); «usar GPU» va a la cola `gpu`; `GET /api/v1/instance/capabilities` añade
+  `scan_options` y las capacidades `models_ready`, `picture_description_ready` y `gpu_ready`.
+- **backend**: carpetas guardadas (`scanned_folders`, migración `0005_scan`): `GET/POST/DELETE
+  /api/v1/projects/{id}/scanned-folders` con `used`, último escaneo y disponibilidad; errores paginados en
+  `GET /api/v1/runs/{id}/scan-errors` y `GET /api/v1/projects/{id}/scan-errors` (último escaneo).
+- **backend**: modelos de Docling sin Internet ([ADR-011](docs/adr/ADR-011-modelos-sin-internet.md)):
+  `python -m app.integrations.doc_organize.models download` escribe un manifiesto en `/models/docling` y el job usa
+  `DOCLING_ARTIFACTS_PATH`.
+- **docker**: variante GPU: grupos de dependencias `cpu` (por defecto) y `gpu` (torch CUDA 13.0 + EasyOCR) en el
+  mismo `uv.lock`, etapa `runtime-gpu`, servicio `worker-gpu` (perfil `gpu`, driver NVIDIA ≥ 580); volumen `models` y
+  servicio `models-init` (perfil `setup`). La imagen de producción corre con `HF_HUB_OFFLINE=1`.
+- **frontend**: pantalla «Escanear» (carpetas con casilla, estado y último escaneo; añadir y quitar; opciones con ayuda
+  contextual y desactivadas según la instancia; forzar reconversión en zona roja), página de errores paginada,
+  resultado del escaneo y enlace a sus errores en el detalle del run; capacidades de modelos en Ajustes.
+- **ci**: E2E de escaneo real con el worker (HTML y TXT sintéticos): progreso, resultado y segundo escaneo con 0
+  conversiones. Test de integración (fuera del CI) con conversión real de un PDF generado con Pillow 13, incremental y
+  cancelación entre documentos que conserva la caché.
+- **docs**: guía [Escaneo y conversión](docs/guides/escaneo.md), ADR-011, notas de la Fase 4 en ADR-002 y ADR-006,
+  despliegue con modelos y worker con GPU.
+
+### Changed
+
+- **backend**: al vencer `DOW_JOB_TIMEOUT_SECONDS` el worker pide una **parada ordenada** (`runs.cancel_reason`) y
+  espera `DOW_TIMEOUT_GRACE_SECONDS` (10 min) antes de terminar el subproceso: la operación guarda lo hecho y el run
+  acaba `failed`/`timeout` con el resultado parcial.
+- **backend**: las carpetas de origen de un proyecto ya no pueden anidarse (`422 nested_folders`) en vez de quedarse
+  con la de fuera: la ruta de cada salida depende de la carpeta escaneada.
+- **frontend**: «Probar el motor» pasa a ser solo para administradores; el proyecto ofrece «Escanear».
+
+### Security
+
+- **backend**: el `run.log` descargable ya no lleva rutas del contenedor ni trazas de las librerías (solo registros de
+  la aplicación y avisos, enmascarados, máx. 20 MB); los mensajes de `scan_errors` se enmascaran igual y se guardan
+  como mucho 10 000 por run. `models-init` corre sin secretos ni `config.db`.
+- **backend**: Pillow **13.0.0** (41 alertas, 5 críticas, al leer JPEG, TIFF, FlashPix y PDF) como mínimo explícito,
+  con docling/docling-slim 2.142.0, docling-core 2.104.0, docling-parse 7.22.4 y docling-ibm-models 4.0.4 por
+  excepción de seguridad a `exclude-newer` (levantan el límite `pillow<13`).
+
 ## [0.4.0] - 2026-11-01
 
 Fase 3 — proyectos y motor de ejecuciones. Con doc_organize **0.10.0**.

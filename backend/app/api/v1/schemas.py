@@ -267,6 +267,17 @@ class CapabilitiesOut(BaseModel):
     ffmpeg_installed: bool
     av_ready: bool
     libreoffice_installed: bool
+    models_ready: bool = False
+    picture_description_ready: bool = False
+    gpu_ready: bool = False
+
+
+class ScanOptionsAvailability(BaseModel):
+    """Opciones de escaneo que algún worker vivo de su cola puede atender ahora (la API lo vuelve a comprobar)."""
+
+    use_gpu: bool
+    include_audio_video: bool
+    use_picture_description: bool
 
 
 class InstanceCapabilities(BaseModel):
@@ -278,6 +289,7 @@ class InstanceCapabilities(BaseModel):
     capabilities: CapabilitiesOut | None
     queues: list[str]
     doc_organize_version: str | None
+    scan_options: ScanOptionsAvailability
 
 
 class WorkerOut(_Out):
@@ -304,7 +316,7 @@ class WorkerList(BaseModel):
 ProjectName = Annotated[str, Field(min_length=1, max_length=128)]
 MemberRole = Literal["owner", "editor", "viewer"]
 RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-Operation = Literal["noop", "history_clear", "project_move", "project_delete"]
+Operation = Literal["noop", "history_clear", "project_move", "project_delete", "scan"]
 
 
 class LocationRef(_Out):
@@ -470,4 +482,56 @@ class RunPage(BaseModel):
     """Página del historial de ejecuciones."""
 
     items: list[RunOut]
+    total: int
+
+
+# --- escaneo (Fase 4) --------------------------------------------------------------------------------------------
+
+
+class ScannedFolderOut(_Out):
+    """Carpeta de origen del proyecto con su estado en los escaneos (ruta relativa a la ubicación de origen)."""
+
+    subpath: str
+    used: bool
+    added_at: datetime
+    last_scanned_at: datetime | None
+    last_run_id: str | None
+    available: bool
+
+
+class ScannedFolderList(BaseModel):
+    """Carpetas de origen del proyecto y su ubicación."""
+
+    location: LocationRef
+    items: list[ScannedFolderOut]
+
+
+class ScannedFolderCreate(BaseModel):
+    """Carpeta de origen nueva, relativa a la ubicación de origen del proyecto."""
+
+    subpath: str = Field(max_length=4096)
+
+
+class ScannedFolderRemoved(BaseModel):
+    """Resultado de quitar una carpeta: si ya se había escaneado, sus salidas siguen en el destino."""
+
+    subpath: str
+    used: bool
+
+
+class ScanErrorOut(_Out):
+    """Documento que no se pudo convertir (ruta relativa a la ubicación de origen, mensaje sin rutas del contenedor)."""
+
+    id: int
+    path: str
+    message: str
+    retry_count: int
+    capped: bool
+
+
+class ScanErrorPage(BaseModel):
+    """Página de errores de un escaneo; ``run`` es el escaneo al que pertenecen (``None`` si aún no hay ninguno)."""
+
+    run: RunBrief | None
+    items: list[ScanErrorOut]
     total: int

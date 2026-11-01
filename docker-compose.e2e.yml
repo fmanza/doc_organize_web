@@ -7,6 +7,7 @@
 x-e2e-volumes: &e2e-volumes
   - data:/data
   - workspace:/workspace
+  - models:/models:ro
   - ./dev-data/e2e:/mnt/e2e:ro
   - ./dev-data/e2e-out:/mnt/e2e-out
 

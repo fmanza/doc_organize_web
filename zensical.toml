@@ -22,6 +22,7 @@ nav = [
     "guides/ubicaciones.md",
     "guides/proyectos.md",
     "guides/ejecuciones.md",
+    "guides/escaneo.md",
   ] },
   { "Operación" = [
     "guides/despliegue.md",
@@ -39,6 +40,7 @@ nav = [
       "adr/ADR-006-integracion-doc-organize.md",
       "adr/ADR-007-ubicaciones.md",
       "adr/ADR-008-progreso-sse.md",
+      "adr/ADR-011-modelos-sin-internet.md",
       "adr/ADR-012-ajustes-administrables.md",
     ] },
     { "Plan" = [

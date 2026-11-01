@@ -36,6 +36,9 @@ class Capabilities:
         ffmpeg_installed: ``ffmpeg`` está en el ``PATH``.
         av_ready: Audio y vídeo convertibles (``asr_installed`` y ``ffmpeg_installed``).
         libreoffice_installed: ``soffice`` está en el ``PATH`` (``.xls`` legado).
+        models_ready: Modelos base de Docling descargados (ADR-011): sin ellos fallan los PDF y las imágenes.
+        picture_description_ready: Modelo de visión descargado (opción «describir imágenes»).
+        gpu_ready: GPU activa y modelos de EasyOCR (opción «usar GPU»).
     """
 
     gpu_support_installed: bool
@@ -44,15 +47,22 @@ class Capabilities:
     ffmpeg_installed: bool
     av_ready: bool
     libreoffice_installed: bool
+    models_ready: bool = False
+    picture_description_ready: bool = False
+    gpu_ready: bool = False
 
 
 def collect() -> Capabilities:  # pragma: no cover - se ejecuta en el subproceso, con Docling y torch cargados
     """Llama a los detectores públicos de doc_organize (sin módulo de diagnóstico hasta L-9b, G12)."""
     from doc_organize import detect_av_status, detect_gpu_status, detect_office_status
 
+    from app.core.config import get_settings
+    from app.integrations.doc_organize.models import status as models_status
+
     gpu = detect_gpu_status()
     av = detect_av_status()
     office = detect_office_status()
+    models = models_status(get_settings().models_dir)
     return Capabilities(
         gpu_support_installed=gpu.gpu_support_installed,
         gpu_active=gpu.gpu_active,
@@ -60,6 +70,9 @@ def collect() -> Capabilities:  # pragma: no cover - se ejecuta en el subproceso
         ffmpeg_installed=av.ffmpeg_installed,
         av_ready=av.ready,
         libreoffice_installed=office.libreoffice_installed,
+        models_ready=models.ready,
+        picture_description_ready=models.ready and models.picture_description,
+        gpu_ready=gpu.gpu_active and models.easyocr,
     )
 
 

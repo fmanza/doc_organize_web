@@ -34,7 +34,12 @@ export function formatDuration(startIso: string | null | undefined, endIso?: str
     return '—';
   }
   const end = endIso ? new Date(endIso).getTime() : Date.now();
-  const seconds = Math.max(0, Math.round((end - new Date(startIso).getTime()) / 1000));
+  return formatSeconds((end - new Date(startIso).getTime()) / 1000);
+}
+
+/** Segundos como `1 h 2 min`, `3 min 4 s` o `5 s`. */
+export function formatSeconds(value: number): string {
+  const seconds = Math.max(0, Math.round(value));
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;

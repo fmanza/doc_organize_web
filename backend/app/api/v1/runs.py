@@ -22,13 +22,25 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
-from app.api.v1.schemas import MAX_PAGE_SIZE, ArtifactOut, Operation, RunOut, RunPage, RunProgress, RunStatus
+from app.api.v1.schemas import (
+    MAX_PAGE_SIZE,
+    ArtifactOut,
+    Operation,
+    RunBrief,
+    RunOut,
+    RunPage,
+    RunProgress,
+    RunStatus,
+    ScanErrorOut,
+    ScanErrorPage,
+)
 from app.core.errors import AppError
 from app.db.models import ACTIVE_RUN_STATUSES, MemberRole, ProjectMember, Run, User
 from app.db.session import get_engine
 from app.domain.identity.sessions import resolve_session
 from app.domain.runs import events, service
 from app.domain.runs.errors import ArtifactGoneError, ArtifactNotFoundError, RunNotFoundError
+from app.domain.scan import scan_errors
 from app.workspace import runs as workspace
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -129,6 +141,22 @@ def get_run(run_id: str, user: CurrentUser, db: DbSession) -> RunOut:
     """Estado, progreso, resultado y artefactos."""
     run, role = service.get_run(db, run_id, user)
     return run_out(db, run, user, role)
+
+
+@router.get("/{run_id}/scan-errors", response_model=ScanErrorPage, summary="Errores de un escaneo", responses=_ERRORS)
+def list_scan_errors(
+    run_id: str,
+    user: CurrentUser,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ScanErrorPage:
+    """Documentos que no se pudieron convertir en este run (vacío si no es un escaneo)."""
+    run, _ = service.get_run(db, run_id, user)
+    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset)
+    return ScanErrorPage(
+        run=RunBrief.model_validate(run), items=[ScanErrorOut.model_validate(r) for r in rows], total=total
+    )
 
 
 @router.post(

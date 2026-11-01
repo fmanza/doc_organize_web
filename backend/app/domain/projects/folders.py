@@ -41,10 +41,11 @@ def nested(a: str, b: str) -> bool:
     return pa == pb or not a or not b or pa.is_relative_to(pb) or pb.is_relative_to(pa)
 
 
-def without_nested(paths: list[str]) -> list[str]:
-    """``paths`` sin repetidos ni rutas contenidas en otra de la lista, en orden alfabético."""
-    result: list[str] = []
-    for path in sorted(set(paths), key=lambda p: (p.count("/"), p)):
-        if not any(nested(path, kept) for kept in result):
-            result.append(path)
-    return sorted(result, key=str.casefold)
+def nested_pair(paths: list[str]) -> tuple[str, str] | None:
+    """Primer par de rutas distintas de ``paths`` en el que una contiene a la otra, o ``None``."""
+    unique = sorted(set(paths), key=lambda p: (p.count("/"), p))
+    for i, outer in enumerate(unique):
+        for inner in unique[i + 1 :]:
+            if nested(outer, inner):
+                return outer, inner
+    return None
