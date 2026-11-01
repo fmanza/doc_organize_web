@@ -61,6 +61,23 @@ def status(models_dir: Path) -> ModelsStatus:
     )
 
 
+def merge_folders(root: Path, downloaded: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Carpetas del nuevo manifiesto: las descargadas ahora más los grupos opcionales de antes que sigan en disco.
+
+    Así ``models-init`` (CPU) y ``models-init-gpu`` (EasyOCR) no se borran del manifiesto el uno al otro.
+    """
+    try:
+        previous = json.loads((root / MANIFEST).read_text(encoding="utf-8")).get("folders") or {}
+    except (OSError, ValueError, AttributeError):
+        previous = {}
+    merged = dict(downloaded)
+    for group, names in downloaded.items():
+        kept = previous.get(group) or []
+        if not names and kept and all((root / name).is_dir() for name in kept):
+            merged[group] = list(kept)
+    return merged
+
+
 def configure(models_dir: Path) -> None:
     """Apunta Docling a la carpeta de modelos, si se descargaron. Llamar antes de importar doc_organize o Docling."""
     root = docling_dir(models_dir)
@@ -94,7 +111,7 @@ def download(models_dir: Path, *, picture_description: bool = False, easyocr: bo
             with_picture_classifier=False, with_rapidocr=False, with_easyocr=True,
         )  # fmt: skip
         folders["easyocr"] = [EasyOcrModel._model_repo_folder]
-    manifest = {"downloaded_at": datetime.now(UTC).isoformat(), "folders": folders}
+    manifest = {"downloaded_at": datetime.now(UTC).isoformat(), "folders": merge_folders(root, folders)}
     (root / MANIFEST).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return status(models_dir)
 

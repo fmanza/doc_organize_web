@@ -5,6 +5,18 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Fixed
+
+- **docker**: variante GPU probada con una GPU NVIDIA real (RTX 5070, `sm_120`, driver 616.92): EasyOCR fallaba en
+  todos los documentos con OCR porque creaba `~/.EasyOCR` en el sistema de ficheros de solo lectura, y torch perdía la
+  caché de kernels CUDA. `runtime-gpu` fija `EASYOCR_MODULE_PATH` y `PYTORCH_KERNEL_CACHE_PATH` en el tmpfs `/tmp`, y
+  el entrypoint crea la carpeta de la caché.
+- **docker**: `models-init --easyocr` no podía funcionar (la imagen CPU no trae EasyOCR): nuevo servicio
+  `models-init-gpu` (perfil `setup-gpu`) con la imagen `runtime-gpu`. Las guías pasaban `python -m …` como comando de
+  `models-init`, que ya lo tiene como entrypoint; ahora solo los argumentos (`download --picture-description`).
+- **backend**: cada descarga de modelos reescribía `manifest.json` solo con lo pedido y «olvidaba» la visión o EasyOCR
+  descargados antes; ahora conserva los grupos opcionales cuyas carpetas siguen en disco.
+
 ## [0.5.0] - 2026-11-01
 
 Fase 4 — escaneo y conversión. Con doc_organize **0.10.0**.

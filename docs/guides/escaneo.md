@@ -83,8 +83,10 @@ worker trabaja sin Internet). Se descargan una vez al volumen de modelos:
 
 ```bash
 docker compose --profile setup run --rm models-init
-# Con el modelo de visión (describir imágenes) y EasyOCR (OCR con GPU):
-docker compose --profile setup run --rm models-init python -m app.integrations.doc_organize.models download --picture-description --easyocr
+# Con el modelo de visión (describir imágenes):
+docker compose --profile setup run --rm models-init download --picture-description
+# Para el worker con GPU (EasyOCR), con su imagen:
+docker compose --profile setup-gpu run --rm models-init-gpu
 ```
 
 Sin modelos, los documentos de texto (HTML, Word, TXT…) se convierten igual y los PDF y las imágenes aparecen como
