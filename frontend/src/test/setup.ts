@@ -25,6 +25,8 @@ class ResizeObserverStub {
   disconnect() {}
 }
 window.ResizeObserver = ResizeObserverStub;
+// Los desplegables de Mantine desplazan la opción activa a la vista.
+Element.prototype.scrollIntoView = vi.fn();
 
 afterEach(() => {
   cleanup();

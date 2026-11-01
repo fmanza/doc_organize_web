@@ -1,6 +1,51 @@
 {
   "components": {
     "schemas": {
+      "ArtifactOut": {
+        "description": "Fichero de un run, descargable mientras no lo purgue la retención.",
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "log",
+              "output",
+              "report"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "size_bytes",
+          "content_type",
+          "created_at"
+        ],
+        "title": "ArtifactOut",
+        "type": "object"
+      },
       "AuditEntryOut": {
         "description": "Evento de auditoría.",
         "properties": {
@@ -263,7 +308,7 @@
         "type": "object"
       },
       "HealthStatus": {
-        "description": "Estado del servicio.\n\nAttributes:\n    status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no. Las ubicaciones no\n        cuentan: una carpeta de red caída no hace que Docker reinicie la aplicación.\n    version: Versión de doc_organize_web.\n    doc_organize_version: Versión instalada de doc_organize.\n    database: Estado de ``config.db``.\n    locations: Peor estado del último sondeo de las ubicaciones (``none`` si no hay; ``unknown`` si no se pudo leer).",
+        "description": "Estado del servicio.\n\nAttributes:\n    status: ``ok`` si ``config.db`` responde y doc_organize está instalado; ``degraded`` si no. Las ubicaciones no\n        cuentan: una carpeta de red caída no hace que Docker reinicie la aplicación.\n    version: Versión de doc_organize_web.\n    doc_organize_version: Versión instalada de doc_organize.\n    database: Estado de ``config.db``.\n    locations: Peor estado del último sondeo de las ubicaciones (``none`` si no hay; ``unknown`` si no se pudo leer).\n    worker: ``ok`` si algún worker late, ``stale`` si solo hay caídos, ``none`` si no hay ninguno. Tampoco cuenta\n        para ``status``: sin worker la API sigue sirviendo (los runs esperan en cola).",
         "properties": {
           "database": {
             "enum": [
@@ -306,6 +351,16 @@
           "version": {
             "title": "Version",
             "type": "string"
+          },
+          "worker": {
+            "enum": [
+              "none",
+              "ok",
+              "stale",
+              "unknown"
+            ],
+            "title": "Worker",
+            "type": "string"
           }
         },
         "required": [
@@ -313,13 +368,57 @@
           "version",
           "doc_organize_version",
           "database",
-          "locations"
+          "locations",
+          "worker"
         ],
         "title": "HealthStatus",
         "type": "object"
       },
+      "HistoryClearParams": {
+        "additionalProperties": false,
+        "description": "Vaciar el histórico: borra las salidas y el estado de doc_organize del proyecto.",
+        "properties": {
+          "confirm_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Name"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "history_clear",
+            "default": "history_clear",
+            "title": "Operation",
+            "type": "string"
+          },
+          "preview_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Run Id"
+          }
+        },
+        "title": "HistoryClearParams",
+        "type": "object"
+      },
       "InstanceCapabilities": {
-        "description": "Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo.",
+        "description": "Ficha de capacidades publicada por los workers: ``pending`` mientras el worker vivo no las ha calculado;\n``no_worker`` si no hay worker vivo (con las últimas conocidas, si las hay).",
         "properties": {
           "capabilities": {
             "anyOf": [
@@ -354,11 +453,18 @@
             ],
             "title": "Doc Organize Version"
           },
+          "queues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Queues",
+            "type": "array"
+          },
           "status": {
             "enum": [
-              "pending",
               "ok",
-              "error"
+              "pending",
+              "no_worker"
             ],
             "title": "Status",
             "type": "string"
@@ -368,6 +474,7 @@
           "status",
           "checked_at",
           "capabilities",
+          "queues",
           "doc_organize_version"
         ],
         "title": "InstanceCapabilities",
@@ -714,6 +821,45 @@
         "title": "LocationPublic",
         "type": "object"
       },
+      "LocationRef": {
+        "description": "Ubicación referida por un proyecto: nombre y estado, nunca la ruta del contenedor.",
+        "properties": {
+          "access": {
+            "enum": [
+              "ro",
+              "rw"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unknown",
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "access",
+          "status"
+        ],
+        "title": "LocationRef",
+        "type": "object"
+      },
       "LocationUpdate": {
         "additionalProperties": false,
         "description": "Edición parcial de ubicación (la carpeta del contenedor no se puede cambiar).",
@@ -851,6 +997,148 @@
         "title": "Me",
         "type": "object"
       },
+      "MemberCreate": {
+        "description": "Alta de miembro.",
+        "properties": {
+          "role": {
+            "default": "viewer",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "minimum": 1.0,
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "MemberCreate",
+        "type": "object"
+      },
+      "MemberList": {
+        "description": "Miembros de un proyecto.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MemberOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MemberList",
+        "type": "object"
+      },
+      "MemberOut": {
+        "description": "Miembro de un proyecto.",
+        "properties": {
+          "added_at": {
+            "format": "date-time",
+            "title": "Added At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "role",
+          "added_at"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberUpdate": {
+        "description": "Cambio de rol de un miembro.",
+        "properties": {
+          "role": {
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "MemberUpdate",
+        "type": "object"
+      },
+      "NoopParams": {
+        "additionalProperties": false,
+        "description": "Prueba del motor: ``steps`` pasos de ``step_seconds`` con progreso; ``fail_at_step`` simula un fallo.",
+        "properties": {
+          "fail_at_step": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail At Step"
+          },
+          "operation": {
+            "const": "noop",
+            "default": "noop",
+            "title": "Operation",
+            "type": "string"
+          },
+          "step_seconds": {
+            "default": 1.0,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Step Seconds",
+            "type": "number"
+          },
+          "steps": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "title": "NoopParams",
+        "type": "object"
+      },
       "PasswordChange": {
         "description": "Cambio de la propia contraseña.",
         "properties": {
@@ -876,6 +1164,668 @@
           "new_password"
         ],
         "title": "PasswordChange",
+        "type": "object"
+      },
+      "ProjectCreate": {
+        "additionalProperties": false,
+        "description": "Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,\n``destination_parent`` (que debe estar vacía).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "destination_location_id": {
+            "minimum": 1.0,
+            "title": "Destination Location Id",
+            "type": "integer"
+          },
+          "destination_parent": {
+            "default": "",
+            "description": "Ruta relativa con «/»; vacía = la raíz",
+            "maxLength": 4096,
+            "title": "Destination Parent",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "new_folder": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Folder"
+          },
+          "source_location_id": {
+            "minimum": 1.0,
+            "title": "Source Location Id",
+            "type": "integer"
+          },
+          "source_subpaths": {
+            "items": {
+              "description": "Ruta relativa con «/»; vacía = la raíz",
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Source Subpaths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "source_location_id",
+          "source_subpaths",
+          "destination_location_id"
+        ],
+        "title": "ProjectCreate",
+        "type": "object"
+      },
+      "ProjectDeleteParams": {
+        "additionalProperties": false,
+        "description": "Borrar el proyecto; con ``delete_outputs`` también su carpeta de salidas (el estado se borra siempre).",
+        "properties": {
+          "confirm_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Name"
+          },
+          "delete_outputs": {
+            "default": false,
+            "title": "Delete Outputs",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "project_delete",
+            "default": "project_delete",
+            "title": "Operation",
+            "type": "string"
+          },
+          "preview_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Run Id"
+          }
+        },
+        "title": "ProjectDeleteParams",
+        "type": "object"
+      },
+      "ProjectMoveParams": {
+        "additionalProperties": false,
+        "description": "Mover la carpeta de salidas a ``destination_parent/new_folder`` de una ubicación destino ``rw``.",
+        "properties": {
+          "confirm_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Name"
+          },
+          "destination_location_id": {
+            "minimum": 1.0,
+            "title": "Destination Location Id",
+            "type": "integer"
+          },
+          "destination_parent": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Destination Parent",
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "new_folder": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "New Folder",
+            "type": "string"
+          },
+          "operation": {
+            "const": "project_move",
+            "default": "project_move",
+            "title": "Operation",
+            "type": "string"
+          },
+          "preview_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Run Id"
+          }
+        },
+        "required": [
+          "destination_location_id",
+          "new_folder"
+        ],
+        "title": "ProjectMoveParams",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "description": "Proyecto con las rutas relativas a sus ubicaciones y el rol del usuario.",
+        "properties": {
+          "active_run": {
+            "default": false,
+            "title": "Active Run",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "destination_location": {
+            "$ref": "#/components/schemas/LocationRef"
+          },
+          "destination_subpath": {
+            "title": "Destination Subpath",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "source_location": {
+            "$ref": "#/components/schemas/LocationRef"
+          },
+          "source_subpaths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Subpaths",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "source_location",
+          "source_subpaths",
+          "destination_location",
+          "destination_subpath",
+          "role",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectPage": {
+        "description": "Página de proyectos.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ProjectPage",
+        "type": "object"
+      },
+      "ProjectUpdate": {
+        "additionalProperties": false,
+        "description": "Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source_subpaths": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "Ruta relativa con «/»; vacía = la raíz",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Subpaths"
+          }
+        },
+        "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "RunBrief": {
+        "description": "Resumen de un run para listas.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "noop",
+              "history_clear",
+              "project_move",
+              "project_delete"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "status",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "RunBrief",
+        "type": "object"
+      },
+      "RunOut": {
+        "description": "Ejecución con su estado, progreso, resultado y artefactos.",
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactOut"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Username"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_write": {
+            "title": "Is Write",
+            "type": "boolean"
+          },
+          "operation": {
+            "enum": [
+              "noop",
+              "history_clear",
+              "project_move",
+              "project_delete"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Name"
+          },
+          "queue": {
+            "enum": [
+              "cpu",
+              "gpu"
+            ],
+            "title": "Queue",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "workspace_purged": {
+            "title": "Workspace Purged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "project_name",
+          "operation",
+          "queue",
+          "status",
+          "is_write",
+          "params",
+          "progress",
+          "result",
+          "error_code",
+          "error_message",
+          "cancel_requested",
+          "created_by_username",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "workspace_purged",
+          "artifacts",
+          "can_cancel"
+        ],
+        "title": "RunOut",
+        "type": "object"
+      },
+      "RunPage": {
+        "description": "Página del historial de ejecuciones.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "RunPage",
+        "type": "object"
+      },
+      "RunProgress": {
+        "description": "Último progreso publicado.",
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "processed": {
+            "title": "Processed",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "phase",
+          "processed"
+        ],
+        "title": "RunProgress",
         "type": "object"
       },
       "SessionOut": {
@@ -1046,6 +1996,30 @@
         "title": "SettingsUpdate",
         "type": "object"
       },
+      "UserBrief": {
+        "description": "Usuario activo para invitar a un proyecto.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "display_name"
+        ],
+        "title": "UserBrief",
+        "type": "object"
+      },
       "UserCreate": {
         "description": "Alta de usuario.",
         "properties": {
@@ -1086,6 +2060,23 @@
           "password"
         ],
         "title": "UserCreate",
+        "type": "object"
+      },
+      "UserLookup": {
+        "description": "Resultado de la búsqueda de usuarios.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserBrief"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UserLookup",
         "type": "object"
       },
       "UserOut": {
@@ -1289,18 +2280,104 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WorkerList": {
+        "description": "Workers registrados.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkerOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WorkerList",
+        "type": "object"
+      },
+      "WorkerOut": {
+        "description": "Worker registrado (solo admin).",
+        "properties": {
+          "alive": {
+            "title": "Alive",
+            "type": "boolean"
+          },
+          "capabilities_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities At"
+          },
+          "doc_organize_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Organize Version"
+          },
+          "heartbeat_at": {
+            "format": "date-time",
+            "title": "Heartbeat At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "queues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Queues",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "queues",
+          "version",
+          "doc_organize_version",
+          "started_at",
+          "heartbeat_at",
+          "alive",
+          "capabilities_at"
+        ],
+        "title": "WorkerOut",
+        "type": "object"
       }
     }
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
     "/api/health": {
       "get": {
-        "description": "Devuelve el estado de ``config.db``, de las ubicaciones y las versiones (503 si degradado).",
+        "description": "Devuelve el estado de ``config.db``, de las ubicaciones, del worker y las versiones (503 si degradado).",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -1332,7 +2409,7 @@
     },
     "/api/v1/admin/capabilities/refresh": {
       "post": {
-        "description": "Lanza en segundo plano un nuevo sondeo de capacidades (si no hay uno en curso).",
+        "description": "Pide a los workers vivos que vuelvan a sondear sus capacidades (lo hacen en su siguiente latido).",
         "operationId": "refresh_capabilities_api_v1_admin_capabilities_refresh_post",
         "responses": {
           "202": {
@@ -1506,6 +2583,34 @@
           }
         },
         "summary": "Cambiar ajustes administrables",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/workers": {
+      "get": {
+        "description": "Workers registrados con sus colas, latido y si siguen vivos.",
+        "operationId": "list_workers_api_v1_admin_workers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          }
+        },
+        "summary": "Ver workers",
         "tags": [
           "admin"
         ]
@@ -1921,7 +3026,7 @@
     },
     "/api/v1/instance/capabilities": {
       "get": {
-        "description": "GPU, audio/vídeo y LibreOffice. ``pending`` mientras se calcula la primera vez (tarda varios segundos).",
+        "description": "GPU, audio/vídeo y LibreOffice según los workers (los que convierten); colas con algún worker vivo.",
         "operationId": "get_capabilities_api_v1_instance_capabilities_get",
         "responses": {
           "200": {
@@ -2086,6 +3191,9 @@
           },
           "404": {
             "description": "No existe"
+          },
+          "409": {
+            "description": "Algún proyecto la usa"
           },
           "422": {
             "content": {
@@ -2274,6 +3382,953 @@
         "summary": "Comprobar ubicación",
         "tags": [
           "locations"
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "description": "Proyectos de los que el usuario es miembro (un admin ve todos), con su rol y el último run.",
+        "operationId": "list_projects_api_v1_projects_get",
+        "parameters": [
+          {
+            "description": "Texto en el nombre",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto en el nombre",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Listar proyectos",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "description": "Crea el proyecto (el usuario queda como ``owner``) y su carpeta de salidas si es nueva.",
+        "operationId": "create_project_api_v1_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida (absoluta, UNC, con «..» o «\\»)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "409": {
+            "description": "Nombre repetido, carpeta existente o no vacía, o salidas de otro proyecto"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Crear proyecto",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "description": "Detalle del proyecto con su último run.",
+        "operationId": "get_project_api_v1_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver proyecto",
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "description": "Renombra (solo en la BD), cambia la descripción o las carpetas de origen (``owner``).",
+        "operationId": "update_project_api_v1_projects__project_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida (absoluta, UNC, con «..» o «\\»)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "409": {
+            "description": "Nombre repetido o run en marcha"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Editar proyecto",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/members": {
+      "get": {
+        "description": "Miembros del proyecto con su rol.",
+        "operationId": "list_members_api_v1_projects__project_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver miembros",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "description": "Añade un usuario activo con un rol (``owner``).",
+        "operationId": "add_member_api_v1_projects__project_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Ya es miembro"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Añadir miembro",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/members/{user_id}": {
+      "delete": {
+        "description": "Quita un miembro (``owner``).",
+        "operationId": "remove_member_api_v1_projects__project_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Es el último propietario"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quitar miembro",
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "description": "Cambia el rol (``owner``); el proyecto conserva siempre al menos un propietario.",
+        "operationId": "update_member_api_v1_projects__project_id__members__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Dejaría el proyecto sin propietario"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cambiar rol de un miembro",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs": {
+      "post": {
+        "description": "Encola una operación del proyecto; el worker la ejecuta y el progreso se sigue por SSE.",
+        "operationId": "enqueue_run_api_v1_projects__project_id__runs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/NoopParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/HistoryClearParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ProjectMoveParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ProjectDeleteParams"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Destino de un movimiento no válido"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked), vista previa necesaria (preview_required) o cuota"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Lanzar ejecución",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "description": "Runs de los proyectos visibles, más recientes primero (agrupados por ejecución).",
+        "operationId": "list_runs_api_v1_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "succeeded",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operation",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "noop",
+                    "history_clear",
+                    "project_move",
+                    "project_delete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operation"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Historial de ejecuciones",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "description": "Estado, progreso, resultado y artefactos.",
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ejecución no encontrada (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver ejecución",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/artifacts/{artifact_id}": {
+      "get": {
+        "description": "Descarga un fichero del run como adjunto.",
+        "operationId": "download_artifact_api_v1_runs__run_id__artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "title": "Artifact Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ejecución no encontrada (o sin acceso)"
+          },
+          "410": {
+            "description": "Purgado por la retención"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Descargar artefacto",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/cancel": {
+      "post": {
+        "description": "Cancela un run en cola o pide parar uno en marcha (el worker lo para en el siguiente punto seguro).",
+        "operationId": "cancel_run_api_v1_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "No la lanzaste ni eres propietario"
+          },
+          "404": {
+            "description": "Ejecución no encontrada (o sin acceso)"
+          },
+          "409": {
+            "description": "Ya terminó"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancelar ejecución",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/events": {
+      "get": {
+        "description": "Eventos ``status``, ``progress``, ``log``, ``artifact`` y ``end`` del run (``id`` = número de evento).",
+        "operationId": "run_events_api_v1_runs__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Último evento recibido (si no hay Last-Event-ID)",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último evento recibido (si no hay Last-Event-ID)",
+              "title": "After"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {}
+            },
+            "description": "Flujo de eventos del run"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Ejecución no encontrada (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Demasiadas conexiones abiertas"
+          }
+        },
+        "summary": "Progreso en vivo (SSE)",
+        "tags": [
+          "runs"
         ]
       }
     },
@@ -2533,6 +4588,56 @@
           }
         },
         "summary": "Crear usuario",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/lookup": {
+      "get": {
+        "description": "Hasta 20 usuarios activos para invitar a un proyecto (cualquier sesión: los propietarios no son admin).",
+        "operationId": "lookup_users_api_v1_users_lookup_get",
+        "parameters": [
+          {
+            "description": "Inicio del usuario o del nombre",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Inicio del usuario o del nombre",
+              "maxLength": 64,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Buscar usuarios activos",
         "tags": [
           "users"
         ]

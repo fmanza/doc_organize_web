@@ -27,7 +27,8 @@ dentro de ella. Si la ubicación no está disponible, el explorador lo indica y 
   temporal.
 - **Editar** cambia nombre, ruta para mostrar, uso, acceso y tipo.
 - **Borrar** quita la ubicación de la aplicación; **la carpeta y sus documentos no se tocan**. Pide escribir el nombre
-  para confirmar.
+  para confirmar. No se puede borrar una ubicación que use algún proyecto (tampoco uno borrado, que conserva su
+  historial de ejecuciones).
 
 No se puede registrar la propia `/mnt`, una carpeta dentro de otra ubicación (ni al revés) ni una que contenga los
 datos de la aplicación.
@@ -36,8 +37,13 @@ datos de la aplicación.
 
 **Administración → Ajustes** permite cambiar, sin reiniciar, la duración de las sesiones, el bloqueo por intentos, la
 longitud mínima de contraseña y los umbrales de las comprobaciones de ubicaciones (tiempo máximo, latencia para
-«degradada» y espacio libre mínimo). Cada ajuste indica su origen: cambiado aquí, variable del servidor o por defecto;
+«degradada» y espacio libre mínimo), el intervalo del sondeo periódico, la retención de los ficheros de las
+ejecuciones y la cuota por usuario. Cada ajuste indica su origen: cambiado aquí, variable del servidor o por defecto;
 «Restablecer» lo devuelve al valor del servidor.
 
+El **worker** sondea todas las ubicaciones cada `location_probe_interval_minutes` (5 por defecto), así que el estado
+se mantiene al día sin pulsar «Comprobar».
+
 La **ficha de capacidades** muestra si esta instalación puede hacer OCR con GPU, convertir audio y vídeo y leer `.xls`
-antiguos (LibreOffice). La primera comprobación tarda unos segundos.
+antiguos (LibreOffice). La calcula el worker al arrancar y cada hora; «Volver a comprobar» se lo pide en su siguiente
+latido. Debajo, la tabla de **workers** indica cuáles están en marcha y sus colas.

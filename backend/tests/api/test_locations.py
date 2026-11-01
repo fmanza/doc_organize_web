@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,8 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import AuditEntry, User
-from app.integrations.doc_organize import Capabilities, CapabilitiesSnapshot, capabilities_cache
+from app.db.models import AuditEntry, User, Worker
 from tests.conftest import USER_PASSWORD, do_login
 
 LOCATION = {"name": "Expedientes", "path": "expedientes", "usage": "source", "access": "ro", "kind": "network"}
@@ -278,40 +276,36 @@ def test_settings_api_null_restores_default(admin_client: TestClient) -> None:
 
 
 @pytest.fixture
-def fake_capabilities(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
-    """Sustituye el subproceso: la caché devuelve un resultado fijo y anota los refrescos pedidos."""
-    calls: list[str] = []
-    snapshot = CapabilitiesSnapshot(
-        status="ok",
-        checked_at=datetime(2026, 10, 31, tzinfo=UTC),
-        capabilities=Capabilities(
-            gpu_support_installed=True,
-            gpu_active=False,
-            asr_installed=False,
-            ffmpeg_installed=True,
-            av_ready=False,
-            libreoffice_installed=False,
-        ),
+def published_capabilities(db: Session) -> None:
+    """Un worker vivo que ya publicó sus capacidades (las calcula el worker desde la Fase 3)."""
+    db.add(
+        Worker(
+            id="worker:1",
+            queues=["cpu"],
+            version="test",
+            heartbeat_at=datetime.now(UTC),
+            capabilities_at=datetime(2026, 10, 31, tzinfo=UTC),
+            capabilities={
+                "gpu_support_installed": True,
+                "gpu_active": False,
+                "asr_installed": False,
+                "ffmpeg_installed": True,
+                "av_ready": False,
+                "libreoffice_installed": False,
+            },
+        )
     )
-    monkeypatch.setattr(capabilities_cache, "get", lambda: snapshot)
-    monkeypatch.setattr(capabilities_cache, "refresh", lambda: calls.append("refresh") or True)
-    yield calls
+    db.commit()
 
 
-def test_capabilities_for_any_session(user_client: TestClient, fake_capabilities: list[str]) -> None:
+def test_capabilities_for_any_session(user_client: TestClient, published_capabilities: None) -> None:
     body = user_client.get("/api/v1/instance/capabilities").json()
 
     assert body["status"] == "ok"
+    assert body["queues"] == ["cpu"]
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
     assert body["doc_organize_version"] == "0.10.0"
-
-
-def test_admin_refreshes_capabilities(admin_client: TestClient, fake_capabilities: list[str]) -> None:
-    response = admin_client.post("/api/v1/admin/capabilities/refresh")
-
-    assert response.status_code == 202
-    assert fake_capabilities == ["refresh"]
 
 
 def test_health_reports_worst_location_status(admin_client: TestClient, location: dict[str, object], mnt: Path) -> None:

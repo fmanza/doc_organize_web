@@ -12,10 +12,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
-from app.db.models import Role, User
+from app.db.models import Location, Role, User
 from app.db.session import get_engine
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
+from app.domain.locations.service import create_location
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -113,3 +114,37 @@ def admin_client(client: TestClient, admin: User) -> TestClient:
 def user_client(client: TestClient, user: User) -> TestClient:
     do_login(client, user.username, USER_PASSWORD)
     return client
+
+
+def login_as(client: TestClient, username: str, password: str = USER_PASSWORD) -> TestClient:
+    """Otro cliente sobre la misma aplicación con la sesión de ``username``."""
+    other = TestClient(client.app, base_url="https://testserver")
+    do_login(other, username, password)
+    return other
+
+
+@pytest.fixture
+def project_locations(db: Session, migrated: Settings, admin: User) -> dict[str, Location]:
+    """Ubicación de origen ``ro`` (``origen/{2024,2025}``) y de destino ``rw`` (``salidas``) bajo la raíz."""
+    root = migrated.locations_root
+    (root / "origen" / "2024").mkdir(parents=True)
+    (root / "origen" / "2025").mkdir()
+    (root / "origen" / "2024" / "factura.txt").write_text("documento sintético", encoding="utf-8")
+    (root / "salidas").mkdir()
+    common = {"display_path": None, "kind": "local", "settings": migrated, "actor": admin, "ctx": CLI_CONTEXT}
+    source = create_location(db, name="Origen", path="origen", usage="source", access="ro", **common)  # type: ignore[arg-type]
+    destination = create_location(db, name="Salidas", path="salidas", usage="destination", access="rw", **common)  # type: ignore[arg-type]
+    return {"source": source, "destination": destination}
+
+
+def project_payload(locations: dict[str, Location], name: str = "Proyecto A", **extra: object) -> dict[str, object]:
+    """Cuerpo de ``POST /projects`` con carpeta de salidas nueva ``name``."""
+    return {
+        "name": name,
+        "source_location_id": locations["source"].id,
+        "source_subpaths": ["2024"],
+        "destination_location_id": locations["destination"].id,
+        "destination_parent": "",
+        "new_folder": name,
+        **extra,
+    }

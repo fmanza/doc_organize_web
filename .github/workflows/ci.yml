@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [backend, frontend]
     env:
-      # Monta dev-data/e2e en /mnt/e2e (carpetas sintéticas) para el E2E de ubicaciones.
+      # Monta dev-data/e2e (solo lectura) y dev-data/e2e-out (escritura) bajo /mnt en web y worker para los E2E.
       COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
     steps:
       - uses: actions/checkout@v7
@@ -99,11 +99,18 @@ jobs:
       - name: Arranque y /api/health
         run: |
           python3 scripts/generate_secrets.py
-          mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025
+          mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025 dev-data/e2e/proyectos/2024 dev-data/e2e-out
+          echo "documento sintético" > dev-data/e2e/proyectos/2024/factura.txt
+          chmod 777 dev-data/e2e-out
           DOW_TAG=ci docker compose up -d --no-build
           for i in $(seq 1 45); do
             if curl -fsS http://127.0.0.1:8080/api/health; then break; fi
             if [ "$i" = 45 ]; then docker compose logs; exit 1; fi
+            sleep 2
+          done
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/health | grep -q '"worker":"ok"'; then break; fi
+            if [ "$i" = 30 ]; then docker compose logs worker; exit 1; fi
             sleep 2
           done
       - name: doc_organize y Docling se importan en la imagen

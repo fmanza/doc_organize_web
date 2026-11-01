@@ -1,5 +1,7 @@
 {
-  "app": { "title": "doc_organize web" },
+  "app": {
+    "title": "doc_organize web"
+  },
   "common": {
     "loading": "Cargando…",
     "error": "Se ha producido un error",
@@ -9,9 +11,15 @@
     "cancel": "Cancelar",
     "save": "Guardar",
     "edit": "Editar",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "yes": "Sí",
+    "no": "No",
+    "back": "Volver"
   },
-  "roles": { "admin": "Administrador", "user": "Usuario" },
+  "roles": {
+    "admin": "Administrador",
+    "user": "Usuario"
+  },
   "nav": {
     "label": "Navegación principal",
     "home": "Inicio",
@@ -65,7 +73,14 @@
     "notInstalled": "no instalada",
     "database": "Base de datos de configuración",
     "databaseOk": "correcta",
-    "databaseError": "sin respuesta"
+    "databaseError": "sin respuesta",
+    "worker": "Worker de ejecuciones",
+    "workerStatus": {
+      "ok": "en marcha",
+      "stale": "sin latido reciente",
+      "none": "no hay ninguno",
+      "unknown": "desconocido"
+    }
   },
   "notFound": {
     "title": "Página no encontrada",

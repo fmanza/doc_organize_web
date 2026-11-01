@@ -9,7 +9,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 0 | Fundaciones ✅ (2026-10-31) | 0.1.0 | 0.9.3 (wheel de la release) |
 | 1 | Identidad y multiusuario ✅ (2026-10-31) | 0.2.0 | — |
 | 2 | Ubicaciones locales/red y ajustes ✅ (2026-10-31) | 0.3.0 | — |
-| 3 | Proyectos y motor de ejecuciones | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
+| 3 | Proyectos y motor de ejecuciones ✅ (2026-11-01) | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
 | 4 | Escaneo y conversión | 0.5.0 | 0.10.0 (L-2, L-6b) |
 | 5 | Caché, resultados y descargas | 0.6.0 | 0.11.0 (L-7) |
 | 6 | Duplicados | 0.7.0 | 0.10.0 (L-6) |
@@ -87,6 +87,12 @@ como usuario exploro carpetas dentro de las ubicaciones a las que tengo acceso; 
 - Tests: escape de raíz con enlace simbólico, ruta UNC/relativa rechazada, ubicación caída → 503 problem details.
 
 ## Fase 3 — Proyectos y motor de ejecuciones
+
+> **Cerrada el 2026-11-01 (0.4.0)** con doc_organize 0.10.0. Sesión: `.ai/sessions/2026-11-01-fase3/`. Decisiones del
+> mantenedor: cualquier usuario crea proyectos (queda como propietario); la carpeta de salidas es nueva o vacía y
+> pertenece al proyecto; renombrar solo cambia la BD; la vista previa es un run `dry_run`; el worker arranca por
+> defecto y publica las capacidades; `noop` visible para editores. «Impacto» (`/impact`) se sustituye por la vista
+> previa y «vaciar histórico» (`/clear-history`) llega en esta fase como run `history_clear`.
 
 **Historias**: creo proyectos eligiendo origen(es) y destino; invito miembros; lanzo una ejecución, sigo su progreso
 aunque cierre la pestaña, la cancelo y veo el historial **agrupado por ejecución**.

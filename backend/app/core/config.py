@@ -37,8 +37,17 @@ class Settings(BaseSettings):
         location_probe_timeout_seconds: Tiempo máximo de un sondeo o listado de una ubicación (montajes colgados).
         location_latency_degraded_ms: Latencia de ``stat`` a partir de la que una ubicación está ``degraded``.
         location_min_free_gb: Espacio libre por debajo del que una ubicación está ``degraded`` (0 = no se comprueba).
+        location_probe_interval_minutes: Cada cuánto sondea el worker las ubicaciones (0 = nunca; Fase 3).
+        worker_queues: Colas que atiende el worker, separadas por comas (``cpu``, ``gpu``; ADR-002).
+        worker_concurrency: Jobs simultáneos por worker (Docling consume mucha memoria).
+        worker_heartbeat_seconds: Intervalo del latido del worker y de sus runs.
+        job_timeout_seconds: Duración máxima de un run; después se termina su subproceso.
+        cancel_grace_seconds: Plazo para que un run atienda la cancelación antes de terminar su subproceso.
+        run_retention_days: Días que se conservan las carpetas del workspace de los runs terminados.
+        user_quota_mb: Espacio máximo de artefactos por usuario en el workspace (0 = sin límite).
 
-    Los ajustes de identidad y de sondeo son administrables desde la web (ADR-012): estos valores son el defecto.
+    Los ajustes de identidad, sondeo, retención y cuota son administrables desde la web (ADR-012): estos valores son
+    el defecto.
     """
 
     model_config = SettingsConfigDict(env_prefix="DOW_", secrets_dir=None, extra="ignore")
@@ -60,6 +69,14 @@ class Settings(BaseSettings):
     location_probe_timeout_seconds: int = Field(default=10, ge=1, le=120)
     location_latency_degraded_ms: int = Field(default=500, ge=10, le=60_000)
     location_min_free_gb: int = Field(default=5, ge=0, le=100_000)
+    location_probe_interval_minutes: int = Field(default=5, ge=0, le=24 * 60)
+    worker_queues: str = Field(default="cpu", pattern=r"^(cpu|gpu)(,(cpu|gpu))*$")
+    worker_concurrency: int = Field(default=1, ge=1, le=8)
+    worker_heartbeat_seconds: int = Field(default=10, ge=2, le=60)
+    job_timeout_seconds: int = Field(default=21_600, ge=60, le=7 * 24 * 3600)
+    cancel_grace_seconds: int = Field(default=30, ge=5, le=600)
+    run_retention_days: int = Field(default=30, ge=1, le=3650)
+    user_quota_mb: int = Field(default=0, ge=0, le=10_000_000)
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> Self:
@@ -83,6 +100,11 @@ class Settings(BaseSettings):
     def csrf_cookie(self) -> str:
         """Cookie del token CSRF de doble envío, legible por la SPA."""
         return "__Host-dow_csrf" if self.cookie_secure else "dow_csrf"
+
+    @property
+    def queues(self) -> tuple[str, ...]:
+        """Colas de ``worker_queues`` sin repetir, en orden."""
+        return tuple(dict.fromkeys(self.worker_queues.split(",")))
 
     @property
     def database_url(self) -> str:

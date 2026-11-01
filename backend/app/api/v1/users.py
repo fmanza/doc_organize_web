@@ -1,4 +1,4 @@
-"""``/api/v1/users``: administración de usuarios (solo ``admin``)."""
+"""``/api/v1/users``: administración de usuarios (solo ``admin``) y búsqueda de usuarios activos (cualquier sesión)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AdminUser, Context, DbSession, SettingsDep
-from app.api.v1.schemas import MAX_PAGE_SIZE, UserCreate, UserOut, UserPage, UserUpdate
+from app.api.deps import AdminUser, Context, CurrentUser, DbSession, SettingsDep
+from app.api.v1.schemas import MAX_PAGE_SIZE, UserBrief, UserCreate, UserLookup, UserOut, UserPage, UserUpdate
 from app.domain.identity import users
 from app.domain.identity.users import UserChanges
 
@@ -52,6 +52,21 @@ def create_user(body: UserCreate, admin: AdminUser, db: DbSession, settings: Set
         actor_id=admin.id,
     )
     return UserOut.model_validate(user)
+
+
+@router.get(
+    "/lookup",
+    response_model=UserLookup,
+    summary="Buscar usuarios activos",
+    responses={401: {"description": "No autenticado"}},
+)
+def lookup_users(
+    _: CurrentUser,
+    db: DbSession,
+    q: Annotated[str, Query(min_length=2, max_length=64, description="Inicio del usuario o del nombre")],
+) -> UserLookup:
+    """Hasta 20 usuarios activos para invitar a un proyecto (cualquier sesión: los propietarios no son admin)."""
+    return UserLookup(items=[UserBrief.model_validate(u) for u in users.lookup_users(db, q=q)])
 
 
 @router.get(

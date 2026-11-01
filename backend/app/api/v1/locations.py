@@ -110,7 +110,7 @@ def update_location(
     "/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Borrar ubicación",
-    responses={**_ERRORS, **_404},
+    responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto la usa"}},
 )
 def delete_location(location_id: int, admin: AdminUser, db: DbSession, ctx: Context) -> None:
     """Quita la ubicación del registro; la carpeta y su contenido no se tocan."""

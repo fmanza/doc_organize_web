@@ -24,6 +24,7 @@ import {
   useCapabilities,
   useRefreshCapabilities,
   useUpdateSettings,
+  useWorkers,
 } from './useSettings';
 
 function SettingRow({ setting }: { setting: SettingOut }) {
@@ -115,9 +116,9 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
           <Text size="sm">{t('capabilities.pending')}</Text>
         </Group>
       )}
-      {data.status === 'error' && (
-        <Alert color="orange" title={t('capabilities.error')}>
-          {t('capabilities.errorBody')}
+      {data.status === 'no_worker' && (
+        <Alert color="orange" title={t('capabilities.noWorker')}>
+          {t('capabilities.noWorkerBody')}
         </Alert>
       )}
       {caps && (
@@ -130,13 +131,69 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
             {t('capabilities.checkedAt', { date: formatDateTime(data.checked_at) })} ·{' '}
             {t('capabilities.library', { version: data.doc_organize_version ?? '—' })}
           </Text>
+          {data.queues.length > 0 && (
+            <Text size="xs" c="dimmed">
+              {t('capabilities.queues', { queues: data.queues.join(', ') })}
+            </Text>
+          )}
         </>
       )}
     </Stack>
   );
 }
 
-/** Ajustes administrables (ADR-012) y ficha de capacidades de la instancia. */
+function WorkersCard() {
+  const { t } = useTranslation();
+  const workers = useWorkers();
+  return (
+    <Card withBorder maw={720}>
+      <Title order={3} size="h4" mb="sm">
+        {t('workers.title')}
+      </Title>
+      {workers.isPending && <Loader size="sm" aria-label={t('common.loading')} />}
+      {workers.isError && <ErrorAlert error={workers.error} />}
+      {workers.data?.items.length === 0 && (
+        <Text size="sm" c="dimmed">
+          {t('workers.empty')}
+        </Text>
+      )}
+      {workers.data && workers.data.items.length > 0 && (
+        <Table.ScrollContainer minWidth={560}>
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>{t('workers.id')}</Table.Th>
+                <Table.Th>{t('workers.queues')}</Table.Th>
+                <Table.Th>{t('workers.state')}</Table.Th>
+                <Table.Th>{t('workers.heartbeat')}</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {workers.data.items.map((worker) => (
+                <Table.Tr key={worker.id}>
+                  <Table.Td>
+                    <Text size="sm" ff="monospace">
+                      {worker.id}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>{worker.queues.join(', ')}</Table.Td>
+                  <Table.Td>
+                    <Badge color={worker.alive ? 'green' : 'gray'} variant="light">
+                      {t(worker.alive ? 'workers.alive' : 'workers.stale')}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>{formatDateTime(worker.heartbeat_at)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      )}
+    </Card>
+  );
+}
+
+/** Ajustes administrables (ADR-012), ficha de capacidades de la instancia y workers. */
 export function SettingsPage() {
   const { t } = useTranslation();
   const settings = useAdminSettings();
@@ -185,6 +242,7 @@ export function SettingsPage() {
         {capabilities.isError && <ErrorAlert error={capabilities.error} />}
         {capabilities.data && <CapabilitiesCard data={capabilities.data} />}
       </Card>
+      <WorkersCard />
     </Stack>
   );
 }

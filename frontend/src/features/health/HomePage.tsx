@@ -41,6 +41,10 @@ export function HomePage() {
                   <Table.Td>{data.doc_organize_version ?? t('health.notInstalled')}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
+                  <Table.Th>{t('health.worker')}</Table.Th>
+                  <Table.Td>{t(`health.workerStatus.${data.worker}`)}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
                   <Table.Th>{t('health.database')}</Table.Th>
                   <Table.Td>
                     {data.database === 'ok' ? t('health.databaseOk') : t('health.databaseError')}

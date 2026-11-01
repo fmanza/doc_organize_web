@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Estado del servicio
-         * @description Devuelve el estado de ``config.db``, de las ubicaciones y las versiones (503 si degradado).
+         * @description Devuelve el estado de ``config.db``, de las ubicaciones, del worker y las versiones (503 si degradado).
          */
         get: operations["health_api_health_get"];
         put?: never;
@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * Volver a comprobar las capacidades
-         * @description Lanza en segundo plano un nuevo sondeo de capacidades (si no hay uno en curso).
+         * @description Pide a los workers vivos que vuelvan a sondear sus capacidades (lo hacen en su siguiente latido).
          */
         post: operations["refresh_capabilities_api_v1_admin_capabilities_refresh_post"];
         delete?: never;
@@ -86,6 +86,26 @@ export interface paths {
          * @description Aplica los cambios sin reiniciar; ``null`` devuelve el ajuste al valor de la variable o por defecto.
          */
         patch: operations["update_settings_api_v1_admin_settings_patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver workers
+         * @description Workers registrados con sus colas, latido y si siguen vivos.
+         */
+        get: operations["list_workers_api_v1_admin_workers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/audit": {
@@ -239,7 +259,7 @@ export interface paths {
         };
         /**
          * Capacidades de la instancia
-         * @description GPU, audio/vídeo y LibreOffice. ``pending`` mientras se calcula la primera vez (tarda varios segundos).
+         * @description GPU, audio/vídeo y LibreOffice según los workers (los que convierten); colas con algún worker vivo.
          */
         get: operations["get_capabilities_api_v1_instance_capabilities_get"];
         put?: never;
@@ -322,6 +342,222 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar proyectos
+         * @description Proyectos de los que el usuario es miembro (un admin ve todos), con su rol y el último run.
+         */
+        get: operations["list_projects_api_v1_projects_get"];
+        put?: never;
+        /**
+         * Crear proyecto
+         * @description Crea el proyecto (el usuario queda como ``owner``) y su carpeta de salidas si es nueva.
+         */
+        post: operations["create_project_api_v1_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver proyecto
+         * @description Detalle del proyecto con su último run.
+         */
+        get: operations["get_project_api_v1_projects__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar proyecto
+         * @description Renombra (solo en la BD), cambia la descripción o las carpetas de origen (``owner``).
+         */
+        patch: operations["update_project_api_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver miembros
+         * @description Miembros del proyecto con su rol.
+         */
+        get: operations["list_members_api_v1_projects__project_id__members_get"];
+        put?: never;
+        /**
+         * Añadir miembro
+         * @description Añade un usuario activo con un rol (``owner``).
+         */
+        post: operations["add_member_api_v1_projects__project_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Quitar miembro
+         * @description Quita un miembro (``owner``).
+         */
+        delete: operations["remove_member_api_v1_projects__project_id__members__user_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar rol de un miembro
+         * @description Cambia el rol (``owner``); el proyecto conserva siempre al menos un propietario.
+         */
+        patch: operations["update_member_api_v1_projects__project_id__members__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lanzar ejecución
+         * @description Encola una operación del proyecto; el worker la ejecuta y el progreso se sigue por SSE.
+         */
+        post: operations["enqueue_run_api_v1_projects__project_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historial de ejecuciones
+         * @description Runs de los proyectos visibles, más recientes primero (agrupados por ejecución).
+         */
+        get: operations["list_runs_api_v1_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver ejecución
+         * @description Estado, progreso, resultado y artefactos.
+         */
+        get: operations["get_run_api_v1_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/artifacts/{artifact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar artefacto
+         * @description Descarga un fichero del run como adjunto.
+         */
+        get: operations["download_artifact_api_v1_runs__run_id__artifacts__artifact_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancelar ejecución
+         * @description Cancela un run en cola o pide parar uno en marcha (el worker lo para en el siguiente punto seguro).
+         */
+        post: operations["cancel_run_api_v1_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Progreso en vivo (SSE)
+         * @description Eventos ``status``, ``progress``, ``log``, ``artifact`` y ``end`` del run (``id`` = número de evento).
+         */
+        get: operations["run_events_api_v1_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions": {
         parameters: {
             query?: never;
@@ -386,6 +622,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Buscar usuarios activos
+         * @description Hasta 20 usuarios activos para invitar a un proyecto (cualquier sesión: los propietarios no son admin).
+         */
+        get: operations["lookup_users_api_v1_users_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{user_id}": {
         parameters: {
             query?: never;
@@ -415,6 +671,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ArtifactOut
+         * @description Fichero de un run, descargable mientras no lo purgue la retención.
+         */
+        ArtifactOut: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "log" | "output" | "report";
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
         /**
          * AuditEntryOut
          * @description Evento de auditoría.
@@ -524,6 +804,8 @@ export interface components {
          *         doc_organize_version: Versión instalada de doc_organize.
          *         database: Estado de ``config.db``.
          *         locations: Peor estado del último sondeo de las ubicaciones (``none`` si no hay; ``unknown`` si no se pudo leer).
+         *         worker: ``ok`` si algún worker late, ``stale`` si solo hay caídos, ``none`` si no hay ninguno. Tampoco cuenta
+         *             para ``status``: sin worker la API sigue sirviendo (los runs esperan en cola).
          */
         HealthStatus: {
             /**
@@ -545,10 +827,37 @@ export interface components {
             status: "ok" | "degraded";
             /** Version */
             version: string;
+            /**
+             * Worker
+             * @enum {string}
+             */
+            worker: "none" | "ok" | "stale" | "unknown";
+        };
+        /**
+         * HistoryClearParams
+         * @description Vaciar el histórico: borra las salidas y el estado de doc_organize del proyecto.
+         */
+        HistoryClearParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default history_clear
+             * @constant
+             */
+            operation: "history_clear";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
         };
         /**
          * InstanceCapabilities
-         * @description Ficha de capacidades: ``pending`` mientras se calcula por primera vez; ``error`` si falló el último sondeo.
+         * @description Ficha de capacidades publicada por los workers: ``pending`` mientras el worker vivo no las ha calculado;
+         *     ``no_worker`` si no hay worker vivo (con las últimas conocidas, si las hay).
          */
         InstanceCapabilities: {
             capabilities: components["schemas"]["CapabilitiesOut"] | null;
@@ -556,11 +865,13 @@ export interface components {
             checked_at: string | null;
             /** Doc Organize Version */
             doc_organize_version: string | null;
+            /** Queues */
+            queues: string[];
             /**
              * Status
              * @enum {string}
              */
-            status: "pending" | "ok" | "error";
+            status: "ok" | "pending" | "no_worker";
         };
         /**
          * LocationCreate
@@ -695,6 +1006,26 @@ export interface components {
             usage: "source" | "destination" | "both";
         };
         /**
+         * LocationRef
+         * @description Ubicación referida por un proyecto: nombre y estado, nunca la ruta del contenedor.
+         */
+        LocationRef: {
+            /**
+             * Access
+             * @enum {string}
+             */
+            access: "ro" | "rw";
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unknown" | "ok" | "degraded" | "unavailable";
+        };
+        /**
          * LocationUpdate
          * @description Edición parcial de ubicación (la carpeta del contenedor no se puede cambiar).
          */
@@ -741,6 +1072,85 @@ export interface components {
             username: string;
         };
         /**
+         * MemberCreate
+         * @description Alta de miembro.
+         */
+        MemberCreate: {
+            /**
+             * Role
+             * @default viewer
+             * @enum {string}
+             */
+            role: "owner" | "editor" | "viewer";
+            /** User Id */
+            user_id: number;
+        };
+        /**
+         * MemberList
+         * @description Miembros de un proyecto.
+         */
+        MemberList: {
+            /** Items */
+            items: components["schemas"]["MemberOut"][];
+        };
+        /**
+         * MemberOut
+         * @description Miembro de un proyecto.
+         */
+        MemberOut: {
+            /**
+             * Added At
+             * Format: date-time
+             */
+            added_at: string;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "editor" | "viewer";
+            /** User Id */
+            user_id: number;
+            /** Username */
+            username: string;
+        };
+        /**
+         * MemberUpdate
+         * @description Cambio de rol de un miembro.
+         */
+        MemberUpdate: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "editor" | "viewer";
+        };
+        /**
+         * NoopParams
+         * @description Prueba del motor: ``steps`` pasos de ``step_seconds`` con progreso; ``fail_at_step`` simula un fallo.
+         */
+        NoopParams: {
+            /** Fail At Step */
+            fail_at_step?: number | null;
+            /**
+             * Operation
+             * @default noop
+             * @constant
+             */
+            operation: "noop";
+            /**
+             * Step Seconds
+             * @default 1
+             */
+            step_seconds: number;
+            /**
+             * Steps
+             * @default 5
+             */
+            steps: number;
+        };
+        /**
          * PasswordChange
          * @description Cambio de la propia contraseña.
          */
@@ -755,6 +1165,258 @@ export interface components {
              * Format: password
              */
             new_password: string;
+        };
+        /**
+         * ProjectCreate
+         * @description Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,
+         *     ``destination_parent`` (que debe estar vacía).
+         */
+        ProjectCreate: {
+            /** Description */
+            description?: string | null;
+            /** Destination Location Id */
+            destination_location_id: number;
+            /**
+             * Destination Parent
+             * @description Ruta relativa con «/»; vacía = la raíz
+             * @default
+             */
+            destination_parent: string;
+            /** Name */
+            name: string;
+            /** New Folder */
+            new_folder?: string | null;
+            /** Source Location Id */
+            source_location_id: number;
+            /** Source Subpaths */
+            source_subpaths: string[];
+        };
+        /**
+         * ProjectDeleteParams
+         * @description Borrar el proyecto; con ``delete_outputs`` también su carpeta de salidas (el estado se borra siempre).
+         */
+        ProjectDeleteParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Delete Outputs
+             * @default false
+             */
+            delete_outputs: boolean;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default project_delete
+             * @constant
+             */
+            operation: "project_delete";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        };
+        /**
+         * ProjectMoveParams
+         * @description Mover la carpeta de salidas a ``destination_parent/new_folder`` de una ubicación destino ``rw``.
+         */
+        ProjectMoveParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /** Destination Location Id */
+            destination_location_id: number;
+            /**
+             * Destination Parent
+             * @default
+             */
+            destination_parent: string;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** New Folder */
+            new_folder: string;
+            /**
+             * Operation
+             * @default project_move
+             * @constant
+             */
+            operation: "project_move";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        };
+        /**
+         * ProjectOut
+         * @description Proyecto con las rutas relativas a sus ubicaciones y el rol del usuario.
+         */
+        ProjectOut: {
+            /**
+             * Active Run
+             * @default false
+             */
+            active_run: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            destination_location: components["schemas"]["LocationRef"];
+            /** Destination Subpath */
+            destination_subpath: string;
+            /** Id */
+            id: number;
+            last_run?: components["schemas"]["RunBrief"] | null;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "editor" | "viewer";
+            source_location: components["schemas"]["LocationRef"];
+            /** Source Subpaths */
+            source_subpaths: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ProjectPage
+         * @description Página de proyectos.
+         */
+        ProjectPage: {
+            /** Items */
+            items: components["schemas"]["ProjectOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ProjectUpdate
+         * @description Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen.
+         */
+        ProjectUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Source Subpaths */
+            source_subpaths?: string[] | null;
+        };
+        /**
+         * RunBrief
+         * @description Resumen de un run para listas.
+         */
+        RunBrief: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "noop" | "history_clear" | "project_move" | "project_delete";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+        };
+        /**
+         * RunOut
+         * @description Ejecución con su estado, progreso, resultado y artefactos.
+         */
+        RunOut: {
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "noop" | "history_clear" | "project_move" | "project_delete";
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
+        /**
+         * RunPage
+         * @description Página del historial de ejecuciones.
+         */
+        RunPage: {
+            /** Items */
+            items: components["schemas"]["RunOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * RunProgress
+         * @description Último progreso publicado.
+         */
+        RunProgress: {
+            /** Current */
+            current?: string | null;
+            /** Phase */
+            phase: string;
+            /** Processed */
+            processed: number;
+            /** Total */
+            total?: number | null;
         };
         /**
          * SessionOut
@@ -835,6 +1497,18 @@ export interface components {
             };
         };
         /**
+         * UserBrief
+         * @description Usuario activo para invitar a un proyecto.
+         */
+        UserBrief: {
+            /** Display Name */
+            display_name: string;
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+        };
+        /**
          * UserCreate
          * @description Alta de usuario.
          */
@@ -854,6 +1528,14 @@ export interface components {
             role: "admin" | "user";
             /** Username */
             username: string;
+        };
+        /**
+         * UserLookup
+         * @description Resultado de la búsqueda de usuarios.
+         */
+        UserLookup: {
+            /** Items */
+            items: components["schemas"]["UserBrief"][];
         };
         /**
          * UserOut
@@ -935,6 +1617,42 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WorkerList
+         * @description Workers registrados.
+         */
+        WorkerList: {
+            /** Items */
+            items: components["schemas"]["WorkerOut"][];
+        };
+        /**
+         * WorkerOut
+         * @description Worker registrado (solo admin).
+         */
+        WorkerOut: {
+            /** Alive */
+            alive: boolean;
+            /** Capabilities At */
+            capabilities_at: string | null;
+            /** Doc Organize Version */
+            doc_organize_version: string | null;
+            /**
+             * Heartbeat At
+             * Format: date-time
+             */
+            heartbeat_at: string;
+            /** Id */
+            id: string;
+            /** Queues */
+            queues: string[];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Version */
+            version: string;
         };
     };
     responses: never;
@@ -1156,6 +1874,40 @@ export interface operations {
             };
             /** @description Valor no válido */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_workers_api_v1_admin_workers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1684,6 +2436,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Algún proyecto la usa */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -1807,6 +2566,812 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    list_projects_api_v1_projects_get: {
+        parameters: {
+            query?: {
+                /** @description Texto en el nombre */
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project_api_v1_projects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Ruta no válida (absoluta, UNC, con «..» o «\») */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre repetido, carpeta existente o no vacía, o salidas de otro proyecto */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_project_api_v1_projects__project_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project_api_v1_projects__project_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Ruta no válida (absoluta, UNC, con «..» o «\») */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre repetido o run en marcha */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_members_api_v1_projects__project_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_api_v1_projects__project_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ya es miembro */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member_api_v1_projects__project_id__members__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Es el último propietario */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_member_api_v1_projects__project_id__members__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dejaría el proyecto sin propietario */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enqueue_run_api_v1_projects__project_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Destino de un movimiento no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked), vista previa necesaria (preview_required) o cuota */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_runs_api_v1_runs_get: {
+        parameters: {
+            query?: {
+                project_id?: number | null;
+                status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ejecución no encontrada (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_artifact_api_v1_runs__run_id__artifacts__artifact_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                artifact_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ejecución no encontrada (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Purgado por la retención */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_api_v1_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No la lanzaste ni eres propietario */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ejecución no encontrada (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ya terminó */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_events_api_v1_runs__run_id__events_get: {
+        parameters: {
+            query?: {
+                /** @description Último evento recibido (si no hay Last-Event-ID) */
+                after?: number | null;
+            };
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Flujo de eventos del run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ejecución no encontrada (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Demasiadas conexiones abiertas */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2001,6 +3566,45 @@ export interface operations {
             };
             /** @description El usuario ya existe */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_users_api_v1_users_lookup_get: {
+        parameters: {
+            query: {
+                /** @description Inicio del usuario o del nombre */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLookup"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
