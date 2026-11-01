@@ -48,13 +48,12 @@ del volumen `models` (solo lectura); los descarga `models-init`, que sí tiene r
 ([ADR-011](../adr/ADR-011-modelos-sin-internet.md)):
 
 ```bash
-docker compose --profile setup run --rm models-init      # base (~1 GB)
-docker compose --profile setup run --rm models-init \
-  python -m app.integrations.doc_organize.models download --picture-description --easyocr   # + visión y EasyOCR
-docker compose restart worker                            # vuelve a publicar las capacidades
+docker compose --profile setup run --rm models-init                                   # base (~1 GB)
+docker compose --profile setup run --rm models-init download --picture-description    # + visión
+docker compose restart worker                                                         # vuelve a publicar las capacidades
 ```
 
-Repítelo al actualizar la aplicación si cambia la versión de Docling (CHANGELOG). Sin modelos, el resto de formatos se
+Cada descarga conserva en el manifiesto los modelos opcionales que ya estaban (visión, EasyOCR). Repítelo al actualizar la aplicación si cambia la versión de Docling (CHANGELOG). Sin modelos, el resto de formatos se
 convierte y los PDF e imágenes quedan como errores del escaneo.
 
 ### Worker con GPU
@@ -63,12 +62,17 @@ Para escanear con «Usar GPU» hace falta un worker de la cola `gpu` en una máq
 (CUDA 13.0) y [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/):
 
 ```bash
-docker compose --profile setup run --rm models-init \
-  python -m app.integrations.doc_organize.models download --easyocr   # modelos de EasyOCR
-docker compose --profile gpu up -d --build                             # construye runtime-gpu (varios GB)
+docker compose --profile setup-gpu run --rm models-init-gpu   # base + EasyOCR; construye runtime-gpu (varios GB)
+docker compose --profile gpu up -d --build                     # worker-gpu
 ```
 
-La imagen `runtime-gpu` lleva torch con CUDA y EasyOCR; el CI no la construye por tamaño. Con una sola GPU, deja
+`models-init-gpu` usa la imagen `runtime-gpu` porque EasyOCR solo está en ella; no necesita GPU. Para añadir también
+la visión: `docker compose --profile setup-gpu run --rm models-init-gpu download --easyocr --picture-description`.
+
+La imagen `runtime-gpu` lleva torch con CUDA y EasyOCR; el CI no la construye por tamaño. Probada con una RTX 5070
+(Blackwell, `sm_120`) y driver 616.92: el OCR con EasyOCR en GPU tarda la mitad que RapidOCR en CPU. EasyOCR y la caché
+de kernels de torch escriben en el tmpfs `/tmp` (`EASYOCR_MODULE_PATH`, `PYTORCH_KERNEL_CACHE_PATH`), porque el
+contenedor es de solo lectura. Con una sola GPU, deja
 `DOW_WORKER_CONCURRENCY=1` en `worker-gpu` (valor por defecto) para no agotar su memoria.
 
 Las ubicaciones se montan **igual en `web` y en `worker`** (mismas rutas bajo `/mnt`): la API valida y explora y el

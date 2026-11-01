@@ -84,6 +84,9 @@ doc_organize 0.10.0, con GPU para probar (resultó no haber GPU NVIDIA en el equ
 - **[modelos]**: el worker corre con `HF_HUB_OFFLINE=1`; los modelos los descarga `models-init` a `/models/docling` con
   `manifest.json`; `DOCLING_ARTIFACTS_PATH` se fija en el subproceso solo si existe el manifiesto. Al actualizar Docling,
   repetir `models-init`.
+- **[gpu]**: todo lo que escriba la variante GPU va al tmpfs `/tmp` (`EASYOCR_MODULE_PATH`,
+  `PYTORCH_KERNEL_CACHE_PATH`, creada en `entrypoint.sh`); al subir torch/EasyOCR/Docling, repetir la prueba con GPU
+  real y buscar `Read-only file system` y `could not be created` en los logs de `worker-gpu`.
 - **[dependencias]**: torch va en los grupos `cpu` (por defecto, `default-groups`) y `gpu`, incompatibles; `uv sync
   --frozen` instala CPU; la imagen GPU usa `--no-group cpu --group gpu`. `docker compose build` sin `target` construye
   la última etapa (`runtime`, CPU).
@@ -94,9 +97,31 @@ doc_organize 0.10.0, con GPU para probar (resultó no haber GPU NVIDIA en el equ
 - **[tests]**: las operaciones del worker corren en subprocesos *spawn* (`monkeypatch` no llega): las operaciones se
   prueban en el propio proceso con un `JobContext` real (`tests/jobs/test_scan_operation.py`) y el motor con `noop`.
 
+## Prueba con GPU real (posterior al cierre, mismo día)
+Equipo con RTX 5070 Laptop (Blackwell, compute capability 12.0, 8 GB), driver 616.92 (CUDA 13.4), Docker Desktop
+29.6.1 con runtime `nvidia`. Stack 0.5.0 con `--profile gpu`, ubicaciones sintéticas (5 PDF de 3 páginas solo imagen
++ 1 HTML) y escaneos por la API con «usar GPU» (cola `gpu`) y sin ella (cola `cpu`).
+- torch 2.14.1+cu130 incluye `sm_120`; `detect_gpu_status` → `gpu_active=True`; el worker publica `gpu_ready` y la
+  instancia `scan_options.use_gpu=true`; Docling usa `cuda:0` (maquetación, tablas y EasyOCR).
+- **Fallo 1 (L6 confirmado)**: EasyOCR crea siempre `~/.EasyOCR/user_network`; con `/app` de solo lectura los 5 PDF
+  fallaban en el OCR (`Errno 30`) y el run terminaba `succeeded` con 5 errores → `ENV EASYOCR_MODULE_PATH=/tmp/easyocr`
+  en `runtime-gpu` (los modelos siguen viniendo de `DOCLING_ARTIFACTS_PATH/EasyOcr`, descarga desactivada).
+- **Fallo 2**: torch no podía crear su caché de kernels CUDA (`~/.cache/torch/kernels`) y los recompilaba en cada job
+  → `PYTORCH_KERNEL_CACHE_PATH=/tmp/torch-kernels`; torch no crea esa carpeta (un solo `mkdir`, ni siquiera bajo
+  `XDG_CACHE_HOME`): la crea `docker/entrypoint.sh`.
+- **Fallo 3**: `models-init --easyocr` no funcionaba (imagen CPU sin `easyocr`) → servicio `models-init-gpu` (perfil
+  `setup-gpu`, imagen `runtime-gpu`). Las guías pasaban `python -m …` como comando de `models-init`, que ya es su
+  entrypoint (`invalid choice: 'python'`) → solo argumentos.
+- **Mejora**: `download` reescribía el manifiesto solo con lo pedido (`models-init` borraba EasyOCR del manifiesto de
+  `models-init-gpu`) → `merge_folders` conserva los grupos opcionales que siguen en disco
+  (`tests/unit/test_models_manifest.py`); verificado con `models-init` sin opciones tras `models-init-gpu`.
+- Suite del backend en `backend-dev` (Linux): 308 tests; en Windows fallan 5 tests de rutas ya existentes, ajenos a
+  este cambio (el CI y la imagen son Linux).
+- Resultado final: 2 escaneos GPU seguidos 6/6 con OCR, 0 errores, ≈ 45 s; el mismo escaneo en CPU (RapidOCR) ≈ 94 s;
+  0 avisos de escritura; texto reconocido correcto. `zensical build --strict` sin avisos. Logs en
+  `build/logs/gpu-*.txt`.
+
 ## Pendientes (no bloquean)
-- Probar `worker-gpu` con una GPU NVIDIA real (driver ≥ 580) y que EasyOCR/torch no intenten escribir fuera de `/tmp`
-  con el sistema de ficheros de solo lectura (Code Auditor L6).
 - LOW sin aplicar: `GET scanned-folders` sincroniza en un GET (L4 seguridad / L2 código), carrera TOCTOU al cambiar
   carpetas con un run encolándose, `folders.json` por carpeta (L5), tmpfs `/tmp` sin límite (L3 seguridad), mejoras
   de accesibilidad LOW 7–9 del Frontend Reviewer.
@@ -104,4 +129,4 @@ doc_organize 0.10.0, con GPU para probar (resultó no haber GPU NVIDIA en el equ
   salida, G18), L-10d (listado fallido y errores al cancelar, G19).
 
 ## Veredicto final
-GO — Fase 4 cerrada en 0.5.0 (pendiente de la prueba con GPU real, aceptado por el mantenedor).
+GO — Fase 4 cerrada en 0.5.0. Prueba con GPU real hecha después: tres correcciones en `[Unreleased]` (Fixed).

@@ -17,7 +17,8 @@ pedido. El contenedor corre sin privilegios y con el sistema de ficheros de solo
 2. Un servicio puntual, **`models-init`** (perfil `setup` de compose), los descarga con
    `python -m app.integrations.doc_organize.models download` (`docling.utils.model_downloader.download_models`) a
    `/models/docling` y escribe `manifest.json` con las carpetas de cada grupo: base (maquetación, tablas, RapidOCR),
-   `--picture-description` (SmolVLM) y `--easyocr` (OCR con GPU).
+   `--picture-description` (SmolVLM) y `--easyocr` (OCR con GPU). EasyOCR solo está en la imagen `runtime-gpu`, así
+   que `--easyocr` lo descarga **`models-init-gpu`** (perfil `setup-gpu`), el mismo servicio con esa imagen.
 3. El subproceso del job apunta Docling a esa carpeta con `DOCLING_ARTIFACTS_PATH` (`AppSettings` de Docling, prefijo
    `DOCLING_`, verificado en docling 2.142) antes de importar doc_organize, si existe el manifiesto.
 4. El worker publica en sus capacidades `models_ready`, `picture_description_ready` y `gpu_ready` (GPU activa y

@@ -87,6 +87,13 @@ CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port
 # docker build -f docker/Dockerfile --target runtime-gpu -t doc_organize_web:gpu .   (compose: perfil `gpu`)
 FROM runtime-base AS runtime-gpu
 COPY --from=backend-build-gpu /opt/venv /opt/venv
+# Escrituras de la variante GPU al tmpfs (/app, el HOME, es de solo lectura):
+# - EasyOCR crea siempre `<MODULE_PATH>/user_network` (por defecto ~/.EasyOCR). Los modelos no van ahí: Docling le pasa
+#   `DOCLING_ARTIFACTS_PATH/EasyOcr` con la descarga desactivada (ADR-011).
+# - torch guarda los kernels CUDA compilados (por defecto ~/.cache/torch/kernels); sin caché los recompila cada job.
+#   No crea esa carpeta: la crea entrypoint.sh.
+ENV EASYOCR_MODULE_PATH=/tmp/easyocr \
+    PYTORCH_KERNEL_CACHE_PATH=/tmp/torch-kernels
 
 # ---------- 5. Runtime CPU (por defecto: última etapa) ----------
 FROM runtime-base AS runtime

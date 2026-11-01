@@ -6,7 +6,8 @@
 # montajes SMB/NFS del host) se montan bajo /mnt **en los dos servicios**, con las mismas rutas
 # (docs/guides/despliegue.md).
 # Modelos de Docling (ADR-011), una vez y al actualizar:  docker compose --profile setup run --rm models-init
-# Worker con GPU (cola gpu, driver NVIDIA >= 580):       docker compose --profile gpu up -d --build
+# Worker con GPU (cola gpu, driver NVIDIA >= 580):       docker compose --profile setup-gpu run --rm models-init-gpu
+#                                                         docker compose --profile gpu up -d --build
 
 x-app: &app
   image: doc_organize_web:${DOW_TAG:-dev}
@@ -85,9 +86,10 @@ services:
         condition: service_healthy
 
   # Descarga los modelos de Docling al volumen `models` (con red); el worker los usa sin Internet (ADR-011).
-  # Opcionales: añade `--picture-description` (describir imágenes) o `--easyocr` (OCR con GPU) al comando.
+  # Opcional: `run --rm models-init download --picture-description` (describir imágenes). El manifiesto conserva los
+  # grupos opcionales ya descargados (también los de `models-init-gpu`).
   # Sin secretos ni `config.db` (no pasa por el entrypoint de migraciones): solo red y el volumen de modelos.
-  models-init:
+  models-init: &models-init
     image: doc_organize_web:${DOW_TAG:-dev}
     build:
       context: .
@@ -107,6 +109,18 @@ services:
     cap_drop:
       - ALL
     restart: "no"
+
+  # Lo mismo con la imagen `runtime-gpu`, la única con EasyOCR: modelos base + EasyOCR (añade `--picture-description`
+  # si también se quiere). No necesita GPU.
+  models-init-gpu:
+    <<: *models-init
+    image: doc_organize_web-gpu:${DOW_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: runtime-gpu
+    profiles: ["setup-gpu"]
+    command: ["download", "--easyocr"]
 
 volumes:
   data:

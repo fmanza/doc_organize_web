@@ -114,7 +114,8 @@ aunque cierre la pestaña, la cancelo y veo el historial **agrupado por ejecuci�
 > Decisiones del mantenedor: las carpetas guardadas son las carpetas de origen del proyecto, sin anidar; «forzar»
 > exige propietario, todas las carpetas, vista previa y confirmación; quitar una carpeta ya escaneada se permite con
 > aviso; modelos en el volumen `/models` con `models-init` (ADR-011). Mejora opcional incluida: variante GPU
-> (grupos `cpu`/`gpu` en el lock, imagen `runtime-gpu`, `worker-gpu`), **pendiente de probar con una GPU real**.
+> (grupos `cpu`/`gpu` en el lock, imagen `runtime-gpu`, `worker-gpu`), probada después con una GPU real (RTX 5070,
+> 2026-11-01): EasyOCR y la caché de kernels de torch pasaron al tmpfs y `--easyocr` se descarga con `models-init-gpu`.
 > Huecos nuevos: G16 (caché solo al final), G17 (carpeta de modelos), G18 (salidas sin el nombre de la carpeta: cada
 > carpeta de origen es un ámbito propio, decisión del mantenedor) y G19 (listado fallido = carpeta vacía).
 
