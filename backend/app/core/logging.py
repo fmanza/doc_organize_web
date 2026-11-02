@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import ClassVar, Final
 
 from app.core.request_context import RequestIdFilter
 
@@ -28,11 +28,22 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False, default=str)
 
 
+#: Loggers de terceros que escriben cada petición HTTP con su URL completa. El cliente de uso de LiteLLM de
+#: doc_organize lleva la clave virtual en la *query* (``/key/info?key=…``): por debajo de WARNING acabaría en el log
+#: (regla 6, ADR-004). Su nivel no sigue a ``DOW_LOG_LEVEL``.
+QUIET_LOGGERS: Final = ("httpx", "httpcore")
+
+
 def configure_logging(level: str) -> None:
-    """Sustituye los handlers del logger raíz por uno a stdout en JSON con ``request_id``."""
+    """Sustituye los handlers del logger raíz por uno a stdout en JSON con ``request_id``.
+
+    ``QUIET_LOGGERS`` quedan en WARNING sea cual sea ``level``.
+    """
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     handler.addFilter(RequestIdFilter())
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
+    for name in QUIET_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)

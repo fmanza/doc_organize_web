@@ -63,7 +63,19 @@ bloquean: la web tiene rodeo.
 | L-8e | Temporales sin seguir enlaces | Las escrituras atómicas crean el `.tmp` con `O_EXCL \| O_NOFOLLOW` | G31 |
 | L-8f | Validar `Context.output_folder_name` al cargar | `ContextRegistry.load_context` rechaza un nombre que no pase `validate_output_folder_name` | G32 |
 
-## Versión 0.14.0 — deprecación de la web (cuando F8 de la web esté cerrada)
+## Peticiones de la Fase 8 (huecos G33–G37)
+
+Ninguna bloquea: la web las rodea en `backend/app/integrations/doc_organize/ai.py`.
+
+| ID | Tarea | Detalle | Hueco |
+|---|---|---|---|
+| L-3a | Parar la IA ante una clave rechazada | `ContextBuilder` deja de llamar a la IA tras un `*AuthError` (o tras `max_failures` errores seguidos) y lo indica en el resultado | G33 |
+| L-3b | Reintentos y presupuesto | Reintentos con espera creciente ante errores de conexión y `max_calls` por operación en `AiHttpClientBase` | G34 |
+| L-3c | Recuento de la Sub-fase B | `Context` (o el resultado de `build`) dice cuántos documentos se enviaron a la IA, cuántos clasificó y cuántos fallaron | G35 |
+| L-3d | Carpeta relativa en la muestra | `select_document_sample` muestra la carpeta relativa a la raíz escaneada, nunca nombres de carpetas por encima de ella | G36 |
+| L-3e | Clave fuera de la URL del uso | `LiteLLMUsageClient.get_usage()` no pone la virtual key en la *query* cuando se consulta la propia clave del Bearer (httpx registra cada URL); PENDIENTE DE VERIFICAR que `/key/info` sin `key=` devuelve esa clave | G37 |
+
+## Versión 0.14.0 — deprecación de la web (F8 de la web cerrada el 2026-11-02: se puede pedir ya)
 
 > La 0.12.0 se usó para L-10a…L-10e (robustez del escaneo y API de lectura, G16–G23) y la 0.13.0 para L-8 y
 > L-8a…L-8c (Fase 7): L-10 pasa a la siguiente MINOR (2026-11-02).

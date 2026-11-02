@@ -1,4 +1,4 @@
-import { AppShell, Badge, Group, NavLink, Stack, Text, Title } from '@mantine/core';
+import { AppShell, Badge, Group, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { NavLink as RouterNavLink, Outlet } from 'react-router';
 
@@ -11,10 +11,17 @@ const SECTIONS: { key: string; phase: number }[] = [
   { key: 'cache', phase: 5 },
   { key: 'duplicates', phase: 6 },
   { key: 'context', phase: 7 },
-  { key: 'ai', phase: 8 },
 ];
 
-const ADMIN_SECTIONS = ['users', 'sessions', 'audit', 'settings', 'taxonomy-templates'] as const;
+const ADMIN_SECTIONS = [
+  'users',
+  'sessions',
+  'audit',
+  'settings',
+  'taxonomy-templates',
+  'ai-settings',
+  'ai-usage',
+] as const;
 
 export function Layout() {
   const { t } = useTranslation();
@@ -30,37 +37,42 @@ export function Layout() {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="sm" aria-label={t('nav.label')}>
-        <Stack gap={4}>
-          <NavLink component={RouterNavLink} to="/" label={t('nav.home')} end />
-          <NavLink component={RouterNavLink} to="/projects" label={t('nav.projects')} />
-          <NavLink component={RouterNavLink} to="/runs" label={t('nav.runs')} />
-          <NavLink component={RouterNavLink} to="/locations" label={t('nav.locations')} />
-          {SECTIONS.map((section) => (
-            <NavLink
-              key={section.key}
-              label={t(`nav.${section.key}`)}
-              disabled
-              rightSection={
-                <Badge size="xs" variant="light">
-                  {t('nav.phase', { phase: section.phase })}
-                </Badge>
-              }
-            />
-          ))}
-          {me?.role === 'admin' && (
-            <>
-              <Text size="xs" fw={700} c="dimmed" mt="md" px="sm">
-                {t('nav.admin')}
-              </Text>
-              {ADMIN_SECTIONS.map((key) => (
-                <NavLink key={key} component={RouterNavLink} to={`/admin/${key}`} label={t(`nav.${key}`)} />
-              ))}
-            </>
-          )}
-        </Stack>
-        <Text size="xs" c="dimmed" mt="auto">
-          v{__APP_VERSION__}
-        </Text>
+        {/* Con todos los enlaces de administración no cabe en pantallas bajas: se desplaza (WCAG 1.4.10). */}
+        <AppShell.Section grow component={ScrollArea} type="auto">
+          <Stack gap={4}>
+            <NavLink component={RouterNavLink} to="/" label={t('nav.home')} end />
+            <NavLink component={RouterNavLink} to="/projects" label={t('nav.projects')} />
+            <NavLink component={RouterNavLink} to="/runs" label={t('nav.runs')} />
+            <NavLink component={RouterNavLink} to="/locations" label={t('nav.locations')} />
+            {SECTIONS.map((section) => (
+              <NavLink
+                key={section.key}
+                label={t(`nav.${section.key}`)}
+                disabled
+                rightSection={
+                  <Badge size="xs" variant="light">
+                    {t('nav.phase', { phase: section.phase })}
+                  </Badge>
+                }
+              />
+            ))}
+            {me?.role === 'admin' && (
+              <>
+                <Text size="xs" fw={700} c="dimmed" mt="md" px="sm">
+                  {t('nav.admin')}
+                </Text>
+                {ADMIN_SECTIONS.map((key) => (
+                  <NavLink key={key} component={RouterNavLink} to={`/admin/${key}`} label={t(`nav.${key}`)} />
+                ))}
+              </>
+            )}
+          </Stack>
+        </AppShell.Section>
+        <AppShell.Section pt="xs">
+          <Text size="xs" c="dimmed">
+            v{__APP_VERSION__}
+          </Text>
+        </AppShell.Section>
       </AppShell.Navbar>
       <AppShell.Main>
         <Outlet />

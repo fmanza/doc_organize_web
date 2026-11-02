@@ -49,9 +49,12 @@ class Settings(BaseSettings):
         user_quota_mb: Espacio máximo de artefactos por usuario en el workspace (0 = sin límite).
         context_site_timeout_seconds: Tiempo máximo de ``zensical build`` al construir el contexto (Fase 7); si se
             pasa, el contexto queda sin sitio y con un aviso.
+        ai_timeout_seconds: Tiempo máximo de cada petición a un servicio de IA (Fase 8).
+        ai_retries: Reintentos de conexión de cada petición a un servicio de IA (Fase 8, G34).
+        ai_max_documents_per_run: Documentos que un run puede enviar a la IA como mucho (presupuesto, Fase 8).
 
-    Los ajustes de identidad, sondeo, retención y cuota son administrables desde la web (ADR-012): estos valores son
-    el defecto.
+    Los ajustes de identidad, sondeo, retención, cuota e IA son administrables desde la web (ADR-012): estos valores
+    son el defecto.
     """
 
     model_config = SettingsConfigDict(env_prefix="DOW_", secrets_dir=None, extra="ignore")
@@ -83,6 +86,9 @@ class Settings(BaseSettings):
     run_retention_days: int = Field(default=30, ge=1, le=3650)
     user_quota_mb: int = Field(default=0, ge=0, le=10_000_000)
     context_site_timeout_seconds: int = Field(default=600, ge=10, le=24 * 3600)
+    ai_timeout_seconds: int = Field(default=30, ge=5, le=300)
+    ai_retries: int = Field(default=2, ge=0, le=5)
+    ai_max_documents_per_run: int = Field(default=500, ge=1, le=100_000)
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> Self:

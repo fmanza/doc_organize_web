@@ -14,7 +14,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 5 | Caché, resultados y descargas ✅ (2026-11-02) | 0.6.0 | 0.11.0 (L-7) |
 | 6 | Duplicados ✅ (2026-11-02) | 0.7.0 | 0.12.1 (L-6, L-11a) |
 | 7 | Contexto y taxonomías ✅ (2026-11-02) | 0.8.0 | 0.13.0 (L-8, L-8a…L-8c) |
-| 8 | IA: clasificación, manifiestos y uso | 0.9.0 | 0.10.0 (L-3) |
+| 8 | IA: clasificación, manifiestos y uso ✅ (2026-11-03) | 0.9.0 | 0.10.0 (L-3); cerrada con 0.13.0 |
 | 9 | Multi-tenant y roles | 0.10.0 | — |
 | 10 | Endurecimiento y release | 1.0.0 | 1.0.0 |
 
@@ -184,6 +184,10 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
   sitio.
 
 ## Fase 8 — IA: clasificación, manifiestos y uso
+
+> **Cerrada el 2026-11-03 (0.9.0)** con doc_organize 0.13.0 (pedía 0.10.0, L-3). Huecos nuevos con rodeo: G33–G37
+> (L-3a…L-3e). Paridad funcional cerrada; L-10 (deprecar la web integrada) se puede pedir ya (decisión D1). Sesión:
+> `.ai/sessions/2026-11-02-fase8/`.
 
 - WB-8.1 `ai_settings` por familia (LiteLLM uso, clasificación de dominio, clasificación de taxonomía, borrador de
   manifiesto, GitHub Copilot) cifrado con Fernet, nunca devuelto en claro (solo «configurado» + últimos 4).

@@ -31,14 +31,15 @@
     "cache": "Documentos",
     "duplicates": "Duplicados",
     "context": "Contexto",
-    "ai": "IA",
     "phase": "Fase {{phase}}",
     "admin": "Administración",
     "users": "Usuarios",
     "sessions": "Sesiones",
     "audit": "Auditoría",
     "settings": "Ajustes",
-    "taxonomy-templates": "Plantillas de taxonomía"
+    "taxonomy-templates": "Plantillas de taxonomía",
+    "ai-settings": "Configuración IA",
+    "ai-usage": "Uso de IA"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",

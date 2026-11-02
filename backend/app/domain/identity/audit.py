@@ -49,6 +49,8 @@ class AuditAction:
     PROJECT_TAXONOMY_MANIFEST_SAVE: Final = "project.taxonomy_manifest_save"
     PROJECT_CONTEXT_BUILD: Final = "project.context_build"
     PROJECT_CONTEXT_DELETE: Final = "project.context_delete"
+    PROJECT_TAXONOMY_DRAFT: Final = "project.taxonomy_draft"
+    AI_SETTINGS_UPDATE: Final = "ai_settings.update"
     RUN_ENQUEUE: Final = "run.enqueue"
     RUN_CANCEL: Final = "run.cancel"
     WORKER_CAPABILITIES_REFRESH: Final = "worker.capabilities_refresh"

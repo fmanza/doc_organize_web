@@ -329,6 +329,7 @@ Operation = Literal[
     "dedup_apply",
     "context_build",
     "context_delete",
+    "taxonomy_draft",
 ]
 
 
@@ -696,6 +697,7 @@ class ContextOut(BaseModel):
     failed_count: int
     collisions_count: int
     site_built: bool
+    ai_classification: bool = False
     domains: list[ContextDomainOut]
     built_by_run_id: str | None
     built_at: datetime
@@ -714,6 +716,7 @@ class ContextDocumentOut(_Out):
     organized_path: str | None
     failed: bool
     collision: bool
+    classified_by: Literal["rules", "ai"] | None = None
     output_path: str | None = None
 
 
@@ -727,3 +730,83 @@ class SiteSessionOut(BaseModel):
 
     url: str
     expires_at: datetime
+
+
+# --- ai (Fase 8) -------------------------------------------------------------------------------------------------
+
+AiFamilyKey = Literal[
+    "litellm_classification",
+    "litellm_taxonomy_classification",
+    "litellm_taxonomy_manifest_draft",
+    "litellm_usage",
+    "github_copilot_usage",
+]
+
+
+class AiFieldOut(BaseModel):
+    """Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos."""
+
+    name: str
+    env_var: str
+    secret: bool
+    required: bool
+    source: Literal["db", "env", "none"]
+    value: str | None
+    hint: str | None
+    undecryptable: bool = Field(description="Hay un valor guardado que no se descifra con las claves actuales")
+
+
+class AiFamilyOut(BaseModel):
+    key: AiFamilyKey
+    configured: bool = Field(description="Tiene todos sus campos obligatorios")
+    fields: list[AiFieldOut]
+
+
+class AiSettingsOut(BaseModel):
+    """Configuración de IA de la instancia, sin ningún secreto."""
+
+    encryption_configured: bool
+    families: list[AiFamilyOut]
+
+
+class AiFamilyUpdate(BaseModel):
+    """Campos que cambian: ausente = no se toca; ``null`` o ``""`` = borrar el valor guardado (vuelve al entorno)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
+        max_length=8
+    )
+
+
+class AiStatusOut(BaseModel):
+    """Qué familias de IA están configuradas (para cualquier usuario, sin valores)."""
+
+    families: dict[str, bool]
+
+
+class AiUsageItemOut(BaseModel):
+    date: str
+    product: str
+    sku: str | None
+    quantity: float
+    unit_type: str
+    cost_usd: float | None
+
+
+class AiUsageSourceOut(BaseModel):
+    """Uso de una fuente en el periodo actual, o por qué no hay (sin configurar o ``error``)."""
+
+    source: Literal["litellm", "github_copilot"]
+    configured: bool
+    fetched_at: datetime | None
+    cached: bool
+    period_start: str | None
+    period_end: str | None
+    total_cost_usd: float | None
+    items: list[AiUsageItemOut]
+    error: Literal["ai_auth", "ai_connection", "ai_error"] | None
+
+
+class AiUsageOut(BaseModel):
+    sources: list[AiUsageSourceOut]

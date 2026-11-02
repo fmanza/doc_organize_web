@@ -31,7 +31,8 @@ También eligen:
 reorganizada y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia y el sitio no se cortan a
 medias. Reconstruir sustituye el contexto anterior.
 
-La clasificación con IA llegará en la Fase 8.
+Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
+clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
 
 ## Ver el contexto
 
@@ -75,7 +76,8 @@ Notas libres.
 ```
 
 Los editores lo editan en la página. Se valida al guardar y no se puede guardar mientras haya otra escritura en el
-proyecto (un escaneo, otra construcción…).
+proyecto (un escaneo, otra construcción…). Con la IA configurada, «Pedir borrador» propone uno a partir de una muestra
+de documentos y lo carga en el editor sin guardarlo ([borrador de manifiesto](ia.md#borrador-de-manifiesto)).
 
 ## Plantillas de taxonomía
 

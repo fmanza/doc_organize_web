@@ -1,7 +1,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 
 import { api, ensureOk, isApiError, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
+import { useEnqueueRun } from '../projects/useProjects';
+import { useRun } from '../runs/useRuns';
 
 export type ContextOut = components['schemas']['ContextOut'];
 export type ContextDocument = components['schemas']['ContextDocumentOut'];
@@ -27,8 +30,66 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
     output_folder_name: null,
     threshold: 0.5,
     build_site: true,
+    ai_classification: false,
     template_markdown: null,
     ...change,
+  };
+}
+
+/** Familia de IA que usa `catalog`: con plantilla o manifiesto clasifica en dos ejes (taxonomía). */
+export function aiFamily(catalog: Catalog): 'litellm_classification' | 'litellm_taxonomy_classification' {
+  return catalog === 'template' || catalog === 'manifest'
+    ? 'litellm_taxonomy_classification'
+    : 'litellm_classification';
+}
+
+/** Resultado del run `taxonomy_draft` (lo que devuelve el job). */
+export interface TaxonomyDraftResult {
+  manifest_markdown: string;
+  reasoning: string | null;
+  sample_documents: number;
+  total_documents: number;
+}
+
+function isDraftResult(value: unknown): value is TaxonomyDraftResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { manifest_markdown?: unknown }).manifest_markdown === 'string'
+  );
+}
+
+/**
+ * Lanza `taxonomy_draft` y sigue el run (cada 2 s) hasta que termina. Al acabar bien entrega el Markdown a `onDraft`
+ * una sola vez; si falla, `failure` lleva el mensaje del run.
+ */
+export function useTaxonomyDraft(projectId: number, onDraft: (markdown: string) => void) {
+  const enqueue = useEnqueueRun(projectId);
+  const [runId, setRunId] = useState<string | null>(null);
+  const run = useRun(runId, 2_000);
+  const delivered = useRef<string | null>(null);
+  const status = run.data?.status;
+  const result: unknown = run.data?.result;
+  const loaded = status === 'succeeded' && isDraftResult(result) ? result : null;
+
+  useEffect(() => {
+    if (loaded && runId && delivered.current !== runId) {
+      delivered.current = runId;
+      onDraft(loaded.manifest_markdown);
+    }
+  }, [loaded, runId, onDraft]);
+
+  return {
+    runId,
+    running: enqueue.isPending || status === 'queued' || status === 'running',
+    error: enqueue.error ?? run.error,
+    failure: status === 'failed' || status === 'cancelled' ? (run.data?.error_message ?? status) : null,
+    loaded,
+    start: (sampleSize: number) =>
+      enqueue.mutate(
+        { operation: 'taxonomy_draft', sample_size: sampleSize },
+        { onSuccess: (created) => setRunId(created.id) },
+      ),
   };
 }
 

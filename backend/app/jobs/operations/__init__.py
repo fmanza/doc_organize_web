@@ -12,6 +12,7 @@ from typing import Any, Final
 from app.db.models import Project
 from app.jobs.context import JobContext
 from app.jobs.operations import (
+    ai,
     context,
     dedup,
     export,
@@ -38,4 +39,5 @@ REGISTRY: Final[dict[str, Operation]] = {
     "dedup_apply": dedup.run_apply,
     "context_build": context.run_build,
     "context_delete": context.run_delete,
+    "taxonomy_draft": ai.run,
 }

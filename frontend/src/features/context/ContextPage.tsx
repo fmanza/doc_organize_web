@@ -27,9 +27,11 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
+import { useAiStatus } from '../admin/useAi';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
 import {
+  aiFamily,
   buildParams,
   type Catalog,
   type ContextOut,
@@ -40,12 +42,14 @@ import {
   useManifest,
   useProjectContext,
   useSaveManifest,
+  useTaxonomyDraft,
   useTemplates,
 } from './useContext';
 
 /**
  * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
- * manifiesto), ver dominios y documentos, editar el manifiesto de taxonomía, abrir el sitio aislado y borrar.
+ * manifiesto), ver dominios y documentos, editar el manifiesto de taxonomía, abrir el sitio aislado y borrar. Con la
+ * Fase 8, también clasificar con IA lo que las reglas dejan sin clasificar y pedir un borrador del manifiesto.
  */
 export function ContextPage() {
   const { t } = useTranslation();
@@ -148,6 +152,11 @@ function Summary({
         {t('context.summary.folder', { folder: context.output_folder_name })} ·{' '}
         {t(`context.catalog.${context.catalog_kind}`, { defaultValue: context.catalog_kind })}
         {context.taxonomy_template_name ? ` «${context.taxonomy_template_name}»` : ''}
+        {context.ai_classification && (
+          <Badge ml="xs" size="sm" variant="light" color="grape">
+            {t('context.ai.badge')}
+          </Badge>
+        )}
       </Text>
       <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs" component="dl">
         {stats.map(([key, value]) => (
@@ -205,6 +214,9 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
   const [folder, setFolder] = useState('organizado');
   const [threshold, setThreshold] = useState(0.5);
   const [buildSite, setBuildSite] = useState(true);
+  const status = useAiStatus();
+  const [withAi, setWithAi] = useState(false);
+  const aiAvailable = status.data?.[aiFamily(catalog)] === true;
 
   const ready =
     (catalog !== 'domains' || domains.length > 0) && (catalog !== 'template' || template !== null);
@@ -217,6 +229,7 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
         output_folder_name: context ? null : folder.trim() || null,
         threshold,
         build_site: buildSite,
+        ai_classification: withAi && aiAvailable,
       }),
       { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
     );
@@ -292,6 +305,20 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
             onChange={(event) => setBuildSite(event.currentTarget.checked)}
           />
         </Group>
+        <Switch
+          label={t('context.ai.classify')}
+          description={t(
+            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiFamily(catalog)}`,
+          )}
+          checked={withAi && aiAvailable}
+          disabled={!aiAvailable}
+          onChange={(event) => setWithAi(event.currentTarget.checked)}
+        />
+        {withAi && aiAvailable && (
+          <Alert color="grape" title={t('context.ai.egressTitle')}>
+            {t('context.ai.egress')}
+          </Alert>
+        )}
         {enqueue.isError && <ErrorAlert error={enqueue.error} />}
         <Group justify="flex-end">
           <Button onClick={launch} loading={enqueue.isPending} disabled={!ready}>
@@ -448,6 +475,11 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                       </Table.Td>
                       <Table.Td>
                         {doc.material_type_name ?? doc.material_type ?? doc.document_type ?? '—'}
+                        {doc.classified_by === 'ai' && (
+                          <Badge ml="xs" size="xs" variant="light" color="grape" title={t('context.ai.byAi')}>
+                            {t('context.ai.badge')}
+                          </Badge>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         {doc.failed ? (
@@ -523,6 +555,7 @@ function ManifestCard({ projectId, editable }: { projectId: number; editable: bo
           })}
         </Text>
       )}
+      {editable && <DraftPanel projectId={projectId} onDraft={setDraft} />}
       <Textarea
         label={t('context.manifest.markdown')}
         value={text}
@@ -549,6 +582,73 @@ function ManifestCard({ projectId, editable }: { projectId: number; editable: bo
             {t('context.manifest.save')}
           </Button>
         </Group>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Borrador del manifiesto con IA: lanza el run `taxonomy_draft`, espera a que termine y carga el Markdown en el
+ * editor **sin guardarlo** (se revisa y se guarda con «Guardar manifiesto»).
+ */
+function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markdown: string) => void }) {
+  const { t } = useTranslation();
+  const status = useAiStatus();
+  const [sampleSize, setSampleSize] = useState(25);
+  const draft = useTaxonomyDraft(projectId, onDraft);
+  const available = status.data?.litellm_taxonomy_manifest_draft === true;
+
+  return (
+    <Card withBorder mb="sm" component="section" aria-label={t('context.ai.draftTitle')}>
+      <Text fw={500} size="sm">
+        {t('context.ai.draftTitle')}
+      </Text>
+      <Text size="xs" c="dimmed" mb="xs">
+        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.litellm_taxonomy_manifest_draft')}
+      </Text>
+      <Group align="flex-end">
+        <NumberInput
+          label={t('context.ai.sampleSize')}
+          min={1}
+          max={60}
+          allowDecimal={false}
+          clampBehavior="strict"
+          value={sampleSize}
+          onChange={(value) => setSampleSize(typeof value === 'number' ? value : 25)}
+          w={180}
+          disabled={!available}
+        />
+        <Button
+          variant="light"
+          color="grape"
+          onClick={() => draft.start(sampleSize)}
+          loading={draft.running}
+          disabled={!available}
+        >
+          {t('context.ai.draft')}
+        </Button>
+        {draft.runId && (
+          <Anchor component={Link} to={`/runs/${draft.runId}`} size="sm">
+            {t('context.ai.openRun')}
+          </Anchor>
+        )}
+      </Group>
+      {draft.error && <ErrorAlert error={draft.error} mt="xs" />}
+      {draft.failure && (
+        <Alert color="red" role="alert" mt="xs">
+          {draft.failure}
+        </Alert>
+      )}
+      {draft.loaded && (
+        <Alert color="grape" role="status" mt="xs" title={t('context.ai.draftLoaded')}>
+          {draft.loaded.reasoning ?? t('context.ai.draftLoadedBody')}
+          <Text size="xs" mt={4}>
+            {t('context.ai.draftSample', {
+              sample: draft.loaded.sample_documents,
+              total: draft.loaded.total_documents,
+            })}
+          </Text>
+        </Alert>
       )}
     </Card>
   );

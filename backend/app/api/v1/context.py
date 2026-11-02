@@ -159,6 +159,7 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         failed_count=row.failed_count,
         collisions_count=row.collisions_count,
         site_built=row.site_built,
+        ai_classification=row.ai_classification,
         domains=[ContextDomainOut.model_validate(d) for d in row.domains],
         built_by_run_id=row.built_by_run_id,
         built_at=row.built_at,

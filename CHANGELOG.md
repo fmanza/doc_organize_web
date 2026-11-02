@@ -5,6 +5,65 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-03
+
+Fase 8 — IA: clasificación, manifiestos y uso. Con doc_organize **0.13.0** (la fase pedía 0.10.0, L-3). Cierra la
+paridad funcional con la web integrada: solo quedan las filas de roles y tenants (Fase 9).
+
+### Added
+
+- **backend**: configuración de IA de la instancia ([guía](docs/guides/ia.md#configuración-ia-administradores),
+  [ADR-004](docs/adr/ADR-004-cifrado-secretos.md)):
+  - las 5 familias de la web integrada: clasificación de dominios, clasificación por taxonomía, borrador de
+    manifiesto, uso de LiteLLM y uso de GitHub Copilot;
+  - tabla `ai_settings` (migración `0008_ai`) con los secretos cifrados con MultiFernet (`DOW_FERNET_KEYS`, nueva
+    dependencia `cryptography`);
+  - precedencia: valor guardado > variable `DOC_ORGANIZE_*`;
+  - `GET /api/v1/admin/ai-settings` y `PUT /api/v1/admin/ai-settings/{family}` (admin) nunca devuelven un secreto,
+    solo su origen y sus 4 últimos caracteres;
+  - la `base_url` se valida (`http`/`https`, sin credenciales, *query* ni fragmento);
+  - cada cambio se audita (`ai_settings.update`) sin valores secretos;
+  - `GET /api/v1/ai/status` dice a cualquier usuario qué familias están configuradas;
+  - `python -m app.cli rotate-secrets` vuelve a cifrar con la primera clave.
+- **backend**: clasificación con IA ([guía](docs/guides/ia.md#clasificar-con-ia),
+  [ADR-014](docs/adr/ADR-014-uso-de-servicios-de-ia.md)):
+  - `context_build` admite `ai_classification`; se usa la familia de un eje o la de dos ejes según el catálogo, y se
+    comprueba al encolar (422 `ai_not_configured`);
+  - el subproceso descifra solo esa familia y construye el `*Config` de doc_organize (L-3, G3);
+  - ajustes administrables nuevos: `ai_timeout_seconds` (30), `ai_retries` (2) y `ai_max_documents_per_run` (500);
+  - se deja de llamar a la IA tras una clave rechazada, tras 3 fallos de conexión seguidos o al llegar al tope (G33,
+    G34);
+  - el run cuenta lo enviado, lo clasificado y los errores (G35); `context_documents.classified_by` marca lo que
+    clasificó la IA.
+- **backend**: run `taxonomy_draft` (editor; sustituye a `POST .../context/taxonomy-manifest-draft`):
+  - envía una muestra de 1–60 documentos convertidos, con rutas relativas a la ubicación (G36);
+  - el borrador va en el resultado del run y no se guarda;
+  - se audita (`project.taxonomy_draft`) y su tamaño está acotado (256 KiB).
+- **backend**: `GET /api/v1/admin/ai-usage` (admin): uso del periodo actual de LiteLLM y de GitHub Copilot.
+  - Caché de 5 minutos por fuente en el proceso; `refresh` como mucho cada 30 s; timeout de 10 s.
+  - Una fuente que falla no impide ver la otra. El payload original (`raw`) nunca se devuelve.
+- **frontend**: **Administración → Configuración IA** y **Administración → Uso de IA**.
+- **frontend**: en la página **Contexto**:
+  - interruptor «Clasificar con IA», con aviso de que el contenido sale de la aplicación;
+  - marca **IA** en los documentos que clasificó la IA;
+  - «Pedir borrador», que carga el manifiesto propuesto en el editor sin guardarlo.
+- **frontend**: el resultado de los runs muestra los datos anidados (`ai.*`) y las listas de catálogo por nombre.
+- **docker**: servicio `litellm-fake` en `docker-compose.e2e.yml`, un LiteLLM Proxy falso para los E2E sin red.
+- **docs**: guía [Inteligencia artificial](docs/guides/ia.md), ADR-014 y E2E `ai.spec.ts`.
+
+### Changed
+
+- **frontend**: el menú lateral se desplaza cuando no cabe (con todos los enlaces de administración quedaba fuera de
+  pantalla en alturas de 720 px).
+- **backend**: los loggers `httpx` y `httpcore` quedan en WARNING sea cual sea `DOW_LOG_LEVEL`. El cliente de uso de
+  LiteLLM lleva la clave en la URL (`/key/info?key=…`) y httpx escribe cada URL en INFO (hallazgo de AUDIT_CODE; G37,
+  pedido a doc_organize como L-3e).
+
+### Security
+
+- Las credenciales de IA nunca se escriben en claro: ni en respuestas, `config.db`, `run.json`, eventos SSE, ni
+  registros. Los tests lo comprueban buscando la clave en todos esos sitios.
+
 ## [0.8.0] - 2026-11-02
 
 Fase 7 — contexto y taxonomías. Con doc_organize **0.13.0** (L-8 y L-8a…L-8c, pedidas antes de la fase).

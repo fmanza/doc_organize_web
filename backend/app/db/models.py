@@ -195,6 +195,24 @@ class AppSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
+class AiSetting(Base):
+    """Campo de una familia de IA guardado por un admin (Fase 8, ADR-004); sin fila, vale ``DOC_ORGANIZE_*``.
+
+    De instancia (como en la web integrada): los tenants llegan en la Fase 9. Un campo secreto solo se guarda cifrado
+    con MultiFernet en ``ciphertext``; uno no secreto, en claro en ``value``. Nunca los dos.
+    """
+
+    __tablename__ = "ai_settings"
+    __table_args__ = (CheckConstraint("(value IS NULL) <> (ciphertext IS NULL)", name="one_value"),)
+
+    family: Mapped[str] = mapped_column(String(64), primary_key=True)
+    field: Mapped[str] = mapped_column(String(32), primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text, default=None)
+    ciphertext: Mapped[str | None] = mapped_column(Text, default=None)
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
 ProjectStatus = Literal["active", "deleted"]
 MemberRole = Literal["owner", "editor", "viewer"]
 MEMBER_ROLES: tuple[MemberRole, ...] = ("owner", "editor", "viewer")
@@ -466,6 +484,8 @@ class ProjectContext(Base):
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
     collisions_count: Mapped[int] = mapped_column(Integer, default=0)
     site_built: Mapped[bool] = mapped_column(default=False)
+    #: Se construyó con la Sub-fase B (IA, Fase 8).
+    ai_classification: Mapped[bool] = mapped_column(default=False)
     domains: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -496,3 +516,5 @@ class ContextDocument(Base):
     organized_path: Mapped[str | None] = mapped_column(String(4096), default=None)
     failed: Mapped[bool] = mapped_column(default=False)
     collision: Mapped[bool] = mapped_column(default=False)
+    #: ``rules`` o ``ai`` (quién lo clasificó, Fase 8); nulo si no se clasificó.
+    classified_by: Mapped[str | None] = mapped_column(String(8), default=None)

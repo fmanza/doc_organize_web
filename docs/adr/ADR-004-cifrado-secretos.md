@@ -1,6 +1,6 @@
 # ADR-004 — Cifrado de secretos
 
-- **Estado**: Aceptado (claves desde la Fase 0; credenciales IA cifradas en la Fase 8)
+- **Estado**: Aceptado (claves desde la Fase 0; credenciales IA cifradas e implementadas en la Fase 8, 0.9.0)
 - **Fecha**: 2026-10-31
 
 ## Contexto

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import ACTIVE_RUN_STATUSES, ContextDocument, Project, ProjectContext, Run, User
+from app.domain.ai import settings as ai_settings
 from app.domain.context import templates
 from app.domain.context.errors import (
     ContextNotFoundError,
@@ -33,7 +34,7 @@ from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.locations.errors import FolderNotFoundError, LocationUnavailableError
 from app.domain.locations.paths import resolve_within, run_with_timeout
 from app.domain.runs.errors import WriteLockedError
-from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams
+from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, context_ai_family
 from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
@@ -211,6 +212,7 @@ def validate_build(
         DestinationReadOnlyError: El destino es de solo lectura.
         InvalidContextBuildError: Carpeta no válida o distinta de la del contexto, plantilla inexistente o manifiesto
             ausente o no válido.
+        AiNotConfiguredError: Se pide IA y su familia no está configurada.
     """
     if project.destination_location.access != "rw":
         raise DestinationReadOnlyError("La ubicación de destino es de solo lectura.")
@@ -240,4 +242,6 @@ def validate_build(
         if manifest.error:
             raise InvalidContextBuildError(f"El manifiesto del proyecto no es válido: {manifest.error}")
         markdown = manifest.markdown
+    if params.ai_classification:
+        ai_settings.require_configured(db, settings, context_ai_family(params))
     return params.model_copy(update={"output_folder_name": folder, "template_markdown": markdown})

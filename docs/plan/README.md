@@ -50,7 +50,7 @@ ROADMAP): ambos repos avanzan en paralelo.
 | [TAREAS_DOC_ORGANIZE.md](TAREAS_DOC_ORGANIZE.md) | **Parte back (API = librería)**: tareas `L-*` en doc_organize, incluida la retirada de `web/` y `auth/` |
 | [ROADMAP.md](ROADMAP.md) | **Parte WEB**: fases 0–10 de doc_organize_web con tareas backend `WB-*` y frontend `WF-*` |
 | [DOC_ORGANIZE_GAPS.md](DOC_ORGANIZE_GAPS.md) | Huecos de la API de doc_organize detectados (equivalente a `UTIL_BBDD_GAPS.md`) |
-| [ADRS_PROPUESTOS.md](ADRS_PROPUESTOS.md) | ADR-001…ADR-013 propuestos para doc_organize_web |
+| [ADRS_PROPUESTOS.md](ADRS_PROPUESTOS.md) | ADR-001…ADR-014 propuestos para doc_organize_web |
 | [DEPENDENCIAS.md](DEPENDENCIAS.md) | Librerías Python, npm y paquetes de sistema por imagen |
 | [INSTRUCCIONES_IA.md](INSTRUCCIONES_IA.md) | Inventario de ficheros IA a crear (web) y a adaptar (librería) |
 | [MEJORAS.md](MEJORAS.md) | Mejoras propuestas por buenas prácticas, priorizadas |

@@ -1,8 +1,11 @@
 # Paridad con la web integrada de doc_organize (L-0)
 
 Inventario de la web integrada de doc_organize (`src/doc_organize/web/`, versión 0.9.3) con la fase de
-doc_organize_web que la sustituye. Gobierna la retirada de la web integrada: deprecación en doc_organize 0.13.0 (L-10)
+doc_organize_web que la sustituye. Gobierna la retirada de la web integrada: deprecación en doc_organize 0.14.0 (L-10)
 cuando todas las filas hasta la Fase 8 estén cubiertas, y eliminación en 1.0.0 (L-11) tras la Fase 10.
+
+> **2026-11-03 (0.9.0)**: todas las filas hasta la Fase 8 están cubiertas. L-10 se puede pedir en doc_organize; quedan
+> las de roles y tenants (Fase 9).
 
 > **Estado**: inventario generado el 2026-10-31 desde el código (decoradores de rutas y carpeta `templates/`), pendiente
 > de revisión del mantenedor (criterio de L-0). Una fila se marca ✅ al cerrar la fase que la cubre, con la versión.
@@ -26,7 +29,7 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | `duplicates_resolver.html.j2` | `/projects/{name}/duplicates` | 6 | Resolutor de duplicados en dos pasos | ✅ 0.7.0 |
 | `context.html.j2` | `/projects/{name}/context` | 7 | Página de contexto y visor del sitio | ✅ 0.8.0 |
 | `taxonomy_templates_admin.html.j2` | `/admin/plantillas-taxonomia` | 7 | `/admin/taxonomy-templates` (con importar y exportar `.md`) | ✅ 0.8.0 |
-| `ai_settings.html.j2` | `/admin/configuracion-ia` | 8 | Configuración IA por familia | ⬜ |
+| `ai_settings.html.j2` | `/admin/configuracion-ia` | 8 | Configuración IA por familia (`/admin/ai-settings`) y panel de uso (`/admin/ai-usage`, nuevo) | ✅ 0.9.0 |
 | `admin_roles.html.j2` | `/admin/roles` | 9 | Admin de roles | ⬜ |
 | `admin_tenants.html.j2` | `/admin/tenants` | 9 | Admin de tenants | ⬜ |
 
@@ -66,9 +69,9 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `context.py` | GET | `/projects/{name}/context/site`, `/projects/{name}/context/site/{file_path}` | 7 | Sitio Zensical aislado (ADR-010) | ✅ 0.8.0 |
 | `taxonomy_templates.py` | GET | `/api/taxonomy-templates` | 7 | `/api/v1/taxonomy-templates` | ✅ 0.8.0 |
 | `taxonomy_templates.py` | GET, PUT, DELETE | `/api/taxonomy-templates/{template_name}` | 7 | `/api/v1/taxonomy-templates/{name}` | ✅ 0.8.0 |
-| `context.py` | POST | `/api/projects/{name}/context/taxonomy-manifest-draft` | 8 | Run `taxonomy_draft` | ⬜ |
-| `ai_settings.py` | GET | `/api/admin/ai-settings` | 8 | `/api/v1/admin/ai-settings` (sin secretos en claro) | ⬜ |
-| `ai_settings.py` | PUT | `/api/admin/ai-settings/{family_key}` | 8 | `/api/v1/admin/ai-settings/{family}` | ⬜ |
+| `context.py` | POST | `/api/projects/{name}/context/taxonomy-manifest-draft` | 8 | Run `taxonomy_draft` (el borrador va en el resultado y no se guarda) | ✅ 0.9.0 |
+| `ai_settings.py` | GET | `/api/admin/ai-settings` | 8 | `/api/v1/admin/ai-settings` (sin secretos en claro) | ✅ 0.9.0 |
+| `ai_settings.py` | PUT | `/api/admin/ai-settings/{family_key}` | 8 | `/api/v1/admin/ai-settings/{family}` | ✅ 0.9.0 |
 | `admin.py` | GET, POST | `/api/roles` | 9 | `/api/v1/roles` | ⬜ |
 | `admin.py` | GET, PATCH, DELETE | `/api/roles/{role_id}` | 9 | `/api/v1/roles/{id}` | ⬜ |
 | `tenants.py` | GET, POST | `/api/tenants` | 9 | `/api/v1/tenants` | ⬜ |
