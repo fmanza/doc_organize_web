@@ -185,8 +185,8 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
 
 ## Fase 8 — IA: clasificación, manifiestos y uso
 
-> **Cerrada el 2026-11-03 (0.9.0)** con doc_organize 0.13.0 (pedía 0.10.0, L-3). Huecos nuevos con rodeo: G33–G36
-> (L-3a…L-3d). Paridad funcional cerrada; L-10 (deprecar la web integrada) se puede pedir ya (decisión D1). Sesión:
+> **Cerrada el 2026-11-03 (0.9.0)** con doc_organize 0.13.0 (pedía 0.10.0, L-3). Huecos nuevos con rodeo: G33–G37
+> (L-3a…L-3e). Paridad funcional cerrada; L-10 (deprecar la web integrada) se puede pedir ya (decisión D1). Sesión:
 > `.ai/sessions/2026-11-02-fase8/`.
 
 - WB-8.1 `ai_settings` por familia (LiteLLM uso, clasificación de dominio, clasificación de taxonomía, borrador de

@@ -63,7 +63,7 @@ bloquean: la web tiene rodeo.
 | L-8e | Temporales sin seguir enlaces | Las escrituras atómicas crean el `.tmp` con `O_EXCL \| O_NOFOLLOW` | G31 |
 | L-8f | Validar `Context.output_folder_name` al cargar | `ContextRegistry.load_context` rechaza un nombre que no pase `validate_output_folder_name` | G32 |
 
-## Peticiones de la Fase 8 (huecos G33–G36)
+## Peticiones de la Fase 8 (huecos G33–G37)
 
 Ninguna bloquea: la web las rodea en `backend/app/integrations/doc_organize/ai.py`.
 
@@ -73,6 +73,7 @@ Ninguna bloquea: la web las rodea en `backend/app/integrations/doc_organize/ai.p
 | L-3b | Reintentos y presupuesto | Reintentos con espera creciente ante errores de conexión y `max_calls` por operación en `AiHttpClientBase` | G34 |
 | L-3c | Recuento de la Sub-fase B | `Context` (o el resultado de `build`) dice cuántos documentos se enviaron a la IA, cuántos clasificó y cuántos fallaron | G35 |
 | L-3d | Carpeta relativa en la muestra | `select_document_sample` muestra la carpeta relativa a la raíz escaneada, nunca nombres de carpetas por encima de ella | G36 |
+| L-3e | Clave fuera de la URL del uso | `LiteLLMUsageClient.get_usage()` no pone la virtual key en la *query* cuando se consulta la propia clave del Bearer (httpx registra cada URL); PENDIENTE DE VERIFICAR que `/key/info` sin `key=` devuelve esa clave | G37 |
 
 ## Versión 0.14.0 — deprecación de la web (F8 de la web cerrada el 2026-11-02: se puede pedir ya)
 

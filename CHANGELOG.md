@@ -56,7 +56,8 @@ paridad funcional con la web integrada: solo quedan las filas de roles y tenants
 - **frontend**: el menú lateral se desplaza cuando no cabe (con todos los enlaces de administración quedaba fuera de
   pantalla en alturas de 720 px).
 - **backend**: los loggers `httpx` y `httpcore` quedan en WARNING sea cual sea `DOW_LOG_LEVEL`. El cliente de uso de
-  LiteLLM lleva la clave en la URL (`/key/info?key=…`) y httpx escribe cada URL en INFO (hallazgo de AUDIT_CODE).
+  LiteLLM lleva la clave en la URL (`/key/info?key=…`) y httpx escribe cada URL en INFO (hallazgo de AUDIT_CODE; G37,
+  pedido a doc_organize como L-3e).
 
 ### Security
 

@@ -55,8 +55,8 @@
   - **ADR**: el ADR-013 estaba reservado a multi-tenant (Fase 9); el nuevo se numera ADR-014.
 - **VERSION**:
   - 0.9.0 en backend, frontend, OpenAPI, `uv.lock`, `package-lock.json` y `.env.example`;
-  - CHANGELOG, ROADMAP, PARIDAD (todas las filas hasta la Fase 8 en ✅), GAPS (G33–G36 abiertos con rodeo, G3
-    aplicado), TAREAS (L-3a…L-3d), DEPENDENCIAS, `product.md`;
+  - CHANGELOG, ROADMAP, PARIDAD (todas las filas hasta la Fase 8 en ✅), GAPS (G33–G37 abiertos con rodeo, G3
+    aplicado), TAREAS (L-3a…L-3e), DEPENDENCIAS, `product.md`;
   - guía `ia.md`, ADR-014 y ADR-004 implementado.
 - **Validación final**:
   - backend en Linux (imagen `backend-dev`): ruff format y check, mypy, pytest (450 en verde, 1 omitido) y OpenAPI
@@ -104,7 +104,8 @@
   (`.gitattributes` exige LF).
 
 ## Pendientes (no bloquean)
-- Pedir a doc_organize **L-10** (deprecar la web integrada, 0.14.0) y **L-3a…L-3d** (G33–G36). No se pide desde este
+- Pedir a doc_organize **L-10** (deprecar la web integrada, 0.14.0) y **L-3a…L-3e** (G33–G37; G37 registrado tras
+  el cierre, al preparar las instrucciones para doc_organize). No se pide desde este
   repositorio (regla 1).
 - Prueba manual con un LiteLLM real y un PAT de GitHub real; la API de facturación de Copilot no se ha probado contra
   GitHub.
