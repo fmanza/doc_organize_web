@@ -43,6 +43,9 @@ proyecto). Así, dos documentos con el mismo nombre en carpetas distintas (`2024
 en las carpetas ya terminadas queda guardado; si falla una carpeta, se siguen escaneando las demás y la ejecución
 termina como fallida indicando cuántas no se pudieron escanear.
 
+Al terminar, el escaneo pone al día la [búsqueda en el contenido](documentos.md#buscar-en-el-contenido) con lo
+convertido.
+
 ## Progreso y resultado
 
 El detalle de la ejecución muestra la fase (**Buscando documentos**, **Convirtiendo**, **Aplicando OCR**), cuántos

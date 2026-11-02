@@ -316,7 +316,9 @@ class WorkerList(BaseModel):
 ProjectName = Annotated[str, Field(min_length=1, max_length=128)]
 MemberRole = Literal["owner", "editor", "viewer"]
 RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-Operation = Literal["noop", "history_clear", "project_move", "project_delete", "scan"]
+Operation = Literal[
+    "noop", "history_clear", "project_move", "project_delete", "scan", "export_zip", "export_xlsx", "search_index"
+]
 
 
 class LocationRef(_Out):
@@ -535,3 +537,42 @@ class ScanErrorPage(BaseModel):
     run: RunBrief | None
     items: list[ScanErrorOut]
     total: int
+
+
+# --- documentos, visor y búsqueda (Fase 5) -----------------------------------------------------------------------
+
+
+class DocumentOut(_Out):
+    """Documento de la caché del proyecto, con rutas relativas a su carpeta de origen (nunca del servidor)."""
+
+    folder: str = Field(description="Carpeta de origen («» = la raíz de la ubicación)")
+    path: str = Field(description="Ruta del documento relativa a su carpeta")
+    status: str = Field(description="new, modified, unchanged o deleted")
+    conversion_status: str | None = Field(description="success, error, pending, in_progress, ocr_pending…")
+    error_message: str | None
+    error_retry_count: int
+    updated_at: datetime
+    output_path: str | None = Field(description="Markdown convertido, relativo a Conversión/ (para el visor)")
+
+
+class DocumentPage(BaseModel):
+    """Página de documentos del proyecto."""
+
+    items: list[DocumentOut]
+    total: int
+
+
+class SearchHitOut(_Out):
+    """Documento convertido que contiene las palabras buscadas."""
+
+    output_path: str = Field(description="Markdown relativo a Conversión/")
+    title: str
+    snippet: str = Field(description="Fragmento; las coincidencias van entre U+0002 y U+0003 (texto, nunca HTML)")
+
+
+class SearchPage(BaseModel):
+    """Resultados de la búsqueda de texto completo; ``indexed_at`` es ``None`` si aún no hay índice."""
+
+    items: list[SearchHitOut]
+    total: int
+    indexed_at: datetime | None

@@ -1,6 +1,6 @@
 [project]
 name = "doc_organize_web"
-version = "0.5.0"
+version = "0.6.0"
 description = "Aplicación web multiusuario sobre doc_organize: ubicaciones, proyectos y ejecuciones agrupadas."
 readme = "../README.md"
 requires-python = ">=3.12,<3.13"
@@ -15,10 +15,10 @@ dependencies = [
     "sqlalchemy>=2.1",
     "alembic>=1.16",
     "pwdlib[argon2]>=0.3",  # Argon2id para contraseñas (ADR-003)
-    # doc_organize fijado por versión (ADR-006): wheel de la release v0.10.0 en GitHub, hash en uv.lock. El extra
-    # site (mkdocs) ya existe en 0.10.0 y export llega con 0.11.0 (L-7); se añaden en sus fases (7 y 5).
-    # rapidocr ya viene en sus dependencias base.
-    "doc_organize[ai,context]==0.10.0",
+    # doc_organize fijado por versión (ADR-006): wheel de la release v0.11.0 en GitHub, hash en uv.lock. El extra
+    # export (openpyxl, L-7) es de la Fase 5; site (mkdocs) se añade en la Fase 7. rapidocr ya viene en sus
+    # dependencias base.
+    "doc_organize[ai,context,export]==0.11.0",
     # Seguridad (Fase 4): 13.0.0 corrige 41 alertas (5 críticas) al leer JPEG, TIFF, FlashPix y PDF de usuarios.
     "pillow>=13.0.0",
 ]
@@ -44,7 +44,7 @@ cpu = [
 gpu = [
     "torch>=2.2.2,<3",
     "torchvision>=0.17,<1",
-    "doc_organize[ocr-gpu]==0.10.0",
+    "doc_organize[ocr-gpu]==0.11.0",
 ]
 
 [tool.uv]
@@ -67,7 +67,7 @@ url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.uv.sources]
-doc_organize = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" }
+doc_organize = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.11.0/doc_organize-0.11.0-py3-none-any.whl" }
 torch = [{ index = "pytorch-cpu", group = "cpu" }, { index = "pytorch-cu130", group = "gpu" }]
 torchvision = [{ index = "pytorch-cpu", group = "cpu" }, { index = "pytorch-cu130", group = "gpu" }]
 

@@ -239,6 +239,148 @@
         "title": "CsrfToken",
         "type": "object"
       },
+      "DocumentOut": {
+        "description": "Documento de la caché del proyecto, con rutas relativas a su carpeta de origen (nunca del servidor).",
+        "properties": {
+          "conversion_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "success, error, pending, in_progress, ocr_pending…",
+            "title": "Conversion Status"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "error_retry_count": {
+            "title": "Error Retry Count",
+            "type": "integer"
+          },
+          "folder": {
+            "description": "Carpeta de origen («» = la raíz de la ubicación)",
+            "title": "Folder",
+            "type": "string"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Markdown convertido, relativo a Conversión/ (para el visor)",
+            "title": "Output Path"
+          },
+          "path": {
+            "description": "Ruta del documento relativa a su carpeta",
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "description": "new, modified, unchanged o deleted",
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder",
+          "path",
+          "status",
+          "conversion_status",
+          "error_message",
+          "error_retry_count",
+          "updated_at",
+          "output_path"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
+      "DocumentPage": {
+        "description": "Página de documentos del proyecto.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "DocumentPage",
+        "type": "object"
+      },
+      "ExportXlsxParams": {
+        "additionalProperties": false,
+        "description": "Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico).",
+        "properties": {
+          "kind": {
+            "enum": [
+              "cache",
+              "errors"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation": {
+            "const": "export_xlsx",
+            "default": "export_xlsx",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ExportXlsxParams",
+        "type": "object"
+      },
+      "ExportZipParams": {
+        "additionalProperties": false,
+        "description": "ZIP del proyecto (``Conversión/`` y ``cache_export.json``); con ``dry_run``, solo su tamaño (vista previa).\n\nNo mueve ni borra nada: la vista previa sirve para ver el tamaño antes de ocupar el workspace, no es obligatoria.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "export_zip",
+            "default": "export_zip",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ExportZipParams",
+        "type": "object"
+      },
       "FolderEntry": {
         "description": "Subcarpeta: nombre y ruta relativa a la raíz explorada.",
         "properties": {
@@ -1562,7 +1704,10 @@
               "history_clear",
               "project_move",
               "project_delete",
-              "scan"
+              "scan",
+              "export_zip",
+              "export_xlsx",
+              "search_index"
             ],
             "title": "Operation",
             "type": "string"
@@ -1671,7 +1816,10 @@
               "history_clear",
               "project_move",
               "project_delete",
-              "scan"
+              "scan",
+              "export_zip",
+              "export_xlsx",
+              "search_index"
             ],
             "title": "Operation",
             "type": "string"
@@ -2130,6 +2278,81 @@
           "used"
         ],
         "title": "ScannedFolderRemoved",
+        "type": "object"
+      },
+      "SearchHitOut": {
+        "description": "Documento convertido que contiene las palabras buscadas.",
+        "properties": {
+          "output_path": {
+            "description": "Markdown relativo a Conversión/",
+            "title": "Output Path",
+            "type": "string"
+          },
+          "snippet": {
+            "description": "Fragmento; las coincidencias van entre U+0002 y U+0003 (texto, nunca HTML)",
+            "title": "Snippet",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "output_path",
+          "title",
+          "snippet"
+        ],
+        "title": "SearchHitOut",
+        "type": "object"
+      },
+      "SearchIndexParams": {
+        "additionalProperties": false,
+        "description": "Pone al día el índice de búsqueda de texto completo con el Markdown de ``Conversión/``.",
+        "properties": {
+          "operation": {
+            "const": "search_index",
+            "default": "search_index",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "SearchIndexParams",
+        "type": "object"
+      },
+      "SearchPage": {
+        "description": "Resultados de la búsqueda de texto completo; ``indexed_at`` es ``None`` si aún no hay índice.",
+        "properties": {
+          "indexed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHitOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "indexed_at"
+        ],
+        "title": "SearchPage",
         "type": "object"
       },
       "SessionOut": {
@@ -2675,7 +2898,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3944,6 +4167,109 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/documents": {
+      "get": {
+        "description": "Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión.",
+        "operationId": "list_documents_api_v1_projects__project_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Texto en la ruta (sin distinguir mayúsculas)",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto en la ruta (sin distinguir mayúsculas)",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Solo esta carpeta de origen",
+            "in": "query",
+            "name": "folder",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo esta carpeta de origen",
+              "title": "Folder"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "La carpeta no es de origen del proyecto (folder_not_saved)"
+          }
+        },
+        "summary": "Documentos del proyecto",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/members": {
       "get": {
         "description": "Miembros del proyecto con su rol.",
@@ -4188,6 +4514,72 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/outputs": {
+      "get": {
+        "description": "Markdown, JSON o imagen de ``Conversión/`` con tipo fijo; el navegador nunca lo interpreta como página.",
+        "operationId": "get_output_api_v1_projects__project_id__outputs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Fichero relativo a Conversión/ del proyecto",
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "description": "Fichero relativo a Conversión/ del proyecto",
+              "maxLength": 4096,
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ruta no válida"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "413": {
+            "description": "Demasiado grande para el visor (output_too_large)"
+          },
+          "415": {
+            "description": "Tipo no permitido en el visor (output_type_not_allowed)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Ver una salida convertida",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/runs": {
       "post": {
         "description": "Encola una operación del proyecto; el worker la ejecuta y el progreso se sigue por SSE.",
@@ -4222,6 +4614,15 @@
                   },
                   {
                     "$ref": "#/components/schemas/ScanParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExportZipParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExportXlsxParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SearchIndexParams"
                   }
                 ],
                 "title": "Body"
@@ -4523,6 +4924,103 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/search": {
+      "get": {
+        "description": "Documentos convertidos que contienen todas las palabras, los más relevantes primero.",
+        "operationId": "search_content_api_v1_projects__project_id__search_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Palabras a buscar (todas)",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Palabras a buscar (todas)",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Solo esta carpeta de origen",
+            "in": "query",
+            "name": "folder",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo esta carpeta de origen",
+              "title": "Folder"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Texto vacío o demasiado largo, demasiado amplio (search_too_broad) o carpeta ajena"
+          }
+        },
+        "summary": "Buscar en el contenido",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/runs": {
       "get": {
         "description": "Runs de los proyectos visibles, más recientes primero (agrupados por ejecución).",
@@ -4580,7 +5078,10 @@
                     "history_clear",
                     "project_move",
                     "project_delete",
-                    "scan"
+                    "scan",
+                    "export_zip",
+                    "export_xlsx",
+                    "search_index"
                   ],
                   "type": "string"
                 },

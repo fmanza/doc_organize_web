@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 from sqlalchemy import inspect
@@ -37,6 +38,16 @@ def test_create_admin_rejects_duplicate_and_weak_password(
     monkeypatch.setattr("sys.stdin", io.StringIO("corta\n"))
     assert main(["create-admin", "--username", "otra", "--password-stdin"]) == 1
     assert "al menos" in capsys.readouterr().err
+
+
+def test_backup_and_verify_from_the_cli(migrated: Settings, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["backup", "--dest", str(tmp_path / "copias"), "--keep", "3"]) == 0
+    created = next((tmp_path / "copias").iterdir())
+
+    assert main(["verify-backup", str(created)]) == 0
+    assert main(["verify-backup", str(tmp_path)]) == 1
+    assert main(["backup", "--keep", "0"]) == 2
+    assert "Copia creada" in capsys.readouterr().out
 
 
 def test_migration_upgrade_downgrade_upgrade(settings: Settings) -> None:

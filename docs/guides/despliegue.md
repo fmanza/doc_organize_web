@@ -95,7 +95,7 @@ Sin ambos, la aplicación no arranca en producción. `secrets/` nunca se version
 
 | Volumen | Ruta | Contenido |
 |---|---|---|
-| `data` | `/data` | `config.db` y `projects/<id>/` (caché e historial de doc_organize de cada proyecto). Siempre en disco local, nunca NFS/CIFS |
+| `data` | `/data` | `config.db`, `projects/<id>/` (caché e historial de doc_organize por carpeta de origen y `search.db`, el índice de la búsqueda de texto completo) y `backups/`. Siempre en disco local, nunca NFS/CIFS |
 | `workspace` | `/workspace` | Una carpeta por ejecución (`runs/<id>/`: `run.json`, `logs/run.log`, ficheros resultado); se purga según `run_retention_days` |
 | `models` | `/models` | Modelos de Docling (ADR-011); solo lectura en `web` y en los workers, escritura en `models-init` (que no recibe secretos ni `config.db`) |
 
@@ -142,6 +142,23 @@ Variables del worker (en `environment:` del servicio `worker`; no son administra
 | `DOW_JOB_TIMEOUT_SECONDS` | `21600` | Duración máxima de una operación (6 h); al vencer se pide una parada ordenada y lo hecho se guarda |
 | `DOW_CANCEL_GRACE_SECONDS` | `30` | Plazo para atender una cancelación antes de terminar el subproceso |
 | `DOW_TIMEOUT_GRACE_SECONDS` | `600` | Plazo de la parada ordenada al vencer el tiempo máximo (un PDF grande con OCR tarda minutos; si no para, se pierde la caché de la carpeta en curso) |
+
+## Copias de seguridad
+
+`app.cli backup` copia `config.db` (usuarios, proyectos, ejecuciones, auditoría) y la caché de doc_organize de cada
+carpeta de origen con la API de backup de SQLite, sin parar la aplicación, y comprueba la copia:
+
+```bash
+docker compose exec web python -m app.cli backup --keep 7          # en /data/backups/<fecha UTC>/
+docker compose exec web python -m app.cli verify-backup /data/backups/20261102T030000Z
+```
+
+Cada copia lleva un `manifest.json` con el tamaño y el SHA-256 de cada base de datos; `--keep N` borra las más
+antiguas y deja `N`. El índice de búsqueda (`search.db`) no se copia: se regenera con «Actualizar la búsqueda». Las
+copias quedan en el mismo volumen `data`: llévalas fuera del servidor (p. ej. un `cron` del host que copie
+`/var/lib/docker/volumes/<proyecto>_data/_data/backups`) y trátalas como datos sensibles, porque `config.db` contiene
+los *hashes* de las contraseñas y las sesiones. La restauración guiada llega en la Fase 10; hasta entonces, se para la
+aplicación (`docker compose down`) y se copian los ficheros de la copia a sus rutas de `/data`.
 
 ## Detrás de un proxy TLS
 

@@ -23,6 +23,7 @@ nav = [
     "guides/proyectos.md",
     "guides/ejecuciones.md",
     "guides/escaneo.md",
+    "guides/documentos.md",
   ] },
   { "Operación" = [
     "guides/despliegue.md",

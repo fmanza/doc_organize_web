@@ -51,11 +51,11 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `scan.py` | WEBSOCKET | `/api/projects/{name}/scan` | 4 | Run `scan` + SSE |✅ 0.5.0 |
 | `scan.py` | GET, POST, DELETE | `/api/projects/{name}/folders/library` | 4 | `/api/v1/projects/{id}/scanned-folders` |✅ 0.5.0 |
 | `scan.py` | POST | `/api/projects/{name}/folders/validate` | 4 | Validación por el resolvedor de ubicaciones |✅ 0.5.0 |
-| `cache.py` | GET | `/api/projects/{name}/cache` | 5 | `/api/v1/projects/{id}/documents` paginado | ⬜ |
-| `downloads.py` | GET | `/downloads/projects/{name}/export-preview` | 5 | Vista previa de tamaño del ZIP | ⬜ |
-| `downloads.py` | GET | `/downloads/projects/{name}/export.zip` | 5 | Run `export_zip` + artefacto | ⬜ |
-| `downloads.py` | GET | `/downloads/projects/{name}/cache-export.xlsx` | 5 | Run `export_xlsx` (caché) | ⬜ |
-| `downloads.py` | GET | `/downloads/projects/{name}/scan-errors-export.xlsx` | 5 | Run `export_xlsx` (errores) | ⬜ |
+| `cache.py` | GET | `/api/projects/{name}/cache` | 5 | `/api/v1/projects/{id}/documents` paginado | ✅ 0.6.0 |
+| `downloads.py` | GET | `/downloads/projects/{name}/export-preview` | 5 | Vista previa de tamaño del ZIP (run `export_zip` con `dry_run`) | ✅ 0.6.0 |
+| `downloads.py` | GET | `/downloads/projects/{name}/export.zip` | 5 | Run `export_zip` + artefacto | ✅ 0.6.0 |
+| `downloads.py` | GET | `/downloads/projects/{name}/cache-export.xlsx` | 5 | Run `export_xlsx` (caché) | ✅ 0.6.0 |
+| `downloads.py` | GET | `/downloads/projects/{name}/scan-errors-export.xlsx` | 5 | Run `export_xlsx` (errores) | ✅ 0.6.0 |
 | `scan.py` | WEBSOCKET | `/api/projects/{name}/scan/deduplicate` | 6 | Run `dedup_preview` + SSE | ⬜ |
 | `duplicates.py` | GET | `/api/projects/{name}/duplicates` | 6 | Artefacto de vista previa con grupos | ⬜ |
 | `duplicates.py` | POST | `/api/projects/{name}/duplicates/resolve` | 6 | Run `dedup_apply` con grupos confirmados | ⬜ |
@@ -88,4 +88,6 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | Registro de proyectos en `~/.doc_organize/projects.json` | Proyectos en `config.db`, empezando limpio (D4) |
 | Borrar usuarios (`DELETE /api/users/{user_id}`) | Se desactivan: la auditoría conserva quién hizo cada cosa (decisión de la Fase 1) |
 | Carpeta del proyecto = `<base>/<nombre>` y crear proyectos solo admin | La carpeta de salidas es nueva o vacía y no lleva el nombre (renombrar no la toca); cualquier usuario crea proyectos (decisión de la Fase 3) |
+| Descargas directas del ZIP y los Excel en la petición HTTP | Son ejecuciones con el fichero como artefacto (cuota, retención, cancelación); el ZIP comprueba antes su tamaño (Fase 5) |
+| `cache_export.json` y Excel con rutas absolutas del servidor | Rutas relativas a la carpeta de origen y mensajes de error enmascarados (Fase 5; los JSON del ZIP siguen con `source_path` absoluta, G23) |
 | Mover, vaciar o borrar con un modal de confirmación | Vista previa (`dry_run`) obligatoria + nombre tecleado + auditoría (regla 7, Fase 3) |

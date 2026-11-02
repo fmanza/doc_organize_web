@@ -16,8 +16,8 @@ Las rutas absolutas de doc_organize se convierten en relativas a la ubicación a
 
 from __future__ import annotations
 
-import hashlib
 import os
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
@@ -30,11 +30,13 @@ from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import ScanParams
 from app.domain.scan.options import missing_options
+from app.domain.scan.state import folder_state
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize import ScanFailure, ScanOutcome, ScanProgress, ScanRequest
 from app.jobs.context import JobCancelled, JobContext, JobFailed
-from app.jobs.operations._files import measure, project_paths, require_rw, resolve_in
+from app.jobs.operations._files import ProjectPaths, measure, project_paths, require_rw, resolve_in
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
+from app.jobs.operations.search_index import reindex_project
 
 MAX_MESSAGE: Final = 2000
 #: Errores que se guardan por run (el total va en ``result.errors``): acota ``config.db`` ante orígenes enormes.
@@ -56,7 +58,6 @@ SUMMARY_COUNTS: Final = (
 SUMMARY_SECONDS: Final = ("duration_seconds", "discovery_duration_seconds", "total_conversion_seconds")
 #: Fase de doc_organize → fase que ve el usuario.
 PHASES: Final = {"started": "discovery", "discovery": "discovery", "conversion": "conversion", "ocr": "ocr"}
-FOLDERS_STATE_DIR: Final = "folders"
 
 
 @dataclass(frozen=True)
@@ -76,11 +77,6 @@ class Folder:
     @property
     def label(self) -> str:
         return self.subpath or "(raíz)"
-
-
-def folder_state(project_state: Path, subpath: str) -> Path:
-    """Carpeta de estado de una carpeta de origen: clave estable derivada de su ruta relativa (sin caracteres raros)."""
-    return project_state / FOLDERS_STATE_DIR / hashlib.sha256(subpath.encode("utf-8")).hexdigest()[:16]
 
 
 class PathMasker:
@@ -228,6 +224,17 @@ def _accumulate(total: dict[str, Any], outcome: ScanOutcome) -> None:
         total["event_schema_version"] = outcome.event_schema_version
 
 
+def _index(ctx: JobContext, paths: ProjectPaths, result: dict[str, Any]) -> None:
+    """Pone al día la búsqueda de texto completo con lo convertido; si falla, el escaneo no se da por fallido."""
+    try:
+        result["search_indexed"] = reindex_project(ctx, paths, cancellable=False).total
+    except (OSError, sqlite3.Error):
+        ctx.log(
+            "No se pudo actualizar la búsqueda de texto completo; lánzala desde «Buscar en el contenido».",
+            level="warning",
+        )
+
+
 def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[str, Any]:
     """Escanea (o, con ``force`` y ``dry_run``, hace la vista previa) y devuelve los recuentos."""
     project = require_project(project)
@@ -306,6 +313,7 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
                 details={"run_id": ctx.run_id, "converted": result.get("converted", 0), "failed": len(failed)},
             )
             db.commit()
+    _index(ctx, paths, result)
     if failed:
         result["failed_folders"] = len(failed)
         raise JobFailed(

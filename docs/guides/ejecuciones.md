@@ -29,7 +29,7 @@ estado, cuándo se lanzó, cuánto duró y quién la lanzó.
   lectores de pantalla anuncian los cambios de fase y cada 10 %.
 - **Avisos**: mensajes de la operación (p. ej. «Cancelación solicitada»).
 - **Resultado**: recuentos al terminar (ficheros, tamaños, documentos convertidos…). En un escaneo, enlace a los
-  documentos con errores ([Escaneo](escaneo.md)).
+  documentos con errores ([Escaneo](escaneo.md)); en una exportación, ficheros y tamaño ([Documentos](documentos.md)).
 - **Ficheros**: lo que deja la ejecución (resultados y su registro, `run.log`, sin rutas internas del servidor ni
   trazas de error, con un máximo de 20 MB) para descargar. Se borran pasados
   `run_retention_days` días (30 por defecto); el historial se conserva.

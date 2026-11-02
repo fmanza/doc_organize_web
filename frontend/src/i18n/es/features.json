@@ -361,7 +361,8 @@
       }
     },
     "scan": "Escanear",
-    "scanView": "Ver escaneo"
+    "scanView": "Ver escaneo",
+    "documents": "Documentos"
   },
   "runs": {
     "title": "Ejecuciones",
@@ -403,7 +404,10 @@
       "history_clear": "Vaciar histórico",
       "project_move": "Mover salidas",
       "project_delete": "Borrar proyecto",
-      "scan": "Escaneo"
+      "scan": "Escaneo",
+      "export_zip": "Exportar ZIP",
+      "export_xlsx": "Exportar Excel",
+      "search_index": "Actualizar la búsqueda"
     },
     "phases": {
       "noop": "Prueba",
@@ -420,7 +424,9 @@
       "conversion": "Convirtiendo",
       "ocr": "Aplicando OCR",
       "done": "Terminando",
-      "preview": "Revisando la caché"
+      "preview": "Revisando la caché",
+      "export": "Exportando",
+      "search_index": "Actualizando la búsqueda"
     },
     "fields": {
       "operation": "Operación",
@@ -465,7 +471,18 @@
       "discovery_duration_seconds": "Tiempo buscando documentos",
       "total_conversion_seconds": "Tiempo convirtiendo",
       "cached": "Documentos en la caché",
-      "orphaned": "Salidas que se borrarán (el documento ya no está)"
+      "orphaned": "Salidas que se borrarán (el documento ya no está)",
+      "file_count": "Ficheros en el ZIP",
+      "total_size_bytes": "Tamaño sin comprimir",
+      "size_bytes": "Tamaño del fichero",
+      "rows": "Filas",
+      "kind": "Contenido",
+      "dry_run": "Solo calcular el tamaño",
+      "indexed": "Documentos en la búsqueda",
+      "added": "Añadidos a la búsqueda",
+      "updated": "Actualizados en la búsqueda",
+      "removed": "Quitados de la búsqueda",
+      "search_indexed": "Documentos en la búsqueda"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -572,5 +589,57 @@
       "message": "Error",
       "retries": "Fallos seguidos"
     }
+  },
+  "documents": {
+    "title": "Documentos",
+    "backToProject": "← {{name}}",
+    "searchContent": "Buscar en el contenido",
+    "search": "Buscar por nombre o carpeta",
+    "folder": "Carpeta",
+    "allFolders": "Todas las carpetas",
+    "rootFolder": "(raíz)",
+    "empty": "Aún no hay documentos: escanea el proyecto para verlos aquí.",
+    "noMatches": "Ningún documento coincide con la búsqueda.",
+    "total_one": "{{formatted}} documento.",
+    "total_other": "{{formatted}} documentos.",
+    "view": "Ver",
+    "viewLabel": "Ver {{path}}",
+    "conversion": {
+      "success": "Convertido",
+      "error": "Error",
+      "pending": "Pendiente",
+      "in_progress": "Convirtiendo",
+      "ocr_pending": "OCR pendiente",
+      "ocr_in_progress": "Aplicando OCR"
+    },
+    "export": {
+      "title": "Exportar",
+      "intro": "Cada exportación es una ejecución: cuando termine, descarga el fichero desde su detalle. El ZIP lleva todo lo convertido; calcula antes su tamaño si el proyecto es grande.",
+      "zipSize": "Calcular tamaño del ZIP",
+      "zip": "Exportar ZIP",
+      "cacheXlsx": "Excel de la caché",
+      "errorsXlsx": "Excel de errores"
+    },
+    "viewer": {
+      "back": "← Documentos",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "downloadMarkdown": "Descargar Markdown",
+      "downloadJson": "Descargar JSON",
+      "missing": "Esta salida ya no existe: puede que se vaciara el histórico o se moviera el proyecto. Vuelve a escanear."
+    },
+    "contentSearch": {
+      "title": "Buscar en el contenido",
+      "back": "← Documentos",
+      "words": "Palabras",
+      "hint": "Busca documentos convertidos que contengan todas las palabras (sin distinguir mayúsculas ni tildes).",
+      "prompt": "Escribe una o varias palabras.",
+      "noIndex": "La búsqueda aún no está preparada: se prepara al terminar un escaneo, o con «Actualizar la búsqueda».",
+      "reindex": "Actualizar la búsqueda",
+      "total_one": "{{formatted}} documento.",
+      "total_other": "{{formatted}} documentos.",
+      "indexedAt": "Búsqueda actualizada el {{date}}."
+    },
+    "retry": "No se pudieron cargar más documentos. Reintentar"
   }
 }
