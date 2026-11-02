@@ -18,12 +18,15 @@ from typing import Any, Final
 from sqlalchemy import delete, insert
 
 from app.db.models import ContextDocument, Project, ProjectContext, Run, utcnow
+from app.domain.ai import settings as ai_settings
+from app.domain.ai.errors import AiNotConfiguredError
 from app.domain.documents.paths import DocumentNamer
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
-from app.domain.runs.operations import ContextBuildParams, ContextDeleteParams
+from app.domain.runs.operations import ContextBuildParams, ContextDeleteParams, context_ai_family
 from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
+from app.integrations.doc_organize.ai import AiConnection, FamilyKey
 from app.integrations.doc_organize.context import ContextDoc, ContextOutcome, ContextRequest, SourceFolder
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations._files import TreeSize, measure, project_paths, require_rw, source_folders
@@ -51,6 +54,7 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "organized_path": doc.organized_path,
         "failed": doc.failed,
         "collision": doc.collision,
+        "classified_by": doc.classified_by if doc.domain_slug is not None else None,
     }
 
 
@@ -77,6 +81,7 @@ def _project_rows(
                 failed_count=len(outcome.failed),
                 collisions_count=outcome.collisions,
                 site_built=outcome.site_built,
+                ai_classification=params.ai_classification,
                 domains=outcome.domains,
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),
@@ -88,14 +93,54 @@ def _project_rows(
         db.commit()
 
 
-def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | None) -> dict[str, Any]:
-    """Construye el contexto y devuelve sus recuentos."""
-    project = require_project(project)
+def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[SourceFolder], DocumentNamer]:
+    """Carpeta del proyecto en el destino, carpetas de origen con su caché y conversiones, y el nombrador de rutas."""
     paths = project_paths(project, ctx)
-    require_rw(project.destination_location)
     output = paths.output.absolute
     folders = source_folders(ctx, project)
     namer = DocumentNamer([(subpath, [root]) for subpath, root in folders], project.source_location.name)
+    return (
+        output,
+        [
+            SourceFolder(
+                folder=subpath,
+                root=root,
+                cache_db=folder_cache(paths.state, subpath),
+                conversion_dir=library.conversion_dir(output, paths.state, subpath),
+            )
+            for subpath, root in folders
+        ],
+        namer,
+    )
+
+
+def ai_connection(ctx: JobContext, family: FamilyKey) -> AiConnection:
+    """Configuración de la familia ``family``, descifrada aquí, en el subproceso (ADR-004 §5).
+
+    Raises:
+        JobFailed: ``ai_not_configured`` si se quitó la configuración después de encolar.
+    """
+    with ctx.session_factory() as db:
+        try:
+            return ai_settings.connection(db, ctx.settings, family)
+        except AiNotConfiguredError:
+            raise JobFailed("ai_not_configured", "La IA de esta operación ya no está configurada.") from None
+
+
+#: Avisos de por qué la IA dejó de clasificar en un run.
+AI_STOPPED: Final[dict[str, str]] = {
+    "auth": "El servicio de IA rechazó la clave: no se clasificó nada más con IA. Revisa la configuración.",
+    "connection": "No se pudo conectar con el servicio de IA varias veces seguidas: no se clasificó nada más con IA.",
+    "budget": "Se llegó al máximo de documentos con IA por ejecución (ajuste ai_max_documents_per_run).",
+}
+
+
+def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | None) -> dict[str, Any]:
+    """Construye el contexto y devuelve sus recuentos."""
+    project = require_project(project)
+    require_rw(project.destination_location)
+    output, request_folders, namer = context_folders(ctx, project)
+    ai = ai_connection(ctx, context_ai_family(params)) if params.ai_classification else None
     folder_name = params.output_folder_name or "organizado"
     existing = _existing_folder(output, project)
     if existing and existing != folder_name:
@@ -106,15 +151,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         name=project.name,
         created_at=project.created_at,
         output_root=output,
-        folders=[
-            SourceFolder(
-                folder=subpath,
-                root=root,
-                cache_db=folder_cache(paths.state, subpath),
-                conversion_dir=library.conversion_dir(output, paths.state, subpath),
-            )
-            for subpath, root in folders
-        ],
+        folders=request_folders,
         output_folder_name=folder_name,
         candidate_domains=params.domains if params.catalog == "domains" else None,
         manifest_markdown=params.template_markdown if params.catalog in ("template", "manifest") else None,
@@ -122,6 +159,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         threshold=params.threshold,
         build_site=params.build_site,
         site_timeout=float(ctx.settings.context_site_timeout_seconds),
+        ai=ai,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:
@@ -152,6 +190,13 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         )
     if outcome.site_error:
         ctx.log(f"El sitio no se pudo construir: {namer.text(outcome.site_error)}", level="warning")
+    if outcome.ai is not None:
+        ctx.log(
+            f"IA: {outcome.ai['calls']} documentos enviados, {outcome.ai['classified']} clasificados, "
+            f"{outcome.ai['failed']} con error."
+        )
+        if outcome.ai["stopped"]:
+            ctx.log(AI_STOPPED[outcome.ai["stopped"]], level="warning")
     ctx.progress("context_save", 0, None)
     _project_rows(ctx, project, params, outcome, namer)
     result: dict[str, Any] = {
@@ -164,6 +209,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         "collisions": outcome.collisions,
         "missing_originals": outcome.missing,
         "site_built": outcome.site_built,
+        "ai": {"enabled": True, **outcome.ai} if outcome.ai is not None else {"enabled": False},
     }
     with ctx.session_factory() as db:
         audit.record(

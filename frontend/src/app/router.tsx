@@ -119,6 +119,14 @@ export const routes: RouteObject[] = [
                   async () => (await import('../features/admin/TaxonomyTemplatesPage')).TaxonomyTemplatesPage,
                 ),
               },
+              {
+                path: 'ai-settings',
+                ...page(async () => (await import('../features/admin/AiSettingsPage')).AiSettingsPage),
+              },
+              {
+                path: 'ai-usage',
+                ...page(async () => (await import('../features/admin/AiUsagePage')).AiUsagePage),
+              },
             ],
           },
           { path: '*', element: <NotFoundPage /> },

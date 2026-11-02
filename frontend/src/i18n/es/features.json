@@ -86,6 +86,12 @@
         },
         "session": {
           "revoke": "Sesión revocada"
+        },
+        "project": {
+          "taxonomy_draft": "Borrador de manifiesto con IA"
+        },
+        "ai_settings": {
+          "update": "Cambio de configuración IA"
         }
       }
     }
@@ -225,6 +231,18 @@
       "user_quota_mb": {
         "label": "Cuota de ficheros por usuario (MB)",
         "hint": "Espacio de artefactos por usuario en el workspace; 0 = sin límite."
+      },
+      "ai_timeout_seconds": {
+        "label": "Tiempo máximo por petición de IA (s)",
+        "hint": "Para clasificar y pedir borradores; el panel de uso espera como mucho 10 s."
+      },
+      "ai_retries": {
+        "label": "Reintentos de conexión con la IA",
+        "hint": "Solo ante fallos de conexión (0–5)."
+      },
+      "ai_max_documents_per_run": {
+        "label": "Documentos con IA por ejecución",
+        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA."
       }
     }
   },
@@ -419,7 +437,8 @@
       "dedup_preview": "Buscar duplicados",
       "dedup_apply": "Aplicar duplicados",
       "context_build": "Construir contexto",
-      "context_delete": "Borrar contexto"
+      "context_delete": "Borrar contexto",
+      "taxonomy_draft": "Borrador de manifiesto con IA"
     },
     "phases": {
       "noop": "Prueba",
@@ -449,7 +468,10 @@
       "context_site": "Construyendo el sitio",
       "context_save": "Guardando el contexto",
       "measure_context": "Contando el contexto",
-      "context_delete": "Borrando el contexto"
+      "context_delete": "Borrando el contexto",
+      "context_ai": "Clasificando con IA",
+      "ai_sample": "Eligiendo la muestra",
+      "ai_request": "Esperando al servicio de IA"
     },
     "fields": {
       "operation": "Operación",
@@ -526,6 +548,13 @@
           "move": "Mover",
           "copy": "Copiar",
           "report_only": "Solo informe"
+        },
+        "ai": {
+          "stopped": {
+            "auth": "clave rechazada",
+            "connection": "sin conexión",
+            "budget": "máximo por ejecución"
+          }
         }
       },
       "output_folder_name": "Carpeta reorganizada",
@@ -533,7 +562,18 @@
       "unclassified": "Sin clasificar",
       "collisions": "Con nombre repetido (se sobrescriben)",
       "missing_originals": "Originales que ya no están",
-      "site_built": "Sitio construido"
+      "site_built": "Sitio construido",
+      "ai": {
+        "enabled": "Con IA",
+        "calls": "Documentos enviados a la IA",
+        "classified": "Clasificados por la IA",
+        "failed": "Errores de la IA",
+        "stopped": "La IA paró por"
+      },
+      "reasoning": "Criterio de la IA",
+      "sample_documents": "Documentos de muestra",
+      "total_documents": "Documentos convertidos",
+      "material_types": "Tipos de material"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -549,7 +589,12 @@
       "scan_failed": "doc_organize no pudo completar el escaneo.",
       "location_unavailable": "La ubicación no está disponible.",
       "location_read_only": "La ubicación de destino es de solo lectura.",
-      "project_missing": "El proyecto ya no existe."
+      "project_missing": "El proyecto ya no existe.",
+      "ai_not_configured": "La IA de esta operación ya no está configurada.",
+      "ai_auth": "El servicio de IA rechazó la clave.",
+      "ai_connection": "No se pudo conectar con el servicio de IA.",
+      "ai_error": "El servicio de IA devolvió un error.",
+      "no_converted_documents": "El proyecto no tiene documentos convertidos."
     },
     "scanErrorsLink": "Ver los {{count}} documentos con errores",
     "duplicatesLink": "Revisar los grupos de duplicados",
@@ -868,6 +913,27 @@
       "renew": "Renovar acceso",
       "newTab": "Abrir en otra pestaña",
       "frame": "Sitio del contexto"
+    },
+    "ai": {
+      "badge": "IA",
+      "byAi": "Clasificado por la IA",
+      "classify": "Clasificar con IA lo que las reglas dejen sin clasificar",
+      "classifyHelp": "Solo se envían los documentos pendientes, hasta el máximo por ejecución de los ajustes. Si la clave se rechaza, se deja de llamar al servicio.",
+      "notConfigured": {
+        "litellm_classification": "Un administrador tiene que configurar la «Clasificación de dominios» en Configuración IA.",
+        "litellm_taxonomy_classification": "Con plantilla o manifiesto, un administrador tiene que configurar la «Clasificación por taxonomía».",
+        "litellm_taxonomy_manifest_draft": "Un administrador tiene que configurar el «Borrador de manifiesto» en Configuración IA."
+      },
+      "egressTitle": "El contenido sale de la aplicación",
+      "egress": "El título y un extracto de cada documento pendiente se enviarán al servicio de IA configurado. No lo actives con documentos que no puedan salir de tu organización.",
+      "draftTitle": "Borrador con IA",
+      "draftHelp": "Envía al servicio de IA el título y un extracto de una muestra de documentos convertidos y carga la propuesta en el editor. No se guarda hasta que pulses «Guardar manifiesto».",
+      "sampleSize": "Documentos de muestra",
+      "draft": "Pedir borrador",
+      "openRun": "Ver la ejecución",
+      "draftLoaded": "Borrador cargado en el editor",
+      "draftLoadedBody": "Revísalo y guárdalo si te sirve.",
+      "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos."
     }
   },
   "templates": {
@@ -903,5 +969,83 @@
       "confirm": "Borrar plantilla"
     },
     "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista)."
+  },
+  "ai": {
+    "settings": {
+      "title": "Configuración IA",
+      "intro": "Servicios de IA que usa la instancia. Lo que guardes aquí tiene prioridad sobre las variables DOC_ORGANIZE_* del servidor. Las claves se guardan cifradas y nunca se vuelven a mostrar: solo sus 4 últimos caracteres.",
+      "noEncryptionTitle": "Cifrado no configurado",
+      "noEncryption": "Falta DOW_FERNET_KEYS en el servidor: puedes guardar URL, modelo y usuario, pero no claves ni tokens.",
+      "secretNeedsEncryption": "Para guardar una clave hace falta el cifrado (DOW_FERNET_KEYS).",
+      "configured": "Configurada",
+      "notConfigured": "Sin configurar",
+      "source": {
+        "db": "Guardado aquí",
+        "env": "Variable del servidor",
+        "none": "Sin valor"
+      },
+      "hint": "Guardada: {{hint}}",
+      "secretPlaceholder": "Escribe una nueva para cambiarla",
+      "undecryptable": "Hay un valor guardado que no se descifra con las claves actuales: vuelve a introducirlo.",
+      "clear": "Borrar valor guardado",
+      "clearLabel": "Borrar el valor guardado de {{label}}",
+      "saveLabel": "Guardar {{label}}",
+      "saved": "Guardado."
+    },
+    "families": {
+      "litellm_classification": {
+        "title": "Clasificación de dominios (un eje)",
+        "intro": "LiteLLM Proxy que clasifica, al construir el contexto, los documentos que las reglas dejan sin dominio (catálogo descubierto o propio)."
+      },
+      "litellm_taxonomy_classification": {
+        "title": "Clasificación por taxonomía (dos ejes)",
+        "intro": "LiteLLM Proxy que asigna dominio y tipo de material cuando el contexto usa una plantilla o el manifiesto del proyecto."
+      },
+      "litellm_taxonomy_manifest_draft": {
+        "title": "Borrador de manifiesto",
+        "intro": "LiteLLM Proxy que propone un manifiesto de taxonomía a partir de una muestra de documentos."
+      },
+      "litellm_usage": {
+        "title": "Uso de LiteLLM",
+        "intro": "Clave del LiteLLM Proxy cuyo gasto se muestra en el panel de uso."
+      },
+      "github_copilot_usage": {
+        "title": "Uso de GitHub Copilot",
+        "intro": "Usuario y token (PAT) de GitHub para ver las peticiones premium de Copilot del mes."
+      }
+    },
+    "fields": {
+      "base_url": "URL del servicio",
+      "virtual_key": "Clave virtual",
+      "model": "Modelo (alias en el proxy)",
+      "username": "Usuario de GitHub",
+      "pat": "Token personal (PAT)"
+    },
+    "usage": {
+      "title": "Uso de IA",
+      "intro": "Consumo y coste del periodo actual. Los datos se guardan 5 minutos; «Actualizar» pide datos nuevos.",
+      "refresh": "Actualizar",
+      "sources": {
+        "litellm": "LiteLLM",
+        "github_copilot": "GitHub Copilot"
+      },
+      "fetchedAt": "Consultado el {{date}}",
+      "cachedAt": "Datos del {{date}} (guardados)",
+      "notConfigured": "Sin configurar.",
+      "configure": "Configurar",
+      "errorTitle": "No se pudo consultar el uso",
+      "period": "Periodo: {{start}} – {{end}}",
+      "total": "Total: {{cost}}",
+      "empty": "Sin consumo en el periodo.",
+      "date": "Fecha",
+      "product": "Producto",
+      "quantity": "Cantidad",
+      "cost": "Coste"
+    },
+    "errors": {
+      "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",
+      "ai_connection": "No se pudo conectar con el servicio (o no respondió a tiempo).",
+      "ai_error": "El servicio devolvió un error o una respuesta inesperada."
+    }
   }
 }

@@ -14,7 +14,7 @@ Las versiones concretas se fijan en la Fase 0 a partir de las de util_bbdd_web 1
 | `sqlalchemy>=2.1`, `alembic` | `config.db` portable a otra BD | 0 |
 | `doc_organize[rapidocr,ai,context,export,site]==X.Y.Z` | Librería fijada por URL del wheel + hash (ADR-006) | 0 |
 | `pwdlib[argon2]` | Contraseñas | 1 |
-| `cryptography` | Fernet para credenciales IA | 1/8 |
+| `cryptography` | MultiFernet para las credenciales IA de `ai_settings` (dependencia directa desde la 0.9.0) | 8 |
 | `prometheus-client` | `/metrics` | 10 |
 | `httpx` | Llega con `doc_organize[ai]`; también tests | 8 |
 | `openpyxl` | Llega con `doc_organize[export]` | 5 |

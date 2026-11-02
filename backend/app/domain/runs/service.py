@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import ACTIVE_RUN_STATUSES, FINISHED_RUN_STATUSES, Artifact, MemberRole, Project, Run, User, utcnow
+from app.domain.ai import settings as ai_settings
 from app.domain.context import service as context
 from app.domain.duplicates import service as duplicates
 from app.domain.identity import audit
@@ -43,6 +44,7 @@ from app.domain.runs.operations import (
     ProjectMoveParams,
     RunParams,
     ScanParams,
+    TaxonomyDraftParams,
     is_write,
     min_role,
     needs_preview,
@@ -163,6 +165,7 @@ def enqueue(
         InvalidProjectError, ProjectConflictError: Destino de un movimiento no válido.
         FolderNotSavedError, ForceRequiresAllFoldersError, OptionUnavailableError: Escaneo no válido.
         DestinationReadOnlyError, InvalidContextBuildError: Construcción del contexto no válida.
+        AiNotConfiguredError: La operación usa una familia de IA sin configurar.
     """
     project = access.project
     spec = OPERATIONS[params.operation]
@@ -187,6 +190,8 @@ def enqueue(
         params = duplicates.validate_apply(db, project, params)
     if isinstance(params, ContextBuildParams):
         params = context.validate_build(db, settings, project, params, actor=actor)
+    if isinstance(params, TaxonomyDraftParams):
+        ai_settings.require_configured(db, settings, "litellm_taxonomy_manifest_draft")
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

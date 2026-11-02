@@ -3,6 +3,8 @@
 #   chmod 777 dev-data/e2e-out          # el contenedor escribe con el uid 10001
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
 # Solo carpetas sintéticas creadas por el propio CI (repositorio público).
+# `litellm-fake` (Fase 8) es un LiteLLM Proxy falso (docker/e2e/fake_litellm.py) con la clave `sk-e2e-fake`: los E2E
+# configuran la IA con http://litellm-fake:4000 y nada sale a la red.
 
 x-e2e-volumes: &e2e-volumes
   - data:/data
@@ -16,3 +18,19 @@ services:
     volumes: *e2e-volumes
   worker:
     volumes: *e2e-volumes
+  litellm-fake:
+    image: doc_organize_web:${DOW_TAG:-dev}
+    entrypoint: ["python", "/e2e/fake_litellm.py"]
+    command: []
+    volumes:
+      - ./docker/e2e:/e2e:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

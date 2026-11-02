@@ -38,6 +38,9 @@ ADMIN_KEYS: Final[tuple[str, ...]] = (
     "location_probe_interval_minutes",
     "run_retention_days",
     "user_quota_mb",
+    "ai_timeout_seconds",
+    "ai_retries",
+    "ai_max_documents_per_run",
 )
 
 Source = Literal["db", "env", "default"]

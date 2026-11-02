@@ -5,11 +5,11 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, detecta duplicados y genera un contexto navegable por dominios, con proyectos,
 miembros y ejecuciones en segundo plano.
 
-> **Estado: Fase 7 (contexto y taxonomías, 0.8.0).** Inicio de sesión, usuarios, ubicaciones locales y de red, ajustes
+> **Estado: Fase 8 (IA: clasificación, manifiestos y uso, 0.9.0).** Inicio de sesión, usuarios, ubicaciones locales y de red, ajustes
 > administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo, escaneo incremental con OCR
-> y GPU, visor de documentos convertidos, búsqueda de texto completo, exportaciones, duplicados en dos pasos y contexto por dominios con sitio navegable
-> ([Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md), [Escaneo](guides/escaneo.md),
-> [Documentos](guides/documentos.md), [Duplicados](guides/duplicados.md), [Contexto](guides/contexto.md)). Las funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
+> y GPU, visor de documentos convertidos, búsqueda de texto completo, exportaciones, duplicados en dos pasos, contexto por dominios con sitio navegable
+> y clasificación, borrador de manifiesto y panel de uso con IA ([Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md), [Escaneo](guides/escaneo.md),
+> [Documentos](guides/documentos.md), [Duplicados](guides/duplicados.md), [Contexto](guides/contexto.md), [IA](guides/ia.md)). Las funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
 > la interfaz hasta alcanzar la [paridad](plan/PARIDAD.md).
 
 ## Uso
@@ -21,6 +21,8 @@ miembros y ejecuciones en segundo plano.
   [Escaneo y conversión](guides/escaneo.md): carpetas, opciones, incremental, errores y forzar reconversión.
 - [Documentos, búsqueda y exportaciones](guides/documentos.md): caché, visor, búsqueda de texto completo, ZIP y Excel.
 - [Duplicados](guides/duplicados.md): buscar, revisar y aplicar (copiar, mover o solo informe) en dos pasos.
+- [Contexto y taxonomías](guides/contexto.md): dominios, carpeta reorganizada, sitio, manifiesto y plantillas.
+- [Inteligencia artificial](guides/ia.md): configuración, clasificación con IA, borrador de manifiesto y uso.
 
 ## Operación
 
@@ -34,8 +36,9 @@ miembros y ejecuciones en segundo plano.
 - [Entorno de desarrollo](guides/desarrollo.md): backend, frontend, documentación e imagen.
 - Decisiones: [ADR-001](adr/ADR-001-stack-y-proyecto-aparte.md) a
   [ADR-006](adr/ADR-006-integracion-doc-organize.md), [ADR-007](adr/ADR-007-ubicaciones.md),
-  [ADR-008](adr/ADR-008-progreso-sse.md), [ADR-011](adr/ADR-011-modelos-sin-internet.md) y
-  [ADR-012](adr/ADR-012-ajustes-administrables.md); propuestas para fases siguientes en
+  [ADR-008](adr/ADR-008-progreso-sse.md), [ADR-010](adr/ADR-010-sitio-de-contexto-aislado.md),
+  [ADR-011](adr/ADR-011-modelos-sin-internet.md), [ADR-012](adr/ADR-012-ajustes-administrables.md) y
+  [ADR-014](adr/ADR-014-uso-de-servicios-de-ia.md); propuestas para fases siguientes en
   [ADRS_PROPUESTOS](plan/ADRS_PROPUESTOS.md).
 - Plan: [README del plan](plan/README.md), [arquitectura propuesta](plan/ARQUITECTURA_PROPUESTA.md),
   [ROADMAP](plan/ROADMAP.md), [huecos de doc_organize](plan/DOC_ORGANIZE_GAPS.md) y [paridad](plan/PARIDAD.md).

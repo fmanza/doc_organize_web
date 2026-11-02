@@ -17,4 +17,5 @@ adaptando nombres.
 | 010 | Sitio de contexto aislado | 7 | ≈ ADR-007 UBW: el sitio Zensical generado se sirve en un origen o `iframe sandbox` aislado con CSP propia |
 | 011 | Modelos de IA/OCR sin Internet | 0/4 | **Nuevo**: modelos de Docling, RapidOCR, EasyOCR y Whisper precargados en la imagen (o volumen `models` de solo lectura); `HF_HUB_OFFLINE=1` en runtime |
 | 012 | Ajustes administrables | 2 | ≈ ADR-012 UBW: BD > entorno > defecto; sin reinicio |
+| 014 | Uso de servicios de IA | 8 | **Nuevo** (redactado en la Fase 8): opt-in por ejecución, presupuesto y cortes por run, borrador sin aplicar, panel de uso en la API con caché corta |
 | 013 | Multi-tenant | 9 | **Nuevo**: aislamiento por `tenant_id` en repositorios (no en routers), admin de instancia, roles con permisos; migración de `admin`/`user` |

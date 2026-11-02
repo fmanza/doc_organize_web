@@ -24,6 +24,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/ai-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver la configuración de IA
+         * @description Las 5 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
+         */
+        get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ai-settings/{family}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambiar una familia de IA
+         * @description Guarda o borra campos (ausente = no se toca; ``null`` o ``""`` = borrar) y lo audita sin valores secretos.
+         */
+        put: operations["put_ai_family_api_v1_admin_ai_settings__family__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ai-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Uso y coste de IA
+         * @description Uso del periodo actual de LiteLLM y de GitHub Copilot (caché de 5 minutos por fuente).
+         */
+        get: operations["get_ai_usage_api_v1_admin_ai_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/capabilities/refresh": {
         parameters: {
             query?: never;
@@ -100,6 +160,26 @@ export interface paths {
          * @description Workers registrados con sus colas, latido y si siguen vivos.
          */
         get: operations["list_workers_api_v1_admin_workers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Familias de IA configuradas
+         * @description Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto.
+         */
+        get: operations["get_ai_status_api_v1_ai_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -981,6 +1061,126 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AiFamilyOut */
+        AiFamilyOut: {
+            /**
+             * Configured
+             * @description Tiene todos sus campos obligatorios
+             */
+            configured: boolean;
+            /** Fields */
+            fields: components["schemas"]["AiFieldOut"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "litellm_classification" | "litellm_taxonomy_classification" | "litellm_taxonomy_manifest_draft" | "litellm_usage" | "github_copilot_usage";
+        };
+        /**
+         * AiFamilyUpdate
+         * @description Campos que cambian: ausente = no se toca; ``null`` o ``""`` = borrar el valor guardado (vuelve al entorno).
+         */
+        AiFamilyUpdate: {
+            /** Fields */
+            fields: {
+                [key: string]: string | null;
+            };
+        };
+        /**
+         * AiFieldOut
+         * @description Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos.
+         */
+        AiFieldOut: {
+            /** Env Var */
+            env_var: string;
+            /** Hint */
+            hint: string | null;
+            /** Name */
+            name: string;
+            /** Required */
+            required: boolean;
+            /** Secret */
+            secret: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "db" | "env" | "none";
+            /**
+             * Undecryptable
+             * @description Hay un valor guardado que no se descifra con las claves actuales
+             */
+            undecryptable: boolean;
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * AiSettingsOut
+         * @description Configuración de IA de la instancia, sin ningún secreto.
+         */
+        AiSettingsOut: {
+            /** Encryption Configured */
+            encryption_configured: boolean;
+            /** Families */
+            families: components["schemas"]["AiFamilyOut"][];
+        };
+        /**
+         * AiStatusOut
+         * @description Qué familias de IA están configuradas (para cualquier usuario, sin valores).
+         */
+        AiStatusOut: {
+            /** Families */
+            families: {
+                [key: string]: boolean;
+            };
+        };
+        /** AiUsageItemOut */
+        AiUsageItemOut: {
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Date */
+            date: string;
+            /** Product */
+            product: string;
+            /** Quantity */
+            quantity: number;
+            /** Sku */
+            sku: string | null;
+            /** Unit Type */
+            unit_type: string;
+        };
+        /** AiUsageOut */
+        AiUsageOut: {
+            /** Sources */
+            sources: components["schemas"]["AiUsageSourceOut"][];
+        };
+        /**
+         * AiUsageSourceOut
+         * @description Uso de una fuente en el periodo actual, o por qué no hay (sin configurar o ``error``).
+         */
+        AiUsageSourceOut: {
+            /** Cached */
+            cached: boolean;
+            /** Configured */
+            configured: boolean;
+            /** Error */
+            error: ("ai_auth" | "ai_connection" | "ai_error") | null;
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Items */
+            items: components["schemas"]["AiUsageItemOut"][];
+            /** Period End */
+            period_end: string | null;
+            /** Period Start */
+            period_start: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "litellm" | "github_copilot";
+            /** Total Cost Usd */
+            total_cost_usd: number | null;
+        };
         /**
          * ArtifactOut
          * @description Fichero de un run, descargable mientras no lo purgue la retención.
@@ -1098,8 +1298,15 @@ export interface components {
          *     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
          *     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
          *     descarta) y no se devuelve en el run.
+         *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
+         *     ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
          */
         ContextBuildParams: {
+            /**
+             * Ai Classification
+             * @default false
+             */
+            ai_classification: boolean;
             /**
              * Build Site
              * @default true
@@ -1157,6 +1364,8 @@ export interface components {
          * @description Documento del contexto: original (``folder`` + ``path``) y copia relativa a la carpeta del proyecto.
          */
         ContextDocumentOut: {
+            /** Classified By */
+            classified_by?: ("rules" | "ai") | null;
             /** Collision */
             collision: boolean;
             /** Document Type */
@@ -1205,6 +1414,11 @@ export interface components {
          * @description Resumen del contexto construido del proyecto (proyección del último ``context_build``).
          */
         ContextOut: {
+            /**
+             * Ai Classification
+             * @default false
+             */
+            ai_classification: boolean;
             /**
              * Built At
              * Format: date-time
@@ -2020,7 +2234,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
             /**
              * Status
              * @enum {string}
@@ -2059,7 +2273,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -2390,6 +2604,25 @@ export interface components {
             url: string;
         };
         /**
+         * TaxonomyDraftParams
+         * @description Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.
+         *
+         *     No escribe nada: el borrador va en el resultado del run y se guarda, si se quiere, con el ``PUT`` del manifiesto.
+         */
+        TaxonomyDraftParams: {
+            /**
+             * Operation
+             * @default taxonomy_draft
+             * @constant
+             */
+            operation: "taxonomy_draft";
+            /**
+             * Sample Size
+             * @default 25
+             */
+            sample_size: number;
+        };
+        /**
          * TaxonomyManifestOut
          * @description ``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.
          */
@@ -2656,6 +2889,147 @@ export interface operations {
             };
         };
     };
+    get_ai_settings_api_v1_admin_ai_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettingsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_ai_family_api_v1_admin_ai_settings__family__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFamilyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiFamilyOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Familia desconocida (``ai_family_not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cifrado no configurado (``encryption_not_configured``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campo ajeno o valor no válido (``ai_setting_invalid``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_ai_usage_api_v1_admin_ai_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Saltar la caché (como mucho una vez cada 30 s) */
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiUsageOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     refresh_capabilities_api_v1_admin_capabilities_refresh_post: {
         parameters: {
             query?: never;
@@ -2861,6 +3235,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkerList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_ai_status_api_v1_ai_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiStatusOut"];
                 };
             };
             /** @description No autenticado */
@@ -4452,7 +4860,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"];
             };
         };
         responses: {
@@ -4815,7 +5223,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft") | null;
                 limit?: number;
                 offset?: number;
             };

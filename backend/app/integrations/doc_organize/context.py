@@ -33,9 +33,12 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from app.integrations.doc_organize.projects import DocOrganizeOperationError
+
+if TYPE_CHECKING:
+    from app.integrations.doc_organize.ai import AiConnection
 
 #: Caracteres máximos de un error de doc_organize que se guardan (pueden llevar rutas: el job los limpia).
 MAX_ERROR_CHARS: Final = 500
@@ -89,6 +92,8 @@ class ContextRequest:
         template_name: Plantilla de la que viene ``manifest_markdown`` (solo informativo en ``context.json``).
         build_site: Generar y construir el sitio Zensical; si no, se borra el que hubiera.
         site_timeout: Segundos máximos de ``zensical build``.
+        ai: Clasificación con IA de lo que las reglas dejan sin clasificar (Fase 8): familia de un eje o de
+            taxonomía según haya manifiesto. ``None`` = sin IA.
     """
 
     name: str
@@ -102,6 +107,7 @@ class ContextRequest:
     threshold: float = 0.5
     build_site: bool = True
     site_timeout: float | None = None
+    ai: AiConnection | None = None
 
 
 @dataclass(frozen=True)
@@ -117,6 +123,7 @@ class ContextDoc:
     organized_path: str | None
     failed: bool = False
     collision: bool = False
+    classified_by: str | None = None
 
 
 @dataclass
@@ -128,6 +135,7 @@ class ContextOutcome:
         failed: ``(ruta absoluta, error)`` de los documentos que no se pudieron copiar (G27).
         missing: Documentos convertidos de la caché cuyo original ya no está en el origen (no entran).
         site_error: Por qué no se construyó el sitio (puede llevar rutas: el job lo limpia).
+        ai: Recuento de la IA (``AiTally.as_dict``), o ``None`` si no se usó.
     """
 
     output_folder_name: str = ""
@@ -138,6 +146,7 @@ class ContextOutcome:
     collisions: int = 0
     site_built: bool = False
     site_error: str | None = None
+    ai: dict[str, Any] | None = None
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
@@ -398,6 +407,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     source_path=document.source_path,
                     organized_path=None if document.source_path in failed_paths else organized,
                     failed=document.source_path in failed_paths,
+                    classified_by=str(document.classified_by) if document.classified_by else None,
                 )
             )
     # G30: dos documentos con la misma carpeta de destino (mismo dominio, tipo y ``stem``) se sobrescriben.
@@ -459,6 +469,14 @@ def build_context(
     )
     from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
+    from app.integrations.doc_organize.ai import AiTally, classification_client
+
+    if request.ai is not None:
+        expected = (
+            "litellm_taxonomy_classification" if request.manifest_markdown is not None else "litellm_classification"
+        )
+        if request.ai.family != expected:
+            raise ValueError(f"La clasificación con IA de este catálogo usa {expected}")
     if is_cancelled():
         return None
     on_progress("context_gather", 0, None, None)
@@ -489,21 +507,37 @@ def build_context(
         failed.append((path, error[:MAX_ERROR_CHARS]))
         on_progress("context_reorganize", index, total, path)
 
+    tally: AiTally | None = None
+
+    def _classified(event: Any) -> None:  # progreso de la Sub-fase B (un documento enviado a la IA)
+        on_progress("context_ai", int(event.processed), int(event.total) if event.total else None, None)
+
+    async def _classify() -> Any:
+        nonlocal tally
+        kwargs: dict[str, Any] = {
+            "candidate_domains": request.candidate_domains or None,
+            "threshold": request.threshold,
+            "output_folder_name": request.output_folder_name,
+            "taxonomy_manifest": manifest,
+            "taxonomy_template_name": request.template_name if manifest is not None else None,
+            "cancel_token": token,
+        }
+        if request.ai is None:
+            return await ContextBuilder().build(project, documents, **kwargs)
+        tally = AiTally()
+        async with classification_client(request.ai, tally) as client:
+            client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
+            kwargs[client_arg] = client
+            return await ContextBuilder().build(
+                project, documents, ai_classification_enabled=True, on_progress=_classified, **kwargs
+            )
+
     async def _run() -> ContextOutcome | None:
         on_progress("context_classify", 0, len(documents), None)
         if is_cancelled():  # sin esperar al hilo: el primer punto de parada de doc_organize es al empezar
             token.cancel()
         try:
-            context = await ContextBuilder().build(
-                project,
-                documents,
-                candidate_domains=request.candidate_domains or None,
-                threshold=request.threshold,
-                output_folder_name=request.output_folder_name,
-                taxonomy_manifest=manifest,
-                taxonomy_template_name=request.template_name if manifest is not None else None,
-                cancel_token=token,
-            )
+            context = await _classify()
         except OperationCancelledError:
             return None
         on_progress("context_classify", len(documents), len(documents), None)
@@ -534,6 +568,7 @@ def build_context(
             await ContextRegistry().save_context(project, context)
         outcome = _outcome(context, failed, missing)
         outcome.site_error = site_error
+        outcome.ai = tally.as_dict() if tally is not None else None
         return outcome
 
     clear_temporaries(request.output_root, request.output_folder_name)

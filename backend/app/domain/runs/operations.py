@@ -160,6 +160,8 @@ class ContextBuildParams(_Params):
     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
     descarta) y no se devuelve en el run.
+    ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
+    ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
     """
 
     operation: Literal["context_build"] = "context_build"
@@ -169,6 +171,7 @@ class ContextBuildParams(_Params):
     output_folder_name: Annotated[str, Field(min_length=1, max_length=120)] | None = None
     threshold: float = Field(default=0.5, ge=0, le=1)
     build_site: bool = True
+    ai_classification: bool = False
     template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
 
     @model_validator(mode="after")
@@ -188,6 +191,23 @@ class ContextDeleteParams(_Destructive):
     operation: Literal["context_delete"] = "context_delete"
 
 
+def context_ai_family(
+    params: ContextBuildParams,
+) -> Literal["litellm_classification", "litellm_taxonomy_classification"]:
+    """Familia de IA que usa ``params``: la de taxonomía (dos ejes) si hay plantilla o manifiesto."""
+    return "litellm_taxonomy_classification" if params.catalog in ("template", "manifest") else "litellm_classification"
+
+
+class TaxonomyDraftParams(_Params):
+    """Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.
+
+    No escribe nada: el borrador va en el resultado del run y se guarda, si se quiere, con el ``PUT`` del manifiesto.
+    """
+
+    operation: Literal["taxonomy_draft"] = "taxonomy_draft"
+    sample_size: int = Field(default=25, ge=1, le=60)
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -200,7 +220,8 @@ RunParams = Annotated[
     | DedupPreviewParams
     | DedupApplyParams
     | ContextBuildParams
-    | ContextDeleteParams,
+    | ContextDeleteParams
+    | TaxonomyDraftParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -249,6 +270,8 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Contexto (Fase 7): construir reescribe solo lo que gestiona el contexto; borrarlo es de owner (regla 7).
     "context_build": OperationSpec(min_role="editor"),
     "context_delete": OperationSpec(min_role="owner", destructive=True),
+    # IA (Fase 8): el borrador no escribe en el proyecto, pero envía su contenido fuera (decisión D4: editor).
+    "taxonomy_draft": OperationSpec(min_role="editor"),
 }
 
 
