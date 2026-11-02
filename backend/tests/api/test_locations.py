@@ -305,7 +305,7 @@ def test_capabilities_for_any_session(user_client: TestClient, published_capabil
     assert body["queues"] == ["cpu"]
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
-    assert body["doc_organize_version"] == "0.11.0"
+    assert body["doc_organize_version"] == "0.12.0"
 
 
 def test_health_reports_worst_location_status(admin_client: TestClient, location: dict[str, object], mnt: Path) -> None:

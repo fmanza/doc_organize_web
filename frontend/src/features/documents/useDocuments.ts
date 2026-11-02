@@ -4,6 +4,16 @@ import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 
 export type DocumentOut = components['schemas']['DocumentOut'];
+/** Estados de conversión de doc_organize por los que se puede filtrar la lista. */
+export const CONVERSION_STATUSES = [
+  'success',
+  'error',
+  'pending',
+  'in_progress',
+  'ocr_pending',
+  'ocr_in_progress',
+] as const;
+export type ConversionStatus = (typeof CONVERSION_STATUSES)[number];
 export type SearchPage = components['schemas']['SearchPage'];
 export type SearchHit = components['schemas']['SearchHitOut'];
 
@@ -18,6 +28,7 @@ export const MARK_END = '\u0003';
 export interface DocumentFilters {
   search: string;
   folder: string | null;
+  conversionStatus: ConversionStatus | null;
 }
 
 /** Documentos de la caché paginados en servidor, página a página para la lista virtualizada. */
@@ -35,6 +46,7 @@ export function useDocuments(projectId: number, filters: DocumentFilters) {
               offset: pageParam,
               search: filters.search || null,
               folder: filters.folder,
+              conversion_status: filters.conversionStatus,
             },
           },
         }),

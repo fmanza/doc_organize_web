@@ -87,19 +87,33 @@ def list_documents(
     *,
     folder: str | None = None,
     search: str | None = None,
+    conversion_status: str | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[DocumentRow], int]:
-    """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta.
+    """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta relativa a su carpeta y
+    filtro por estado de conversión.
 
     Raises:
         FolderNotInProjectError: ``folder`` no es una carpeta de origen del proyecto.
     """
     state = state_dir(settings, project.id)
     search = (search or "").strip() or None
-    counts = [
-        (subpath, library_cache.count_documents(folder_cache(state, subpath), search))
+    source = project.source_location
+    timeout = settings.location_probe_timeout_seconds
+    # La caché guarda las rutas que recibió doc_organize: la carpeta resuelta (la última raíz de folder_roots).
+    roots = {
+        subpath: folder_roots(source.container_path, subpath, timeout=timeout)
         for subpath in select_folders(project, folder)
+    }
+    counts = [
+        (
+            subpath,
+            library_cache.count_documents(
+                folder_cache(state, subpath), search, root=folder_root[-1], conversion_status=conversion_status
+            ),
+        )
+        for subpath, folder_root in roots.items()
     ]
     total = sum(count for _, count in counts)
     rows: list[DocumentRow] = []
@@ -110,12 +124,17 @@ def list_documents(
         if skip >= count:
             skip -= count
             continue
-        page = library_cache.documents_page(folder_cache(state, subpath), limit=wanted, offset=skip, search=search)
+        page = library_cache.documents_page(
+            folder_cache(state, subpath),
+            root=roots[subpath][-1],
+            limit=wanted,
+            offset=skip,
+            search=search,
+            conversion_status=conversion_status,
+        )
         skip = 0
         wanted -= len(page)
-        source = project.source_location
-        roots = folder_roots(source.container_path, subpath, timeout=settings.location_probe_timeout_seconds)
-        namer = DocumentNamer([(subpath, roots)], source.name)
+        namer = DocumentNamer([(subpath, roots[subpath])], source.name)
         for entry in page:
             parts = namer.split(entry.path)
             relative = parts[1] if parts else Path(entry.path).name
@@ -213,7 +232,7 @@ def read_output(settings: Settings, project: Project, path: str) -> OutputConten
 
     target, data = run_with_timeout(_read, timeout)
     if content_type == "application/json":
-        data = json_output(settings, project, data)
+        data = json_output(settings, project, data, clean)
     return OutputContent(name=target.name, content=data, content_type=content_type)
 
 
@@ -230,18 +249,29 @@ def project_namer(settings: Settings, project: Project) -> DocumentNamer:
     )
 
 
-def json_output(settings: Settings, project: Project, raw: bytes) -> bytes:
-    """JSON de un documento convertido sin rutas del contenedor.
+def _folder_of(project: Project, output: str) -> str | None:
+    """Carpeta de origen a la que pertenece una salida (``<carpeta>/…`` dentro de ``Conversión/``)."""
+    matches = [f for f in project.source_subpaths if f == "" or output.startswith(f"{f}/")]
+    return max(matches, key=len) if matches else None
 
-    doc_organize escribe en ``source_path`` la ruta absoluta del documento de origen (G23); el visor la sustituye por
-    la relativa a su carpeta (``2024/facturas/a.pdf``). Si el fichero no es un objeto JSON válido, se sirve tal cual
-    (el visor lo muestra como texto).
+
+def json_output(settings: Settings, project: Project, raw: bytes, output: str) -> bytes:
+    """JSON de un documento convertido con ``source_path`` relativa a la carpeta de origen (``2024/facturas/a.pdf``).
+
+    Desde doc_organize 0.12.0 (G23) ``source_path`` ya es relativa a la carpeta escaneada (``facturas/a.pdf``): se le
+    antepone la carpeta. Los JSON convertidos antes llevan la ruta absoluta del contenedor hasta reconvertirse: se
+    sustituye por la relativa. Si el fichero no es un objeto JSON válido, se sirve tal cual.
     """
     try:
         data = json.loads(raw)
     except ValueError:
         return raw
-    if isinstance(data, dict) and isinstance(data.get("source_path"), str):
-        data["source_path"] = project_namer(settings, project).display(data["source_path"])
-        return json.dumps(data, ensure_ascii=False).encode("utf-8")
-    return raw
+    source = data.get("source_path") if isinstance(data, dict) else None
+    if not isinstance(source, str):
+        return raw
+    if source.startswith("/"):
+        data["source_path"] = project_namer(settings, project).display(source)
+    else:
+        folder = _folder_of(project, output)
+        data["source_path"] = f"{folder}/{source}" if folder else source
+    return json.dumps(data, ensure_ascii=False).encode("utf-8")

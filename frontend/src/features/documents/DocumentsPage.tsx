@@ -22,7 +22,13 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
 import { useProject } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
-import { type DocumentOut, ROOT_FOLDER, useDocuments } from './useDocuments';
+import {
+  CONVERSION_STATUSES,
+  type ConversionStatus,
+  type DocumentOut,
+  ROOT_FOLDER,
+  useDocuments,
+} from './useDocuments';
 
 const ROW_HEIGHT = 64;
 
@@ -44,7 +50,8 @@ export function DocumentsPage() {
   const [search, setSearch] = useState('');
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [folder, setFolder] = useState<string | null>(null);
-  const documents = useDocuments(projectId, { search: debounced, folder });
+  const [conversionStatus, setConversionStatus] = useState<ConversionStatus | null>(null);
+  const documents = useDocuments(projectId, { search: debounced, folder, conversionStatus });
 
   if (project.isPending) {
     return (
@@ -91,6 +98,17 @@ export function DocumentsPage() {
             label: folderLabel(subpath, root),
           }))}
         />
+        <Select
+          label={t('documents.status')}
+          placeholder={t('documents.allStatuses')}
+          clearable
+          value={conversionStatus}
+          onChange={(value) => setConversionStatus(value as ConversionStatus | null)}
+          data={CONVERSION_STATUSES.map((status) => ({
+            value: status,
+            label: t(`documents.conversion.${status}`),
+          }))}
+        />
       </Group>
       {documents.isError && !documents.isFetchNextPageError ? (
         <ErrorAlert error={documents.error} />
@@ -100,7 +118,7 @@ export function DocumentsPage() {
         </Center>
       ) : total === 0 ? (
         <Text c="dimmed" role="status">
-          {debounced || folder ? t('documents.noMatches') : t('documents.empty')}
+          {debounced || folder || conversionStatus ? t('documents.noMatches') : t('documents.empty')}
         </Text>
       ) : (
         <>
@@ -109,7 +127,7 @@ export function DocumentsPage() {
           </Text>
           <DocumentList
             // Una lista nueva por filtro: vuelve arriba y no pide páginas de los datos provisionales anteriores.
-            key={`${debounced}|${folder ?? ''}`}
+            key={`${debounced}|${folder ?? ''}|${conversionStatus ?? ''}`}
             projectId={projectId}
             rows={rows}
             total={total}

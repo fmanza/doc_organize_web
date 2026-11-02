@@ -19,8 +19,9 @@ pedido. El contenedor corre sin privilegios y con el sistema de ficheros de solo
    `/models/docling` y escribe `manifest.json` con las carpetas de cada grupo: base (maquetación, tablas, RapidOCR),
    `--picture-description` (SmolVLM) y `--easyocr` (OCR con GPU). EasyOCR solo está en la imagen `runtime-gpu`, así
    que `--easyocr` lo descarga **`models-init-gpu`** (perfil `setup-gpu`), el mismo servicio con esa imagen.
-3. El subproceso del job apunta Docling a esa carpeta con `DOCLING_ARTIFACTS_PATH` (`AppSettings` de Docling, prefijo
-   `DOCLING_`, verificado en docling 2.142) antes de importar doc_organize, si existe el manifiesto.
+3. Si existe el manifiesto, el escaneo pasa esa carpeta a doc_organize con `ScanOptions.artifacts_path` y prohíbe
+   las descargas (`allow_model_downloads=False`): si falta un modelo, `ModelsNotAvailableError` en lugar de descargarlo
+   (doc_organize 0.12.0, G17; hasta entonces, `DOCLING_ARTIFACTS_PATH` en el subproceso).
 4. El worker publica en sus capacidades `models_ready`, `picture_description_ready` y `gpu_ready` (GPU activa y
    EasyOCR); la API solo acepta «describir imágenes» y «usar GPU» si algún worker de la cola los confirma.
 5. Sin modelos, un escaneo no falla entero: los formatos que no los necesitan (HTML, Office, TXT…) se convierten y los

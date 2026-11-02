@@ -118,7 +118,7 @@ describe('DocumentsPage', () => {
     renderRoute('/projects/7/documents');
 
     expect(await screen.findByText(/Aún no hay documentos/)).toBeInTheDocument();
-    await user.type(screen.getByRole('textbox', { name: 'Buscar por nombre o carpeta' }), 'enero');
+    await user.type(screen.getByRole('textbox', { name: 'Buscar por nombre o subcarpeta' }), 'enero');
     await waitFor(() =>
       expect(
         callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').some(
@@ -127,6 +127,15 @@ describe('DocumentsPage', () => {
       ).toBe(true),
     );
     expect(await screen.findByText('Ningún documento coincide con la búsqueda.')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Estado' }));
+    await user.click(await screen.findByRole('option', { name: 'Error', hidden: true }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').some(
+          (request) => new URL(request.url).searchParams.get('conversion_status') === 'error',
+        ),
+      ).toBe(true),
+    );
   });
 });
 

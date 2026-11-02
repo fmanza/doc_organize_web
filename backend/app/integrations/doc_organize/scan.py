@@ -1,4 +1,4 @@
-"""Escaneo y conversión con ``ScanCommand.run_streaming`` de doc_organize 0.10.0 (WB-4.1; G2, G7, G13).
+"""Escaneo y conversión con ``ScanCommand.run_streaming`` de doc_organize 0.12.0 (WB-4.1; G2, G7, G13).
 
 Solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la función (G15). Recibe y devuelve
 tipos propios con rutas absolutas del contenedor; el job las convierte en relativas a la ubicación antes de que
@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final
 
-from app.integrations.doc_organize.models import configure as configure_models
+from app.integrations.doc_organize.models import artifacts_path
 from app.integrations.doc_organize.projects import DocOrganizeOperationError
 
 CANCEL_POLL_SECONDS: Final = 1.0
@@ -125,10 +125,11 @@ def run_scan(
     Raises:
         DocOrganizeOperationError: doc_organize abortó el escaneo (mensaje genérico: el de la librería lleva rutas).
     """
-    configure_models(request.models_dir)
+    models = artifacts_path(request.models_dir)
     from doc_organize import (
         CancelToken,
         DocOrganizeError,
+        ModelsNotAvailableError,
         ProgressEvent,
         ProjectLayout,
         ScanCommand,
@@ -146,6 +147,9 @@ def run_scan(
         include_audio_video=request.include_audio_video,
         extract_images=request.extract_images,
         use_picture_description=request.use_picture_description,
+        # G17: con modelos descargados, Docling los toma de ahí y nunca descarga (falta uno → ModelsNotAvailableError).
+        artifacts_path=models,
+        allow_model_downloads=models is None,
     )
     errors_log, history_log = layout.scan_errors_log, layout.scan_history_log
     errors_offset, history_offset = _size(errors_log), _size(history_log)
@@ -188,6 +192,10 @@ def run_scan(
     watcher.start()
     try:
         asyncio.run(_consume())
+    except ModelsNotAvailableError as exc:
+        raise DocOrganizeOperationError(
+            "Faltan modelos de Docling para las opciones elegidas: repite «models-init»."
+        ) from exc
     except DocOrganizeError as exc:
         raise DocOrganizeOperationError("doc_organize no pudo completar el escaneo.") from exc
     finally:
