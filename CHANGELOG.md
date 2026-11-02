@@ -5,6 +5,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **docs**: doc_organize 0.12.0 publicada (L-10a…L-10e): G16–G23 pasan a «Resueltos» en `DOC_ORGANIZE_GAPS.md`, con
+  sus rodeos pendientes de retirar al subir la dependencia, y la deprecación de la web integrada (L-10) pasa a la
+  0.13.0 en `TAREAS_DOC_ORGANIZE.md`, `PARIDAD.md`, `DECISIONES_Y_RIESGOS.md` y el README del plan.
+
 ## [0.6.0] - 2026-11-02
 
 Fase 5 — caché, resultados y descargas. Con doc_organize **0.11.0** (L-7, `doc_organize.export`).

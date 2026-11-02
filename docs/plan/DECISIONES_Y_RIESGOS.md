@@ -10,7 +10,7 @@
 | P4 | Herramienta de documentación | **Zensical** en doc_organize_web **y también en doc_organize** | ✅ Confirmada | Web: `zensical.toml` desde F0. Librería: tarea nueva **L-13b** (migrar `mkdocs.yml` → `zensical.toml`, CI `docs.yml`, `CLAUDE.md`/SHARED con `zensical build --strict` en lugar de `mkdocs build`). **mkdocs se retira por completo** (dejará de tener soporte): también el sitio de contexto de los proyectos de usuario pasa a Zensical (`MkDocsGenerator` → `SiteGenerator`, L-8) |
 | P5 | Repositorio | **Ya creado y público** | ✅ Confirmada | Seguridad desde F0, no en F10 (ver «Repositorio público» abajo) |
 | P6 | Idiomas | **Solo español, con i18n desde F0** | Recomendación aceptada | Todos los textos en `i18n/es/*.json`; añadir inglés = traducir |
-| P7 | Retirada de la web integrada | **Deprecar en 0.12.0 (tras F8) y eliminar en 1.0.0 (tras F10)**; la web integrada queda congelada (solo hotfix) desde F0 | Recomendación aceptada | Fecha real gobernada por `PARIDAD.md`, no por calendario |
+| P7 | Retirada de la web integrada | **Deprecar en 0.13.0 (tras F8; la 0.12.0 se usó para L-10a…L-10e) y eliminar en 1.0.0 (tras F10)**; la web integrada queda congelada (solo hotfix) desde F0 | Recomendación aceptada | Fecha real gobernada por `PARIDAD.md`, no por calendario |
 | P8 | Sitio de contexto | **`iframe sandbox` (sin `allow-same-origin`) + CSP propia** en F7; subdominio opcional en F10 si el proxy TLS lo permite | Recomendación aceptada | ADR-010 con las dos opciones; la primera implementada |
 
 ### Repositorio público: cambios respecto al plan
