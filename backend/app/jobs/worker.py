@@ -35,7 +35,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from app import __version__
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
-from app.db.models import FINISHED_RUN_STATUSES, Artifact, PeriodicTask, Run, RunEvent, Worker, utcnow
+from app.db.models import (
+    FINISHED_RUN_STATUSES,
+    Artifact,
+    DuplicateGroupRow,
+    PeriodicTask,
+    Run,
+    RunEvent,
+    Worker,
+    utcnow,
+)
 from app.db.session import get_engine
 from app.domain.locations.service import probe_all
 from app.domain.settings.service import effective_settings
@@ -302,7 +311,8 @@ def register_log(db: Session, settings: Settings, run_id: str) -> None:
 
 
 def purge_workspace(db: Session, settings: Settings) -> int:
-    """Borra las carpetas de runs terminados hace más de ``run_retention_days`` y sus eventos de progreso y avisos.
+    """Borra las carpetas de runs terminados hace más de ``run_retention_days``, sus eventos de progreso y avisos y los
+    grupos de duplicados de sus vistas previas.
 
     Se conservan la fila del run (historial), sus artefactos (para responder 410) y sus eventos de estado.
     """
@@ -318,6 +328,7 @@ def purge_workspace(db: Session, settings: Settings) -> int:
         workspace.purge(settings, run_id)
         db.execute(update(Run).where(Run.id == run_id).values(workspace_purged_at=utcnow()))
         db.execute(delete(RunEvent).where(RunEvent.run_id == run_id, RunEvent.type.in_(("progress", "log"))))
+        db.execute(delete(DuplicateGroupRow).where(DuplicateGroupRow.run_id == run_id))
         db.commit()
     if expired:
         logger.info("Workspace purgado", extra={"runs": len(expired)})

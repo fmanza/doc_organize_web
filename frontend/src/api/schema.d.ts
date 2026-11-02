@@ -412,6 +412,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/duplicates/last": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Última búsqueda y aplicación de duplicados
+         * @description Para el aviso «la última aplicación ya resolvió los duplicados» del resolutor.
+         */
+        get: operations["last_duplicates_api_v1_projects__project_id__duplicates_last_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/members": {
         parameters: {
             query?: never;
@@ -642,6 +662,26 @@ export interface paths {
          * @description Cancela un run en cola o pide parar uno en marcha (el worker lo para en el siguiente punto seguro).
          */
         post: operations["cancel_run_api_v1_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/duplicate-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grupos de una búsqueda de duplicados
+         * @description Grupos de la vista previa ``run_id`` (vacío si el run no es una búsqueda de duplicados).
+         */
+        get: operations["list_duplicate_groups_api_v1_runs__run_id__duplicate_groups_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -908,6 +948,68 @@ export interface components {
             csrf_token: string;
         };
         /**
+         * DedupApplyParams
+         * @description Aplicar los grupos confirmados de una vista previa de duplicados (``groups_run_id``).
+         *
+         *     ``mode``: ``move`` (saca los descartados del origen a ``duplicados/``), ``copy`` (los copia, sin tocar el origen) o
+         *     ``report_only`` (solo el informe). La ejecución real exige su propia vista previa (``dry_run``) y el nombre del
+         *     proyecto, como el resto de operaciones que escriben ficheros (regla 7).
+         */
+        DedupApplyParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** Groups */
+            groups: components["schemas"]["DedupChoice"][];
+            /** Groups Run Id */
+            groups_run_id: string;
+            /**
+             * Mode
+             * @default copy
+             * @enum {string}
+             */
+            mode: "move" | "copy" | "report_only";
+            /**
+             * Operation
+             * @default dedup_apply
+             * @constant
+             */
+            operation: "dedup_apply";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        };
+        /**
+         * DedupChoice
+         * @description Grupo confirmado y documento que se conserva (``<carpeta>/<ruta>`` tal como lo da la vista previa).
+         */
+        DedupChoice: {
+            /** Group Id */
+            group_id: string;
+            /** Keep */
+            keep: string;
+        };
+        /**
+         * DedupPreviewParams
+         * @description Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).
+         *
+         *     ``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea
+         *     duplicado exacto ni conflicto de versión.
+         */
+        DedupPreviewParams: {
+            /** Fuzzy Threshold */
+            fuzzy_threshold?: number | null;
+            /**
+             * Operation
+             * @default dedup_preview
+             * @constant
+             */
+            operation: "dedup_preview";
+        };
+        /**
          * DocumentOut
          * @description Documento de la caché del proyecto, con rutas relativas a su carpeta de origen (nunca del servidor).
          */
@@ -956,6 +1058,74 @@ export interface components {
             items: components["schemas"]["DocumentOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * DuplicateGroupOut
+         * @description Grupo de duplicados de una vista previa.
+         */
+        DuplicateGroupOut: {
+            /** Group Id */
+            group_id: string;
+            /** Members */
+            members: components["schemas"]["DuplicateMemberOut"][];
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "exact_duplicate" | "version_conflict" | "fuzzy_name_match";
+        };
+        /**
+         * DuplicateGroupPage
+         * @description Página de grupos de una vista previa de duplicados.
+         */
+        DuplicateGroupPage: {
+            /** Items */
+            items: components["schemas"]["DuplicateGroupOut"][];
+            run: components["schemas"]["RunBrief"];
+            /** Total */
+            total: number;
+        };
+        /**
+         * DuplicateMemberOut
+         * @description Documento de un grupo de duplicados, con ruta relativa a su carpeta de origen.
+         */
+        DuplicateMemberOut: {
+            /**
+             * Canonical
+             * @description El que se conserva por defecto (el más antiguo)
+             */
+            canonical: boolean;
+            /** Folder */
+            folder: string;
+            /**
+             * Key
+             * @description «<carpeta>/<ruta>»: valor de «keep» para conservarlo al aplicar
+             */
+            key: string;
+            /**
+             * Modified At
+             * Format: date-time
+             */
+            modified_at: string;
+            /**
+             * Output Path
+             * @description Markdown convertido, relativo a Conversión/ (para el visor)
+             */
+            output_path: string | null;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /**
+         * DuplicatesLastOut
+         * @description Última búsqueda de duplicados y última aplicación real del proyecto (``None`` si no hay).
+         */
+        DuplicatesLastOut: {
+            apply: components["schemas"]["RunBrief"] | null;
+            preview: components["schemas"]["RunBrief"] | null;
         };
         /**
          * ExportXlsxParams
@@ -1558,7 +1728,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply";
             /**
              * Status
              * @enum {string}
@@ -1597,7 +1767,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -3277,6 +3447,51 @@ export interface operations {
             };
         };
     };
+    last_duplicates_api_v1_projects__project_id__duplicates_last_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicatesLastOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_members_api_v1_projects__project_id__members_get: {
         parameters: {
             query?: never;
@@ -3599,7 +3814,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"];
             };
         };
         responses: {
@@ -3962,7 +4177,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply") | null;
                 limit?: number;
                 offset?: number;
             };
@@ -4138,6 +4353,56 @@ export interface operations {
             };
             /** @description Ya terminó */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_duplicate_groups_api_v1_runs__run_id__duplicate_groups_get: {
+        parameters: {
+            query?: {
+                /** @description Solo este motivo */
+                reason?: ("exact_duplicate" | "version_conflict" | "fuzzy_name_match") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateGroupPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

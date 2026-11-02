@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import ACTIVE_RUN_STATUSES, FINISHED_RUN_STATUSES, Artifact, MemberRole, Project, Run, User, utcnow
+from app.domain.duplicates import service as duplicates
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.locations.paths import join_relative, normalize_relative, resolve_within
@@ -36,6 +37,7 @@ from app.domain.runs.errors import (
 )
 from app.domain.runs.operations import (
     OPERATIONS,
+    DedupApplyParams,
     ProjectMoveParams,
     RunParams,
     ScanParams,
@@ -178,6 +180,8 @@ def enqueue(
         params = _validate_move(db, project, params, settings)
     if isinstance(params, ScanParams):
         params = _validate_scan(db, project, params, settings)
+    if isinstance(params, DedupApplyParams):
+        params = duplicates.validate_apply(db, project, params)
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

@@ -10,6 +10,7 @@ const BYTES = new Set([
   'free_bytes',
   'total_size_bytes',
   'size_bytes',
+  'reclaimable_bytes',
 ]);
 const COUNTS = new Set([
   'output_files',
@@ -39,7 +40,20 @@ const COUNTS = new Set([
   'updated',
   'removed',
   'search_indexed',
+  'documents',
+  'groups',
+  'exact_groups',
+  'version_groups',
+  'fuzzy_groups',
+  'duplicate_files',
+  'stale_cache',
+  'skipped_changed',
+  'processed',
+  'failed',
+  'groups_done',
 ]);
+/** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
+const TRANSLATED = new Set(['mode']);
 const SECONDS = new Set(['duration_seconds', 'discovery_duration_seconds', 'total_conversion_seconds']);
 /** Datos técnicos que no aportan al usuario. */
 const HIDDEN = new Set(['event_schema_version']);
@@ -62,6 +76,12 @@ export function RunResult({ result }: { result: Record<string, unknown> }) {
     }
     if (SECONDS.has(key) && typeof value === 'number') {
       return formatSeconds(value);
+    }
+    if (TRANSLATED.has(key) && typeof value === 'string') {
+      return t(`runs.result.values.${key}.${value}`, { defaultValue: value });
+    }
+    if (Array.isArray(value)) {
+      return value.length === 0 ? '—' : value.join(', ');
     }
     if (typeof value === 'boolean') {
       return t(value ? 'common.yes' : 'common.no');

@@ -45,7 +45,13 @@ export async function ensureLocation(
     await dialog.getByText('Lectura y escritura', { exact: true }).click();
   }
   await dialog.getByRole('button', { name: 'Registrar ubicación' }).click();
-  await expect(page.getByRole('row', { name: new RegExp(name) }).getByText('Disponible')).toBeVisible();
+  const available = page.getByRole('row', { name: new RegExp(name) }).getByText('Disponible');
+  // Con varios workers, otro pudo registrarla a la vez: este recibe «nombre repetido» y su lista no se refresca.
+  await expect(available.or(dialog.getByRole('alert'))).toBeVisible();
+  if (!(await available.isVisible())) {
+    await page.reload();
+  }
+  await expect(available).toBeVisible();
 }
 
 export async function choose(page: Page, label: RegExp, option: string) {
@@ -69,8 +75,9 @@ export async function csrf(page: Page): Promise<Record<string, string>> {
   return { 'X-CSRF-Token': cookie?.value ?? '' };
 }
 
-/** Crea por la API un proyecto con origen `2024` y carpeta de salidas nueva `name`; devuelve su id. */
-export async function createProject(page: Page, name: string): Promise<number> {
+/** Crea por la API un proyecto con las carpetas de origen `folders` (`2024`) y carpeta de salidas nueva `name`; devuelve
+ * su id. */
+export async function createProject(page: Page, name: string, folders: string[] = ['2024']): Promise<number> {
   await ensureLocation(page, SOURCE, [/^e2e$/, /proyectos/], { usage: 'Origen', rw: false });
   await ensureLocation(page, DESTINATION, [/^e2e-out$/], { usage: 'Destino', rw: true });
   const response = await page.request.post('/api/v1/projects', {
@@ -78,7 +85,7 @@ export async function createProject(page: Page, name: string): Promise<number> {
     data: {
       name,
       source_location_id: await locationId(page, SOURCE),
-      source_subpaths: ['2024'],
+      source_subpaths: folders,
       destination_location_id: await locationId(page, DESTINATION),
       destination_parent: '',
       new_folder: name,

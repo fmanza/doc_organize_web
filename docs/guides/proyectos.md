@@ -31,8 +31,8 @@ la de otro proyecto.
 | Rol | Puede |
 |---|---|
 | Lector | Ver el proyecto, sus miembros, sus ejecuciones, sus [documentos](documentos.md) y los errores de escaneo, buscar en el contenido, exportar y descargar sus ficheros |
-| Editor | Lo anterior, escanear, actualizar la búsqueda y cancelar sus ejecuciones |
-| Propietario | Todo: editar el proyecto y sus carpetas de origen, gestionar miembros, cancelar cualquier ejecución, forzar la reconversión, mover, vaciar y borrar |
+| Editor | Lo anterior, escanear, actualizar la búsqueda, buscar [duplicados](duplicados.md) y copiarlos, y cancelar sus ejecuciones |
+| Propietario | Todo: editar el proyecto y sus carpetas de origen, gestionar miembros, cancelar cualquier ejecución, forzar la reconversión, mover duplicados fuera del origen, mover, vaciar y borrar |
 
 Los administradores ven todos los proyectos y actúan como propietarios. Un proyecto del que no eres miembro no aparece
 y su enlace responde «Proyecto no encontrado».

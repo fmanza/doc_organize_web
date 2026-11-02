@@ -23,7 +23,7 @@ Totales: 65 rutas HTTP + 4 WebSocket en 15 módulos, 20 plantillas Jinja (6 de m
 | `dashboard.html.j2` | `/projects/{name}` | 3 | Dashboard de proyecto |✅ 0.4.0 |
 | `folder_selector.html.j2`, `_example_modal_macros.html.j2` | `/projects/{name}/scan` | 4 | Pantalla de escaneo con ayuda contextual |✅ 0.5.0 |
 | `scan_errors.html.j2` | `/projects/{name}/scan-errors` | 4 | Errores de escaneo |✅ 0.5.0 |
-| `duplicates_resolver.html.j2` | `/projects/{name}/duplicates` | 6 | Resolutor de duplicados en dos pasos | ⬜ |
+| `duplicates_resolver.html.j2` | `/projects/{name}/duplicates` | 6 | Resolutor de duplicados en dos pasos | ✅ 0.7.0 |
 | `context.html.j2` | `/projects/{name}/context` | 7 | Página de contexto | ⬜ |
 | `taxonomy_templates_admin.html.j2` | `/admin/plantillas-taxonomia` | 7 | Admin de plantillas de taxonomía | ⬜ |
 | `ai_settings.html.j2` | `/admin/configuracion-ia` | 8 | Configuración IA por familia | ⬜ |
@@ -56,9 +56,9 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | `downloads.py` | GET | `/downloads/projects/{name}/export.zip` | 5 | Run `export_zip` + artefacto | ✅ 0.6.0 |
 | `downloads.py` | GET | `/downloads/projects/{name}/cache-export.xlsx` | 5 | Run `export_xlsx` (caché) | ✅ 0.6.0 |
 | `downloads.py` | GET | `/downloads/projects/{name}/scan-errors-export.xlsx` | 5 | Run `export_xlsx` (errores) | ✅ 0.6.0 |
-| `scan.py` | WEBSOCKET | `/api/projects/{name}/scan/deduplicate` | 6 | Run `dedup_preview` + SSE | ⬜ |
-| `duplicates.py` | GET | `/api/projects/{name}/duplicates` | 6 | Artefacto de vista previa con grupos | ⬜ |
-| `duplicates.py` | POST | `/api/projects/{name}/duplicates/resolve` | 6 | Run `dedup_apply` con grupos confirmados | ⬜ |
+| `scan.py` | WEBSOCKET | `/api/projects/{name}/scan/deduplicate` | 6 | Run `dedup_preview` + SSE | ✅ 0.7.0 |
+| `duplicates.py` | GET | `/api/projects/{name}/duplicates` | 6 | Grupos de la vista previa (`/runs/{id}/duplicate-groups`) y Excel como artefacto | ✅ 0.7.0 |
+| `duplicates.py` | POST | `/api/projects/{name}/duplicates/resolve` | 6 | Run `dedup_apply` con grupos confirmados | ✅ 0.7.0 |
 | `context.py` | GET, POST, DELETE | `/api/projects/{name}/context` | 7 | `/api/v1/projects/{id}/context` | ⬜ |
 | `context.py` | WEBSOCKET | `/api/projects/{name}/context/build` | 7 | Run `context_build` + SSE | ⬜ |
 | `context.py` | WEBSOCKET | `/api/projects/{name}/context/delete` | 7 | Run `context_delete` + SSE | ⬜ |

@@ -12,7 +12,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 3 | Proyectos y motor de ejecuciones ✅ (2026-11-01) | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
 | 4 | Escaneo y conversión ✅ (2026-11-01) | 0.5.0 | 0.10.0 (L-2, L-6b) |
 | 5 | Caché, resultados y descargas ✅ (2026-11-02) | 0.6.0 | 0.11.0 (L-7) |
-| 6 | Duplicados | 0.7.0 | 0.10.0 (L-6) |
+| 6 | Duplicados ✅ (2026-11-02) | 0.7.0 | 0.12.1 (L-6, L-11a) |
 | 7 | Contexto y taxonomías | 0.8.0 | 0.11.0 (L-8) |
 | 8 | IA: clasificación, manifiestos y uso | 0.9.0 | 0.10.0 (L-3) |
 | 9 | Multi-tenant y roles | 0.10.0 | — |
@@ -153,6 +153,12 @@ imágenes, descripción de imágenes, forzar); guardo carpetas frecuentes; veo e
 - WF-5.1 Tabla virtualizada de caché con filtros, visor Markdown saneado (DOMPurify) y JSON, descargas.
 
 ## Fase 6 — Duplicados
+
+> **Cerrada el 2026-11-02 (0.7.0)** con doc_organize 0.12.1, publicada para esta fase (L-11a: ruta relativa en
+> `duplicados/` y movimiento sin seguir enlaces, G24 y G26). Sesión: `.ai/sessions/2026-11-02-fase6/`. Mejora opcional
+> incluida: informe Excel de los grupos. Decisiones del mantenedor: la búsqueda usa el hash de la caché más un `stat`
+> y se rehashean solo los grupos que se aplican (G25); buscar, copiar y «solo informe» son de editor, mover de
+> propietario; el modo «nombre parecido» se limita a 5 000 documentos sin agrupar.
 
 **Historias**: veo los grupos de duplicados detectados (exactos y difusos), elijo qué conservar por grupo y aplico
 con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cuarentena.

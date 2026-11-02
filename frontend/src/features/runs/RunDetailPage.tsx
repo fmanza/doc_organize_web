@@ -168,6 +168,16 @@ export function RunDetailPage() {
               {t('runs.scanErrorsLink', { count: run.result.errors })}
             </Anchor>
           )}
+          {run.operation === 'dedup_preview' && run.project_id !== null && (
+            <Anchor
+              component={Link}
+              to={`/projects/${run.project_id}/duplicates?run=${run.id}`}
+              mt="sm"
+              display="inline-block"
+            >
+              {t('runs.duplicatesLink')}
+            </Anchor>
+          )}
         </Card>
       )}
       {live.log.length > 0 && (

@@ -5,8 +5,39 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-02
+
+Fase 6 — duplicados. Con doc_organize **0.12.1** (L-11a: ruta relativa en `duplicados/` y movimiento sin seguir
+enlaces simbólicos).
+
+### Added
+
+- **backend**: duplicados en dos pasos ([guía](docs/guides/duplicados.md)):
+  - run `dedup_preview` (editor): busca duplicados exactos, conflictos de versión y, opcionalmente, nombres parecidos
+    (umbral 50–100) con el hash de la caché del último escaneo más un `stat` de cada documento (G25), sin tocar
+    ningún fichero. Los grupos se guardan en `duplicate_groups` (migración `0006_duplicates`) con rutas relativas; una
+    búsqueda nueva sustituye a las anteriores del proyecto. El modo «nombre parecido» se limita a 5 000 documentos sin
+    agrupar (`fuzzy_too_large`);
+  - run `dedup_apply` con los grupos confirmados y el documento que se conserva en cada uno, en modo `copy` o
+    `report_only` (editor) o `move` (propietario, con el origen `rw`). Exige vista previa (`dry_run`) y el nombre del
+    proyecto; la vista previa de grupos caduca a los 60 min o si el proyecto cambió. Cada grupo se comprueba justo
+    antes de aplicarlo (hash actual y ningún tramo de la ruta es un enlace): si cambió, se salta. Cada fichero movido o
+    copiado queda en la auditoría (`duplicate.move`/`duplicate.copy`), más un resumen (`duplicate.apply`) que se
+    escribe también si algo falla a mitad. El informe de doc_organize va al estado del proyecto;
+  - `GET /api/v1/runs/{id}/duplicate-groups` (paginado, filtro por motivo) y
+    `GET /api/v1/projects/{id}/duplicates/last` (última búsqueda y última aplicación).
+- **backend**: informe Excel de los grupos (mejora opcional) como artefacto de la búsqueda, con celdas protegidas
+  contra fórmulas.
+- **frontend**: pantalla «Duplicados»: búsqueda con umbral difuso, grupos lado a lado por motivo, política de
+  conservación (más antiguo, más reciente, ruta más corta) con elección manual por grupo, aplicar en dos pasos y aviso
+  si ya se aplicaron duplicados después de la búsqueda. Las decisiones se guardan por búsqueda en la pestaña.
+
 ### Changed
 
+- **backend**: doc_organize **0.12.1** (L-11a): en `duplicados/` cada fichero conserva su ruta relativa al origen
+  (`duplicados/2024/a.pdf`, G24) y doc_organize ya no sigue enlaces simbólicos al mover o copiar (G26). La web pasa
+  rutas reales (resueltas una vez por el resolvedor de ubicaciones).
+- **backend**: las respuestas de un run `dedup_apply` resumen la lista de grupos en su número.
 - **backend**: doc_organize **0.12.0** (L-10a…L-10e), con sus rodeos retirados:
   - la API abre la caché en solo lectura (`CacheManager(read_only=True)`, G21);
   - la búsqueda de la lista de documentos mira la ruta relativa a la carpeta, no la del servidor (G22, retira el
@@ -17,10 +48,17 @@ ROADMAP (`0.<fase+1>.0`).
   La caché se guarda durante la conversión (G16) y «forzar» no borra salidas de carpetas ilegibles (G19) sin cambios
   en la web.
 - **frontend**: filtro «Estado» en la lista de documentos.
-
 - **docs**: doc_organize 0.12.0 publicada (L-10a…L-10e): G16–G23 pasan a «Resueltos» en `DOC_ORGANIZE_GAPS.md`, con
   sus rodeos pendientes de retirar al subir la dependencia, y la deprecación de la web integrada (L-10) pasa a la
   0.13.0 en `TAREAS_DOC_ORGANIZE.md`, `PARIDAD.md`, `DECISIONES_Y_RIESGOS.md` y el README del plan.
+- **docs**: guía `duplicados.md`; huecos G24 y G26 resueltos en 0.12.1 (L-11a) y G25 con rodeo en la web.
+
+### Notas
+
+- Una aplicación admite como mucho 10 000 grupos: con más, la pantalla avisa y hay que filtrar por motivo o buscar de
+  nuevo tras aplicar una parte.
+- El ZIP de exportación del proyecto no incluye el informe de duplicados de doc_organize (lleva rutas absolutas del
+  contenedor).
 
 ## [0.6.0] - 2026-11-02
 

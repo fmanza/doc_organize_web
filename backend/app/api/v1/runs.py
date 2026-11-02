@@ -75,6 +75,13 @@ def _can_cancel(run: Run, user: User, role: MemberRole | None) -> bool:
     return user.role == "admin" or run.created_by == user.id or role == "owner"
 
 
+def public_params(params: dict[str, Any]) -> dict[str, Any]:
+    """Parámetros que se devuelven: la lista de grupos de ``dedup_apply`` (hasta 10 000) se resume en su número."""
+    if params.get("operation") == "dedup_apply" and isinstance(params.get("groups"), list):
+        return params | {"groups": len(params["groups"])}
+    return params
+
+
 def run_out(
     db: Session, run: Run, user: User, role: MemberRole | None, *, names: dict[int, str] | None = None
 ) -> RunOut:
@@ -89,7 +96,7 @@ def run_out(
         queue=run.queue,
         status=run.status,
         is_write=run.is_write,
-        params=run.params,
+        params=public_params(run.params),
         progress=RunProgress.model_validate(run.progress) if run.progress else None,
         result=run.result,
         error_code=run.error_code,

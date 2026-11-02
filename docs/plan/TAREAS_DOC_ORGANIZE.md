@@ -33,10 +33,11 @@ Estado de partida (verificado en el repo, 2026-10-31): `pyproject.toml` 0.9.0 pe
 | L-9 | Robustez en carpetas de red | Reintentos configurables ante `OSError` transitorios en escaneo/hash/copia; prechequeo `size+mtime` antes del hash; rutas UNC y largas en Windows (CLI); política de enlaces simbólicos (no seguir fuera de la raíz); timeout por documento en la conversión | G11 |
 | L-9b | Detectores como API | `GpuStatus`, `AvStatus`, `OfficeStatus` expuestos en `doc_organize.diagnostics` para la ficha «capacidades de la instancia» | G12 |
 
-## Peticiones de las Fases 4 y 5 (huecos G16–G23)
+## Peticiones de las Fases 4 a 6 (huecos G16–G26)
 
 Los ID `L-10a…L-10e` de `DOC_ORGANIZE_GAPS.md` son estas peticiones (no confundir con L-10, deprecación de la web).
-L-7 se publicó en **0.11.0** (2026-11-01) y L-10a…L-10e en **0.12.0** (2026-11-02), que cierra G16–G23.
+L-7 se publicó en **0.11.0** (2026-11-01), L-10a…L-10e en **0.12.0** (2026-11-02), que cierra G16–G23, y
+L-11a en **0.12.1** (2026-11-02), que cierra G24 y G26.
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
@@ -45,6 +46,7 @@ L-7 se publicó en **0.11.0** (2026-11-01) y L-10a…L-10e en **0.12.0** (2026-1
 | L-10c | Nombre de la raíz en la salida | Incluir el nombre de la carpeta escaneada en la ruta de salida cuando hay varias raíces | G18 |
 | L-10d | Listado fallido y errores al cancelar | Propagar el `OSError` de listar una carpeta (o no borrar huérfanos si hubo avisos) y escribir `ScanErrorReport` al cancelar | G19 |
 | L-10e | API de lectura para la web | `resolve_output_paths`/`resolve_images_dir` en un módulo sin Docling; `CacheManager(read_only=True)`; filtros por ruta relativa y `conversion_status=` en `count_entries`/`load_cache_page`; `source_path` relativo a la carpeta escaneada en el JSON de cada documento | G20–G23 |
+| L-11a | Ruta relativa en `duplicados/` (Fase 6) | Parámetro `relative_to` en `move_group`/`resolve_duplicates`/`_move_to_duplicates`: el destino replica la ruta relativa a esa raíz en lugar de la absoluta; un documento fuera de ella falla por fichero; además, no seguir enlaces simbólicos al mover o copiar (ni en el origen ni en la base de `duplicados/`) (no confundir con L-11, retirada de `web/`) | G24, G26 |
 
 ## Versión 0.13.0 — deprecación de la web (cuando F8 de la web esté cerrada)
 
