@@ -69,8 +69,9 @@ export async function csrf(page: Page): Promise<Record<string, string>> {
   return { 'X-CSRF-Token': cookie?.value ?? '' };
 }
 
-/** Crea por la API un proyecto con origen `2024` y carpeta de salidas nueva `name`; devuelve su id. */
-export async function createProject(page: Page, name: string): Promise<number> {
+/** Crea por la API un proyecto con las carpetas de origen `folders` (`2024`) y carpeta de salidas nueva `name`; devuelve
+ * su id. */
+export async function createProject(page: Page, name: string, folders: string[] = ['2024']): Promise<number> {
   await ensureLocation(page, SOURCE, [/^e2e$/, /proyectos/], { usage: 'Origen', rw: false });
   await ensureLocation(page, DESTINATION, [/^e2e-out$/], { usage: 'Destino', rw: true });
   const response = await page.request.post('/api/v1/projects', {
@@ -78,7 +79,7 @@ export async function createProject(page: Page, name: string): Promise<number> {
     data: {
       name,
       source_location_id: await locationId(page, SOURCE),
-      source_subpaths: ['2024'],
+      source_subpaths: folders,
       destination_location_id: await locationId(page, DESTINATION),
       destination_parent: '',
       new_folder: name,

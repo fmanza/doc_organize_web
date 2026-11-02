@@ -75,6 +75,10 @@ export const routes: RouteObject[] = [
             ),
           },
           {
+            path: 'projects/:projectId/duplicates',
+            ...page(async () => (await import('../features/duplicates/DuplicatesPage')).DuplicatesPage),
+          },
+          {
             path: 'projects/:projectId/search',
             ...page(async () => (await import('../features/documents/ContentSearchPage')).ContentSearchPage),
           },

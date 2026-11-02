@@ -317,7 +317,16 @@ ProjectName = Annotated[str, Field(min_length=1, max_length=128)]
 MemberRole = Literal["owner", "editor", "viewer"]
 RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 Operation = Literal[
-    "noop", "history_clear", "project_move", "project_delete", "scan", "export_zip", "export_xlsx", "search_index"
+    "noop",
+    "history_clear",
+    "project_move",
+    "project_delete",
+    "scan",
+    "export_zip",
+    "export_xlsx",
+    "search_index",
+    "dedup_preview",
+    "dedup_apply",
 ]
 
 
@@ -576,3 +585,42 @@ class SearchPage(BaseModel):
     items: list[SearchHitOut]
     total: int
     indexed_at: datetime | None
+
+
+# --- duplicados (Fase 6) -----------------------------------------------------------------------------------------
+
+
+class DuplicateMemberOut(BaseModel):
+    """Documento de un grupo de duplicados, con ruta relativa a su carpeta de origen."""
+
+    key: str = Field(description="«<carpeta>/<ruta>»: valor de «keep» para conservarlo al aplicar")
+    folder: str
+    path: str
+    size_bytes: int
+    modified_at: datetime
+    sha256: str
+    canonical: bool = Field(description="El que se conserva por defecto (el más antiguo)")
+    output_path: str | None = Field(description="Markdown convertido, relativo a Conversión/ (para el visor)")
+
+
+class DuplicateGroupOut(BaseModel):
+    """Grupo de duplicados de una vista previa."""
+
+    group_id: str
+    reason: Literal["exact_duplicate", "version_conflict", "fuzzy_name_match"]
+    members: list[DuplicateMemberOut]
+
+
+class DuplicateGroupPage(BaseModel):
+    """Página de grupos de una vista previa de duplicados."""
+
+    run: RunBrief
+    items: list[DuplicateGroupOut]
+    total: int
+
+
+class DuplicatesLastOut(BaseModel):
+    """Última búsqueda de duplicados y última aplicación real del proyecto (``None`` si no hay)."""
+
+    preview: RunBrief | None
+    apply: RunBrief | None

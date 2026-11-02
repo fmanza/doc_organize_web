@@ -17,7 +17,9 @@ export type RunRequest =
   | components['schemas']['ScanParams']
   | components['schemas']['ExportZipParams']
   | components['schemas']['ExportXlsxParams']
-  | components['schemas']['SearchIndexParams'];
+  | components['schemas']['SearchIndexParams']
+  | components['schemas']['DedupPreviewParams']
+  | components['schemas']['DedupApplyParams'];
 
 /** Lanzar la prueba del motor con sus valores por defecto (el cliente generado exige todos los campos). */
 export const NOOP_RUN: RunRequest = { operation: 'noop', steps: 5, step_seconds: 1, fail_at_step: null };

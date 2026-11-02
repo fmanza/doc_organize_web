@@ -404,3 +404,21 @@ class ScanError(Base):
     message: Mapped[str] = mapped_column(String(2000))
     retry_count: Mapped[int] = mapped_column(Integer, default=1)
     capped: Mapped[bool] = mapped_column(default=False)
+
+
+class DuplicateGroupRow(Base):
+    """Grupo de duplicados de un run ``dedup_preview`` (``DuplicateGroup`` de doc_organize, Fase 6).
+
+    ``members`` lleva rutas relativas a la ubicación de origen (``folder`` + ``path``), tamaño, fecha, hash y si es el
+    canónico (el que doc_organize conserva por defecto). Se borra con el run.
+    """
+
+    __tablename__ = "duplicate_groups"
+    __table_args__ = (Index("ix_duplicate_groups_run_reason_position", "run_id", "reason", "position"),)
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    group_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    reason: Mapped[str] = mapped_column(String(32))
+    position: Mapped[int] = mapped_column(Integer)
+    member_count: Mapped[int] = mapped_column(Integer)
+    members: Mapped[list[dict[str, Any]]] = mapped_column(JSON)

@@ -362,7 +362,8 @@
     },
     "scan": "Escanear",
     "scanView": "Ver escaneo",
-    "documents": "Documentos"
+    "documents": "Documentos",
+    "duplicates": "Duplicados"
   },
   "runs": {
     "title": "Ejecuciones",
@@ -407,7 +408,9 @@
       "scan": "Escaneo",
       "export_zip": "Exportar ZIP",
       "export_xlsx": "Exportar Excel",
-      "search_index": "Actualizar la búsqueda"
+      "search_index": "Actualizar la búsqueda",
+      "dedup_preview": "Buscar duplicados",
+      "dedup_apply": "Aplicar duplicados"
     },
     "phases": {
       "noop": "Prueba",
@@ -426,7 +429,11 @@
       "done": "Terminando",
       "preview": "Revisando la caché",
       "export": "Exportando",
-      "search_index": "Actualizando la búsqueda"
+      "search_index": "Actualizando la búsqueda",
+      "dedup_scan": "Leyendo la caché",
+      "dedup_find": "Buscando duplicados",
+      "dedup_verify": "Comprobando que no han cambiado",
+      "dedup_apply": "Aplicando"
     },
     "fields": {
       "operation": "Operación",
@@ -482,7 +489,29 @@
       "added": "Añadidos a la búsqueda",
       "updated": "Actualizados en la búsqueda",
       "removed": "Quitados de la búsqueda",
-      "search_indexed": "Documentos en la búsqueda"
+      "search_indexed": "Documentos en la búsqueda",
+      "documents": "Documentos revisados",
+      "groups": "Grupos",
+      "exact_groups": "Grupos de duplicados exactos",
+      "version_groups": "Grupos de versiones",
+      "fuzzy_groups": "Grupos por nombre parecido",
+      "duplicate_files": "Ficheros duplicados",
+      "reclaimable_bytes": "Espacio en duplicados exactos",
+      "stale_cache": "En la caché pero ya no en el origen",
+      "fuzzy_threshold": "Umbral de nombre parecido",
+      "mode": "Modo",
+      "skipped_changed": "Grupos saltados (cambiaron desde la búsqueda)",
+      "processed": "Ficheros aplicados",
+      "failed": "Ficheros que no se pudieron mover o copiar",
+      "failed_paths": "Fallidos",
+      "groups_done": "Grupos aplicados",
+      "values": {
+        "mode": {
+          "move": "Mover",
+          "copy": "Copiar",
+          "report_only": "Solo informe"
+        }
+      }
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -500,7 +529,8 @@
       "location_read_only": "La ubicación de destino es de solo lectura.",
       "project_missing": "El proyecto ya no existe."
     },
-    "scanErrorsLink": "Ver los {{count}} documentos con errores"
+    "scanErrorsLink": "Ver los {{count}} documentos con errores",
+    "duplicatesLink": "Revisar los grupos de duplicados"
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -643,5 +673,79 @@
     "retry": "No se pudieron cargar más documentos. Reintentar",
     "status": "Estado",
     "allStatuses": "Todos los estados"
+  },
+  "duplicates": {
+    "title": "Duplicados",
+    "back": "← {{name}}",
+    "intro": "Busca documentos repetidos en todas las carpetas de origen, revisa cada grupo y aplica solo lo que confirmes. Buscar no toca ningún fichero.",
+    "search": {
+      "title": "Buscar duplicados",
+      "fuzzy": "Incluir nombres parecidos",
+      "fuzzyHelp": "Además de los duplicados exactos y las versiones, agrupa documentos con nombres similares (revísalos uno a uno).",
+      "threshold": "Parecido mínimo (%)",
+      "run": "Buscar"
+    },
+    "noPreview": "Aún no se han buscado duplicados en este proyecto.",
+    "previewNotReady": "La búsqueda de duplicados aún no ha terminado o falló.",
+    "preview": "Búsqueda del {{date}}",
+    "openRun": "Ver la ejecución",
+    "lastApply": "Última aplicación: {{date}}.",
+    "appliedAfter": "Ya se aplicaron duplicados el {{date}}, después de esta búsqueda: busca otra vez para ver el estado actual.",
+    "reasons": {
+      "all": "Todos",
+      "exact_duplicate": "Exactos",
+      "version_conflict": "Versiones",
+      "fuzzy_name_match": "Nombre parecido"
+    },
+    "policy": {
+      "label": "Conservar por defecto",
+      "oldest": "El más antiguo",
+      "newest": "El más reciente",
+      "shortest": "La ruta más corta"
+    },
+    "applyButton": "Aplicar…",
+    "empty": "No hay grupos con este filtro.",
+    "total_one": "{{formatted}} grupo.",
+    "total_other": "{{formatted}} grupos.",
+    "include": "Aplicar este grupo",
+    "keepLabel": "Documento que se conserva",
+    "keepMember": "Conservar {{path}}",
+    "view": "Ver convertido",
+    "fields": {
+      "keep": "Conservar",
+      "document": "Documento",
+      "size": "Tamaño",
+      "modified": "Modificado",
+      "hash": "SHA-256"
+    },
+    "apply": {
+      "title": "Aplicar duplicados",
+      "mode": "Qué hacer con los que no se conservan",
+      "modes": {
+        "copy": "Copiar a la carpeta «duplicados» de las salidas (el origen no cambia)",
+        "move": "Mover a «duplicados» (salen del origen)",
+        "report_only": "Solo informe (no se toca ningún fichero)"
+      },
+      "moveUnavailable": "Solo propietarios y con el origen de lectura y escritura.",
+      "calculate": "Calcular qué se aplicaría",
+      "calculating": "Comprobando los grupos elegidos…",
+      "nothing": "No hay ningún grupo marcado para aplicar.",
+      "moveWarning": "Los ficheros saldrán de la carpeta de origen. Quedan en «duplicados» y en el informe, pero quien use el origen dejará de verlos.",
+      "confirm": "Escribe «{{name}}» para confirmar",
+      "run": {
+        "copy": "Copiar",
+        "move": "Mover",
+        "report_only": "Generar informe"
+      },
+      "recalculate": "Volver a calcular",
+      "changed_one": "{{count}} grupo ha cambiado desde la búsqueda y no se aplicará.",
+      "changed_other": "{{count}} grupos han cambiado desde la búsqueda y no se aplicarán.",
+      "tooMany": "Hay más de {{max}} grupos: no se pueden aplicar de una vez. Filtra por carpeta, aplica por partes o vuelve a buscar sin nombres parecidos."
+    },
+    "includeGroup": "Aplicar el grupo {{number}} ({{name}})",
+    "keepGroup": "Documento que se conserva en el grupo {{number}} ({{name}})",
+    "excluded": "No se aplica",
+    "chosen": "Elegido a mano",
+    "resetChoices": "Restablecer las elecciones"
   }
 }

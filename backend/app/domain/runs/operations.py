@@ -104,6 +104,43 @@ class ExportXlsxParams(_Params):
     kind: Literal["cache", "errors"]
 
 
+class DedupPreviewParams(_Params):
+    """Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).
+
+    ``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea
+    duplicado exacto ni conflicto de versión.
+    """
+
+    operation: Literal["dedup_preview"] = "dedup_preview"
+    fuzzy_threshold: int | None = Field(default=None, ge=50, le=100)
+
+
+class DedupChoice(BaseModel):
+    """Grupo confirmado y documento que se conserva (``<carpeta>/<ruta>`` tal como lo da la vista previa)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    group_id: str = Field(min_length=1, max_length=36)
+    keep: str = Field(min_length=1, max_length=1024)
+
+
+class DedupApplyParams(_Params):
+    """Aplicar los grupos confirmados de una vista previa de duplicados (``groups_run_id``).
+
+    ``mode``: ``move`` (saca los descartados del origen a ``duplicados/``), ``copy`` (los copia, sin tocar el origen) o
+    ``report_only`` (solo el informe). La ejecución real exige su propia vista previa (``dry_run``) y el nombre del
+    proyecto, como el resto de operaciones que escriben ficheros (regla 7).
+    """
+
+    operation: Literal["dedup_apply"] = "dedup_apply"
+    groups_run_id: str = Field(min_length=1, max_length=36)
+    mode: Literal["move", "copy", "report_only"] = "copy"
+    groups: list[DedupChoice] = Field(min_length=1, max_length=10_000)
+    dry_run: bool = True
+    preview_run_id: str | None = Field(default=None, max_length=36)
+    confirm_name: str | None = Field(default=None, max_length=128)
+
+
 class SearchIndexParams(_Params):
     """Pone al día el índice de búsqueda de texto completo con el Markdown de ``Conversión/``."""
 
@@ -118,7 +155,9 @@ RunParams = Annotated[
     | ScanParams
     | ExportZipParams
     | ExportXlsxParams
-    | SearchIndexParams,
+    | SearchIndexParams
+    | DedupPreviewParams
+    | DedupApplyParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -129,6 +168,7 @@ _PREVIEW_KEYS: Final[dict[str, tuple[str, ...]]] = {
     "project_move": ("destination_location_id", "destination_parent", "new_folder"),
     "project_delete": ("delete_outputs",),
     "scan": ("force",),
+    "dedup_apply": ("groups_run_id", "mode", "groups"),
 }
 
 
@@ -159,6 +199,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     "export_zip": OperationSpec(min_role="viewer", produces_artifacts=True),
     "export_xlsx": OperationSpec(min_role="viewer", produces_artifacts=True),
     "search_index": OperationSpec(min_role="editor"),
+    # Duplicados (Fase 6): mover saca ficheros del origen, así que es de owner (ver min_role).
+    "dedup_preview": OperationSpec(min_role="editor", produces_artifacts=True),
+    "dedup_apply": OperationSpec(min_role="editor", destructive=True),
 }
 
 
@@ -169,6 +212,8 @@ def is_write(params: RunParams) -> bool:
         return not params.dry_run
     if isinstance(params, SearchIndexParams):  # un solo escritor de search.db (el escaneo también reindexa)
         return True
+    if isinstance(params, DedupApplyParams):
+        return not params.dry_run
     return isinstance(params, _Destructive) and not params.dry_run
 
 
@@ -176,12 +221,16 @@ def needs_preview(params: RunParams) -> bool:
     """Si la ejecución real exige una vista previa confirmada (regla 7)."""
     if isinstance(params, ScanParams):
         return params.force and not params.dry_run
+    if isinstance(params, DedupApplyParams):
+        return not params.dry_run
     return OPERATIONS[params.operation].destructive and is_write(params)
 
 
 def min_role(params: RunParams) -> MemberRole:
     """Rol mínimo para lanzar ``params``: «forzar reconversión» borra salidas, así que es de ``owner``."""
     if isinstance(params, ScanParams) and params.force:
+        return "owner"
+    if isinstance(params, DedupApplyParams) and params.mode == "move":
         return "owner"
     return OPERATIONS[params.operation].min_role
 
@@ -197,7 +246,9 @@ def preview_matches(params: RunParams, preview: dict[str, object]) -> bool:
     """Si la vista previa ``preview`` (``params`` guardados) corresponde a la ejecución real ``params``."""
     if preview.get("operation") != params.operation or preview.get("dry_run") is not True:
         return False
-    return all(preview.get(key) == getattr(params, key) for key in _PREVIEW_KEYS.get(params.operation, ()))
+    # Se compara lo guardado con lo guardado: listas de modelos (grupos de duplicados) como JSON.
+    current = stored_params(params)
+    return all(preview.get(key) == current.get(key) for key in _PREVIEW_KEYS.get(params.operation, ()))
 
 
 def stored_params(params: RunParams) -> dict[str, object]:
