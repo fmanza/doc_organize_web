@@ -45,7 +45,13 @@ export async function ensureLocation(
     await dialog.getByText('Lectura y escritura', { exact: true }).click();
   }
   await dialog.getByRole('button', { name: 'Registrar ubicación' }).click();
-  await expect(page.getByRole('row', { name: new RegExp(name) }).getByText('Disponible')).toBeVisible();
+  const available = page.getByRole('row', { name: new RegExp(name) }).getByText('Disponible');
+  // Con varios workers, otro pudo registrarla a la vez: este recibe «nombre repetido» y su lista no se refresca.
+  await expect(available.or(dialog.getByRole('alert'))).toBeVisible();
+  if (!(await available.isVisible())) {
+    await page.reload();
+  }
+  await expect(available).toBeVisible();
 }
 
 export async function choose(page: Page, label: RegExp, option: string) {

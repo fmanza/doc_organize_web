@@ -33,7 +33,10 @@ test('duplicados: buscar, revisar y copiar en dos pasos', async ({ page }) => {
   // El grupo, lado a lado, con el documento que se conserva marcado.
   await expect(page.getByText('duplicados/acta.txt')).toBeVisible();
   await expect(page.getByText('duplicados/acta copia.txt')).toBeVisible();
-  await expect(page.getByRole('checkbox', { name: 'Aplicar el grupo 1 (acta.txt)' })).toBeChecked();
+  // El grupo se nombra por el documento canónico (el más antiguo); con la misma fecha puede ser cualquiera de los dos.
+  await expect(
+    page.getByRole('checkbox', { name: /^Aplicar el grupo 1 \(acta( copia)?\.txt\)$/ }),
+  ).toBeChecked();
 
   // Aplicar: vista previa, nombre del proyecto y copia.
   await page.getByRole('button', { name: 'Aplicar…' }).click();

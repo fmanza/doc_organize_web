@@ -104,6 +104,7 @@ jobs:
           echo "<html><body><h1>Nota sintética</h1><p>Escaneo E2E.</p></body></html>" > dev-data/e2e/proyectos/2024/nota.html
           echo "acta sintética de la reunión" > dev-data/e2e/proyectos/duplicados/acta.txt
           echo "acta sintética de la reunión" > "dev-data/e2e/proyectos/duplicados/acta copia.txt"
+          touch -d "2024-01-01" dev-data/e2e/proyectos/duplicados/acta.txt   # el original es el más antiguo
           chmod 777 dev-data/e2e-out
           DOW_TAG=ci docker compose up -d --no-build
           for i in $(seq 1 45); do
