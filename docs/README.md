@@ -5,10 +5,11 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, detecta duplicados y genera un contexto navegable por dominios, con proyectos,
 miembros y ejecuciones en segundo plano.
 
-> **Estado: Fase 4 (escaneo y conversión, 0.5.0).** Inicio de sesión, usuarios, ubicaciones locales y de red,
-> ajustes administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo y escaneo
-> incremental con OCR y GPU ([Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md),
-> [Escaneo](guides/escaneo.md)). Las
+> **Estado: Fase 5 (caché, resultados y descargas, 0.6.0).** Inicio de sesión, usuarios, ubicaciones locales y de
+> red, ajustes administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo, escaneo
+> incremental con OCR y GPU, visor de documentos convertidos, búsqueda de texto completo y exportaciones
+> ([Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md), [Escaneo](guides/escaneo.md),
+> [Documentos](guides/documentos.md)). Las
 > funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
 > la interfaz hasta alcanzar la [paridad](plan/PARIDAD.md).
 
@@ -19,11 +20,12 @@ miembros y ejecuciones en segundo plano.
 - [Ubicaciones](guides/ubicaciones.md): carpetas de origen y destino, estados, explorador, ajustes y capacidades.
 - [Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md) y
   [Escaneo y conversión](guides/escaneo.md): carpetas, opciones, incremental, errores y forzar reconversión.
+- [Documentos, búsqueda y exportaciones](guides/documentos.md): caché, visor, búsqueda de texto completo, ZIP y Excel.
 
 ## Operación
 
-- [Despliegue](guides/despliegue.md): Docker Compose, secretos, volúmenes, modelos de Docling, worker con GPU y proxy
-  TLS.
+- [Despliegue](guides/despliegue.md): Docker Compose, secretos, volúmenes, modelos de Docling, worker con GPU, copias
+  de seguridad y proxy TLS.
 - [Montar carpetas de red](guides/carpetas_de_red.md): SMB/NFS en el servidor Linux y su paso al contenedor.
 - [Publicar una versión](guides/publicar_version.md).
 

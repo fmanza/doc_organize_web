@@ -5,11 +5,47 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-02
+
+Fase 5 — caché, resultados y descargas. Con doc_organize **0.11.0** (L-7, `doc_organize.export`).
+
+### Added
+
+- **backend**: `GET /api/v1/projects/{id}/documents` ([guía](docs/guides/documentos.md)): documentos de la caché de
+  doc_organize de todas las carpetas de origen, paginados en servidor (`count_entries`/`load_cache_page`), con búsqueda
+  en la ruta y filtro por carpeta; rutas relativas a la carpeta y errores enmascarados.
+- **backend**: visor `GET /api/v1/projects/{id}/outputs?path=`: Markdown, JSON e imágenes de `Conversión/` por el
+  resolvedor de ubicaciones, leídos desde el descriptor ya abierto (un enlace simbólico no lo saca de la carpeta), con
+  tipo fijo, `nosniff`, CSP `sandbox` y máx. 20 MB; el JSON se sirve con `source_path` relativa.
+- **backend**: exportaciones como ejecuciones con el fichero como artefacto: `export_zip` (con `dry_run` para ver su
+  tamaño; comprueba cuota y espacio libre antes de escribir) y `export_xlsx` (`cache` o `errors`), con
+  `doc_organize.export`; cualquier miembro del proyecto puede exportar. Cierra G8 sin copiar código de la web
+  integrada.
+- **backend**: búsqueda de texto completo (mejora opcional): índice SQLite FTS5 por proyecto (`search.db`, incremental
+  por `mtime` y tamaño), actualizado al terminar cada escaneo y con el run `search_index` (editor);
+  `GET /api/v1/projects/{id}/search` con fragmentos, todas las palabras, sin tildes, consulta sin sintaxis FTS5 y con
+  tiempo acotado (`search_too_broad`).
+- **backend**: copias de seguridad (mejora opcional, adelanta parte de la Fase 10): `python -m app.cli backup
+  [--dest] [--keep N]` y `verify-backup` de `config.db` y de las cachés con la API de backup de SQLite, manifiesto con
+  SHA-256 y permisos solo para el usuario de la aplicación.
+- **frontend**: pantalla «Documentos» con lista virtualizada (`@tanstack/react-virtual`), visor Markdown saneado
+  (`marked` + DOMPurify: sin scripts, estilos, formularios, marcos ni imágenes externas) y JSON, búsqueda en el
+  contenido y panel de exportaciones.
+
 ### Changed
 
+- **backend**: doc_organize **0.11.0** con el extra `export` (`openpyxl`). La API importa `doc_organize.cache` solo al
+  listar documentos, sin Docling ni torch (G15; lo comprueba el test de arquitectura).
+- **backend**: `folder_state` pasa a `app/domain/scan/state.py` (lo usan el escaneo, las exportaciones y la API).
 - **backend**, **ci**: regla de versiones con ≥ 2 semanas suspendida hasta la 1.0 (decisión del mantenedor): sin
   `exclude-newer` ni sus excepciones por paquete en `backend/pyproject.toml` (el `uv.lock` no cambia de versiones),
   sin `--before` en npm y sin `cooldown` en Dependabot. La Fase 10 la reactiva.
+
+### Security
+
+- **backend**: los JSON de `Conversión/` que escribe doc_organize llevan `source_path` con la ruta absoluta del
+  servidor y el ZIP los copia tal cual (G23); la búsqueda por nombre filtra sobre la ruta absoluta (G22). Riesgos bajos
+  aceptados hasta que doc_organize los corrija (L-10e); el visor ya muestra `source_path` relativa.
 
 ### Fixed
 

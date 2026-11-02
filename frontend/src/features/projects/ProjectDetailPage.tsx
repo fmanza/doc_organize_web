@@ -156,6 +156,9 @@ export function ProjectDetailPage() {
             <Button component={Link} to={`/projects/${project.id}/scan`}>
               {canDo(project, 'editor') ? t('projects.scan') : t('projects.scanView')}
             </Button>
+            <Button component={Link} to={`/projects/${project.id}/documents`} variant="light">
+              {t('projects.documents')}
+            </Button>
             {me?.role === 'admin' && (
               <Button
                 variant="default"

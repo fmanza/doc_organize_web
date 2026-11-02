@@ -3,7 +3,14 @@ import { useTranslation } from 'react-i18next';
 
 import { formatBytes, formatCount, formatSeconds } from '../../components/format';
 
-const BYTES = new Set(['output_bytes', 'state_bytes', 'bytes', 'free_bytes']);
+const BYTES = new Set([
+  'output_bytes',
+  'state_bytes',
+  'bytes',
+  'free_bytes',
+  'total_size_bytes',
+  'size_bytes',
+]);
 const COUNTS = new Set([
   'output_files',
   'state_files',
@@ -25,6 +32,13 @@ const COUNTS = new Set([
   'warnings',
   'cached',
   'orphaned',
+  'file_count',
+  'rows',
+  'indexed',
+  'added',
+  'updated',
+  'removed',
+  'search_indexed',
 ]);
 const SECONDS = new Set(['duration_seconds', 'discovery_duration_seconds', 'total_conversion_seconds']);
 /** Datos técnicos que no aportan al usuario. */

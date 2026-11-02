@@ -33,6 +33,19 @@ Estado de partida (verificado en el repo, 2026-10-31): `pyproject.toml` 0.9.0 pe
 | L-9 | Robustez en carpetas de red | Reintentos configurables ante `OSError` transitorios en escaneo/hash/copia; prechequeo `size+mtime` antes del hash; rutas UNC y largas en Windows (CLI); política de enlaces simbólicos (no seguir fuera de la raíz); timeout por documento en la conversión | G11 |
 | L-9b | Detectores como API | `GpuStatus`, `AvStatus`, `OfficeStatus` expuestos en `doc_organize.diagnostics` para la ficha «capacidades de la instancia» | G12 |
 
+## Peticiones de las Fases 4 y 5 (huecos G16–G23)
+
+Los ID `L-10a…L-10e` de `DOC_ORGANIZE_GAPS.md` son estas peticiones (no confundir con L-10, deprecación de la web).
+L-7 se publicó en **0.11.0** (2026-11-01).
+
+| ID | Tarea | Detalle | Hueco |
+|---|---|---|---|
+| L-10a | Caché incremental | Guardar la caché cada N documentos o segundos y en el camino de excepción | G16 |
+| L-10b | Carpeta de modelos | Indicar la carpeta de modelos de Docling y prohibir descargas al convertir | G17 |
+| L-10c | Nombre de la raíz en la salida | Incluir el nombre de la carpeta escaneada en la ruta de salida cuando hay varias raíces | G18 |
+| L-10d | Listado fallido y errores al cancelar | Propagar el `OSError` de listar una carpeta (o no borrar huérfanos si hubo avisos) y escribir `ScanErrorReport` al cancelar | G19 |
+| L-10e | API de lectura para la web | `resolve_output_paths`/`resolve_images_dir` en un módulo sin Docling; `CacheManager(read_only=True)`; filtros por ruta relativa y `conversion_status=` en `count_entries`/`load_cache_page`; `source_path` relativo a la carpeta escaneada en el JSON de cada documento | G20–G23 |
+
 ## Versión 0.12.0 — deprecación de la web (cuando F8 de la web esté cerrada)
 
 | ID | Tarea | Detalle |

@@ -11,7 +11,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 2 | Ubicaciones locales/red y ajustes ✅ (2026-10-31) | 0.3.0 | — |
 | 3 | Proyectos y motor de ejecuciones ✅ (2026-11-01) | 0.4.0 | 0.10.0 (L-1, L-4, L-5) |
 | 4 | Escaneo y conversión ✅ (2026-11-01) | 0.5.0 | 0.10.0 (L-2, L-6b) |
-| 5 | Caché, resultados y descargas | 0.6.0 | 0.11.0 (L-7) |
+| 5 | Caché, resultados y descargas ✅ (2026-11-02) | 0.6.0 | 0.11.0 (L-7) |
 | 6 | Duplicados | 0.7.0 | 0.10.0 (L-6) |
 | 7 | Contexto y taxonomías | 0.8.0 | 0.11.0 (L-8) |
 | 8 | IA: clasificación, manifiestos y uso | 0.9.0 | 0.10.0 (L-3) |
@@ -140,6 +140,12 @@ imágenes, descripción de imágenes, forzar); guardo carpetas frecuentes; veo e
 
 > **Decisión del mantenedor (2026-11-01)**: antes de la fase se implementa L-7 en doc_organize (`doc_organize.export`)
 > y se publica la **0.11.0**; la web la consume sin el rodeo de G8 (copiar `web/routes/downloads.py`).
+>
+> **Cerrada el 2026-11-02 (0.6.0)** con doc_organize 0.11.0. Sesión: `.ai/sessions/2026-11-02-fase5/`. Mejoras
+> opcionales incluidas: búsqueda de texto completo (SQLite FTS5, `search.db` por proyecto) y copia de seguridad de
+> `config.db` y de las cachés (`app.cli backup`/`verify-backup`; la restauración sigue en la Fase 10). Decisiones del
+> mantenedor: la API importa `doc_organize.cache` solo al listar (sin Docling ni torch, test de arquitectura);
+> exportar es de cualquier miembro y reindexar, de editor. Huecos nuevos G20–G23.
 
 - WB-5.1 Lectura paginada y con búsqueda de `cache.db` (`CacheManager.count_entries`/`load_cache_page`).
 - WB-5.2 Vista de un documento convertido (Markdown/JSON/imágenes) servida con rutas seguras y `Content-Type` fijo.

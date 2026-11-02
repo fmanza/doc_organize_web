@@ -14,7 +14,10 @@ export type RunRequest =
   | components['schemas']['HistoryClearParams']
   | components['schemas']['ProjectMoveParams']
   | components['schemas']['ProjectDeleteParams']
-  | components['schemas']['ScanParams'];
+  | components['schemas']['ScanParams']
+  | components['schemas']['ExportZipParams']
+  | components['schemas']['ExportXlsxParams']
+  | components['schemas']['SearchIndexParams'];
 
 /** Lanzar la prueba del motor con sus valores por defecto (el cliente generado exige todos los campos). */
 export const NOOP_RUN: RunRequest = { operation: 'noop', steps: 5, step_seconds: 1, fail_at_step: null };

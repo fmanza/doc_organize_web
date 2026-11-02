@@ -87,8 +87,38 @@ class ScanParams(_Params):
         return self
 
 
+class ExportZipParams(_Params):
+    """ZIP del proyecto (``Conversión/`` y ``cache_export.json``); con ``dry_run``, solo su tamaño (vista previa).
+
+    No mueve ni borra nada: la vista previa sirve para ver el tamaño antes de ocupar el workspace, no es obligatoria.
+    """
+
+    operation: Literal["export_zip"] = "export_zip"
+    dry_run: bool = False
+
+
+class ExportXlsxParams(_Params):
+    """Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico)."""
+
+    operation: Literal["export_xlsx"] = "export_xlsx"
+    kind: Literal["cache", "errors"]
+
+
+class SearchIndexParams(_Params):
+    """Pone al día el índice de búsqueda de texto completo con el Markdown de ``Conversión/``."""
+
+    operation: Literal["search_index"] = "search_index"
+
+
 RunParams = Annotated[
-    NoopParams | HistoryClearParams | ProjectMoveParams | ProjectDeleteParams | ScanParams,
+    NoopParams
+    | HistoryClearParams
+    | ProjectMoveParams
+    | ProjectDeleteParams
+    | ScanParams
+    | ExportZipParams
+    | ExportXlsxParams
+    | SearchIndexParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -125,14 +155,20 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     "project_move": OperationSpec(min_role="owner", destructive=True),
     "project_delete": OperationSpec(min_role="owner", destructive=True),
     "scan": OperationSpec(min_role="editor", produces_artifacts=True),
+    # Exportar no cambia el proyecto: cualquier miembro, como en la web integrada (decisión del mantenedor, Fase 5).
+    "export_zip": OperationSpec(min_role="viewer", produces_artifacts=True),
+    "export_xlsx": OperationSpec(min_role="viewer", produces_artifacts=True),
+    "search_index": OperationSpec(min_role="editor"),
 }
 
 
 def is_write(params: RunParams) -> bool:
-    """Si el run escribe en el proyecto (bloqueo de una escritura a la vez): las destructivas sin ``dry_run`` y el
-    escaneo (escribe las salidas), salvo su vista previa."""
+    """Si el run escribe en el proyecto (bloqueo de una escritura a la vez): las destructivas sin ``dry_run``, el
+    escaneo (escribe las salidas), salvo su vista previa, y el reindexado de la búsqueda."""
     if isinstance(params, ScanParams):
         return not params.dry_run
+    if isinstance(params, SearchIndexParams):  # un solo escritor de search.db (el escaneo también reindexa)
+        return True
     return isinstance(params, _Destructive) and not params.dry_run
 
 

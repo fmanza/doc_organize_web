@@ -3,6 +3,8 @@
 Uso::
 
     python -m app.cli create-admin --username admin [--display-name "Administración"] [--password-stdin]
+    python -m app.cli backup [--dest /data/backups] [--keep 7]
+    python -m app.cli verify-backup /data/backups/20261102T030000Z
 
 Sin ``--password-stdin`` la contraseña se pide dos veces por terminal (``getpass``). En Docker::
 
@@ -14,13 +16,16 @@ from __future__ import annotations
 import argparse
 import getpass
 import logging
+import sqlite3
 import sys
+from pathlib import Path
 
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
+from app.db import backup
 from app.db.session import get_engine
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
@@ -62,6 +67,38 @@ def create_admin(username: str, display_name: str | None, *, password_stdin: boo
     return 0
 
 
+def run_backup(destination: str | None, keep: int | None) -> int:
+    """Copia ``config.db`` y las cachés; devuelve el código de salida."""
+    if keep is not None and keep < 1:
+        print("Error: --keep debe ser 1 o más (la copia nueva siempre se conserva).", file=sys.stderr)
+        return 2
+    try:
+        target = backup.create_backup(get_settings(), destination=Path(destination) if destination else None, keep=keep)
+    except FileExistsError:
+        print("Error: ya hay una copia de este mismo segundo; vuelve a intentarlo.", file=sys.stderr)
+        return 1
+    except (OSError, sqlite3.Error) as exc:
+        print(f"Error: no se pudo hacer la copia ({type(exc).__name__}).", file=sys.stderr)
+        return 1
+    problems = backup.verify_backup(target)
+    for problem in problems:
+        print(f"Error: {problem}", file=sys.stderr)
+    if problems:
+        return 1
+    print(f"Copia creada en {target}.")
+    return 0
+
+
+def run_verify(path: str) -> int:
+    """Comprueba una copia; devuelve el código de salida."""
+    problems = backup.verify_backup(Path(path))
+    for problem in problems:
+        print(f"Error: {problem}", file=sys.stderr)
+    if not problems:
+        print("La copia es correcta.")
+    return 1 if problems else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Administración de doc_organize_web")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -69,11 +106,20 @@ def main(argv: list[str] | None = None) -> int:
     admin.add_argument("--username", required=True)
     admin.add_argument("--display-name")
     admin.add_argument("--password-stdin", action="store_true", help="lee la contraseña de la entrada estándar")
+    copy = commands.add_parser("backup", help="copia config.db y las cachés de doc_organize")
+    copy.add_argument("--dest", help="carpeta de las copias (por defecto /data/backups)")
+    copy.add_argument("--keep", type=int, help="copias que se conservan en la carpeta (borra las más antiguas)")
+    verify = commands.add_parser("verify-backup", help="comprueba una copia (hashes e integridad de SQLite)")
+    verify.add_argument("path", help="carpeta de la copia")
     args = parser.parse_args(argv)
 
     configure_logging(get_settings().log_level)
     if args.command == "create-admin":
         return create_admin(args.username, args.display_name, password_stdin=args.password_stdin)
+    if args.command == "backup":
+        return run_backup(args.dest, args.keep)
+    if args.command == "verify-backup":
+        return run_verify(args.path)
     return 2  # pragma: no cover - argparse exige un comando
 
 

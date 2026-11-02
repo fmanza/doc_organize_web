@@ -11,7 +11,7 @@ from typing import Any, Final
 
 from app.db.models import Project
 from app.jobs.context import JobContext
-from app.jobs.operations import history_clear, noop, project_delete, project_move, scan
+from app.jobs.operations import export, history_clear, noop, project_delete, project_move, scan, search_index
 
 Operation = Callable[[JobContext, Any, Project | None], dict[str, Any]]
 
@@ -21,4 +21,7 @@ REGISTRY: Final[dict[str, Operation]] = {
     "project_move": project_move.run,
     "project_delete": project_delete.run,
     "scan": scan.run,
+    "export_zip": export.run_zip,
+    "export_xlsx": export.run_xlsx,
+    "search_index": search_index.run,
 }

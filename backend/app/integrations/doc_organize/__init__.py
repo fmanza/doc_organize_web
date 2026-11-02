@@ -11,6 +11,15 @@ Lo comprueba ``tests/unit/test_architecture.py``.
 """
 
 from app.integrations.doc_organize.capabilities import Capabilities, run_probe
+from app.integrations.doc_organize.export import (
+    ExportCancelled,
+    ExportRequest,
+    ExportSize,
+    write_cache_xlsx,
+    write_errors_xlsx,
+    write_zip,
+    zip_preview,
+)
 from app.integrations.doc_organize.models import ModelsStatus
 from app.integrations.doc_organize.models import status as models_status
 from app.integrations.doc_organize.projects import DocOrganizeOperationError, clear_project_history
@@ -28,6 +37,9 @@ from app.integrations.doc_organize.version import library_version
 __all__ = [
     "Capabilities",
     "DocOrganizeOperationError",
+    "ExportCancelled",
+    "ExportRequest",
+    "ExportSize",
     "ModelsStatus",
     "ScanFailure",
     "ScanOutcome",
@@ -40,4 +52,8 @@ __all__ = [
     "models_status",
     "run_probe",
     "run_scan",
+    "write_cache_xlsx",
+    "write_errors_xlsx",
+    "write_zip",
+    "zip_preview",
 ]

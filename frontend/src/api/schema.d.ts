@@ -391,6 +391,26 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Documentos del proyecto
+         * @description Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión.
+         */
+        get: operations["list_documents_api_v1_projects__project_id__documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/members": {
         parameters: {
             query?: never;
@@ -437,6 +457,26 @@ export interface paths {
          * @description Cambia el rol (``owner``); el proyecto conserva siempre al menos un propietario.
          */
         patch: operations["update_member_api_v1_projects__project_id__members__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/outputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver una salida convertida
+         * @description Markdown, JSON o imagen de ``Conversión/`` con tipo fijo; el navegador nunca lo interpreta como página.
+         */
+        get: operations["get_output_api_v1_projects__project_id__outputs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/projects/{project_id}/runs": {
@@ -502,6 +542,26 @@ export interface paths {
          * @description Quita una carpeta de origen (``owner``). No borra ficheros: si ya se escaneó, sus salidas siguen en el destino.
          */
         delete: operations["remove_scanned_folder_api_v1_projects__project_id__scanned_folders_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Buscar en el contenido
+         * @description Documentos convertidos que contienen todas las palabras, los más relevantes primero.
+         */
+        get: operations["search_content_api_v1_projects__project_id__search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -845,6 +905,92 @@ export interface components {
         CsrfToken: {
             /** Csrf Token */
             csrf_token: string;
+        };
+        /**
+         * DocumentOut
+         * @description Documento de la caché del proyecto, con rutas relativas a su carpeta de origen (nunca del servidor).
+         */
+        DocumentOut: {
+            /**
+             * Conversion Status
+             * @description success, error, pending, in_progress, ocr_pending…
+             */
+            conversion_status: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Error Retry Count */
+            error_retry_count: number;
+            /**
+             * Folder
+             * @description Carpeta de origen («» = la raíz de la ubicación)
+             */
+            folder: string;
+            /**
+             * Output Path
+             * @description Markdown convertido, relativo a Conversión/ (para el visor)
+             */
+            output_path: string | null;
+            /**
+             * Path
+             * @description Ruta del documento relativa a su carpeta
+             */
+            path: string;
+            /**
+             * Status
+             * @description new, modified, unchanged o deleted
+             */
+            status: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DocumentPage
+         * @description Página de documentos del proyecto.
+         */
+        DocumentPage: {
+            /** Items */
+            items: components["schemas"]["DocumentOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ExportXlsxParams
+         * @description Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico).
+         */
+        ExportXlsxParams: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "cache" | "errors";
+            /**
+             * Operation
+             * @default export_xlsx
+             * @constant
+             */
+            operation: "export_xlsx";
+        };
+        /**
+         * ExportZipParams
+         * @description ZIP del proyecto (``Conversión/`` y ``cache_export.json``); con ``dry_run``, solo su tamaño (vista previa).
+         *
+         *     No mueve ni borra nada: la vista previa sirve para ver el tamaño antes de ocupar el workspace, no es obligatoria.
+         */
+        ExportZipParams: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default export_zip
+             * @constant
+             */
+            operation: "export_zip";
         };
         /**
          * FolderEntry
@@ -1411,7 +1557,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index";
             /**
              * Status
              * @enum {string}
@@ -1450,7 +1596,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -1646,6 +1792,48 @@ export interface components {
             subpath: string;
             /** Used */
             used: boolean;
+        };
+        /**
+         * SearchHitOut
+         * @description Documento convertido que contiene las palabras buscadas.
+         */
+        SearchHitOut: {
+            /**
+             * Output Path
+             * @description Markdown relativo a Conversión/
+             */
+            output_path: string;
+            /**
+             * Snippet
+             * @description Fragmento; las coincidencias van entre U+0002 y U+0003 (texto, nunca HTML)
+             */
+            snippet: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SearchIndexParams
+         * @description Pone al día el índice de búsqueda de texto completo con el Markdown de ``Conversión/``.
+         */
+        SearchIndexParams: {
+            /**
+             * Operation
+             * @default search_index
+             * @constant
+             */
+            operation: "search_index";
+        };
+        /**
+         * SearchPage
+         * @description Resultados de la búsqueda de texto completo; ``indexed_at`` es ``None`` si aún no hay índice.
+         */
+        SearchPage: {
+            /** Indexed At */
+            indexed_at: string | null;
+            /** Items */
+            items: components["schemas"]["SearchHitOut"][];
+            /** Total */
+            total: number;
         };
         /**
          * SessionOut
@@ -3036,6 +3224,56 @@ export interface operations {
             };
         };
     };
+    list_documents_api_v1_projects__project_id__documents_get: {
+        parameters: {
+            query?: {
+                /** @description Texto en la ruta (sin distinguir mayúsculas) */
+                search?: string | null;
+                /** @description Solo esta carpeta de origen */
+                folder?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description La carpeta no es de origen del proyecto (folder_not_saved) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_members_api_v1_projects__project_id__members_get: {
         parameters: {
             query?: never;
@@ -3273,6 +3511,80 @@ export interface operations {
             };
         };
     };
+    get_output_api_v1_projects__project_id__outputs_get: {
+        parameters: {
+            query: {
+                /** @description Fichero relativo a Conversión/ del proyecto */
+                path: string;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ruta no válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Demasiado grande para el visor (output_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tipo no permitido en el visor (output_type_not_allowed) */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     enqueue_run_api_v1_projects__project_id__runs_post: {
         parameters: {
             query?: never;
@@ -3284,7 +3596,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"];
             };
         };
         responses: {
@@ -3592,12 +3904,62 @@ export interface operations {
             };
         };
     };
+    search_content_api_v1_projects__project_id__search_get: {
+        parameters: {
+            query: {
+                /** @description Palabras a buscar (todas) */
+                q: string;
+                /** @description Solo esta carpeta de origen */
+                folder?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Texto vacío o demasiado largo, demasiado amplio (search_too_broad) o carpeta ajena */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_runs_api_v1_runs_get: {
         parameters: {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index") | null;
                 limit?: number;
                 offset?: number;
             };

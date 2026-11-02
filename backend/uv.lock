@@ -428,8 +428,8 @@ wheels = [
 
 [[package]]
 name = "doc-organize"
-version = "0.10.0"
-source = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" }
+version = "0.11.0"
+source = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.11.0/doc_organize-0.11.0-py3-none-any.whl" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
@@ -443,7 +443,7 @@ dependencies = [
     { name = "tzdata" },
 ]
 wheels = [
-    { url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl", hash = "sha256:4ca73b85f4ccb0bb4b987c4205e882bcae5189882c2b0f416021c141fe1c6fc2" },
+    { url = "https://github.com/fmanza/doc_organize/releases/download/v0.11.0/doc_organize-0.11.0-py3-none-any.whl", hash = "sha256:c46e5a9aeff626e12725eb4692af14df0954e45abd6f08819d24956a9716eb9e" },
 ]
 
 [package.optional-dependencies]
@@ -452,6 +452,9 @@ ai = [
 ]
 context = [
     { name = "pyyaml" },
+]
+export = [
+    { name = "openpyxl" },
 ]
 ocr-gpu = [
     { name = "easyocr" },
@@ -482,6 +485,8 @@ requires-dist = [
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "opencv-python", marker = "extra == 'ocr-gpu'", specifier = ">=4.8" },
+    { name = "openpyxl", marker = "extra == 'dev'", specifier = ">=3.1" },
+    { name = "openpyxl", marker = "extra == 'export'", specifier = ">=3.1" },
     { name = "openpyxl", marker = "extra == 'web'", specifier = ">=3.1" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pillow", specifier = ">=10.0" },
@@ -500,22 +505,23 @@ requires-dist = [
     { name = "torch", marker = "extra == 'ocr-gpu'", specifier = ">=2.0" },
     { name = "torchvision", marker = "extra == 'ocr-gpu'", specifier = ">=0.15" },
     { name = "types-aiofiles", marker = "extra == 'dev'", specifier = ">=23.0" },
+    { name = "types-openpyxl", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "tzdata", specifier = ">=2024.1" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.23" },
     { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.71" },
 ]
-provides-extras = ["dev", "docs", "site", "web", "ocr-gpu", "av", "ai", "context"]
+provides-extras = ["dev", "docs", "export", "site", "web", "ocr-gpu", "av", "ai", "context"]
 
 [[package]]
 name = "doc-organize-web"
-version = "0.5.0"
+version = "0.6.0"
 source = { virtual = "." }
 default-groups = ["cpu", "dev"]
 dependencies = [
     { name = "alembic" },
-    { name = "doc-organize", extra = ["ai", "context"] },
+    { name = "doc-organize", extra = ["ai", "context", "export"] },
     { name = "fastapi" },
     { name = "pillow" },
     { name = "pwdlib", extra = ["argon2"] },
@@ -551,7 +557,7 @@ gpu = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
-    { name = "doc-organize", extras = ["ai", "context"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ai", "context", "export"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.11.0/doc_organize-0.11.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3" },
@@ -575,7 +581,7 @@ dev = [
 ]
 docs = [{ name = "zensical", specifier = ">=0.0.67" }]
 gpu = [
-    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.10.0/doc_organize-0.10.0-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.11.0/doc_organize-0.11.0-py3-none-any.whl" },
     { name = "torch", specifier = ">=2.2.2,<3", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
     { name = "torchvision", specifier = ">=0.17,<1", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
 ]

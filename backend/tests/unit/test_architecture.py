@@ -54,9 +54,33 @@ def test_anti_corruption_layer_does_not_import_api_or_domain() -> None:
 
 
 def test_api_and_worker_parent_do_not_load_doc_organize() -> None:
-    """G15: la API y el proceso padre del worker no cargan doc_organize; solo el subproceso del job (y el de
-    capacidades) lo importan, dentro de las funciones de la capa anticorrupción."""
+    """G15: la API y el proceso padre del worker no cargan doc_organize **al arrancar**; el subproceso del job (y el de
+    capacidades) lo importan dentro de las funciones de la capa anticorrupción, y la API solo carga ``doc_organize.cache``
+    al listar documentos (``test_listing_documents_never_loads_docling``)."""
     code = "import sys, app.main, app.jobs.worker; print(sorted(m for m in sys.modules if m.split('.')[0] in {'doc_organize', 'docling', 'torch'}))"
+    completed = subprocess.run(  # noqa: S603 - intérprete actual con código fijo
+        [sys.executable, "-c", code], cwd=APP_DIR.parent, capture_output=True, text=True, check=True
+    )
+
+    assert completed.stdout.strip() == "[]"
+
+
+def test_listing_documents_never_loads_docling(tmp_path: Path) -> None:
+    """Fase 5 (decisión del mantenedor): la API lee la caché con ``doc_organize.cache`` al usarla, sin Docling ni torch."""
+    code = "\n".join(
+        [
+            "import asyncio, sys, pathlib",
+            "from app.integrations.doc_organize import cache",
+            f"db = pathlib.Path({str(tmp_path / 'cache.db')!r})",
+            "from doc_organize.cache import CacheManager",
+            "async def make():",
+            "    async with CacheManager(db):",
+            "        pass",
+            "asyncio.run(make())",
+            "cache.count_documents(db); cache.documents_page(db, limit=1, offset=0)",
+            "print(sorted(m for m in sys.modules if m.split('.')[0] in {'docling', 'torch'}))",
+        ]
+    )
     completed = subprocess.run(  # noqa: S603 - intérprete actual con código fijo
         [sys.executable, "-c", code], cwd=APP_DIR.parent, capture_output=True, text=True, check=True
     )
