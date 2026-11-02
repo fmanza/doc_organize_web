@@ -66,7 +66,8 @@ def test_api_and_worker_parent_do_not_load_doc_organize() -> None:
 
 
 def test_listing_documents_never_loads_docling(tmp_path: Path) -> None:
-    """Fase 5 (decisión del mantenedor): la API lee la caché con ``doc_organize.cache`` al usarla, sin Docling ni torch."""
+    """Fase 5 (decisión del mantenedor): la API lee la caché con ``doc_organize.cache`` al usarla y calcula las salidas
+    con ``doc_organize.projects.layout`` (G20), sin Docling ni torch."""
     code = "\n".join(
         [
             "import asyncio, sys, pathlib",
@@ -77,7 +78,9 @@ def test_listing_documents_never_loads_docling(tmp_path: Path) -> None:
             "    async with CacheManager(db):",
             "        pass",
             "asyncio.run(make())",
-            "cache.count_documents(db); cache.documents_page(db, limit=1, offset=0)",
+            "root = pathlib.Path('/mnt/origen/2024')",
+            "cache.count_documents(db, root=root); cache.documents_page(db, root=root, limit=1, offset=0)",
+            "cache.output_paths('2024', 'a/b.pdf')",
             "print(sorted(m for m in sys.modules if m.split('.')[0] in {'docling', 'torch'}))",
         ]
     )

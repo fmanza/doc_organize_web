@@ -4169,7 +4169,7 @@
     },
     "/api/v1/projects/{project_id}/documents": {
       "get": {
-        "description": "Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión.",
+        "description": "Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda\nmira la ruta relativa a la carpeta, nunca la del servidor.",
         "operationId": "list_documents_api_v1_projects__project_id__documents_get",
         "parameters": [
           {
@@ -4182,7 +4182,7 @@
             }
           },
           {
-            "description": "Texto en la ruta (sin distinguir mayúsculas)",
+            "description": "Texto en la ruta relativa a la carpeta (sin distinguir mayúsculas)",
             "in": "query",
             "name": "search",
             "required": false,
@@ -4196,7 +4196,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Texto en la ruta (sin distinguir mayúsculas)",
+              "description": "Texto en la ruta relativa a la carpeta (sin distinguir mayúsculas)",
               "title": "Search"
             }
           },
@@ -4217,6 +4217,32 @@
               ],
               "description": "Solo esta carpeta de origen",
               "title": "Folder"
+            }
+          },
+          {
+            "description": "Solo documentos con este estado de conversión",
+            "in": "query",
+            "name": "conversion_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "success",
+                    "error",
+                    "ocr_pending",
+                    "ocr_in_progress"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo documentos con este estado de conversión",
+              "title": "Conversion Status"
             }
           },
           {

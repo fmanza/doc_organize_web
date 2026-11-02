@@ -1,14 +1,16 @@
 """Lectura paginada de la caché de doc_organize para la API (WB-5.1).
 
 Es lo único de doc_organize que carga el proceso de la API, y solo al listar documentos: ``doc_organize.cache`` no
-importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas verificadas en el tag ``v0.11.0``::
+importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas verificadas en el tag ``v0.12.0``::
 
-    async with CacheManager(db_path) as cache:
-        await cache.count_entries(search: str | None = None) -> int
-        await cache.load_cache_page(limit: int, offset: int, search: str | None = None) -> list[CacheEntry]
+    async with CacheManager(db_path, read_only=True) as cache:
+        await cache.count_entries(search=None, *, relative_to=None, conversion_status=None) -> int
+        await cache.load_cache_page(limit, offset, search=None, *, relative_to=None, conversion_status=None)
+            -> list[CacheEntry]
 
-``CacheManager`` no tiene modo de solo lectura: al abrir pone WAL y crea la tabla si falta (G21). Por eso aquí solo se
-abren cachés que ya existen (las crea el worker al escanear); ``aiosqlite`` espera 5 s si el worker la tiene bloqueada.
+Con ``read_only=True`` (G21) la API no escribe en la caché (URI ``mode=ro``, sin WAL, ``CREATE`` ni ``ALTER``) y una
+caché que aún no existe da ``CacheNotFoundError``. ``relative_to`` (G22) limita a las entradas bajo la carpeta y hace
+que ``search`` mire la ruta **relativa** a ella, no la del contenedor.
 """
 
 from __future__ import annotations
@@ -39,28 +41,44 @@ class CachedDocument:
     updated_at: float
 
 
-def count_documents(cache_db: Path, search: str | None = None) -> int:
-    """Entradas de ``cache_db`` (0 si la caché aún no existe), filtradas por ``search`` en la ruta."""
-    if not cache_db.is_file():
-        return 0
+def count_documents(
+    cache_db: Path, search: str | None = None, *, root: Path, conversion_status: str | None = None
+) -> int:
+    """Entradas de ``cache_db`` bajo ``root`` (0 si la caché aún no existe), filtradas por ``search`` en la ruta relativa
+    a ``root`` y por estado de conversión."""
+    from doc_organize import CacheNotFoundError
     from doc_organize.cache import CacheManager
 
     async def _count() -> int:
-        async with CacheManager(cache_db) as cache:
-            return int(await cache.count_entries(search or None))
+        async with CacheManager(cache_db, read_only=True) as cache:
+            return int(await cache.count_entries(search or None, relative_to=root, conversion_status=conversion_status))
 
-    return asyncio.run(_count())
+    try:
+        return asyncio.run(_count())
+    except CacheNotFoundError:
+        return 0
 
 
-def documents_page(cache_db: Path, *, limit: int, offset: int, search: str | None = None) -> list[CachedDocument]:
-    """Página de ``cache_db`` ordenada por ruta (vacía si la caché aún no existe)."""
-    if not cache_db.is_file() or limit <= 0:
+def documents_page(
+    cache_db: Path,
+    *,
+    root: Path,
+    limit: int,
+    offset: int,
+    search: str | None = None,
+    conversion_status: str | None = None,
+) -> list[CachedDocument]:
+    """Página de ``cache_db`` ordenada por ruta (vacía si la caché aún no existe), con los mismos filtros."""
+    if limit <= 0:
         return []
+    from doc_organize import CacheNotFoundError
     from doc_organize.cache import CacheManager
 
     async def _page() -> list[CachedDocument]:
-        async with CacheManager(cache_db) as cache:
-            entries = await cache.load_cache_page(limit, offset, search or None)
+        async with CacheManager(cache_db, read_only=True) as cache:
+            entries = await cache.load_cache_page(
+                limit, offset, search or None, relative_to=root, conversion_status=conversion_status
+            )
         return [
             CachedDocument(
                 path=entry.file_path,
@@ -73,4 +91,24 @@ def documents_page(cache_db: Path, *, limit: int, offset: int, search: str | Non
             for entry in entries
         ]
 
-    return asyncio.run(_page())
+    try:
+        return asyncio.run(_page())
+    except CacheNotFoundError:
+        return []
+
+
+def output_paths(folder: str, relative: str) -> tuple[str, str, str]:
+    """``(markdown, json, imágenes)`` de un documento, relativos a ``Conversión/`` (G20, resuelto en 0.12.0).
+
+    Usa ``resolve_output_paths``/``resolve_images_dir`` de ``doc_organize.projects.layout`` (sin Docling) sobre una raíz
+    ficticia: solo importa la ruta relativa del documento dentro de su carpeta de origen.
+    """
+    from doc_organize import resolve_images_dir, resolve_output_paths
+
+    root = Path("/dow-source")
+    output = Path("/dow-output")
+    target = output / folder if folder else output
+    markdown, json_path = resolve_output_paths(str(root / relative), target, [str(root)])
+    images = resolve_images_dir(markdown)
+    markdown_rel, json_rel, images_rel = (p.relative_to(output).as_posix() for p in (markdown, json_path, images))
+    return markdown_rel, json_rel, images_rel

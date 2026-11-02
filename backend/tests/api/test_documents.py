@@ -108,6 +108,11 @@ def test_documents_search_and_folder_filter(user_client: TestClient, project: di
     unknown = user_client.get(base, params={"folder": "otra"})
 
     assert [r["path"] for r in found["items"]] == ["Café.docx"] and found["total"] == 1
+    # G22: la búsqueda mira la ruta relativa a la carpeta, no la del servidor («origen» es la carpeta de la ubicación).
+    assert user_client.get(base, params={"search": "origen"}).json()["total"] == 0
+    errors = user_client.get(base, params={"conversion_status": "error"}).json()
+    assert [r["path"] for r in errors["items"]] == ["roto.pdf"] and errors["total"] == 1
+    assert user_client.get(base, params={"conversion_status": "otro"}).status_code == 422
     assert only_2024["total"] == 3
     assert unknown.status_code == 422 and unknown.json()["code"] == "folder_not_saved"
 
@@ -171,6 +176,10 @@ def test_json_output_hides_the_container_path(
 
     assert response.status_code == 200 and response.headers["content-type"] == "application/json"
     assert response.json() == {"source_path": "2024/factura.txt", "title": "factura"}
+    # Desde doc_organize 0.12.0 (G23) la ruta ya viene relativa a la carpeta escaneada: se le antepone la carpeta.
+    (folder / "nota.json").write_text(json.dumps({"source_path": "notas/nota.html"}), encoding="utf-8")
+    relative = user_client.get(f"/api/v1/projects/{project['id']}/outputs", params={"path": "2024/nota.json"})
+    assert relative.json() == {"source_path": "2024/notas/nota.html"}
     assert response.headers["x-content-type-options"] == "nosniff"
 
 

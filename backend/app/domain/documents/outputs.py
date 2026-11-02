@@ -1,18 +1,16 @@
-"""Ruta de las salidas de un documento convertido, sin importar doc_organize (G20).
+"""Ruta de las salidas de un documento convertido.
 
-``DocumentConverter.resolve_output_paths`` y ``resolve_images_dir`` viven en un módulo de doc_organize que importa
-Docling, así que la API (que no carga Docling, G15) replica aquí la misma regla, verificada en el tag ``v0.11.0`` y
-comprobada por ``tests/integration/test_documents_contract.py``:
-
-- la salida replica la ruta del documento **relativa a la carpeta escaneada** bajo ``Conversión/<carpeta>/``;
-- cada carpeta intermedia y el nombre sin extensión pierden los espacios y puntos finales (``rstrip(" .")``);
-- Markdown ``<stem>.md``, JSON ``<stem>.json`` e imágenes en ``img/<stem>/`` junto al Markdown.
+La regla (ruta relativa a la carpeta escaneada bajo ``Conversión/<carpeta>/``, ``rstrip(" .")`` de cada segmento,
+``<stem>.md``/``<stem>.json`` e imágenes en ``img/<stem>/``) es la de doc_organize: desde 0.12.0
+``resolve_output_paths`` y ``resolve_images_dir`` viven en ``doc_organize.projects.layout``, sin Docling (G20), y la API
+las usa a través de la capa anticorrupción.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+
+from app.integrations.doc_organize import cache as library_cache
 
 
 @dataclass(frozen=True)
@@ -37,8 +35,5 @@ def output_paths(folder: str, relative: str) -> OutputPaths:
         >>> output_paths("2024", "facturas/enero .pdf").markdown
         '2024/facturas/enero.md'
     """
-    parts = PurePosixPath(relative).parts
-    stem = PurePosixPath(parts[-1]).stem.rstrip(" .") if parts else ""
-    target = PurePosixPath(folder, *(part.rstrip(" .") for part in parts[:-1]))
-    prefix = "" if str(target) == "." else f"{target.as_posix()}/"
-    return OutputPaths(markdown=f"{prefix}{stem}.md", json=f"{prefix}{stem}.json", images=f"{prefix}img/{stem}")
+    markdown, json_path, images = library_cache.output_paths(folder, relative)
+    return OutputPaths(markdown=markdown, json=json_path, images=images)

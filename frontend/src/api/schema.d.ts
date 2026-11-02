@@ -400,7 +400,8 @@ export interface paths {
         };
         /**
          * Documentos del proyecto
-         * @description Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión.
+         * @description Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda
+         *     mira la ruta relativa a la carpeta, nunca la del servidor.
          */
         get: operations["list_documents_api_v1_projects__project_id__documents_get"];
         put?: never;
@@ -3227,10 +3228,12 @@ export interface operations {
     list_documents_api_v1_projects__project_id__documents_get: {
         parameters: {
             query?: {
-                /** @description Texto en la ruta (sin distinguir mayúsculas) */
+                /** @description Texto en la ruta relativa a la carpeta (sin distinguir mayúsculas) */
                 search?: string | null;
                 /** @description Solo esta carpeta de origen */
                 folder?: string | null;
+                /** @description Solo documentos con este estado de conversión */
+                conversion_status?: ("pending" | "in_progress" | "success" | "error" | "ocr_pending" | "ocr_in_progress") | null;
                 limit?: number;
                 offset?: number;
             };

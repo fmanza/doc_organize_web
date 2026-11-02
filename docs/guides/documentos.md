@@ -15,7 +15,9 @@ la fecha de la última actualización y el estado de la conversión:
 | Error | No se pudo convertir; el mensaje aparece en la fila (y en [Errores del escaneo](escaneo.md#errores)) |
 | Pendiente, Convirtiendo, OCR pendiente… | El escaneo no terminó con él (cancelado o en curso) |
 
-- **Buscar por nombre o carpeta** filtra por cualquier parte de la ruta, sin distinguir mayúsculas.
+- **Buscar por nombre o subcarpeta** filtra por cualquier parte de la ruta dentro de la carpeta de origen, sin
+  distinguir mayúsculas.
+- **Estado** muestra solo los documentos convertidos, con error, pendientes…
 - **Carpeta** limita la lista a una carpeta de origen.
 - La lista carga los documentos poco a poco mientras te desplazas: funciona igual con cien que con cien mil.
 
@@ -56,8 +58,10 @@ workspace y se borra según la retención de ejecuciones.
 | **Excel de errores** | Hoja «Estado actual» (documentos que fallan ahora) e «Histórico» (los errores de cada escaneo) |
 
 Las rutas de los documentos van relativas a su carpeta de origen y los mensajes de error, sin rutas del servidor. Los
-JSON que van dentro del ZIP son los que escribió doc_organize, con la ruta completa del documento en el servidor
-(`source_path`): tenlo en cuenta antes de compartir el ZIP fuera de la organización.
+JSON que van dentro del ZIP son los que escribió doc_organize: desde la versión 0.6.x de la aplicación llevan la ruta
+del documento relativa a su carpeta (`source_path`), pero los convertidos antes conservan la ruta completa en el
+servidor hasta que se reconviertan («Forzar reconversión» en [Escaneo](escaneo.md#forzar-reconversión)). Tenlo en
+cuenta antes de compartir un ZIP de un proyecto antiguo fuera de la organización.
 
 Con un proyecto grande, calcula antes el tamaño: si el ZIP no cabe en tu cuota o en el espacio libre del servidor, la
 exportación falla antes de escribir nada («La exportación ocupa hasta … MB»).

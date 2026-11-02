@@ -78,11 +78,14 @@ def merge_folders(root: Path, downloaded: dict[str, list[str]]) -> dict[str, lis
     return merged
 
 
-def configure(models_dir: Path) -> None:
-    """Apunta Docling a la carpeta de modelos, si se descargaron. Llamar antes de importar doc_organize o Docling."""
+def artifacts_path(models_dir: Path) -> Path | None:
+    """Carpeta de modelos de Docling para ``ScanOptions.artifacts_path`` (G17), si se descargaron (hay manifiesto).
+
+    Sin modelos se devuelve ``None``: el worker sigue sin Internet (``HF_HUB_OFFLINE=1``), así que los PDF e imágenes
+    fallan uno a uno y el resto de formatos se convierte, como antes de 0.12.0.
+    """
     root = docling_dir(models_dir)
-    if (root / MANIFEST).is_file():
-        os.environ["DOCLING_ARTIFACTS_PATH"] = str(root)
+    return root if (root / MANIFEST).is_file() else None
 
 
 def download(models_dir: Path, *, picture_description: bool = False, easyocr: bool = False) -> ModelsStatus:

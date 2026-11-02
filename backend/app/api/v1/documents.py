@@ -5,7 +5,7 @@ Solo lectura y para cualquier miembro del proyecto. Las exportaciones son runs (
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Query
@@ -19,6 +19,9 @@ from app.domain.projects.service import state_dir
 from app.domain.search.index import search, search_db
 
 router = APIRouter(prefix="/projects", tags=["documents"])
+
+#: ``ConversionStatus`` de doc_organize (filtro de la lista, G22).
+ConversionFilter = Literal["pending", "in_progress", "success", "error", "ocr_pending", "ocr_in_progress"]
 
 _ERRORS: dict[int | str, dict[str, Any]] = {
     401: {"description": "No autenticado"},
@@ -38,16 +41,31 @@ def list_documents(
     db: DbSession,
     settings: SettingsDep,
     search_text: Annotated[
-        str | None, Query(alias="search", max_length=200, description="Texto en la ruta (sin distinguir mayúsculas)")
+        str | None,
+        Query(
+            alias="search",
+            max_length=200,
+            description="Texto en la ruta relativa a la carpeta (sin distinguir mayúsculas)",
+        ),
     ] = None,
     folder: Annotated[str | None, Query(max_length=4096, description="Solo esta carpeta de origen")] = None,
+    conversion_status: Annotated[
+        ConversionFilter | None, Query(description="Solo documentos con este estado de conversión")
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> DocumentPage:
-    """Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión."""
+    """Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda
+    mira la ruta relativa a la carpeta, nunca la del servidor."""
     access = projects.get_access(db, project_id, user)
     rows, total = documents.list_documents(
-        settings, access.project, folder=folder, search=search_text, limit=limit, offset=offset
+        settings,
+        access.project,
+        folder=folder,
+        search=search_text,
+        conversion_status=conversion_status,
+        limit=limit,
+        offset=offset,
     )
     return DocumentPage(items=[DocumentOut.model_validate(row) for row in rows], total=total)
 

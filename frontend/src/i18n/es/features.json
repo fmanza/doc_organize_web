@@ -594,7 +594,7 @@
     "title": "Documentos",
     "backToProject": "← {{name}}",
     "searchContent": "Buscar en el contenido",
-    "search": "Buscar por nombre o carpeta",
+    "search": "Buscar por nombre o subcarpeta",
     "folder": "Carpeta",
     "allFolders": "Todas las carpetas",
     "rootFolder": "(raíz)",
@@ -640,6 +640,8 @@
       "total_other": "{{formatted}} documentos.",
       "indexedAt": "Búsqueda actualizada el {{date}}."
     },
-    "retry": "No se pudieron cargar más documentos. Reintentar"
+    "retry": "No se pudieron cargar más documentos. Reintentar",
+    "status": "Estado",
+    "allStatuses": "Todos los estados"
   }
 }
