@@ -1,7 +1,7 @@
 # Paridad con la web integrada de doc_organize (L-0)
 
 Inventario de la web integrada de doc_organize (`src/doc_organize/web/`, versión 0.9.3) con la fase de
-doc_organize_web que la sustituye. Gobierna la retirada de la web integrada: deprecación en doc_organize 0.12.0 (L-10)
+doc_organize_web que la sustituye. Gobierna la retirada de la web integrada: deprecación en doc_organize 0.13.0 (L-10)
 cuando todas las filas hasta la Fase 8 estén cubiertas, y eliminación en 1.0.0 (L-11) tras la Fase 10.
 
 > **Estado**: inventario generado el 2026-10-31 desde el código (decoradores de rutas y carpeta `templates/`), pendiente

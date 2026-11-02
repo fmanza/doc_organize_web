@@ -36,7 +36,7 @@ Estado de partida (verificado en el repo, 2026-10-31): `pyproject.toml` 0.9.0 pe
 ## Peticiones de las Fases 4 y 5 (huecos G16–G23)
 
 Los ID `L-10a…L-10e` de `DOC_ORGANIZE_GAPS.md` son estas peticiones (no confundir con L-10, deprecación de la web).
-L-7 se publicó en **0.11.0** (2026-11-01).
+L-7 se publicó en **0.11.0** (2026-11-01) y L-10a…L-10e en **0.12.0** (2026-11-02), que cierra G16–G23.
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
@@ -46,7 +46,10 @@ L-7 se publicó en **0.11.0** (2026-11-01).
 | L-10d | Listado fallido y errores al cancelar | Propagar el `OSError` de listar una carpeta (o no borrar huérfanos si hubo avisos) y escribir `ScanErrorReport` al cancelar | G19 |
 | L-10e | API de lectura para la web | `resolve_output_paths`/`resolve_images_dir` en un módulo sin Docling; `CacheManager(read_only=True)`; filtros por ruta relativa y `conversion_status=` en `count_entries`/`load_cache_page`; `source_path` relativo a la carpeta escaneada en el JSON de cada documento | G20–G23 |
 
-## Versión 0.12.0 — deprecación de la web (cuando F8 de la web esté cerrada)
+## Versión 0.13.0 — deprecación de la web (cuando F8 de la web esté cerrada)
+
+> La 0.12.0 se usó para L-10a…L-10e (robustez del escaneo y API de lectura, G16–G23): L-10 pasa a la siguiente
+> MINOR (2026-11-02).
 
 | ID | Tarea | Detalle |
 |---|---|---|

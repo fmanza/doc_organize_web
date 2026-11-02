@@ -40,7 +40,7 @@ ROADMAP): ambos repos avanzan en paralelo.
 | D10 | Volumen | Diseño para **~100 000 documentos / ~1 TB por proyecto**. |
 | D11 | Documentación | **Zensical en todo y mkdocs retirado**: documentación de ambos repos (L-13b) y sitio de contexto de los proyectos (L-8). |
 | D12 | Repositorio | `doc_organize_web` **ya creado y público**: seguridad del repo desde F0. |
-| D13 | Resto | Sin subida desde navegador; solo español con i18n; retirada 0.12.0/1.0.0; sitio en `iframe sandbox`. Detalle en `DECISIONES_Y_RIESGOS.md`. |
+| D13 | Resto | Sin subida desde navegador; solo español con i18n; retirada 0.13.0/1.0.0; sitio en `iframe sandbox`. Detalle en `DECISIONES_Y_RIESGOS.md`. |
 
 ## Contenido
 
@@ -70,7 +70,7 @@ L-7…L-9  0.11.0 (export,      ──►    F5  caché, resultados y descargas
           sitio, red)                F6  duplicados
                                      F7  contexto y taxonomías
                                      F8  IA (clasificación, manifiestos, uso)
-L-10 deprecar `web` (0.12.0)  ◄──    paridad alcanzada (F8 cerrada)
+L-10 deprecar `web` (0.13.0)  ◄──    paridad alcanzada (F8 cerrada)
                                      F9  multi-tenant
 L-11 retirar web/ y auth/     ◄──    F10 endurecimiento y release 1.0.0
      → doc_organize 1.0.0
