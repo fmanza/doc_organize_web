@@ -101,3 +101,11 @@ def test_cookie_secure_and_host_prefix_except_in_development() -> None:
     assert (test.session_cookie, test.csrf_cookie) == ("__Host-dow_session", "__Host-dow_csrf")
     assert not dev.cookie_secure
     assert (dev.session_cookie, dev.csrf_cookie) == ("dow_session", "dow_csrf")
+
+
+def test_site_token_is_hidden_in_access_logs() -> None:
+    from app.core.middleware import loggable_path
+
+    assert loggable_path("/site/1.2.3.abcdef/facturas/index.html") == "/site/***/facturas/index.html"
+    assert loggable_path("/site/1.2.3.abcdef") == "/site/***/"
+    assert loggable_path("/api/v1/projects") == "/api/v1/projects"

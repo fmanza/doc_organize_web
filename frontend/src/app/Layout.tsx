@@ -14,7 +14,7 @@ const SECTIONS: { key: string; phase: number }[] = [
   { key: 'ai', phase: 8 },
 ];
 
-const ADMIN_SECTIONS = ['users', 'sessions', 'audit', 'settings'] as const;
+const ADMIN_SECTIONS = ['users', 'sessions', 'audit', 'settings', 'taxonomy-templates'] as const;
 
 export function Layout() {
   const { t } = useTranslation();

@@ -52,6 +52,8 @@ export interface Problem {
   title: string;
   status: number;
   detail?: string;
+  /** Código estable de los errores de dominio (`context_not_found`, `write_locked`…). */
+  code?: string;
   request_id?: string;
 }
 

@@ -178,6 +178,16 @@ export function RunDetailPage() {
               {t('runs.duplicatesLink')}
             </Anchor>
           )}
+          {run.operation === 'context_build' && run.project_id !== null && (
+            <Anchor
+              component={Link}
+              to={`/projects/${run.project_id}/context`}
+              mt="sm"
+              display="inline-block"
+            >
+              {t('runs.contextLink')}
+            </Anchor>
+          )}
         </Card>
       )}
       {live.log.length > 0 && (

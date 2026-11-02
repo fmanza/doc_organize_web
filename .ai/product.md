@@ -2,8 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 0.7.0 (Fase 6, duplicados en dos pasos, con informe Excel de los grupos), con doc_organize
-  0.12.1. Siguiente: Fase 7 (contexto y taxonomías; requiere doc_organize 0.11.0, L-8).
+- **Versión actual**: 0.8.0 (Fase 7, contexto y taxonomías con sitio Zensical aislado), con doc_organize
+  0.13.0. Siguiente: Fase 8 (IA: clasificación, manifiestos y uso).
   Plan: `docs/plan/ROADMAP.md`.
 - **Usuarios**: equipos que organizan grandes fondos documentales en una red interna; rol `admin` y rol `user`;
   miembros de proyecto `owner`/`editor`/`viewer`. Multi-tenant en la Fase 9.

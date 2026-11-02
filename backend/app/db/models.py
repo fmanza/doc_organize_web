@@ -2,7 +2,8 @@
 
 Fase 1: identidad (``tenants``, ``users``, ``sessions``, ``audit_log``). Fase 2: ``locations`` y ``app_settings``.
 Fase 3: ``projects``, ``project_members``, ``runs``, ``run_events``, ``artifacts``, ``workers`` y ``periodic_tasks``.
-Fase 4: ``scanned_folders`` y ``scan_errors``.
+Fase 4: ``scanned_folders`` y ``scan_errors``. Fase 6: ``duplicate_groups``. Fase 7: ``taxonomy_templates``,
+``project_contexts`` y ``context_documents``.
 Solo tipos portables (D8): las fechas se guardan en UTC con ``UTCDateTime``.
 """
 
@@ -21,6 +22,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     TypeDecorator,
     UniqueConstraint,
     text,
@@ -422,3 +424,75 @@ class DuplicateGroupRow(Base):
     position: Mapped[int] = mapped_column(Integer)
     member_count: Mapped[int] = mapped_column(Integer)
     members: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+
+
+class TaxonomyTemplate(Base):
+    """Plantilla de taxonomía personalizada (Fase 7): Markdown con front matter que valida doc_organize.
+
+    Las plantillas incluidas en doc_organize no se copian aquí: se leen de la librería y sus nombres no se pueden usar
+    (decisión C2 del mantenedor). ``title`` y ``description`` repiten los del front matter para listar sin parsear.
+    """
+
+    __tablename__ = "taxonomy_templates"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_taxonomy_templates_tenant_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
+    name: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str | None] = mapped_column(String(256), default=None)
+    description: Mapped[str | None] = mapped_column(String(1024), default=None)
+    markdown: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class ProjectContext(Base):
+    """Resumen del último contexto construido del proyecto (Fase 7, decisión C3).
+
+    Proyección de ``context.json`` (que vive en el destino) que escribe el run ``context_build`` al terminar y borra
+    ``context_delete``: la API lista y pagina sin leer la ubicación de red en cada petición. ``domains`` lleva, por
+    dominio, ``slug``, ``name``, ``description``, ``status`` y ``documents``.
+    """
+
+    __tablename__ = "project_contexts"
+
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    output_folder_name: Mapped[str] = mapped_column(String(255))
+    catalog_kind: Mapped[str] = mapped_column(String(16))
+    taxonomy_template_name: Mapped[str | None] = mapped_column(String(64), default=None)
+    documents_count: Mapped[int] = mapped_column(Integer, default=0)
+    unclassified_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    collisions_count: Mapped[int] = mapped_column(Integer, default=0)
+    site_built: Mapped[bool] = mapped_column(default=False)
+    domains: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+    built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class ContextDocument(Base):
+    """Documento del contexto (Fase 7): clasificado en un dominio o, con ``domain_slug`` nulo, sin clasificar.
+
+    Rutas relativas: ``folder`` + ``path`` del original en el origen y ``organized_path`` de la copia dentro de la
+    carpeta del proyecto en el destino (nula si no se copió). ``failed`` marca los que doc_organize no pudo copiar (G27)
+    y ``collision`` los que comparten carpeta con otro y se sobrescriben en la copia (G30).
+    """
+
+    __tablename__ = "context_documents"
+    __table_args__ = (Index("ix_context_documents_project_domain", "project_id", "domain_slug", "seq"),)
+
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("project_contexts.project_id", ondelete="CASCADE"), primary_key=True
+    )
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    domain_slug: Mapped[str | None] = mapped_column(String(128), default=None)
+    title: Mapped[str] = mapped_column(String(1024))
+    document_type: Mapped[str | None] = mapped_column(String(64), default=None)
+    material_type: Mapped[str | None] = mapped_column(String(128), default=None)
+    material_type_name: Mapped[str | None] = mapped_column(String(256), default=None)
+    folder: Mapped[str] = mapped_column(String(4096))
+    path: Mapped[str] = mapped_column(String(4096))
+    organized_path: Mapped[str | None] = mapped_column(String(4096), default=None)
+    failed: Mapped[bool] = mapped_column(default=False)
+    collision: Mapped[bool] = mapped_column(default=False)

@@ -13,7 +13,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 4 | Escaneo y conversión ✅ (2026-11-01) | 0.5.0 | 0.10.0 (L-2, L-6b) |
 | 5 | Caché, resultados y descargas ✅ (2026-11-02) | 0.6.0 | 0.11.0 (L-7) |
 | 6 | Duplicados ✅ (2026-11-02) | 0.7.0 | 0.12.1 (L-6, L-11a) |
-| 7 | Contexto y taxonomías | 0.8.0 | 0.11.0 (L-8) |
+| 7 | Contexto y taxonomías ✅ (2026-11-02) | 0.8.0 | 0.13.0 (L-8, L-8a…L-8c) |
 | 8 | IA: clasificación, manifiestos y uso | 0.9.0 | 0.10.0 (L-3) |
 | 9 | Multi-tenant y roles | 0.10.0 | — |
 | 10 | Endurecimiento y release | 1.0.0 | 1.0.0 |
@@ -169,6 +169,12 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
   de conservación, confirmación explícita, informe final; aviso si la última ejecución ya resolvió los duplicados (hoy la página de revisión dice «no se detectaron duplicados» cuando el escaneo ya los movió).
 
 ## Fase 7 — Contexto y taxonomías
+
+> **Cerrada el 2026-11-02 (0.8.0)** con doc_organize 0.13.0, publicada para esta fase (L-8: sitio con Zensical;
+> L-8a…L-8c: reorganizar sin seguir enlaces, rutas del contexto públicas y plantillas como texto). Sesión:
+> `.ai/sessions/2026-11-02-fase7/`. Mejora opcional incluida: exportar e importar plantillas como `.md`.
+> Decisiones del mantenedor: sitio con token firmado y CSP `sandbox` en el mismo host (ADR-010); las plantillas
+> personalizadas no usan nombres de las incluidas; contexto proyectado en `config.db`; G30 avisado (L-8d).
 
 - WB-7.1 `taxonomy_templates` (incluidas + personalizadas en BD), CRUD admin de instancia.
 - WB-7.2 Runs `context_build` / `context_delete`; contexto del proyecto (`GET/DELETE`).

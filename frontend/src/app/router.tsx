@@ -79,6 +79,14 @@ export const routes: RouteObject[] = [
             ...page(async () => (await import('../features/duplicates/DuplicatesPage')).DuplicatesPage),
           },
           {
+            path: 'projects/:projectId/context',
+            ...page(async () => (await import('../features/context/ContextPage')).ContextPage),
+          },
+          {
+            path: 'projects/:projectId/context/site',
+            ...page(async () => (await import('../features/context/SiteViewerPage')).SiteViewerPage),
+          },
+          {
             path: 'projects/:projectId/search',
             ...page(async () => (await import('../features/documents/ContentSearchPage')).ContentSearchPage),
           },
@@ -104,6 +112,12 @@ export const routes: RouteObject[] = [
               {
                 path: 'settings',
                 ...page(async () => (await import('../features/admin/SettingsPage')).SettingsPage),
+              },
+              {
+                path: 'taxonomy-templates',
+                ...page(
+                  async () => (await import('../features/admin/TaxonomyTemplatesPage')).TaxonomyTemplatesPage,
+                ),
               },
             ],
           },

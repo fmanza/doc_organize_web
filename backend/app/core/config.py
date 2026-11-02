@@ -47,6 +47,8 @@ class Settings(BaseSettings):
             documentos y un PDF grande con OCR tarda minutos (si no para, se pierde la caché en curso, G16).
         run_retention_days: Días que se conservan las carpetas del workspace de los runs terminados.
         user_quota_mb: Espacio máximo de artefactos por usuario en el workspace (0 = sin límite).
+        context_site_timeout_seconds: Tiempo máximo de ``zensical build`` al construir el contexto (Fase 7); si se
+            pasa, el contexto queda sin sitio y con un aviso.
 
     Los ajustes de identidad, sondeo, retención y cuota son administrables desde la web (ADR-012): estos valores son
     el defecto.
@@ -80,6 +82,7 @@ class Settings(BaseSettings):
     timeout_grace_seconds: int = Field(default=600, ge=5, le=3600)
     run_retention_days: int = Field(default=30, ge=1, le=3650)
     user_quota_mb: int = Field(default=0, ge=0, le=10_000_000)
+    context_site_timeout_seconds: int = Field(default=600, ge=10, le=24 * 3600)
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> Self:

@@ -131,6 +131,11 @@ cambiarlas también desde **Administración → Ajustes** sin reiniciar; lo guar
 | `DOW_LOCATION_PROBE_INTERVAL_MINUTES` | `5` | Cada cuánto sondea el worker las ubicaciones (0 = nunca) |
 | `DOW_RUN_RETENTION_DAYS` | `30` | Días que se guardan los ficheros de las ejecuciones terminadas (el historial se conserva) |
 | `DOW_USER_QUOTA_MB` | `0` | Espacio de ficheros de ejecuciones por usuario (0 = sin límite) |
+| `DOW_CONTEXT_SITE_TIMEOUT_SECONDS` | `600` | Tiempo máximo de `zensical build` al construir el contexto; si se pasa, el contexto queda sin sitio y con un aviso |
+
+El sitio de contexto se sirve en `/site/<token>/…` y el token es una credencial temporal
+([ADR-010](../adr/ADR-010-sitio-de-contexto-aislado.md)): la aplicación no la escribe en sus registros, y el proxy
+inverso de delante tampoco debería (enmascara la ruta `/site/` en su registro de accesos).
 
 Variables del worker (en `environment:` del servicio `worker`; no son administrables):
 

@@ -164,12 +164,15 @@ class OutputContent:
     content_type: str
 
 
-def _read_inside(target: Path, root: Path) -> bytes:
+def read_inside(target: Path, root: Path, *, max_bytes: int | None = None) -> bytes:
     """Lee ``target`` si, **una vez abierto**, sigue siendo un fichero normal dentro de ``root``.
 
     Se comprueba el descriptor y no solo la ruta: si alguien cambia el fichero o una carpeta por un enlace simbólico
-    entre la comprobación y la lectura, lo abierto ya no está dentro de ``root`` y no se sirve.
+    entre la comprobación y la lectura, lo abierto ya no está dentro de ``root`` y no se sirve. También lo usan el
+    manifiesto de taxonomía y el sitio de contexto (Fase 7).
     """
+    if max_bytes is None:
+        max_bytes = MAX_OUTPUT_BYTES
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     try:
         fd = os.open(target, flags)
@@ -183,11 +186,12 @@ def _read_inside(target: Path, root: Path) -> bytes:
         opened = Path(os.readlink(proc)) if proc.is_symlink() else target
         if not opened.is_relative_to(root):
             raise OutputNotFoundError()
-        if info.st_size > MAX_OUTPUT_BYTES:
-            raise OutputTooLargeError("El fichero pasa de 20 MB: descárgalo con «Exportar».")
-        data = handle.read(MAX_OUTPUT_BYTES + 1)
-    if len(data) > MAX_OUTPUT_BYTES:
-        raise OutputTooLargeError("El fichero pasa de 20 MB: descárgalo con «Exportar».")
+        too_large = f"El fichero pasa de {max_bytes // (1024 * 1024) or 1} MB: descárgalo con «Exportar»."
+        if info.st_size > max_bytes:
+            raise OutputTooLargeError(too_large)
+        data = handle.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise OutputTooLargeError(too_large)
     return data
 
 
@@ -228,7 +232,7 @@ def read_output(settings: Settings, project: Project, path: str) -> OutputConten
             raise OutputNotFoundError() from None
         if not target.is_relative_to(conversion.absolute):
             raise OutputNotFoundError()
-        return target, _read_inside(target, conversion.absolute)
+        return target, read_inside(target, conversion.absolute)
 
     target, data = run_with_timeout(_read, timeout)
     if content_type == "application/json":

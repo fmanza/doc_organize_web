@@ -358,12 +358,19 @@
         "title": "Forzar la reconversión de «{{name}}»",
         "body": "Se vacía la caché y se vuelven a convertir todos los documentos de todas las carpetas. Las salidas de documentos que ya no están en el origen se borran.",
         "confirm": "Forzar reconversión"
+      },
+      "context_delete": {
+        "button": "Borrar contexto",
+        "title": "Borrar el contexto de «{{name}}»",
+        "body": "Se borran la carpeta reorganizada, el sitio, context.json y domains/ de la carpeta del proyecto. Las conversiones, los originales y el manifiesto de taxonomía se conservan.",
+        "confirm": "Borrar contexto"
       }
     },
     "scan": "Escanear",
     "scanView": "Ver escaneo",
     "documents": "Documentos",
-    "duplicates": "Duplicados"
+    "duplicates": "Duplicados",
+    "context": "Contexto"
   },
   "runs": {
     "title": "Ejecuciones",
@@ -410,7 +417,9 @@
       "export_xlsx": "Exportar Excel",
       "search_index": "Actualizar la búsqueda",
       "dedup_preview": "Buscar duplicados",
-      "dedup_apply": "Aplicar duplicados"
+      "dedup_apply": "Aplicar duplicados",
+      "context_build": "Construir contexto",
+      "context_delete": "Borrar contexto"
     },
     "phases": {
       "noop": "Prueba",
@@ -433,7 +442,14 @@
       "dedup_scan": "Leyendo la caché",
       "dedup_find": "Buscando duplicados",
       "dedup_verify": "Comprobando que no han cambiado",
-      "dedup_apply": "Aplicando"
+      "dedup_apply": "Aplicando",
+      "context_gather": "Reuniendo documentos convertidos",
+      "context_classify": "Clasificando por dominios",
+      "context_reorganize": "Copiando a la carpeta reorganizada",
+      "context_site": "Construyendo el sitio",
+      "context_save": "Guardando el contexto",
+      "measure_context": "Contando el contexto",
+      "context_delete": "Borrando el contexto"
     },
     "fields": {
       "operation": "Operación",
@@ -503,7 +519,7 @@
       "skipped_changed": "Grupos saltados (cambiaron desde la búsqueda)",
       "processed": "Ficheros aplicados",
       "failed": "Ficheros que no se pudieron mover o copiar",
-      "failed_paths": "Fallidos",
+      "failed_paths": "No copiados",
       "groups_done": "Grupos aplicados",
       "values": {
         "mode": {
@@ -511,7 +527,13 @@
           "copy": "Copiar",
           "report_only": "Solo informe"
         }
-      }
+      },
+      "output_folder_name": "Carpeta reorganizada",
+      "domains": "Dominios",
+      "unclassified": "Sin clasificar",
+      "collisions": "Con nombre repetido (se sobrescriben)",
+      "missing_originals": "Originales que ya no están",
+      "site_built": "Sitio construido"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -530,7 +552,8 @@
       "project_missing": "El proyecto ya no existe."
     },
     "scanErrorsLink": "Ver los {{count}} documentos con errores",
-    "duplicatesLink": "Revisar los grupos de duplicados"
+    "duplicatesLink": "Revisar los grupos de duplicados",
+    "contextLink": "Ver el contexto"
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -747,5 +770,138 @@
     "excluded": "No se aplica",
     "chosen": "Elegido a mano",
     "resetChoices": "Restablecer las elecciones"
+  },
+  "context": {
+    "back": "← Volver a «{{name}}»",
+    "title": "Contexto",
+    "intro": "Clasifica los documentos convertidos por dominios, los copia a una carpeta reorganizada del proyecto y genera un sitio navegable.",
+    "empty": "El proyecto aún no tiene contexto.",
+    "readOnly": "La ubicación de destino es de solo lectura: el contexto no se puede construir ni cambiar.",
+    "catalog": {
+      "discover": "Descubrir dominios",
+      "domains": "Catálogo propio",
+      "template": "Plantilla",
+      "manifest": "Manifiesto del proyecto"
+    },
+    "summary": {
+      "title": "Contexto construido el {{date}}",
+      "openRun": "Ver la ejecución",
+      "folder": "Carpeta «{{folder}}»",
+      "domains": "Dominios",
+      "documents": "Clasificados",
+      "unclassified": "Sin clasificar",
+      "failed": "No copiados",
+      "collisions": "Nombre repetido"
+    },
+    "warnings": {
+      "failed_one": "{{count}} documento no se pudo copiar a la carpeta reorganizada (p. ej. pasa por un enlace).",
+      "failed_other": "{{count}} documentos no se pudieron copiar a la carpeta reorganizada (p. ej. pasan por un enlace).",
+      "collisions_one": "{{count}} documento comparte nombre con otro del mismo dominio y tipo: en la carpeta reorganizada solo queda uno.",
+      "collisions_other": "{{count}} documentos comparten nombre con otro del mismo dominio y tipo: en la carpeta reorganizada solo queda uno de cada nombre.",
+      "noSite": "El contexto no tiene sitio construido (no se pidió o falló: mira la ejecución)."
+    },
+    "build": {
+      "title": "Construir el contexto",
+      "rebuildTitle": "Reconstruir el contexto",
+      "catalog": "Catálogo de dominios",
+      "help": {
+        "discover": "doc_organize descubre los dominios a partir del contenido.",
+        "domains": "Solo se usan los dominios que escribas (un eje).",
+        "template": "Dominios y tipos de material de una plantilla (dos ejes).",
+        "manifest": "Dominios y tipos de material del manifiesto del proyecto (abajo)."
+      },
+      "domains": "Dominios",
+      "domainsHelp": "Escribe un dominio y pulsa Intro.",
+      "template": "Plantilla",
+      "noTemplates": "No hay plantillas",
+      "folder": "Carpeta reorganizada",
+      "folderHelp": "Dentro de la carpeta del proyecto. Solo se elige la primera vez.",
+      "folderFixed": "Se reconstruye en la carpeta «{{folder}}» (para cambiarla, borra antes el contexto).",
+      "threshold": "Umbral de clasificación",
+      "site": "Construir el sitio",
+      "run": "Construir",
+      "rebuild": "Reconstruir"
+    },
+    "domains": {
+      "title": "Dominios",
+      "name": "Dominio",
+      "status": "Estado",
+      "documents": "Documentos",
+      "unclassified": "Sin clasificar",
+      "statuses": {
+        "borrador": "Borrador",
+        "confirmado": "Confirmado"
+      }
+    },
+    "documents": {
+      "filter": "Filtrar documentos",
+      "all": "Todos",
+      "failed": "No copiados",
+      "collision": "Nombre repetido",
+      "empty": "No hay documentos.",
+      "total_one": "{{formatted}} documento",
+      "total_other": "{{formatted}} documentos",
+      "title": "Título",
+      "original": "Original",
+      "type": "Tipo",
+      "copy": "Copia",
+      "view": "Ver conversión",
+      "notCopied": "No copiado",
+      "overwritten": "Nombre repetido"
+    },
+    "manifest": {
+      "title": "Manifiesto de taxonomía",
+      "intro": "taxonomy_manifest.md de la carpeta del proyecto: el catálogo «Manifiesto del proyecto» lo usa al construir.",
+      "invalid": "El manifiesto no es válido",
+      "catalog": "{{domains}} dominios y {{materials}} tipos de material.",
+      "markdown": "Markdown (front matter YAML con domains y material_types)",
+      "save": "Guardar manifiesto",
+      "saved": "Manifiesto guardado.",
+      "tooLarge": "Pasa de 256 KiB."
+    },
+    "site": {
+      "open": "Ver el sitio",
+      "title": "Sitio del contexto",
+      "back": "← Volver al contexto de «{{name}}»",
+      "isolated": "El sitio se muestra aislado: sus scripts no pueden usar tu sesión ni leer datos de la aplicación.",
+      "expires": "El acceso caduca el {{date}}",
+      "renew": "Renovar acceso",
+      "newTab": "Abrir en otra pestaña",
+      "frame": "Sitio del contexto"
+    }
+  },
+  "templates": {
+    "title": "Plantillas de taxonomía",
+    "intro": "Catálogos de dominios y tipos de material para construir el contexto. Las incluidas en doc_organize no se cambian: duplícalas para adaptarlas.",
+    "new": "Nueva plantilla",
+    "builtin": "Incluida",
+    "duplicate": "Duplicar",
+    "download": "Descargar .md",
+    "duplicateNamed": "Duplicar {{name}}",
+    "editNamed": "Editar {{name}}",
+    "downloadNamed": "Descargar {{name}} como Markdown",
+    "deleteNamed": "Borrar {{name}}",
+    "newTitle": "Nueva plantilla",
+    "editTitle": "Editar «{{name}}»",
+    "nameHelp": "Minúsculas, dígitos y guiones (p. ej. sgi-2026). No puede ser el de una incluida.",
+    "nameInvalid": "Solo minúsculas, dígitos y guiones (hasta 64).",
+    "markdownHelp": "Front matter YAML entre --- con title, description, domains y material_types; después, notas libres.",
+    "fields": {
+      "name": "Nombre",
+      "title": "Título",
+      "updated": "Modificada",
+      "markdown": "Markdown"
+    },
+    "import": {
+      "button": "Importar .md",
+      "tooLarge": "El fichero pasa de 256 KiB.",
+      "unreadable": "No se pudo leer el fichero."
+    },
+    "delete": {
+      "title": "Borrar «{{name}}»",
+      "body": "Los contextos ya construidos con ella no cambian.",
+      "confirm": "Borrar plantilla"
+    },
+    "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista)."
   }
 }

@@ -327,6 +327,8 @@ Operation = Literal[
     "search_index",
     "dedup_preview",
     "dedup_apply",
+    "context_build",
+    "context_delete",
 ]
 
 
@@ -624,3 +626,104 @@ class DuplicatesLastOut(BaseModel):
 
     preview: RunBrief | None
     apply: RunBrief | None
+
+
+# --- Fase 7: contexto y taxonomías ----------------------------------------------------------------------------------
+
+
+class CatalogEntryOut(BaseModel):
+    """Dominio o tipo de material de una plantilla o manifiesto."""
+
+    slug: str
+    name: str
+
+
+class TaxonomyTemplateOut(BaseModel):
+    """Plantilla de taxonomía en el listado: ``builtin`` = incluida en doc_organize (solo lectura)."""
+
+    name: str
+    title: str | None
+    description: str | None
+    builtin: bool
+    updated_at: datetime | None = None
+
+
+class TaxonomyTemplateList(BaseModel):
+    items: list[TaxonomyTemplateOut]
+
+
+class TaxonomyTemplateDetail(TaxonomyTemplateOut):
+    """Plantilla con su Markdown y su catálogo."""
+
+    markdown: str
+    domains: list[CatalogEntryOut]
+    material_types: list[CatalogEntryOut]
+
+
+class TaxonomyMarkdownIn(BaseModel):
+    """Markdown de una plantilla o manifiesto: front matter YAML (``domains``, ``material_types``) y prosa."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str = Field(min_length=1, max_length=262_144)
+
+
+class TaxonomyManifestOut(BaseModel):
+    """``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido."""
+
+    markdown: str | None
+    error: str | None = None
+    domains: list[CatalogEntryOut] = []
+    material_types: list[CatalogEntryOut] = []
+
+
+class ContextDomainOut(BaseModel):
+    slug: str
+    name: str
+    description: str | None
+    status: str
+    documents: int
+
+
+class ContextOut(BaseModel):
+    """Resumen del contexto construido del proyecto (proyección del último ``context_build``)."""
+
+    output_folder_name: str
+    catalog_kind: str
+    taxonomy_template_name: str | None
+    documents_count: int
+    unclassified_count: int
+    failed_count: int
+    collisions_count: int
+    site_built: bool
+    domains: list[ContextDomainOut]
+    built_by_run_id: str | None
+    built_at: datetime
+
+
+class ContextDocumentOut(_Out):
+    """Documento del contexto: original (``folder`` + ``path``) y copia relativa a la carpeta del proyecto."""
+
+    title: str
+    domain_slug: str | None
+    document_type: str | None
+    material_type: str | None
+    material_type_name: str | None
+    folder: str
+    path: str
+    organized_path: str | None
+    failed: bool
+    collision: bool
+    output_path: str | None = None
+
+
+class ContextDocumentPage(BaseModel):
+    items: list[ContextDocumentOut]
+    total: int
+
+
+class SiteSessionOut(BaseModel):
+    """URL del sitio aislado (con su token) y su caducidad."""
+
+    url: str
+    expires_at: datetime

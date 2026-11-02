@@ -15,7 +15,7 @@ def test_health_ok(client: TestClient) -> None:
     assert body["status"] == "ok"
     assert body["database"] == "ok"
     assert body["version"] == __version__
-    assert body["doc_organize_version"] == "0.12.1"
+    assert body["doc_organize_version"] == "0.13.0"
 
 
 def test_health_degraded_without_database(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -27,7 +27,7 @@ def test_health_degraded_without_database(client: TestClient, monkeypatch: pytes
     assert response.json() | {"version": None} == {
         "status": "degraded",
         "version": None,
-        "doc_organize_version": "0.12.1",
+        "doc_organize_version": "0.13.0",
         "database": "error",
         "locations": "unknown",
         "worker": "unknown",

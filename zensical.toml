@@ -25,6 +25,7 @@ nav = [
     "guides/escaneo.md",
     "guides/documentos.md",
     "guides/duplicados.md",
+    "guides/contexto.md",
   ] },
   { "Operación" = [
     "guides/despliegue.md",
@@ -42,6 +43,7 @@ nav = [
       "adr/ADR-006-integracion-doc-organize.md",
       "adr/ADR-007-ubicaciones.md",
       "adr/ADR-008-progreso-sse.md",
+      "adr/ADR-010-sitio-de-contexto-aislado.md",
       "adr/ADR-011-modelos-sin-internet.md",
       "adr/ADR-012-ajustes-administrables.md",
     ] },

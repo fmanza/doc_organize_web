@@ -225,6 +225,402 @@
         "title": "CapabilitiesOut",
         "type": "object"
       },
+      "CatalogEntryOut": {
+        "description": "Dominio o tipo de material de una plantilla o manifiesto.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "CatalogEntryOut",
+        "type": "object"
+      },
+      "ContextBuildParams": {
+        "additionalProperties": false,
+        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.",
+        "properties": {
+          "build_site": {
+            "default": true,
+            "title": "Build Site",
+            "type": "boolean"
+          },
+          "catalog": {
+            "default": "discover",
+            "enum": [
+              "discover",
+              "domains",
+              "template",
+              "manifest"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Domains",
+            "type": "array"
+          },
+          "operation": {
+            "const": "context_build",
+            "default": "context_build",
+            "title": "Operation",
+            "type": "string"
+          },
+          "output_folder_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Folder Name"
+          },
+          "template_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          },
+          "threshold": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "title": "ContextBuildParams",
+        "type": "object"
+      },
+      "ContextDeleteParams": {
+        "additionalProperties": false,
+        "description": "Borrar el contexto: carpeta reorganizada, ``context.json``, ``domains/`` y el sitio (no toca ``Conversión/``).",
+        "properties": {
+          "confirm_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Name"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "context_delete",
+            "default": "context_delete",
+            "title": "Operation",
+            "type": "string"
+          },
+          "preview_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Run Id"
+          }
+        },
+        "title": "ContextDeleteParams",
+        "type": "object"
+      },
+      "ContextDocumentOut": {
+        "description": "Documento del contexto: original (``folder`` + ``path``) y copia relativa a la carpeta del proyecto.",
+        "properties": {
+          "collision": {
+            "title": "Collision",
+            "type": "boolean"
+          },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type"
+          },
+          "domain_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Slug"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "boolean"
+          },
+          "folder": {
+            "title": "Folder",
+            "type": "string"
+          },
+          "material_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Type"
+          },
+          "material_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Type Name"
+          },
+          "organized_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organized Path"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "domain_slug",
+          "document_type",
+          "material_type",
+          "material_type_name",
+          "folder",
+          "path",
+          "organized_path",
+          "failed",
+          "collision"
+        ],
+        "title": "ContextDocumentOut",
+        "type": "object"
+      },
+      "ContextDocumentPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDocumentOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ContextDocumentPage",
+        "type": "object"
+      },
+      "ContextDomainOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "description",
+          "status",
+          "documents"
+        ],
+        "title": "ContextDomainOut",
+        "type": "object"
+      },
+      "ContextOut": {
+        "description": "Resumen del contexto construido del proyecto (proyección del último ``context_build``).",
+        "properties": {
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "built_by_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built By Run Id"
+          },
+          "catalog_kind": {
+            "title": "Catalog Kind",
+            "type": "string"
+          },
+          "collisions_count": {
+            "title": "Collisions Count",
+            "type": "integer"
+          },
+          "documents_count": {
+            "title": "Documents Count",
+            "type": "integer"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomainOut"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "failed_count": {
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "output_folder_name": {
+            "title": "Output Folder Name",
+            "type": "string"
+          },
+          "site_built": {
+            "title": "Site Built",
+            "type": "boolean"
+          },
+          "taxonomy_template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy Template Name"
+          },
+          "unclassified_count": {
+            "title": "Unclassified Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "output_folder_name",
+          "catalog_kind",
+          "taxonomy_template_name",
+          "documents_count",
+          "unclassified_count",
+          "failed_count",
+          "collisions_count",
+          "site_built",
+          "domains",
+          "built_by_run_id",
+          "built_at"
+        ],
+        "title": "ContextOut",
+        "type": "object"
+      },
       "CsrfToken": {
         "description": "Token CSRF para la cabecera ``X-CSRF-Token``.",
         "properties": {
@@ -1981,7 +2377,9 @@
               "export_xlsx",
               "search_index",
               "dedup_preview",
-              "dedup_apply"
+              "dedup_apply",
+              "context_build",
+              "context_delete"
             ],
             "title": "Operation",
             "type": "string"
@@ -2095,7 +2493,9 @@
               "export_xlsx",
               "search_index",
               "dedup_preview",
-              "dedup_apply"
+              "dedup_apply",
+              "context_build",
+              "context_delete"
             ],
             "title": "Operation",
             "type": "string"
@@ -2799,6 +3199,238 @@
         "title": "SettingsUpdate",
         "type": "object"
       },
+      "SiteSessionOut": {
+        "description": "URL del sitio aislado (con su token) y su caducidad.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "SiteSessionOut",
+        "type": "object"
+      },
+      "TaxonomyManifestOut": {
+        "description": "``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.",
+        "properties": {
+          "domains": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryOut"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "material_types": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryOut"
+            },
+            "title": "Material Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TaxonomyManifestOut",
+        "type": "object"
+      },
+      "TaxonomyMarkdownIn": {
+        "additionalProperties": false,
+        "description": "Markdown de una plantilla o manifiesto: front matter YAML (``domains``, ``material_types``) y prosa.",
+        "properties": {
+          "markdown": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TaxonomyMarkdownIn",
+        "type": "object"
+      },
+      "TaxonomyTemplateDetail": {
+        "description": "Plantilla con su Markdown y su catálogo.",
+        "properties": {
+          "builtin": {
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryOut"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "material_types": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryOut"
+            },
+            "title": "Material Types",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "description",
+          "builtin",
+          "markdown",
+          "domains",
+          "material_types"
+        ],
+        "title": "TaxonomyTemplateDetail",
+        "type": "object"
+      },
+      "TaxonomyTemplateList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyTemplateOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TaxonomyTemplateList",
+        "type": "object"
+      },
+      "TaxonomyTemplateOut": {
+        "description": "Plantilla de taxonomía en el listado: ``builtin`` = incluida en doc_organize (solo lectura).",
+        "properties": {
+          "builtin": {
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "description",
+          "builtin"
+        ],
+        "title": "TaxonomyTemplateOut",
+        "type": "object"
+      },
       "UserBrief": {
         "description": "Usuario activo para invitar a un proyecto.",
         "properties": {
@@ -3174,7 +3806,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4443,6 +5075,326 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/context": {
+      "get": {
+        "description": "Resumen del último contexto construido (404 ``context_not_found`` si no hay).",
+        "operationId": "get_context_api_v1_projects__project_id__context_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Contexto del proyecto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/documents": {
+      "get": {
+        "operationId": "list_context_documents_api_v1_projects__project_id__context_documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Slug del dominio; sin él, los documentos sin clasificar",
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Slug del dominio; sin él, los documentos sin clasificar",
+              "title": "Domain"
+            }
+          },
+          {
+            "description": "Solo fallidos o con colisión (G30)",
+            "in": "query",
+            "name": "only",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "failed",
+                    "collision"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo fallidos o con colisión (G30)",
+              "title": "Only"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextDocumentPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Documentos del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/site-session": {
+      "post": {
+        "description": "URL del sitio aislado con un token ligado a esta sesión y a este proyecto (caduca en una hora, ADR-010).",
+        "operationId": "open_site_api_v1_projects__project_id__context_site_session_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Sin sitio construido (site_not_found) o sin acceso"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abrir el sitio del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest": {
+      "get": {
+        "operationId": "get_manifest_api_v1_projects__project_id__context_taxonomy_manifest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyManifestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "No es un fichero normal (manifest_replaced)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Manifiesto de taxonomía del proyecto",
+        "tags": [
+          "context"
+        ]
+      },
+      "put": {
+        "description": "Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto (lo usa el catálogo «manifiesto»).",
+        "operationId": "put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyMarkdownIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyManifestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"
+          },
+          "422": {
+            "description": "Markdown no válido (template_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Guardar manifiesto de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/documents": {
       "get": {
         "description": "Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda\nmira la ruta relativa a la carpeta, nunca la del servidor.",
@@ -4980,6 +5932,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/DedupApplyParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextBuildParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextDeleteParams"
                   }
                 ],
                 "title": "Body"
@@ -5440,7 +6398,9 @@
                     "export_xlsx",
                     "search_index",
                     "dedup_preview",
-                    "dedup_apply"
+                    "dedup_apply",
+                    "context_build",
+                    "context_delete"
                   ],
                   "type": "string"
                 },
@@ -6038,6 +6998,218 @@
         "summary": "Revocar sesión",
         "tags": [
           "sessions"
+        ]
+      }
+    },
+    "/api/v1/taxonomy-templates": {
+      "get": {
+        "description": "Incluidas en doc_organize y personalizadas; cualquier usuario las ve para elegir una al construir el contexto.",
+        "operationId": "list_templates_api_v1_taxonomy_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyTemplateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          }
+        },
+        "summary": "Plantillas de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/taxonomy-templates/{name}": {
+      "delete": {
+        "operationId": "delete_template_api_v1_taxonomy_templates__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Solo administradores"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Plantilla incluida en doc_organize (template_builtin)"
+          },
+          "422": {
+            "description": "Nombre o Markdown no válidos (template_invalid)"
+          }
+        },
+        "summary": "Borrar plantilla de taxonomía",
+        "tags": [
+          "context"
+        ]
+      },
+      "get": {
+        "operationId": "get_template_api_v1_taxonomy_templates__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyTemplateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver plantilla de taxonomía",
+        "tags": [
+          "context"
+        ]
+      },
+      "put": {
+        "description": "Valida el Markdown con doc_organize y guarda la plantilla personalizada (201 si es nueva).",
+        "operationId": "put_template_api_v1_taxonomy_templates__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyMarkdownIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyTemplateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Solo administradores"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Plantilla incluida en doc_organize (template_builtin)"
+          },
+          "422": {
+            "description": "Nombre o Markdown no válidos (template_invalid)"
+          }
+        },
+        "summary": "Crear o sustituir plantilla de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/taxonomy-templates/{name}/download": {
+      "get": {
+        "description": "Mejora opcional de la Fase 7: el Markdown de la plantilla como fichero ``<nombre>.md``.",
+        "operationId": "download_template_api_v1_taxonomy_templates__name__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/markdown": {}
+            },
+            "description": "Plantilla (.md)"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Descargar plantilla como Markdown",
+        "tags": [
+          "context"
         ]
       }
     },

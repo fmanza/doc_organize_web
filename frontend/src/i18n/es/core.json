@@ -14,7 +14,8 @@
     "actions": "Acciones",
     "yes": "Sí",
     "no": "No",
-    "back": "Volver"
+    "back": "Volver",
+    "delete": "Borrar"
   },
   "roles": {
     "admin": "Administrador",
@@ -36,7 +37,8 @@
     "users": "Usuarios",
     "sessions": "Sesiones",
     "audit": "Auditoría",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "taxonomy-templates": "Plantillas de taxonomía"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",

@@ -24,7 +24,8 @@ import { isActive, useRun } from '../runs/useRuns';
 import { DEFAULT_SCAN_OPTIONS, type ScanOptions } from '../scan/useScan';
 import { type ProjectOut, type RunRequest, useEnqueueRun } from './useProjects';
 
-export type DangerousOperation = 'history_clear' | 'project_move' | 'project_delete' | 'scan_force';
+export type DangerousOperation =
+  'history_clear' | 'project_move' | 'project_delete' | 'scan_force' | 'context_delete';
 
 interface DangerousOperationModalProps {
   project: ProjectOut;

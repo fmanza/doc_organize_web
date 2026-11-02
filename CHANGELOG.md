@@ -5,6 +5,64 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-02
+
+Fase 7 — contexto y taxonomías. Con doc_organize **0.13.0** (L-8 y L-8a…L-8c, pedidas antes de la fase).
+
+### Added
+
+- **backend**: plantillas de taxonomía ([guía](docs/guides/contexto.md#plantillas-de-taxonomía)):
+  - las incluidas en doc_organize (`calidad`, `sgi-integrado`, `sgi-iso27001`) se listan y leen, en solo lectura;
+  - las personalizadas viven en `taxonomy_templates` (migración `0007_context`) y las gestiona el admin
+    (`PUT`/`DELETE /api/v1/taxonomy-templates/{name}`, auditado), con el Markdown validado por doc_organize. No pueden
+    usar el nombre de una incluida (409 `template_builtin`).
+  - Mejora opcional: `GET /api/v1/taxonomy-templates/{name}/download` exporta cualquier plantilla como `.md`.
+- **backend**: contexto del proyecto ([guía](docs/guides/contexto.md)):
+  - run `context_build` (editor, destino `rw`): reúne los documentos convertidos cuyo original, `.md` y `.json` siguen
+    ahí; clasifica por dominios (descubiertos, catálogo propio, plantilla o manifiesto del proyecto); copia a la
+    carpeta reorganizada sin seguir enlaces; construye el sitio Zensical con `DOW_CONTEXT_SITE_TIMEOUT_SECONDS` (600 s
+    por defecto).
+    - Los documentos que no se copian y las colisiones de nombre (G30) quedan como avisos.
+    - La clasificación se cancela entre documentos.
+    - La plantilla se fija al encolar, con su Markdown vigente, que no se devuelve en el run.
+  - run `context_delete` (propietario, con vista previa y nombre del proyecto): borra la carpeta reorganizada, el
+    sitio, `context.json` y `domains/`. Solo actúa sobre la carpeta de la vista previa confirmada.
+  - El resumen y los documentos se proyectan en `project_contexts` y `context_documents`.
+    `GET /api/v1/projects/{id}/context` y `.../context/documents` (por dominio o sin clasificar, filtros «no copiados» y
+    «nombre repetido») paginan sin leer el destino.
+  - `GET`/`PUT /api/v1/projects/{id}/context/taxonomy-manifest`: el manifiesto del proyecto, validado; el `PUT` exige
+    editor, destino `rw` y que no haya otra escritura en el proyecto.
+- **backend**: sitio aislado ([ADR-010](docs/adr/ADR-010-sitio-de-contexto-aislado.md)):
+  - `POST /api/v1/projects/{id}/context/site-session` da una URL `/site/<token>/` con un token firmado, ligado a la
+    sesión y al proyecto, que caduca en una hora;
+  - `/site/` sirve el sitio con una CSP `sandbox` propia (sin `allow-same-origin`), `no-referrer` y `no-store`, a
+    través del resolvedor y sin seguir enlaces. El token no se escribe en los registros.
+- **frontend**: pantalla «Contexto» del proyecto: construir con los cuatro catálogos, dominios y documentos paginados,
+  avisos, manifiesto editable, borrar en dos pasos y visor del sitio en un iframe `sandbox`. «Plantillas de taxonomía»
+  en la administración: duplicar las incluidas, crear, editar, importar y exportar `.md`.
+- **docs**: guía `contexto.md` y ADR-010.
+
+### Changed
+
+- **backend**: doc_organize **0.13.0** con el extra `site` (zensical; la imagen no lleva mkdocs). G10 y G27–G29 pasan
+  a «Resueltos».
+- **backend**: vaciar el histórico del proyecto borra también la proyección del contexto.
+- **docker**: uvicorn arranca con `--no-access-log`; el registro de accesos es el de la aplicación, que oculta el
+  token del sitio.
+
+### Security
+
+- **backend**: la carpeta reorganizada que se lee de `context.json` (que se puede cambiar desde el recurso de red) se
+  valida antes de copiar o borrar (G32), y los temporales `.tmp` que doc_organize escribe sin `O_NOFOLLOW` se quitan
+  si no son ficheros normales (G31). Se piden a doc_organize como L-8e y L-8f.
+
+### Notas
+
+- Dos documentos con el mismo nombre en el mismo dominio y tipo se sobrescriben en la carpeta reorganizada (G30,
+  limitación de doc_organize): la web los marca y avisa. Pedido como L-8d.
+- Un script incrustado en un documento puede leer la URL del sitio con su token: es un riesgo aceptado y acotado
+  (lectura del sitio de ese proyecto, una hora como mucho, mientras siga la sesión). Ver ADR-010.
+
 ## [0.7.0] - 2026-11-02
 
 Fase 6 — duplicados. Con doc_organize **0.12.1** (L-11a: ruta relativa en `duplicados/` y movimiento sin seguir
