@@ -40,6 +40,7 @@ from app.db.session import get_engine
 from app.domain.identity.sessions import resolve_session
 from app.domain.runs import events, service
 from app.domain.runs.errors import ArtifactGoneError, ArtifactNotFoundError, RunNotFoundError
+from app.domain.runs.operations import HIDDEN_PARAMS
 from app.domain.scan import scan_errors
 from app.workspace import runs as workspace
 
@@ -76,10 +77,12 @@ def _can_cancel(run: Run, user: User, role: MemberRole | None) -> bool:
 
 
 def public_params(params: dict[str, Any]) -> dict[str, Any]:
-    """Parámetros que se devuelven: la lista de grupos de ``dedup_apply`` (hasta 10 000) se resume en su número."""
+    """Parámetros que se devuelven: la lista de grupos de ``dedup_apply`` (hasta 10 000) se resume en su número y el
+    Markdown de la plantilla de ``context_build`` no se devuelve."""
     if params.get("operation") == "dedup_apply" and isinstance(params.get("groups"), list):
         return params | {"groups": len(params["groups"])}
-    return params
+    hidden = HIDDEN_PARAMS.get(str(params.get("operation")), ())
+    return {key: value for key, value in params.items() if key not in hidden}
 
 
 def run_out(

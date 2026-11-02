@@ -162,6 +162,9 @@ export function ProjectDetailPage() {
             <Button component={Link} to={`/projects/${project.id}/duplicates`} variant="light">
               {t('projects.duplicates')}
             </Button>
+            <Button component={Link} to={`/projects/${project.id}/context`} variant="light">
+              {t('projects.context')}
+            </Button>
             {me?.role === 'admin' && (
               <Button
                 variant="default"

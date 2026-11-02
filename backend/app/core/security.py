@@ -48,3 +48,11 @@ def session_csrf_token(settings: Settings, session_token: str) -> str:
 def tokens_match(a: str, b: str) -> bool:
     """Comparación en tiempo constante."""
     return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def sign(settings: Settings, purpose: str, message: str) -> str:
+    """``HMAC-SHA256(subclave, message)`` en hexadecimal, con una subclave por uso derivada de la clave de la app
+    (``HMAC(clave, purpose)``): una firma de un uso (p. ej. el token del sitio de contexto, ADR-010) no vale para otro.
+    """
+    subkey = hmac.new(_signing_key(settings), purpose.encode("utf-8"), hashlib.sha256).digest()
+    return hmac.new(subkey, message.encode("utf-8"), hashlib.sha256).hexdigest()

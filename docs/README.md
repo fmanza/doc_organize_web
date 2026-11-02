@@ -5,11 +5,11 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, detecta duplicados y genera un contexto navegable por dominios, con proyectos,
 miembros y ejecuciones en segundo plano.
 
-> **Estado: Fase 6 (duplicados, 0.7.0).** Inicio de sesión, usuarios, ubicaciones locales y de red, ajustes
+> **Estado: Fase 7 (contexto y taxonomías, 0.8.0).** Inicio de sesión, usuarios, ubicaciones locales y de red, ajustes
 > administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo, escaneo incremental con OCR
-> y GPU, visor de documentos convertidos, búsqueda de texto completo, exportaciones y duplicados en dos pasos
+> y GPU, visor de documentos convertidos, búsqueda de texto completo, exportaciones, duplicados en dos pasos y contexto por dominios con sitio navegable
 > ([Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md), [Escaneo](guides/escaneo.md),
-> [Documentos](guides/documentos.md), [Duplicados](guides/duplicados.md)). Las funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
+> [Documentos](guides/documentos.md), [Duplicados](guides/duplicados.md), [Contexto](guides/contexto.md)). Las funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
 > la interfaz hasta alcanzar la [paridad](plan/PARIDAD.md).
 
 ## Uso

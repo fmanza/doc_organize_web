@@ -11,3 +11,4 @@ Una carpeta por sesión (`AAAA-MM-DD-<slug>/`) creada a partir de [`TEMPLATE/`](
 | [2026-11-01-fase4](2026-11-01-fase4/TRACEABILITY.md) | phase | Fase 4 cerrada (0.5.0): escaneo y conversión, Pillow 13, variante GPU |
 | [2026-11-02-fase5](2026-11-02-fase5/TRACEABILITY.md) | phase | Fase 5 cerrada (0.6.0): documentos, visor, exportaciones, búsqueda FTS5 y backup |
 | [2026-11-02-fase6](2026-11-02-fase6/TRACEABILITY.md) | phase | Fase 6 cerrada (0.7.0): duplicados en dos pasos con doc_organize 0.12.1 |
+| [2026-11-02-fase7](2026-11-02-fase7/TRACEABILITY.md) | phase | Fase 7 cerrada (0.8.0): contexto, taxonomías y sitio aislado con doc_organize 0.13.0 |

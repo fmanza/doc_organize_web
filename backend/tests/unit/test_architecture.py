@@ -89,3 +89,25 @@ def test_listing_documents_never_loads_docling(tmp_path: Path) -> None:
     )
 
     assert completed.stdout.strip() == "[]"
+
+
+def test_templates_manifest_and_site_paths_never_load_docling(tmp_path: Path) -> None:
+    """Fase 7: la API valida plantillas y manifiestos (``parse_taxonomy_template``), lista las incluidas, valida la
+    carpeta del contexto y calcula las rutas del sitio y del manifiesto (``ProjectLayout``) sin Docling ni torch."""
+    code = "\n".join(
+        [
+            "import sys, pathlib",
+            "from app.integrations.doc_organize import context",
+            "context.builtin_templates(); context.builtin_template_markdown('calidad')",
+            "context.parse_template(context.builtin_template_markdown('calidad') or '')",
+            "context.check_folder_name('organizado')",
+            f"root = pathlib.Path({str(tmp_path)!r})",
+            "context.manifest_file(root); context.site_dir(root)",
+            "print(sorted(m for m in sys.modules if m.split('.')[0] in {'docling', 'torch'}))",
+        ]
+    )
+    completed = subprocess.run(  # noqa: S603 - intérprete actual con código fijo
+        [sys.executable, "-c", code], cwd=APP_DIR.parent, capture_output=True, text=True, check=True
+    )
+
+    assert completed.stdout.strip() == "[]"

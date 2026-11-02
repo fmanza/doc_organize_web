@@ -48,10 +48,25 @@ L-11a en **0.12.1** (2026-11-02), que cierra G24 y G26.
 | L-10e | API de lectura para la web | `resolve_output_paths`/`resolve_images_dir` en un módulo sin Docling; `CacheManager(read_only=True)`; filtros por ruta relativa y `conversion_status=` en `count_entries`/`load_cache_page`; `source_path` relativo a la carpeta escaneada en el JSON de cada documento | G20–G23 |
 | L-11a | Ruta relativa en `duplicados/` (Fase 6) | Parámetro `relative_to` en `move_group`/`resolve_duplicates`/`_move_to_duplicates`: el destino replica la ruta relativa a esa raíz en lugar de la absoluta; un documento fuera de ella falla por fichero; además, no seguir enlaces simbólicos al mover o copiar (ni en el origen ni en la base de `duplicados/`) (no confundir con L-11, retirada de `web/`) | G24, G26 |
 
-## Versión 0.13.0 — deprecación de la web (cuando F8 de la web esté cerrada)
+## Peticiones de la Fase 7 (huecos G10, G27–G32)
 
-> La 0.12.0 se usó para L-10a…L-10e (robustez del escaneo y API de lectura, G16–G23): L-10 pasa a la siguiente
-> MINOR (2026-11-02).
+L-8 (prevista para 0.11.0) no se publicó con L-7. Se pidió antes de la Fase 7 (decisión del mantenedor, 2026-11-02),
+junto con L-8a…L-8c, y salieron en **0.13.0** (2026-11-02). L-8d…L-8f salen de AUDIT_CODE de la Fase 7 y no
+bloquean: la web tiene rodeo.
+
+| ID | Tarea | Detalle | Hueco |
+|---|---|---|---|
+| L-8a | Reorganizar sin seguir enlaces | `Reorganizer` copia original, Markdown, JSON e imágenes sin seguir enlaces simbólicos (mismo criterio que `_move_to_duplicates` en 0.12.1); un documento enlazado falla por documento, sin copiar el destino del enlace | G27 |
+| L-8b | Rutas del contexto públicas | `ProjectLayout` expone las rutas del contexto y del sitio, y un conjunto público de nombres reservados para la carpeta reorganizada | G28 |
+| L-8c | Plantillas de taxonomía como texto | `parse_taxonomy_template`/`render_taxonomy_template` (ida y vuelta estable) y listado/carga de las plantillas empaquetadas sin carpeta de usuario | G29 |
+| L-8d | Desambiguar nombres al reorganizar | Dos documentos con el mismo `stem` en el mismo dominio y tipo no se sobrescriben en la carpeta reorganizada | G30 |
+| L-8e | Temporales sin seguir enlaces | Las escrituras atómicas crean el `.tmp` con `O_EXCL \| O_NOFOLLOW` | G31 |
+| L-8f | Validar `Context.output_folder_name` al cargar | `ContextRegistry.load_context` rechaza un nombre que no pase `validate_output_folder_name` | G32 |
+
+## Versión 0.14.0 — deprecación de la web (cuando F8 de la web esté cerrada)
+
+> La 0.12.0 se usó para L-10a…L-10e (robustez del escaneo y API de lectura, G16–G23) y la 0.13.0 para L-8 y
+> L-8a…L-8c (Fase 7): L-10 pasa a la siguiente MINOR (2026-11-02).
 
 | ID | Tarea | Detalle |
 |---|---|---|

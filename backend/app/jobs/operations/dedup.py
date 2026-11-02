@@ -32,7 +32,7 @@ from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.dedup import DedupDocument, DedupGroup
 from app.jobs.context import JobCancelled, JobContext, JobFailed
-from app.jobs.operations._files import project_paths, require_rw, resolve_in
+from app.jobs.operations._files import project_paths, require_rw, resolve_in, source_folders
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
 
 #: Documentos sin agrupar como máximo para el modo «nombre parecido» (matriz n×n en memoria; decisión C4).
@@ -44,31 +44,12 @@ EXPORT_DIR: Final = "export"
 _FORMULA: Final = re.compile(r"^[=+\-@\t\r]")
 
 
-def _folders(ctx: JobContext, project: Project) -> list[tuple[str, Path]]:
-    """``(subpath, ruta resuelta)`` de las carpetas de origen que existen; las demás se avisan y se saltan."""
-    found: list[tuple[str, Path]] = []
-    for subpath in sorted(project.source_subpaths, key=str.casefold):
-        try:
-            resolved = resolve_in(project.source_location, subpath, ctx)
-        except JobFailed as exc:
-            if exc.code != "folder_missing":
-                raise
-            ctx.log(exc.message, level="warning")
-            continue
-        # Una carpeta sustituida por un enlace a otra de la ubicación no es la carpeta del proyecto: se salta.
-        if resolved.relative != subpath:
-            ctx.log(f"La carpeta «{subpath}» ya no es la registrada; se salta.", level="warning")
-            continue
-        found.append((subpath, resolved.absolute))
-    return found
-
-
 # --- vista previa ----------------------------------------------------------------------------------------------------
 
 
 def _documents(ctx: JobContext, project: Project, state: Path) -> tuple[list[DedupDocument], DocumentNamer, int]:
     """Documentos de las cachés que siguen en el origen, el traductor de rutas y cuántos de la caché ya no están."""
-    folders = _folders(ctx, project)
+    folders = source_folders(ctx, project)
     namer = DocumentNamer([(subpath, [root]) for subpath, root in folders], project.source_location.name)
     cached = library.dedup.cache_documents(folder_cache(state, subpath) for subpath, _ in folders)
     docs: list[DedupDocument] = []
@@ -289,7 +270,7 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
         require_rw(project.destination_location)
     # Rutas reales (resueltas una vez por el resolvedor): doc_organize 0.12.1 no sigue enlaces (G26).
     source_root = resolve_in(project.source_location, "", ctx).root
-    roots = dict(_folders(ctx, project))
+    roots = dict(source_folders(ctx, project))
     namer = DocumentNamer([(subpath, [root]) for subpath, root in roots.items()], project.source_location.name)
     keep_of = {choice.group_id: choice.keep for choice in params.groups}
     with ctx.session_factory() as db:

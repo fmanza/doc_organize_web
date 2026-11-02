@@ -81,7 +81,7 @@ VOLUME ["/data", "/workspace", "/models"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["python", "-c", "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=4); sys.exit(0 if json.load(r)['status']=='ok' else 1)"]
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--no-server-header"]
+CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--no-server-header", "--no-access-log"]
 
 # ---------- 4. Runtime GPU (worker de la cola gpu) ----------
 # docker build -f docker/Dockerfile --target runtime-gpu -t doc_organize_web:gpu .   (compose: perfil `gpu`)

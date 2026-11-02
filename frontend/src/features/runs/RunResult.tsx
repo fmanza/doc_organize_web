@@ -51,6 +51,10 @@ const COUNTS = new Set([
   'processed',
   'failed',
   'groups_done',
+  'domains',
+  'unclassified',
+  'collisions',
+  'missing_originals',
 ]);
 /** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
 const TRANSLATED = new Set(['mode']);

@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import health
+from app.api import health, site
 from app.api.v1 import router as v1_router
 from app.core.config import Settings, get_settings
 from app.core.errors import install_error_handlers, problem
@@ -43,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(health.router)
     api.include_router(v1_router)
     app.include_router(api)
+    app.include_router(site.router)  # antes de la SPA: su ruta comodín no debe tapar /site/
 
     _mount_spa(app, settings.static_dir)
     return app

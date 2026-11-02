@@ -391,6 +391,84 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto del proyecto
+         * @description Resumen del último contexto construido (404 ``context_not_found`` si no hay).
+         */
+        get: operations["get_context_api_v1_projects__project_id__context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentos del contexto */
+        get: operations["list_context_documents_api_v1_projects__project_id__context_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/site-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abrir el sitio del contexto
+         * @description URL del sitio aislado con un token ligado a esta sesión y a este proyecto (caduca en una hora, ADR-010).
+         */
+        post: operations["open_site_api_v1_projects__project_id__context_site_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Manifiesto de taxonomía del proyecto */
+        get: operations["get_manifest_api_v1_projects__project_id__context_taxonomy_manifest_get"];
+        /**
+         * Guardar manifiesto de taxonomía
+         * @description Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto (lo usa el catálogo «manifiesto»).
+         */
+        put: operations["put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/documents": {
         parameters: {
             query?: never;
@@ -768,6 +846,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/taxonomy-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plantillas de taxonomía
+         * @description Incluidas en doc_organize y personalizadas; cualquier usuario las ve para elegir una al construir el contexto.
+         */
+        get: operations["list_templates_api_v1_taxonomy_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/taxonomy-templates/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver plantilla de taxonomía */
+        get: operations["get_template_api_v1_taxonomy_templates__name__get"];
+        /**
+         * Crear o sustituir plantilla de taxonomía
+         * @description Valida el Markdown con doc_organize y guarda la plantilla personalizada (201 si es nueva).
+         */
+        put: operations["put_template_api_v1_taxonomy_templates__name__put"];
+        post?: never;
+        /** Borrar plantilla de taxonomía */
+        delete: operations["delete_template_api_v1_taxonomy_templates__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/taxonomy-templates/{name}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar plantilla como Markdown
+         * @description Mejora opcional de la Fase 7: el Markdown de la plantilla como fichero ``<nombre>.md``.
+         */
+        get: operations["download_template_api_v1_taxonomy_templates__name__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -938,6 +1078,158 @@ export interface components {
              * @default false
              */
             picture_description_ready: boolean;
+        };
+        /**
+         * CatalogEntryOut
+         * @description Dominio o tipo de material de una plantilla o manifiesto.
+         */
+        CatalogEntryOut: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ContextBuildParams
+         * @description Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).
+         *
+         *     ``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),
+         *     ``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).
+         *     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
+         *     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
+         *     descarta) y no se devuelve en el run.
+         */
+        ContextBuildParams: {
+            /**
+             * Build Site
+             * @default true
+             */
+            build_site: boolean;
+            /**
+             * Catalog
+             * @default discover
+             * @enum {string}
+             */
+            catalog: "discover" | "domains" | "template" | "manifest";
+            /** Domains */
+            domains?: string[];
+            /**
+             * Operation
+             * @default context_build
+             * @constant
+             */
+            operation: "context_build";
+            /** Output Folder Name */
+            output_folder_name?: string | null;
+            /** Template Markdown */
+            template_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+            /**
+             * Threshold
+             * @default 0.5
+             */
+            threshold: number;
+        };
+        /**
+         * ContextDeleteParams
+         * @description Borrar el contexto: carpeta reorganizada, ``context.json``, ``domains/`` y el sitio (no toca ``Conversión/``).
+         */
+        ContextDeleteParams: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default context_delete
+             * @constant
+             */
+            operation: "context_delete";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        };
+        /**
+         * ContextDocumentOut
+         * @description Documento del contexto: original (``folder`` + ``path``) y copia relativa a la carpeta del proyecto.
+         */
+        ContextDocumentOut: {
+            /** Collision */
+            collision: boolean;
+            /** Document Type */
+            document_type: string | null;
+            /** Domain Slug */
+            domain_slug: string | null;
+            /** Failed */
+            failed: boolean;
+            /** Folder */
+            folder: string;
+            /** Material Type */
+            material_type: string | null;
+            /** Material Type Name */
+            material_type_name: string | null;
+            /** Organized Path */
+            organized_path: string | null;
+            /** Output Path */
+            output_path?: string | null;
+            /** Path */
+            path: string;
+            /** Title */
+            title: string;
+        };
+        /** ContextDocumentPage */
+        ContextDocumentPage: {
+            /** Items */
+            items: components["schemas"]["ContextDocumentOut"][];
+            /** Total */
+            total: number;
+        };
+        /** ContextDomainOut */
+        ContextDomainOut: {
+            /** Description */
+            description: string | null;
+            /** Documents */
+            documents: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * ContextOut
+         * @description Resumen del contexto construido del proyecto (proyección del último ``context_build``).
+         */
+        ContextOut: {
+            /**
+             * Built At
+             * Format: date-time
+             */
+            built_at: string;
+            /** Built By Run Id */
+            built_by_run_id: string | null;
+            /** Catalog Kind */
+            catalog_kind: string;
+            /** Collisions Count */
+            collisions_count: number;
+            /** Documents Count */
+            documents_count: number;
+            /** Domains */
+            domains: components["schemas"]["ContextDomainOut"][];
+            /** Failed Count */
+            failed_count: number;
+            /** Output Folder Name */
+            output_folder_name: string;
+            /** Site Built */
+            site_built: boolean;
+            /** Taxonomy Template Name */
+            taxonomy_template_name: string | null;
+            /** Unclassified Count */
+            unclassified_count: number;
         };
         /**
          * CsrfToken
@@ -1728,7 +2020,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete";
             /**
              * Status
              * @enum {string}
@@ -1767,7 +2059,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -2083,6 +2375,90 @@ export interface components {
             values: {
                 [key: string]: number | null;
             };
+        };
+        /**
+         * SiteSessionOut
+         * @description URL del sitio aislado (con su token) y su caducidad.
+         */
+        SiteSessionOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * TaxonomyManifestOut
+         * @description ``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.
+         */
+        TaxonomyManifestOut: {
+            /**
+             * Domains
+             * @default []
+             */
+            domains: components["schemas"]["CatalogEntryOut"][];
+            /** Error */
+            error?: string | null;
+            /** Markdown */
+            markdown: string | null;
+            /**
+             * Material Types
+             * @default []
+             */
+            material_types: components["schemas"]["CatalogEntryOut"][];
+        };
+        /**
+         * TaxonomyMarkdownIn
+         * @description Markdown de una plantilla o manifiesto: front matter YAML (``domains``, ``material_types``) y prosa.
+         */
+        TaxonomyMarkdownIn: {
+            /** Markdown */
+            markdown: string;
+        };
+        /**
+         * TaxonomyTemplateDetail
+         * @description Plantilla con su Markdown y su catálogo.
+         */
+        TaxonomyTemplateDetail: {
+            /** Builtin */
+            builtin: boolean;
+            /** Description */
+            description: string | null;
+            /** Domains */
+            domains: components["schemas"]["CatalogEntryOut"][];
+            /** Markdown */
+            markdown: string;
+            /** Material Types */
+            material_types: components["schemas"]["CatalogEntryOut"][];
+            /** Name */
+            name: string;
+            /** Title */
+            title: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /** TaxonomyTemplateList */
+        TaxonomyTemplateList: {
+            /** Items */
+            items: components["schemas"]["TaxonomyTemplateOut"][];
+        };
+        /**
+         * TaxonomyTemplateOut
+         * @description Plantilla de taxonomía en el listado: ``builtin`` = incluida en doc_organize (solo lectura).
+         */
+        TaxonomyTemplateOut: {
+            /** Builtin */
+            builtin: boolean;
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+            /** Title */
+            title: string | null;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /**
          * UserBrief
@@ -3395,6 +3771,268 @@ export interface operations {
             };
         };
     };
+    get_context_api_v1_projects__project_id__context_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_context_documents_api_v1_projects__project_id__context_documents_get: {
+        parameters: {
+            query?: {
+                /** @description Slug del dominio; sin él, los documentos sin clasificar */
+                domain?: string | null;
+                /** @description Solo fallidos o con colisión (G30) */
+                only?: ("failed" | "collision") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_site_api_v1_projects__project_id__context_site_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteSessionOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sitio construido (site_not_found) o sin acceso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_manifest_api_v1_projects__project_id__context_taxonomy_manifest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyManifestOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No es un fichero normal (manifest_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxonomyMarkdownIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyManifestOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o no es un fichero normal (manifest_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Markdown no válido (template_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_documents_api_v1_projects__project_id__documents_get: {
         parameters: {
             query?: {
@@ -3814,7 +4452,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"];
             };
         };
         responses: {
@@ -4177,7 +4815,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete") | null;
                 limit?: number;
                 offset?: number;
             };
@@ -4605,6 +5243,239 @@ export interface operations {
                 content?: never;
             };
             /** @description No existe o es de otro usuario */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_api_v1_taxonomy_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyTemplateList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_template_api_v1_taxonomy_templates__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyTemplateDetail"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_template_api_v1_taxonomy_templates__name__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxonomyMarkdownIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyTemplateDetail"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Solo administradores */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plantilla incluida en doc_organize (template_builtin) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre o Markdown no válidos (template_invalid) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_template_api_v1_taxonomy_templates__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Solo administradores */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plantilla incluida en doc_organize (template_builtin) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre o Markdown no válidos (template_invalid) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    download_template_api_v1_taxonomy_templates__name__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plantilla (.md) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": unknown;
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
             404: {
                 headers: {
                     [name: string]: unknown;

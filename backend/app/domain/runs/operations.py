@@ -147,6 +147,47 @@ class SearchIndexParams(_Params):
     operation: Literal["search_index"] = "search_index"
 
 
+#: Tamaño máximo de una plantilla o manifiesto de taxonomía (Markdown).
+MAX_TEMPLATE_BYTES: Final = 256 * 1024
+TemplateName = Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*$")]
+
+
+class ContextBuildParams(_Params):
+    """Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).
+
+    ``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),
+    ``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).
+    ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
+    ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
+    descarta) y no se devuelve en el run.
+    """
+
+    operation: Literal["context_build"] = "context_build"
+    catalog: Literal["discover", "domains", "template", "manifest"] = "discover"
+    domains: list[Annotated[str, Field(min_length=1, max_length=128)]] = Field(default_factory=list, max_length=100)
+    template_name: TemplateName | None = None
+    output_folder_name: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+    threshold: float = Field(default=0.5, ge=0, le=1)
+    build_site: bool = True
+    template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
+
+    @model_validator(mode="after")
+    def _catalog_fields(self) -> ContextBuildParams:
+        if self.catalog == "domains" and not self.domains:
+            raise ValueError("Con un catálogo propio hay que indicar al menos un dominio")
+        if self.catalog != "domains" and self.domains:
+            raise ValueError("«domains» solo se usa con el catálogo propio")
+        if (self.catalog == "template") != (self.template_name is not None):
+            raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        return self
+
+
+class ContextDeleteParams(_Destructive):
+    """Borrar el contexto: carpeta reorganizada, ``context.json``, ``domains/`` y el sitio (no toca ``Conversión/``)."""
+
+    operation: Literal["context_delete"] = "context_delete"
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -157,7 +198,9 @@ RunParams = Annotated[
     | ExportXlsxParams
     | SearchIndexParams
     | DedupPreviewParams
-    | DedupApplyParams,
+    | DedupApplyParams
+    | ContextBuildParams
+    | ContextDeleteParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -169,6 +212,7 @@ _PREVIEW_KEYS: Final[dict[str, tuple[str, ...]]] = {
     "project_delete": ("delete_outputs",),
     "scan": ("force",),
     "dedup_apply": ("groups_run_id", "mode", "groups"),
+    "context_delete": (),
 }
 
 
@@ -202,6 +246,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Duplicados (Fase 6): mover saca ficheros del origen, así que es de owner (ver min_role).
     "dedup_preview": OperationSpec(min_role="editor", produces_artifacts=True),
     "dedup_apply": OperationSpec(min_role="editor", destructive=True),
+    # Contexto (Fase 7): construir reescribe solo lo que gestiona el contexto; borrarlo es de owner (regla 7).
+    "context_build": OperationSpec(min_role="editor"),
+    "context_delete": OperationSpec(min_role="owner", destructive=True),
 }
 
 
@@ -214,6 +261,8 @@ def is_write(params: RunParams) -> bool:
         return True
     if isinstance(params, DedupApplyParams):
         return not params.dry_run
+    if isinstance(params, ContextBuildParams):
+        return True
     return isinstance(params, _Destructive) and not params.dry_run
 
 
@@ -254,3 +303,7 @@ def preview_matches(params: RunParams, preview: dict[str, object]) -> bool:
 def stored_params(params: RunParams) -> dict[str, object]:
     """Parámetros tal como se guardan en ``runs.params`` (sin secretos: ninguna operación los recibe)."""
     return params.model_dump(mode="json")
+
+
+#: Parámetros guardados que no se devuelven en la API (``public_params``).
+HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {"context_build": ("template_markdown",)}

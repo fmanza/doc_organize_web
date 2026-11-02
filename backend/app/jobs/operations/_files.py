@@ -68,6 +68,25 @@ def project_paths(project: Project, ctx: JobContext) -> ProjectPaths:
     return ProjectPaths(output=output, state=state_dir(ctx.settings, project.id))
 
 
+def source_folders(ctx: JobContext, project: Project) -> list[tuple[str, Path]]:
+    """``(subpath, ruta resuelta)`` de las carpetas de origen que existen; las demás se avisan y se saltan."""
+    found: list[tuple[str, Path]] = []
+    for subpath in sorted(project.source_subpaths, key=str.casefold):
+        try:
+            resolved = resolve_in(project.source_location, subpath, ctx)
+        except JobFailed as exc:
+            if exc.code != "folder_missing":
+                raise
+            ctx.log(exc.message, level="warning")
+            continue
+        # Una carpeta sustituida por un enlace a otra de la ubicación no es la carpeta del proyecto: se salta.
+        if resolved.relative != subpath:
+            ctx.log(f"La carpeta «{subpath}» ya no es la registrada; se salta.", level="warning")
+            continue
+        found.append((subpath, resolved.absolute))
+    return found
+
+
 def require_rw(location: Location) -> None:
     """La ubicación sigue siendo ``rw`` (el admin pudo cambiarla tras encolar).
 

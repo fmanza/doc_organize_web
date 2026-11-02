@@ -36,6 +36,14 @@ SECURITY_HEADERS: Final = (
 _QUIET: Final = frozenset({"/api/health"})
 
 
+def loggable_path(path: str) -> str:
+    """``path`` sin el token del sitio de contexto (``/site/<token>/…`` → ``/site/***/…``): es una credencial."""
+    if path.startswith("/site/"):
+        _, _, rest = path[len("/site/") :].partition("/")
+        return f"/site/***/{rest}"
+    return path
+
+
 class RequestMiddleware:
     """Asigna ``request_id`` (cabecera ``X-Request-ID``), añade cabeceras de seguridad y registra cada petición."""
 
@@ -74,7 +82,7 @@ class RequestMiddleware:
             # se responden aquí para conservar X-Request-ID, las cabeceras de seguridad y el request_id del cuerpo.
             if started:
                 raise
-            logger.error("Error no controlado", extra={"path": path, "exc_type": type(exc).__name__})
+            logger.error("Error no controlado", extra={"path": loggable_path(path), "exc_type": type(exc).__name__})
             await problem(500, "Error interno")(scope, receive, send_with_headers)
         finally:
             if path not in _QUIET:
@@ -82,7 +90,7 @@ class RequestMiddleware:
                     "Petición HTTP",
                     extra={
                         "method": scope.get("method"),
-                        "path": path,
+                        "path": loggable_path(path),
                         "status": status,
                         "duration_ms": round((time.perf_counter() - start) * 1000, 1),
                     },

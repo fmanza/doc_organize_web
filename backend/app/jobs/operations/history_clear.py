@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.db.models import Project
+from sqlalchemy import delete
+
+from app.db.models import Project, ProjectContext
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import HistoryClearParams
@@ -43,6 +45,8 @@ def run(ctx: JobContext, params: HistoryClearParams, project: Project | None) ->
             raise JobFailed("clear_failed", str(exc)) from None
     ctx.progress("clear", 1, 1)
     with ctx.session_factory() as db:
+        # Vaciar las salidas borra también el contexto (context.json, carpeta reorganizada y sitio): fuera su proyección.
+        db.execute(delete(ProjectContext).where(ProjectContext.project_id == project.id))
         audit.record(
             db,
             action=AuditAction.PROJECT_HISTORY_CLEAR,
