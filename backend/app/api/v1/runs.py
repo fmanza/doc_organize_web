@@ -37,7 +37,7 @@ from app.api.v1.schemas import (
 from app.core.errors import AppError
 from app.db.models import ACTIVE_RUN_STATUSES, MemberRole, ProjectMember, Run, User
 from app.db.session import get_engine
-from app.domain.identity.sessions import resolve_session
+from app.domain.identity.sessions import acting_user, resolve_session
 from app.domain.runs import events, service
 from app.domain.runs.errors import ArtifactGoneError, ArtifactNotFoundError, RunNotFoundError
 from app.domain.runs.operations import HIDDEN_PARAMS
@@ -73,7 +73,7 @@ class TooManyStreamsError(AppError):
 def _can_cancel(run: Run, user: User, role: MemberRole | None) -> bool:
     if run.status not in ACTIVE_RUN_STATUSES:
         return False
-    return user.role == "admin" or run.created_by == user.id or role == "owner"
+    return run.created_by == user.id or role == "owner" or (run.project_id is None and user.is_instance_admin)
 
 
 def public_params(params: dict[str, Any]) -> dict[str, Any]:
@@ -136,7 +136,7 @@ def list_runs(
 
 
 def _roles(db: Session, user: User, project_ids: set[int]) -> dict[int, MemberRole]:
-    if user.role == "admin":
+    if user.can("projects.all"):  # get_access ya limita al tenant activo
         return dict.fromkeys(project_ids, "owner")
     rows = db.execute(
         select(ProjectMember.project_id, ProjectMember.role).where(
@@ -261,7 +261,7 @@ def _still_allowed(token: str | None, settings: Any, run_id: str) -> bool:
         if session is None:
             return False
         try:
-            service.get_run(db, run_id, session.user)
+            service.get_run(db, run_id, acting_user(session))
         except RunNotFoundError:
             return False
         return True

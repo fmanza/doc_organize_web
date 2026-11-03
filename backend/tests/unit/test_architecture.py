@@ -111,3 +111,28 @@ def test_templates_manifest_and_site_paths_never_load_docling(tmp_path: Path) ->
     )
 
     assert completed.stdout.strip() == "[]"
+
+
+#: Únicos módulos que usan el tenant inicial a propósito (alta del primer admin, borrado de tenants, auditoría y
+#: valor por defecto de los modelos).
+_DEFAULT_TENANT_ALLOWED = {
+    "db/models.py",
+    "domain/identity/audit.py",
+    "domain/identity/users.py",
+    "domain/tenancy/tenants.py",
+    "cli.py",
+}
+
+
+def test_authorization_uses_permissions_and_the_active_tenant() -> None:
+    """ADR-013: nada compara con el antiguo rol ``admin`` ni fija el tenant ``default`` fuera de los sitios previstos."""
+    offenders: list[str] = []
+    for path in APP_DIR.rglob("*.py"):
+        rel = path.relative_to(APP_DIR).as_posix()
+        text = path.read_text(encoding="utf-8")
+        if '.role == "admin"' in text or '.role != "admin"' in text:
+            offenders.append(f"{rel}: rol admin")
+        if "DEFAULT_TENANT_ID" in text and rel not in _DEFAULT_TENANT_ALLOWED:
+            offenders.append(f"{rel}: DEFAULT_TENANT_ID")
+
+    assert offenders == [], offenders

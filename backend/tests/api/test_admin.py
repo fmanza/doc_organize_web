@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import AuditEntry, User
+from app.db.models import DEFAULT_TENANT_ID, AuditEntry, User
+from app.domain.tenancy.roles import builtin_role
 from tests.conftest import USER_PASSWORD, do_login
 
 ADMIN_ENDPOINTS = [
@@ -21,7 +22,11 @@ ADMIN_ENDPOINTS = [
 ]
 # Las sesiones exigen sesión, pero no rol admin: un usuario ve y cierra las suyas.
 SESSION_ENDPOINTS = [("GET", "/api/v1/sessions"), ("DELETE", "/api/v1/sessions/1")]
-NEW_USER = {"username": "Luis", "display_name": "Luis Pérez", "password": "luis-frase-de-paso", "role": "user"}
+NEW_USER = {"username": "Luis", "display_name": "Luis Pérez", "password": "luis-frase-de-paso"}
+
+
+def _role_id(db: Session, key: str) -> int:
+    return builtin_role(db, DEFAULT_TENANT_ID, key).id  # type: ignore[arg-type]
 
 
 def _other_client(client: TestClient) -> TestClient:
@@ -62,14 +67,14 @@ def test_create_user_conflict_and_validation(admin_client: TestClient) -> None:
 
     assert admin_client.post("/api/v1/users", json={**NEW_USER, "username": "LUIS"}).status_code == 409
     assert admin_client.post("/api/v1/users", json={**NEW_USER, "username": "a b"}).status_code == 422
-    assert admin_client.post("/api/v1/users", json={**NEW_USER, "role": "root"}).status_code == 422
+    assert admin_client.post("/api/v1/users", json={**NEW_USER, "username": "xavi", "role_id": 9999}).status_code == 404
     weak = admin_client.post("/api/v1/users", json={**NEW_USER, "username": "x1y", "password": "corta"})
     assert weak.status_code == 400
 
 
 def test_unknown_user_is_404(admin_client: TestClient) -> None:
     assert admin_client.get("/api/v1/users/9999").status_code == 404
-    assert admin_client.patch("/api/v1/users/9999", json={"role": "admin"}).status_code == 404
+    assert admin_client.patch("/api/v1/users/9999", json={"display_name": "X"}).status_code == 404
 
 
 def test_deactivate_revokes_sessions_and_reactivate_allows_login(admin_client: TestClient, user: User) -> None:
@@ -96,17 +101,19 @@ def test_admin_password_reset_revokes_sessions(admin_client: TestClient, user: U
     do_login(ana, "ana", "restablecida-1234")
 
 
-def test_admin_cannot_demote_or_deactivate_self(admin_client: TestClient, admin: User) -> None:
-    assert admin_client.patch(f"/api/v1/users/{admin.id}", json={"role": "user"}).status_code == 409
+def test_admin_cannot_demote_or_deactivate_self(admin_client: TestClient, admin: User, db: Session) -> None:
+    assert admin_client.patch(f"/api/v1/users/{admin.id}", json={"role_id": _role_id(db, "user")}).status_code == 409
+    assert admin_client.patch(f"/api/v1/users/{admin.id}", json={"is_instance_admin": False}).status_code == 409
     assert admin_client.patch(f"/api/v1/users/{admin.id}", json={"is_active": False}).status_code == 409
 
 
 def test_promote_user_to_admin_is_audited(admin_client: TestClient, user: User, db: Session) -> None:
-    response = admin_client.patch(f"/api/v1/users/{user.id}", json={"role": "admin", "display_name": "Ana G."})
+    body = {"role_id": _role_id(db, "admin"), "display_name": "Ana G."}
+    response = admin_client.patch(f"/api/v1/users/{user.id}", json=body)
 
-    assert response.json()["role"] == "admin"
+    assert response.json()["role"]["builtin"] == "admin" and response.json()["is_instance_admin"] is False
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "user.update")).one()
-    assert entry.details == {"fields": ["display_name", "role"], "role": "admin"}
+    assert entry.details == {"fields": ["display_name", "role"], "role": "Administrador"}
 
 
 def test_list_and_revoke_sessions(admin_client: TestClient, user: User) -> None:

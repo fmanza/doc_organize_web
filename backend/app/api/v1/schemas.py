@@ -9,7 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from app.domain.identity.passwords import MAX_PASSWORD_LENGTH
 
-Role = Literal["admin", "user"]
+Permission = Literal[
+    "users.manage", "roles.manage", "audit.read", "templates.manage", "projects.create", "projects.all"
+]
+TenantSlug = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]{1,62}$")]
+RoleName = Annotated[str, Field(min_length=1, max_length=64)]
 Username = Annotated[str, Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")]
 DisplayName = Annotated[str, Field(min_length=1, max_length=128)]
 Password = Annotated[SecretStr, Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)]
@@ -44,25 +48,44 @@ class PasswordChange(BaseModel):
     new_password: Password
 
 
-class Me(_Out):
-    """Usuario de la sesión actual."""
+class TenantRef(_Out):
+    id: int
+    slug: str
+    name: str
+
+
+class RoleRef(_Out):
+    id: int
+    name: str
+    builtin: Literal["admin", "user"] | None
+
+
+class Me(BaseModel):
+    """Usuario de la sesión actual: su tenant, el tenant en el que actúa (distinto solo para un admin de instancia que
+    lo cambió con el selector), su rol y sus permisos en el tenant activo (Fase 9)."""
 
     id: int
     username: str
     display_name: str
-    role: Role
+    tenant: TenantRef
+    acting_tenant: TenantRef
+    is_instance_admin: bool
+    role: RoleRef
+    permissions: list[Permission]
 
 
 # --- users ------------------------------------------------------------------------------------------------------
 
 
 class UserOut(_Out):
-    """Usuario visto por un administrador."""
+    """Usuario visto por quien gestiona usuarios."""
 
     id: int
     username: str
     display_name: str
-    role: Role
+    tenant_id: int
+    role: RoleRef
+    is_instance_admin: bool
     is_active: bool
     locked_until: datetime | None
     failed_attempts: int
@@ -77,7 +100,9 @@ class UserCreate(BaseModel):
     username: Username
     display_name: DisplayName
     password: Password
-    role: Role = "user"
+    role_id: int | None = Field(default=None, description="Rol del tenant; sin él, «Usuario»")
+    is_instance_admin: bool = Field(default=False, description="Solo lo da un administrador de la instancia")
+    tenant_id: int | None = Field(default=None, description="Solo el admin de instancia; sin él, el tenant activo")
 
 
 class UserUpdate(BaseModel):
@@ -85,7 +110,11 @@ class UserUpdate(BaseModel):
     bloqueo por intentos fallidos."""
 
     display_name: DisplayName | None = None
-    role: Role | None = None
+    role_id: int | None = None
+    is_instance_admin: bool | None = None
+    tenant_id: int | None = Field(
+        default=None, description="Mover a otro tenant (solo admin de instancia): pierde sus proyectos y sesiones"
+    )
     is_active: bool | None = None
     password: Password | None = None
     unlock: bool = False
@@ -205,6 +234,7 @@ class LocationUpdate(BaseModel):
     kind: LocationKind | None = None
     usage: LocationUsage | None = None
     access: LocationAccess | None = None
+    tenant_id: int | None = Field(default=None, description="Pasarla a otro tenant (si ningún proyecto la usa)")
 
 
 class LocationPage(BaseModel):
@@ -810,3 +840,79 @@ class AiUsageSourceOut(BaseModel):
 
 class AiUsageOut(BaseModel):
     sources: list[AiUsageSourceOut]
+
+
+# --- tenants y roles (Fase 9) ----------------------------------------------------------------------------------
+
+
+class TenantOut(BaseModel):
+    """Tenant con sus recuentos (``empty``: se puede borrar)."""
+
+    id: int
+    slug: str
+    name: str
+    created_at: datetime
+    users: int
+    projects: int
+    locations: int
+    empty: bool
+
+
+class TenantPage(BaseModel):
+    items: list[TenantOut]
+    total: int
+
+
+class TenantCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slug: TenantSlug
+    name: Annotated[str, Field(min_length=1, max_length=128)]
+
+
+class TenantUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, Field(min_length=1, max_length=128)]
+
+
+class TenantSwitch(BaseModel):
+    """Tenant en el que actuar (``null``: el propio)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: int | None
+
+
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    builtin: Literal["admin", "user"] | None
+    permissions: list[Permission]
+    users: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class RoleList(BaseModel):
+    items: list[RoleOut]
+
+
+class RoleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: RoleName
+    permissions: list[str] = Field(default_factory=list, max_length=32)
+
+
+class RoleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: RoleName | None = None
+    permissions: list[str] | None = Field(default=None, max_length=32)
+
+
+class PermissionList(BaseModel):
+    """Catálogo de permisos de los roles, en orden."""
+
+    items: list[Permission]

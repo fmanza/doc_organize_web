@@ -24,9 +24,9 @@ export function UserMenu() {
         <Button
           variant="subtle"
           rightSection={
-            me.role === 'admin' ? (
+            me.is_instance_admin ? (
               <Badge size="xs" variant="light">
-                {t('roles.admin')}
+                {t('roles.instanceAdmin')}
               </Badge>
             ) : undefined
           }
@@ -36,7 +36,9 @@ export function UserMenu() {
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>{me.username}</Menu.Label>
+        <Menu.Label>
+          {me.username} · {me.tenant.name}
+        </Menu.Label>
         <Menu.Item component={Link} to="/account/password">
           {t('auth.changePassword')}
         </Menu.Item>

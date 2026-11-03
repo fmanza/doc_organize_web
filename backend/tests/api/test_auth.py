@@ -30,7 +30,11 @@ def test_login_sets_session_and_csrf_cookies_with_flags(client: TestClient, user
     )
 
     assert response.status_code == 200
-    assert response.json() == {"id": user.id, "username": "ana", "display_name": "Ana", "role": "user"}
+    body = response.json()
+    assert (body["id"], body["username"], body["display_name"]) == (user.id, "ana", "Ana")
+    assert body["tenant"]["slug"] == body["acting_tenant"]["slug"] == "default"
+    assert body["role"]["builtin"] == "user" and body["permissions"] == ["projects.create"]
+    assert body["is_instance_admin"] is False
     cookies = response.headers.get_list("set-cookie")
     session_cookie = next(c for c in cookies if c.startswith("__Host-dow_session=")).lower()
     csrf_cookie = next(c for c in cookies if c.startswith("__Host-dow_csrf=")).lower()

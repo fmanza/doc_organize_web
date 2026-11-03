@@ -32,10 +32,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
-Role = Literal["admin", "user"]
-ROLES: tuple[Role, ...] = ("admin", "user")
-
-#: Tenant único hasta la Fase 9 (ADR-003, ADR-013): lo crea la migración ``0002``.
+#: Tenant inicial (ADR-003, ADR-013): lo crea la migración ``0002``. Desde la Fase 9 puede haber más.
 DEFAULT_TENANT_ID: Final = 1
 DEFAULT_TENANT_SLUG: Final = "default"
 
@@ -63,7 +60,7 @@ class UTCDateTime(TypeDecorator[datetime]):
 
 
 class Tenant(Base):
-    """Organización aislada (Fase 9). Hasta entonces solo existe ``default``."""
+    """Organización aislada (Fase 9, ADR-013): sus usuarios, proyectos, ubicaciones, plantillas, roles y auditoría."""
 
     __tablename__ = "tenants"
 
@@ -71,23 +68,44 @@ class Tenant(Base):
     slug: Mapped[str] = mapped_column(String(64), unique=True)
     name: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class TenantRole(Base):
+    """Rol de un tenant con permisos de administración (Fase 9). ``builtin`` marca los roles base (``admin``,
+    ``user``), que no se borran ni cambian de permisos. ``permissions`` lleva claves de
+    ``app/domain/tenancy/permissions.py``."""
+
+    __tablename__ = "roles"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_roles_tenant_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    builtin: Mapped[str | None] = mapped_column(String(16), default=None)
+    permissions: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: Sin FK: ``users.role_id`` ya apunta aquí y un ciclo de claves complicaría la migración.
+    created_by: Mapped[int | None] = mapped_column(Integer, default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class User(Base):
     """Usuario de la aplicación. No se borra: se desactiva (la auditoría lo referencia).
 
-    ``username`` es único en toda la instancia (no por tenant) hasta la Fase 9.
+    ``username`` es único en toda la instancia (decisión de la Fase 9). Pertenece a un tenant y tiene un rol de ese
+    tenant. ``is_instance_admin`` da lo que es del servidor y deja actuar en cualquier tenant (``acting_tenant_id``).
     """
 
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("role IN ('admin', 'user')", name="role"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
     username: Mapped[str] = mapped_column(String(64), unique=True)
     display_name: Mapped[str] = mapped_column(String(128))
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(16))
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), index=True)
+    is_instance_admin: Mapped[bool] = mapped_column(default=False)
     is_active: Mapped[bool] = mapped_column(default=True)
     failed_attempts: Mapped[int] = mapped_column(default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
@@ -96,6 +114,37 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
     sessions: Mapped[list[UserSession]] = relationship(back_populates="user", passive_deletes=True)
+    role: Mapped[TenantRole] = relationship(lazy="joined")
+    tenant: Mapped[Tenant] = relationship(lazy="joined")
+
+    def act_in(self, tenant_id: int | None) -> None:
+        """Fija el tenant en el que actúa en esta petición (lo hace la dependencia de sesión; no se guarda en la BD)."""
+        self.__dict__["_acting_tenant_id"] = tenant_id
+
+    @property
+    def acting_tenant_id(self) -> int | None:
+        """Tenant elegido con el selector en esta petición, o ``None``."""
+        value = self.__dict__.get("_acting_tenant_id")
+        return value if isinstance(value, int) else None
+
+    @property
+    def scope_tenant_id(self) -> int:
+        """Tenant de las consultas de esta petición (ADR-013)."""
+        if self.is_instance_admin and self.acting_tenant_id is not None:
+            return self.acting_tenant_id
+        return self.tenant_id
+
+    @property
+    def permissions(self) -> list[str]:
+        """Permisos en el tenant activo: todos para un admin de instancia; si no, los de su rol."""
+        from app.domain.tenancy.permissions import PERMISSIONS, normalize
+
+        granted = PERMISSIONS if self.is_instance_admin else normalize(self.role.permissions or [])
+        return [str(p) for p in granted]
+
+    def can(self, permission: str) -> bool:
+        """Si tiene ``permission`` en el tenant activo."""
+        return permission in self.permissions
 
 
 class UserSession(Base):
@@ -111,6 +160,8 @@ class UserSession(Base):
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
     ip: Mapped[str | None] = mapped_column(String(64), default=None)
     user_agent: Mapped[str | None] = mapped_column(String(255), default=None)
+    #: Tenant elegido con el selector (solo admins de instancia; ``None`` = el suyo).
+    acting_tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="SET NULL"), default=None)
 
     user: Mapped[User] = relationship(back_populates="sessions")
 

@@ -1,11 +1,13 @@
 # Usuarios y sesiones
 
-Desde la 0.2.0 la aplicación exige iniciar sesión. Hay dos roles: **administrador** (gestiona usuarios, sesiones y
-auditoría) y **usuario**. Los roles personalizados y las organizaciones (*tenants*) llegan en la Fase 9.
+Desde la 0.2.0 la aplicación exige iniciar sesión. Cada usuario pertenece a un **tenant** (organización) y tiene un
+**rol** de ese tenant; el **administrador de la instancia** gestiona lo que es del servidor. Ver
+[Tenants y roles](tenants_y_roles.md).
 
 ## Primer administrador
 
-No hay credenciales por defecto. El primer administrador se crea por línea de comandos, con la aplicación en marcha:
+No hay credenciales por defecto. El primer administrador de la instancia (con el rol «Administrador» del tenant
+predeterminado) se crea por línea de comandos, con la aplicación en marcha:
 
 ```bash
 docker compose exec web python -m app.cli create-admin --username <usuario>
@@ -40,20 +42,25 @@ Puedes revocar cualquiera; si revocas la actual, vuelves al inicio de sesión.
 
 ## Administración de usuarios
 
-**Administración → Usuarios** (solo administradores):
+**Administración → Usuarios** (con el permiso «Gestionar usuarios»), con los usuarios del tenant activo:
 
 - **Nuevo usuario**: nombre de usuario (3 a 64 caracteres: letras, números, punto, guion o guion bajo; no distingue
-  mayúsculas), nombre visible, rol y contraseña inicial.
-- **Editar**: cambia el nombre visible o el rol, desactiva o reactiva la cuenta y restablece la contraseña.
+  mayúsculas y es único en toda la instancia), nombre visible, rol del tenant y contraseña inicial.
+- **Editar**: cambia el nombre visible o el rol, desactiva o reactiva la cuenta y restablece la contraseña. El
+  administrador de la instancia también puede marcar a otros como administradores de la instancia y moverlos de
+  tenant ([Tenants y roles](tenants_y_roles.md#mover-a-un-usuario-de-tenant)).
+    - **Cambiar el rol** cierra sus sesiones (los permisos nuevos valen desde que vuelva a entrar).
     - **Desactivar** cierra todas sus sesiones. Los usuarios **no se borran**: así la auditoría conserva quién hizo
       cada cosa.
     - **Restablecer la contraseña** cierra sus sesiones y quita el bloqueo.
     - Si la cuenta está bloqueada por intentos fallidos, aparece **Quitar el bloqueo ahora**.
-- No puedes desactivarte ni quitarte el rol de administrador, y siempre debe quedar al menos un administrador activo.
+- No puedes desactivarte, cambiarte el rol ni quitarte ser administrador de la instancia. Siempre queda al menos un
+  administrador de la instancia activo y, en cada tenant, alguien activo que gestione sus usuarios.
+- Solo puedes dar roles con permisos que tienes.
 
 ## Sesiones y auditoría
 
-- **Administración → Sesiones** lista las sesiones abiertas de todos los usuarios; revocar una la cierra al momento.
-- **Administración → Auditoría** registra inicios y cierres de sesión (también los fallidos), bloqueos, cambios de
+- **Administración → Sesiones** lista las sesiones abiertas de los usuarios del tenant; revocar una la cierra al momento.
+- **Administración → Auditoría** (permiso «Consultar la auditoría») muestra los eventos del tenant activo. Registra inicios y cierres de sesión (también los fallidos), bloqueos, cambios de
   contraseña, altas, ediciones, desactivaciones y desbloqueos de usuarios, y sesiones revocadas, con fecha, autor e IP.
   Se puede filtrar por tipo de acción y por usuario que actuó. Nunca se guardan contraseñas.

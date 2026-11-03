@@ -9,7 +9,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AdminUser, Context, CurrentUser, DbSession, SettingsDep
+from app.api.deps import Context, CurrentUser, DbSession, InstanceAdmin, SettingsDep
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     LocationCreate,
@@ -32,7 +32,7 @@ _404: dict[int | str, dict[str, Any]] = {404: {"description": "No existe"}}
 
 
 def _out(location: Location, user: User) -> LocationOut | LocationPublic:
-    model = LocationOut if user.role == "admin" else LocationPublic
+    model = LocationOut if user.is_instance_admin else LocationPublic
     return model.model_validate(location)
 
 
@@ -44,7 +44,7 @@ def list_locations(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> LocationPage:
     """Ubicaciones ordenadas por nombre, con su último estado."""
-    rows, total = service.list_locations(db, limit=limit, offset=offset)
+    rows, total = service.list_locations(db, tenant_id=user.scope_tenant_id, limit=limit, offset=offset)
     return LocationPage(items=[_out(row, user) for row in rows], total=total)
 
 
@@ -60,7 +60,7 @@ def list_locations(
     },
 )
 def create_location(
-    body: LocationCreate, admin: AdminUser, db: DbSession, settings: SettingsDep, ctx: Context
+    body: LocationCreate, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> LocationOut:
     """Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea."""
     location = service.create_location(
@@ -74,6 +74,7 @@ def create_location(
         settings=settings,
         actor=admin,
         ctx=ctx,
+        tenant_id=admin.scope_tenant_id,
     )
     return LocationOut.model_validate(location)
 
@@ -86,7 +87,7 @@ def create_location(
 )
 def get_location(location_id: int, user: CurrentUser, db: DbSession) -> LocationOut | LocationPublic:
     """Detalle de una ubicación."""
-    return _out(service.get_location(db, location_id), user)
+    return _out(service.get_location(db, location_id, tenant_id=user.scope_tenant_id), user)
 
 
 @router.patch(
@@ -96,10 +97,10 @@ def get_location(location_id: int, user: CurrentUser, db: DbSession) -> Location
     responses={**_ERRORS, **_404, 409: {"description": "Nombre ya registrado"}},
 )
 def update_location(
-    location_id: int, body: LocationUpdate, admin: AdminUser, db: DbSession, settings: SettingsDep, ctx: Context
+    location_id: int, body: LocationUpdate, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> LocationOut:
     """Cambia nombre, texto visible, tipo, uso o acceso (la carpeta del contenedor no se puede cambiar)."""
-    location = service.get_location(db, location_id)
+    location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
     changes = LocationChanges(**body.model_dump(exclude_unset=True))
     return LocationOut.model_validate(
         service.update_location(db, location, changes, settings=settings, actor=admin, ctx=ctx)
@@ -112,9 +113,10 @@ def update_location(
     summary="Borrar ubicación",
     responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto la usa"}},
 )
-def delete_location(location_id: int, admin: AdminUser, db: DbSession, ctx: Context) -> None:
+def delete_location(location_id: int, admin: InstanceAdmin, db: DbSession, ctx: Context) -> None:
     """Quita la ubicación del registro; la carpeta y su contenido no se tocan."""
-    service.delete_location(db, service.get_location(db, location_id), actor=admin, ctx=ctx)
+    location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
+    service.delete_location(db, location, actor=admin, ctx=ctx)
 
 
 @router.post(
@@ -124,8 +126,8 @@ def delete_location(location_id: int, admin: AdminUser, db: DbSession, ctx: Cont
     responses={**_ERRORS, **_404},
 )
 def probe_location(
-    location_id: int, admin: AdminUser, db: DbSession, settings: SettingsDep, ctx: Context
+    location_id: int, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> LocationOut:
     """Sondea la ubicación (existencia, lectura, latencia, espacio y escritura si es ``rw``) y guarda el estado."""
-    location = service.get_location(db, location_id)
+    location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
     return LocationOut.model_validate(service.probe_location(db, location, settings=settings, actor=admin, ctx=ctx))

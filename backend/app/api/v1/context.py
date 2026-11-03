@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Query, Response, status
 
-from app.api.deps import AdminUser, Context, CurrentSession, CurrentUser, DbSession, SettingsDep
+from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     CatalogEntryOut,
@@ -32,6 +32,7 @@ from app.domain.context import site, templates
 from app.domain.context.errors import SiteNotFoundError
 from app.domain.context.templates import TemplateView
 from app.domain.documents.outputs import output_paths
+from app.domain.identity.sessions import acting_user
 from app.domain.projects import service as projects
 
 router = APIRouter(tags=["context"])
@@ -118,7 +119,7 @@ def download_template(name: str, user: CurrentUser, db: DbSession) -> Response:
     responses=_TEMPLATE_ERRORS,
 )
 def put_template(
-    name: str, body: TaxonomyMarkdownIn, admin: AdminUser, db: DbSession, ctx: Context, response: Response
+    name: str, body: TaxonomyMarkdownIn, admin: TemplateManager, db: DbSession, ctx: Context, response: Response
 ) -> TaxonomyTemplateDetail:
     """Valida el Markdown con doc_organize y guarda la plantilla personalizada (201 si es nueva)."""
     view, created = templates.save_template(db, admin, name, body.markdown, ctx=ctx)
@@ -133,7 +134,7 @@ def put_template(
     summary="Borrar plantilla de taxonomía",
     responses=_TEMPLATE_ERRORS,
 )
-def delete_template(name: str, admin: AdminUser, db: DbSession, ctx: Context) -> None:
+def delete_template(name: str, admin: TemplateManager, db: DbSession, ctx: Context) -> None:
     templates.delete_template(db, admin, name, ctx=ctx)
 
 
@@ -250,7 +251,7 @@ def put_manifest(
 )
 def open_site(project_id: int, session: CurrentSession, db: DbSession, settings: SettingsDep) -> SiteSessionOut:
     """URL del sitio aislado con un token ligado a esta sesión y a este proyecto (caduca en una hora, ADR-010)."""
-    access = projects.get_access(db, project_id, session.user)
+    access = projects.get_access(db, project_id, acting_user(session))
     if not site.site_built(db, access.project):
         raise SiteNotFoundError("El contexto no tiene sitio construido.")
     token, expires_at = site.mint_token(settings, access.project, session)

@@ -165,7 +165,7 @@ export function ProjectDetailPage() {
             <Button component={Link} to={`/projects/${project.id}/context`} variant="light">
               {t('projects.context')}
             </Button>
-            {me?.role === 'admin' && (
+            {me?.is_instance_admin && (
               <Button
                 variant="default"
                 loading={enqueue.isPending}

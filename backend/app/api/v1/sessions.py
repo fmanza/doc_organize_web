@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import Context, CurrentSession, DbSession, SettingsDep
+from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep
 from app.api.v1.schemas import MAX_PAGE_SIZE, SessionOut, SessionPage
 from app.domain.identity import auth, sessions
 
@@ -21,16 +21,19 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 @router.get("", response_model=SessionPage, summary="Listar sesiones activas", responses=_ERRORS)
 def list_sessions(
     current: CurrentSession,
+    user: CurrentUser,
     db: DbSession,
     settings: SettingsDep,
     user_id: Annotated[int | None, Query(ge=1, description="Solo admin: sesiones de ese usuario")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> SessionPage:
-    """Sesiones vigentes, la actividad más reciente primero. Un usuario que no es admin solo ve las suyas."""
-    if current.user.role != "admin":
+    """Sesiones vigentes del tenant activo, la actividad más reciente primero. Sin ``users.manage``, solo las suyas."""
+    if not user.can("users.manage"):
         user_id = current.user_id
-    rows, total = sessions.list_sessions(db, settings, user_id=user_id, limit=limit, offset=offset)
+    rows, total = sessions.list_sessions(
+        db, settings, tenant_id=user.scope_tenant_id, user_id=user_id, limit=limit, offset=offset
+    )
     items = [
         SessionOut(
             id=s.id,
@@ -54,6 +57,7 @@ def list_sessions(
     summary="Revocar sesión",
     responses={**_ERRORS, 404: {"description": "No existe o es de otro usuario"}},
 )
-def revoke_session(session_id: int, current: CurrentSession, db: DbSession, ctx: Context) -> None:
-    """Cierra la sesión indicada de inmediato. Una sesión ajena da 404 si quien la pide no es admin."""
-    auth.revoke_session(db, session_id, actor=current.user, ctx=ctx)
+def revoke_session(session_id: int, user: CurrentUser, db: DbSession, ctx: Context) -> None:
+    """Cierra la sesión indicada de inmediato. Una sesión ajena da 404 si quien la pide no gestiona usuarios de su
+    tenant."""
+    auth.revoke_session(db, session_id, actor=user, ctx=ctx)

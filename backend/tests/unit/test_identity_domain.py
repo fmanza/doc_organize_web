@@ -67,9 +67,9 @@ def test_last_admin_cannot_be_demoted_or_deactivated(
     other = make_user("otro", ADMIN_PASSWORD, "admin")
 
     with pytest.raises(SelfModificationError):
-        update_user(db, admin, UserChanges(role="user"), actor=admin, settings=migrated, ctx=CTX)
+        update_user(db, admin, UserChanges(is_instance_admin=False), actor=admin, settings=migrated, ctx=CTX)
 
     update_user(db, other, UserChanges(is_active=False), actor=admin, settings=migrated, ctx=CTX)
     # ``admin`` es ahora el único activo; otro admin (reactivado) no puede dejarlo sin rol.
     with pytest.raises(LastAdminError):
-        update_user(db, admin, UserChanges(role="user"), actor=other, settings=migrated, ctx=CTX)
+        update_user(db, admin, UserChanges(is_instance_admin=False), actor=other, settings=migrated, ctx=CTX)

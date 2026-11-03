@@ -82,7 +82,14 @@ export function UsersPage() {
                 <Table.Tr key={user.id}>
                   <Table.Td>{user.username}</Table.Td>
                   <Table.Td>{user.display_name}</Table.Td>
-                  <Table.Td>{t(`roles.${user.role}`)}</Table.Td>
+                  <Table.Td>
+                    {user.role.builtin ? t(`roles.builtin.${user.role.builtin}`) : user.role.name}
+                    {user.is_instance_admin && (
+                      <Badge ml="xs" size="xs" variant="light">
+                        {t('roles.instanceAdmin')}
+                      </Badge>
+                    )}
+                  </Table.Td>
                   <Table.Td>
                     <UserStatus user={user} />
                   </Table.Td>

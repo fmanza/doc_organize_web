@@ -18,4 +18,4 @@ adaptando nombres.
 | 011 | Modelos de IA/OCR sin Internet | 0/4 | **Nuevo**: modelos de Docling, RapidOCR, EasyOCR y Whisper precargados en la imagen (o volumen `models` de solo lectura); `HF_HUB_OFFLINE=1` en runtime |
 | 012 | Ajustes administrables | 2 | ≈ ADR-012 UBW: BD > entorno > defecto; sin reinicio |
 | 014 | Uso de servicios de IA | 8 | **Nuevo** (redactado en la Fase 8): opt-in por ejecución, presupuesto y cortes por run, borrador sin aplicar, panel de uso en la API con caché corta |
-| 013 | Multi-tenant | 9 | **Nuevo**: aislamiento por `tenant_id` en repositorios (no en routers), admin de instancia, roles con permisos; migración de `admin`/`user` |
+| 013 | Multi-tenant | 9 | **Nuevo** (redactado en la Fase 9): aislamiento por tenant en el dominio (no en routers), admin de instancia, roles del tenant con permisos de administración (los miembros de proyecto no cambian), tenant activo en la sesión; migración de `admin`/`user` |

@@ -25,7 +25,7 @@ from app.db.models import Project, ProjectContext, UserSession, utcnow
 from app.domain.context.errors import SiteNotFoundError
 from app.domain.documents.errors import OutputNotFoundError, OutputTooLargeError
 from app.domain.documents.service import read_inside
-from app.domain.identity.sessions import is_expired
+from app.domain.identity.sessions import acting_user, is_expired
 from app.domain.locations.errors import FolderNotFoundError, InvalidRelativePathError
 from app.domain.locations.paths import normalize_relative, resolve_within, run_with_timeout
 from app.domain.projects import service as projects
@@ -119,7 +119,7 @@ def verify_token(db: Session, settings: Settings, token: str) -> Project:
     if not tokens_match(parts[3], sign(settings, SIGN_PURPOSE, _message(project_id, session, expires))):
         raise SiteNotFoundError()
     try:
-        return projects.get_access(db, project_id, session.user).project
+        return projects.get_access(db, project_id, acting_user(session)).project
     except (ProjectNotFoundError, ProjectForbiddenError):
         raise SiteNotFoundError() from None
 

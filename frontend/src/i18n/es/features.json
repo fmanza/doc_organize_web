@@ -23,7 +23,12 @@
       "unlock": "Quitar el bloqueo ahora",
       "usernameRule": "De 3 a 64 caracteres: letras, números, punto, guion o guion bajo",
       "resetPassword": "Restablecer contraseña",
-      "resetPasswordHint": "Déjalo vacío para no cambiarla. Si la cambias, se cierran sus sesiones y se quita el bloqueo."
+      "resetPasswordHint": "Déjalo vacío para no cambiarla. Si la cambias, se cierran sus sesiones y se quita el bloqueo.",
+      "roleHint": "Rol del tenant con sus permisos de administración.",
+      "instanceAdmin": "Administrador de la instancia",
+      "instanceAdminHint": "Tenants, ubicaciones, ajustes, IA y workers, y actuar en cualquier tenant.",
+      "tenant": "Tenant",
+      "tenantHint": "Al moverlo pierde sus proyectos y sus sesiones, y pasa al rol «Usuario»."
     },
     "sessions": {
       "title": {
@@ -82,16 +87,28 @@
           "deactivate": "Desactivación",
           "reactivate": "Reactivación",
           "password_reset": "Contraseña restablecida",
-          "unlock": "Desbloqueo"
+          "unlock": "Desbloqueo",
+          "move": "Usuario movido de tenant"
         },
         "session": {
-          "revoke": "Sesión revocada"
+          "revoke": "Sesión revocada",
+          "tenant_switch": "Cambio de tenant activo"
         },
         "project": {
           "taxonomy_draft": "Borrador de manifiesto con IA"
         },
         "ai_settings": {
           "update": "Cambio de configuración IA"
+        },
+        "tenant": {
+          "create": "Alta de tenant",
+          "update": "Tenant renombrado",
+          "delete": "Baja de tenant"
+        },
+        "role": {
+          "create": "Alta de rol",
+          "update": "Edición de rol",
+          "delete": "Baja de rol"
         }
       }
     }

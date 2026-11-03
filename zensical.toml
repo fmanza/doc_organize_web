@@ -19,6 +19,7 @@ nav = [
   { "Inicio" = "README.md" },
   { "Uso" = [
     "guides/usuarios_y_sesiones.md",
+    "guides/tenants_y_roles.md",
     "guides/ubicaciones.md",
     "guides/proyectos.md",
     "guides/ejecuciones.md",
@@ -47,6 +48,7 @@ nav = [
       "adr/ADR-010-sitio-de-contexto-aislado.md",
       "adr/ADR-011-modelos-sin-internet.md",
       "adr/ADR-012-ajustes-administrables.md",
+      "adr/ADR-013-multi-tenant.md",
       "adr/ADR-014-uso-de-servicios-de-ia.md",
     ] },
     { "Plan" = [

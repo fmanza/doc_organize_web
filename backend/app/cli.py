@@ -31,11 +31,13 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.db import backup
+from app.db.models import DEFAULT_TENANT_ID
 from app.db.session import get_engine
 from app.domain.ai import settings as ai_settings
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
 from app.domain.settings.service import effective_settings
+from app.domain.tenancy.roles import builtin_role
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,8 @@ def _read_password(from_stdin: bool) -> str:
 
 
 def create_admin(username: str, display_name: str | None, *, password_stdin: bool) -> int:
-    """Crea un usuario ``admin``; devuelve el código de salida."""
+    """Crea un administrador de la instancia (rol «Administrador» del tenant ``default``); devuelve el código de
+    salida."""
     password = _read_password(password_stdin)
     factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
     with factory() as db:
@@ -61,10 +64,11 @@ def create_admin(username: str, display_name: str | None, *, password_stdin: boo
                 username=username,
                 display_name=display_name or username,
                 password=password,
-                role="admin",
                 settings=settings,
                 ctx=CLI_CONTEXT,
-                actor_id=None,
+                actor=None,
+                role_id=builtin_role(db, DEFAULT_TENANT_ID, "admin").id,
+                is_instance_admin=True,
             )
         except AppError as exc:
             print(f"Error: {exc.title}. {exc.detail or ''}".strip(), file=sys.stderr)

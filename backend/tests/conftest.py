@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from alembic import command
@@ -12,11 +13,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
-from app.db.models import Location, Role, User
+from app.db.models import DEFAULT_TENANT_ID, Location, Tenant, User
 from app.db.session import get_engine
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
 from app.domain.locations.service import create_location
+from app.domain.tenancy.roles import builtin_role, create_builtin_roles
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -69,17 +71,46 @@ def client(migrated: Settings) -> Iterator[TestClient]:
 
 @pytest.fixture
 def make_user(db: Session, migrated: Settings) -> Callable[..., User]:
-    def _make(username: str, password: str = USER_PASSWORD, role: Role = "user") -> User:
+    """Usuario del tenant ``tenant_id`` con un rol base: ``admin`` es además admin de instancia en ``default`` (como
+    los ``admin`` migrados, decisión E4) y solo «Administrador» del tenant en otro; ``user``, «Usuario»."""
+
+    def _make(
+        username: str,
+        password: str = USER_PASSWORD,
+        role: Literal["admin", "user"] = "user",
+        *,
+        tenant_id: int = DEFAULT_TENANT_ID,
+        instance_admin: bool | None = None,
+    ) -> User:
         return create_user(
             db,
             username=username,
             display_name=username.title(),
             password=password,
-            role=role,
             settings=migrated,
             ctx=CLI_CONTEXT,
-            actor_id=None,
+            actor=None,
+            tenant_id=tenant_id,
+            role_id=builtin_role(db, tenant_id, role).id,
+            is_instance_admin=(role == "admin" and tenant_id == DEFAULT_TENANT_ID)
+            if instance_admin is None
+            else instance_admin,
         )
+
+    return _make
+
+
+@pytest.fixture
+def make_tenant(db: Session, migrated: Settings) -> Callable[..., Tenant]:
+    """Tenant nuevo con sus roles base (como ``POST /tenants``)."""
+
+    def _make(slug: str, name: str | None = None) -> Tenant:
+        tenant = Tenant(slug=slug, name=name or slug.title())
+        db.add(tenant)
+        db.flush()
+        create_builtin_roles(db, tenant.id)
+        db.commit()
+        return tenant
 
     return _make
 
@@ -131,7 +162,14 @@ def project_locations(db: Session, migrated: Settings, admin: User) -> dict[str,
     (root / "origen" / "2025").mkdir()
     (root / "origen" / "2024" / "factura.txt").write_text("documento sintético", encoding="utf-8")
     (root / "salidas").mkdir()
-    common = {"display_path": None, "kind": "local", "settings": migrated, "actor": admin, "ctx": CLI_CONTEXT}
+    common = {
+        "display_path": None,
+        "kind": "local",
+        "settings": migrated,
+        "actor": admin,
+        "ctx": CLI_CONTEXT,
+        "tenant_id": DEFAULT_TENANT_ID,
+    }
     source = create_location(db, name="Origen", path="origen", usage="source", access="ro", **common)  # type: ignore[arg-type]
     destination = create_location(db, name="Salidas", path="salidas", usage="destination", access="rw", **common)  # type: ignore[arg-type]
     return {"source": source, "destination": destination}

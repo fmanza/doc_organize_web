@@ -1,15 +1,4 @@
-import {
-  Alert,
-  Button,
-  Group,
-  Input,
-  Modal,
-  PasswordInput,
-  SegmentedControl,
-  Stack,
-  Switch,
-  TextInput,
-} from '@mantine/core';
+import { Alert, Button, Group, Modal, PasswordInput, Select, Stack, Switch, TextInput } from '@mantine/core';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -17,8 +6,9 @@ import { z } from 'zod';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { zodResolver } from '../../components/forms';
-import { PASSWORD_MIN_LENGTH } from '../auth/useAuth';
+import { PASSWORD_MIN_LENGTH, useMe } from '../auth/useAuth';
 import { type User, type UserUpdate, useCreateUser, useUpdateUser } from './useAdmin';
+import { useRoles, useTenants } from './useTenancy';
 
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,64}$/;
 
@@ -26,7 +16,9 @@ function buildSchema(editing: boolean) {
   return z.object({
     username: editing ? z.string() : z.string().regex(USERNAME_PATTERN, 'admin.users.usernameRule'),
     displayName: z.string().trim().min(1, 'auth.required'),
-    role: z.enum(['admin', 'user']),
+    roleId: z.string().nullable(),
+    instanceAdmin: z.boolean(),
+    tenantId: z.string().nullable(),
     isActive: z.boolean(),
     unlock: z.boolean(),
     // Al editar, vacía significa «no cambiarla».
@@ -49,6 +41,10 @@ interface UserFormModalProps {
 /** Alta y edición de usuario. Se monta con `key` distinta por usuario para reiniciar el estado. */
 export function UserFormModal({ user, opened, onClose }: UserFormModalProps) {
   const { t } = useTranslation();
+  const { data: me } = useMe();
+  const instance = !!me?.is_instance_admin;
+  const roles = useRoles();
+  const tenants = useTenants(instance && user !== null);
   const create = useCreateUser();
   const update = useUpdateUser();
   const mutation = user ? update : create;
@@ -63,7 +59,9 @@ export function UserFormModal({ user, opened, onClose }: UserFormModalProps) {
     defaultValues: {
       username: '',
       displayName: user?.display_name ?? '',
-      role: user?.role ?? 'user',
+      roleId: user ? String(user.role.id) : null,
+      instanceAdmin: user?.is_instance_admin ?? false,
+      tenantId: user ? String(user.tenant_id) : null,
       isActive: user?.is_active ?? true,
       unlock: false,
       password: '',
@@ -75,7 +73,11 @@ export function UserFormModal({ user, opened, onClose }: UserFormModalProps) {
     if (user) {
       const body: UserUpdate = { unlock: values.unlock };
       if (values.displayName !== user.display_name) body.display_name = values.displayName;
-      if (values.role !== user.role) body.role = values.role;
+      const moving = values.tenantId !== null && Number(values.tenantId) !== user.tenant_id;
+      if (moving) body.tenant_id = Number(values.tenantId);
+      else if (values.roleId !== null && Number(values.roleId) !== user.role.id)
+        body.role_id = Number(values.roleId);
+      if (values.instanceAdmin !== user.is_instance_admin) body.is_instance_admin = values.instanceAdmin;
       if (values.isActive !== user.is_active) body.is_active = values.isActive;
       if (values.password) body.password = values.password;
       update.mutate({ id: user.id, body }, { onSuccess: onClose });
@@ -85,7 +87,8 @@ export function UserFormModal({ user, opened, onClose }: UserFormModalProps) {
           username: values.username,
           display_name: values.displayName,
           password: values.password,
-          role: values.role,
+          role_id: values.roleId === null ? null : Number(values.roleId),
+          is_instance_admin: values.instanceAdmin,
         },
         { onSuccess: onClose },
       );
@@ -118,24 +121,58 @@ export function UserFormModal({ user, opened, onClose }: UserFormModalProps) {
             error={message(errors.displayName?.message)}
             {...register('displayName')}
           />
-          <Input.Wrapper label={t('admin.users.role')} id="user-role">
+          <Controller
+            control={control}
+            name="roleId"
+            render={({ field }) => (
+              <Select
+                label={t('admin.users.role')}
+                description={t('admin.users.roleHint')}
+                data={(roles.data ?? []).map((role) => ({
+                  value: String(role.id),
+                  label: role.builtin ? t(`roles.builtin.${role.builtin}`) : role.name,
+                }))}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder={t('roles.builtin.user')}
+                allowDeselect={false}
+              />
+            )}
+          />
+          {roles.isError && <ErrorAlert error={roles.error} />}
+          {instance && (
             <Controller
               control={control}
-              name="role"
+              name="instanceAdmin"
               render={({ field }) => (
-                <SegmentedControl
-                  fullWidth
-                  aria-labelledby="user-role-label"
-                  data={[
-                    { value: 'user', label: t('roles.user') },
-                    { value: 'admin', label: t('roles.admin') },
-                  ]}
-                  value={field.value}
-                  onChange={(value) => field.onChange(value === 'admin' ? 'admin' : 'user')}
+                <Switch
+                  label={t('admin.users.instanceAdmin')}
+                  description={t('admin.users.instanceAdminHint')}
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.checked)}
                 />
               )}
             />
-          </Input.Wrapper>
+          )}
+          {instance && user && (
+            <Controller
+              control={control}
+              name="tenantId"
+              render={({ field }) => (
+                <Select
+                  label={t('admin.users.tenant')}
+                  description={t('admin.users.tenantHint')}
+                  data={(tenants.data?.items ?? []).map((tenant) => ({
+                    value: String(tenant.id),
+                    label: tenant.name,
+                  }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  allowDeselect={false}
+                />
+              )}
+            />
+          )}
           {user && (
             <Controller
               control={control}

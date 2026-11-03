@@ -9,7 +9,7 @@ export type UserCreate = components['schemas']['UserCreate'];
 export type UserUpdate = components['schemas']['UserUpdate'];
 export type SessionInfo = components['schemas']['SessionOut'];
 export type AuditEntry = components['schemas']['AuditEntryOut'];
-export type Role = User['role'];
+export type UserRole = User['role'];
 
 export const PAGE_SIZE = 50;
 

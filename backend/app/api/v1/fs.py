@@ -37,7 +37,7 @@ def listing(page: FolderPage, location_id: int | None) -> FolderListing:
 
 @router.get("/browse", response_model=FolderListing, summary="Explorar carpetas de una ubicación", responses=FS_ERRORS)
 def browse(
-    _: CurrentUser,
+    user: CurrentUser,
     db: DbSession,
     settings: SettingsDep,
     location_id: Annotated[int, Query(ge=1)],
@@ -46,6 +46,6 @@ def browse(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> FolderListing:
     """Subcarpetas de ``path`` dentro de la ubicación, ordenadas por nombre."""
-    location = service.get_location(db, location_id)
+    location = service.get_location(db, location_id, tenant_id=user.scope_tenant_id)
     page = service.browse(location, path, settings=settings, limit=limit, offset=offset)
     return listing(page, location.id)

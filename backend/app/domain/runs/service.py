@@ -10,7 +10,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -107,7 +107,7 @@ def _validate_move(db: Session, project: Project, params: ProjectMoveParams, set
         InvalidProjectError: Destino no válido, igual al actual o dentro de las salidas actuales.
         ProjectConflictError: Otro proyecto usa esa carpeta.
     """
-    destination = projects.destination_location(db, params.destination_location_id)
+    destination = projects.destination_location(db, params.destination_location_id, tenant_id=project.tenant_id)
     problem = folder_name_problem(params.new_folder)
     if problem:
         raise InvalidProjectError(problem)
@@ -236,8 +236,8 @@ def get_run(db: Session, run_id: str, user: User) -> tuple[Run, MemberRole | Non
     run = db.get(Run, run_id)
     if run is None:
         raise RunNotFoundError()
-    if run.project_id is None:
-        if user.role != "admin":
+    if run.project_id is None:  # runs de sistema (sondeos, limpieza): de la instancia
+        if not user.is_instance_admin:
             raise RunNotFoundError()
         return run, None
     try:
@@ -257,10 +257,9 @@ def list_runs(
     limit: int,
     offset: int,
 ) -> tuple[list[Run], int]:
-    """Runs visibles, más recientes primero."""
-    query = select(Run)
-    if user.role != "admin":
-        query = query.where(Run.project_id.in_(projects.visible_project_ids(user)))
+    """Runs visibles del tenant activo, más recientes primero (los de sistema, solo para el admin de instancia)."""
+    visible = Run.project_id.in_(projects.visible_project_ids(user))
+    query = select(Run).where(or_(visible, Run.project_id.is_(None)) if user.is_instance_admin else visible)
     if project_id is not None:
         query = query.where(Run.project_id == project_id)
     if status:
@@ -284,10 +283,12 @@ def cancel(db: Session, run: Run, *, role: MemberRole | None, actor: User, ctx: 
     """Cancela un run en cola (al momento) o pide parar uno en marcha (lo atiende el worker).
 
     Raises:
-        RunNotAllowedError: No lo lanzó y no es ``owner`` del proyecto (ni admin).
+        RunNotAllowedError: No lo lanzó y no es ``owner`` del proyecto (``projects.all`` cuenta como ``owner``), ni es
+            un run de sistema y ``actor`` el admin de instancia.
         RunFinishedError: Ya terminó.
     """
-    if actor.role != "admin" and run.created_by != actor.id and role != "owner":
+    system = run.project_id is None and actor.is_instance_admin
+    if run.created_by != actor.id and role != "owner" and not system:
         raise RunNotAllowedError()
     if run.status in FINISHED_RUN_STATUSES:
         raise RunFinishedError()

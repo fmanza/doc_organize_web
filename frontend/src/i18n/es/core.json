@@ -19,7 +19,24 @@
   },
   "roles": {
     "admin": "Administrador",
-    "user": "Usuario"
+    "user": "Usuario",
+    "instanceAdmin": "Admin de instancia",
+    "builtin": {
+      "admin": "Administrador",
+      "user": "Usuario"
+    },
+    "builtinBadge": "Rol base",
+    "title": "Roles de {{tenant}}",
+    "intro": "Cada usuario tiene un rol de su tenant con permisos de administración. El acceso a cada proyecto sigue siendo por miembros (propietario, editor o lector). Solo puedes dar permisos que tienes.",
+    "new": "Nuevo rol",
+    "name": "Nombre",
+    "permissions": "Permisos",
+    "create": "Crear rol",
+    "users_one": "{{count}} usuario",
+    "users_other": "{{count}} usuarios",
+    "deleteLabel": "Borrar el rol {{name}}",
+    "saveLabel": "Guardar el rol {{name}}",
+    "inUse": "Tiene usuarios: asígnales otro rol antes de borrarlo."
   },
   "nav": {
     "label": "Navegación principal",
@@ -39,7 +56,9 @@
     "settings": "Ajustes",
     "taxonomy-templates": "Plantillas de taxonomía",
     "ai-settings": "Configuración IA",
-    "ai-usage": "Uso de IA"
+    "ai-usage": "Uso de IA",
+    "tenants": "Tenants",
+    "roles": "Roles"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",
@@ -89,5 +108,54 @@
     "title": "Página no encontrada",
     "body": "La dirección no corresponde a ninguna sección.",
     "back": "Volver al inicio"
+  },
+  "permissions": {
+    "users.manage": {
+      "label": "Gestionar usuarios",
+      "hint": "Alta, edición, desactivación y sesiones del tenant."
+    },
+    "roles.manage": {
+      "label": "Gestionar roles",
+      "hint": "Crear, cambiar y borrar los roles del tenant."
+    },
+    "audit.read": {
+      "label": "Consultar la auditoría",
+      "hint": "Eventos del tenant."
+    },
+    "templates.manage": {
+      "label": "Gestionar plantillas",
+      "hint": "Plantillas de taxonomía personalizadas."
+    },
+    "projects.create": {
+      "label": "Crear proyectos",
+      "hint": "Quien crea un proyecto es su propietario."
+    },
+    "projects.all": {
+      "label": "Todos los proyectos",
+      "hint": "Ver y administrar como propietario todos los proyectos del tenant."
+    }
+  },
+  "tenants": {
+    "title": "Tenants",
+    "intro": "Organizaciones aisladas: cada una tiene sus usuarios, roles, proyectos, ubicaciones, plantillas y auditoría. Solo se borra un tenant vacío.",
+    "new": "Nuevo tenant",
+    "slug": "Identificador",
+    "slugHint": "Minúsculas, dígitos y guiones; no se puede cambiar.",
+    "slugInvalid": "De 2 a 63 caracteres: minúsculas, dígitos y guiones.",
+    "name": "Nombre",
+    "create": "Crear tenant",
+    "users": "Usuarios",
+    "projects": "Proyectos",
+    "locations": "Ubicaciones",
+    "acting": "Actúas en este tenant",
+    "actIn": "Actuar en él",
+    "actInLabel": "Actuar en {{name}}",
+    "rename": "Renombrar",
+    "renameLabel": "Renombrar {{name}}",
+    "deleteLabel": "Borrar {{name}}",
+    "deleteBody": "Se borra el tenant «{{name}}» con sus roles. Su auditoría pasa al tenant predeterminado.",
+    "notEmpty": "Solo se borra si no tiene usuarios, proyectos, ubicaciones ni plantillas.",
+    "switch": "Tenant activo",
+    "current": "Tenant: {{name}}"
   }
 }

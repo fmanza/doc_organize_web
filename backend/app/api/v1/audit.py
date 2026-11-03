@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 from pydantic import AwareDatetime
 
-from app.api.deps import AdminUser, DbSession
+from app.api.deps import AuditReader, DbSession
 from app.api.v1.schemas import MAX_PAGE_SIZE, AuditEntryOut, AuditPage
 from app.domain.identity import audit
 
@@ -18,10 +18,10 @@ router = APIRouter(prefix="/audit", tags=["audit"])
     "",
     response_model=AuditPage,
     summary="Consultar auditoría",
-    responses={401: {"description": "No autenticado"}, 403: {"description": "Sin rol de administrador"}},
+    responses={401: {"description": "No autenticado"}, 403: {"description": "Sin permiso audit.read"}},
 )
 def list_audit(
-    _: AdminUser,
+    reader: AuditReader,
     db: DbSession,
     action: Annotated[str | None, Query(max_length=64, description="Acción o prefijo, p. ej. `auth.`")] = None,
     actor_id: Annotated[int | None, Query(ge=1)] = None,
@@ -31,8 +31,16 @@ def list_audit(
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> AuditPage:
-    """Eventos más recientes primero."""
+    """Eventos del tenant activo, más recientes primero."""
     rows, total = audit.list_entries(
-        db, action=action, actor_id=actor_id, actor=actor, since=since, until=until, limit=limit, offset=offset
+        db,
+        tenant_id=reader.scope_tenant_id,
+        action=action,
+        actor_id=actor_id,
+        actor=actor,
+        since=since,
+        until=until,
+        limit=limit,
+        offset=offset,
     )
     return AuditPage(items=[AuditEntryOut.model_validate(e) for e in rows], total=total)
