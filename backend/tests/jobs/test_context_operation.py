@@ -1,5 +1,5 @@
 """Operaciones ``context_build`` y ``context_delete`` (Fase 7) en el propio proceso, con ``ContextBuilder``,
-``Reorganizer`` y ``SiteGenerator`` reales de doc_organize 0.13.0 (sin Docling) y documentos sintéticos: conversiones
+``Reorganizer`` y ``SiteGenerator`` reales de doc_organize 0.14.0 (sin Docling) y documentos sintéticos: conversiones
 falsas (``.md`` + ``.json`` con ``title``/``chunks``) en ``Conversión/``, proyección en la BD con rutas relativas,
 avisos sin rutas del contenedor, colisiones (G30), enlaces (G27) y borrado con vista previa."""
 
@@ -184,18 +184,18 @@ def test_build_with_a_template_uses_two_axes(
     assert docs and all(d.material_type for d in docs)
 
 
-def test_build_marks_name_collisions(run: Any, project: Project, db: Session) -> None:
-    """G30: ``2024/factura.txt`` y ``2025/factura.txt`` van a la misma carpeta de ``organizado/``."""
+def test_build_keeps_both_copies_of_repeated_names(run: Any, project: Project, db: Session, migrated: Settings) -> None:
+    """G30, resuelto en 0.14.0 (L-8d): ``2024/factura.txt`` y ``2025/factura.txt`` ya no comparten carpeta."""
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    operation.run_build(ctx, params, project)
 
-    collided = list(db.scalars(select(ContextDocument).where(ContextDocument.collision.is_(True))))
-    assert result["collisions"] == 2 and {(d.folder, d.path) for d in collided} == {
-        ("2024", "factura.txt"),
-        ("2025", "factura.txt"),
-    }
-    assert any("G30" in message for message in _logs(db, ctx.run_id))
+    output = migrated.locations_root / "salidas" / "Proyecto A"
+    docs = list(db.scalars(select(ContextDocument).where(ContextDocument.path == "factura.txt")))
+    copies = {str(d.organized_path) for d in docs}
+    assert len(docs) == 2 and len(copies) == 2 and not any(d.collision for d in docs)
+    assert all((output / copy).is_file() for copy in copies)
+    assert db.get(ProjectContext, project.id).collisions_count == 0  # type: ignore[union-attr]
 
 
 def test_build_skips_originals_that_are_gone(run: Any, project: Project, db: Session, migrated: Settings) -> None:
@@ -274,7 +274,8 @@ def test_incomplete_conversions_are_left_out(run: Any, project: Project, migrate
 def test_an_invalid_folder_in_context_json_touches_nothing(
     run: Any, project: Project, db: Session, migrated: Settings, folder: str
 ) -> None:
-    """G32: ``context.json`` se puede cambiar desde el recurso de red; una carpeta no válida no se usa."""
+    """G32 (resuelto en 0.14.0, L-8f): ``context.json`` se puede cambiar desde el recurso de red. doc_organize rechaza
+    la carpeta al leerlo y la reconstrucción usa la del proyecto, sin tocar nada fuera de ella."""
     ctx, params = run(DOMAINS)
     operation.run_build(ctx, params, project)
     _finish(db, ctx)
@@ -283,18 +284,18 @@ def test_an_invalid_folder_in_context_json_touches_nothing(
     (output / "context.json").write_text(json.dumps(data | {"output_folder_name": folder}), encoding="utf-8")
     ctx, params = run(DOMAINS)
 
-    with pytest.raises(JobFailed) as failed:
-        operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project)
 
-    assert failed.value.code == "context_folder_invalid"
+    assert result["output_folder_name"] == "organizado"
+    assert json.loads((output / "context.json").read_text(encoding="utf-8"))["output_folder_name"] == "organizado"
     assert (output / CONVERSION_DIR).is_dir() and (migrated.locations_root / "origen").is_dir()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="enlaces simbólicos")
-def test_linked_temporaries_are_removed_before_writing(
+def test_linked_temporaries_do_not_redirect_writes(
     run: Any, project: Project, migrated: Settings, tmp_path: Path
 ) -> None:
-    """G31: doc_organize escribe ``<fichero>.tmp`` sin ``O_NOFOLLOW``; un enlace puesto ahí se quita antes."""
+    """G31 (resuelto en 0.14.0, L-8e): un enlace con el nombre de un temporal antiguo no desvía las escrituras."""
     victim = tmp_path / "config.db"
     victim.write_text("no tocar", encoding="utf-8")
     output = migrated.locations_root / "salidas" / "Proyecto A"
@@ -305,7 +306,6 @@ def test_linked_temporaries_are_removed_before_writing(
     operation.run_build(ctx, params, project)
 
     assert victim.read_text(encoding="utf-8") == "no tocar"
-    assert not (output / "context.tmp").is_symlink()
 
 
 def test_cancel_during_classification_saves_nothing(

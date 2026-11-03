@@ -65,7 +65,7 @@ bloquean: la web tiene rodeo.
 
 ## Peticiones de la Fase 8 (huecos G33–G37)
 
-Ninguna bloquea: la web las rodea en `backend/app/integrations/doc_organize/ai.py`.
+Publicadas en **0.14.0** (2026-11-03), junto con L-8d…L-8f y L-10; la web las adopta y retira sus rodeos.
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
@@ -75,7 +75,7 @@ Ninguna bloquea: la web las rodea en `backend/app/integrations/doc_organize/ai.p
 | L-3d | Carpeta relativa en la muestra | `select_document_sample` muestra la carpeta relativa a la raíz escaneada, nunca nombres de carpetas por encima de ella | G36 |
 | L-3e | Clave fuera de la URL del uso | `LiteLLMUsageClient.get_usage()` no pone la virtual key en la *query* cuando se consulta la propia clave del Bearer (httpx registra cada URL); PENDIENTE DE VERIFICAR que `/key/info` sin `key=` devuelve esa clave | G37 |
 
-## Versión 0.14.0 — deprecación de la web (F8 de la web cerrada el 2026-11-02: se puede pedir ya)
+## Versión 0.14.0 — deprecación de la web (publicada el 2026-11-03)
 
 > La 0.12.0 se usó para L-10a…L-10e (robustez del escaneo y API de lectura, G16–G23) y la 0.13.0 para L-8 y
 > L-8a…L-8c (Fase 7): L-10 pasa a la siguiente MINOR (2026-11-02).

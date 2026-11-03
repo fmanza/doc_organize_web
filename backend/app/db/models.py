@@ -496,7 +496,8 @@ class ContextDocument(Base):
 
     Rutas relativas: ``folder`` + ``path`` del original en el origen y ``organized_path`` de la copia dentro de la
     carpeta del proyecto en el destino (nula si no se copió). ``failed`` marca los que doc_organize no pudo copiar (G27)
-    y ``collision`` los que comparten carpeta con otro y se sobrescriben en la copia (G30).
+    y ``collision`` los que compartían carpeta con otro y se sobrescribían en la copia (G30, contextos construidos con
+    doc_organize 0.13.0; desde 0.14.0 ya no ocurre).
     """
 
     __tablename__ = "context_documents"

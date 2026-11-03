@@ -1,33 +1,30 @@
-"""Servicios de IA de doc_organize 0.13.0 (WB-8.1…WB-8.3; L-3, G3). Único módulo que importa ``doc_organize.ai``.
+"""Servicios de IA de doc_organize 0.14.0 (WB-8.1…WB-8.3; L-3, G3). Único módulo que importa ``doc_organize.ai``.
 
 La web construye los ``*Config`` con los valores que resuelve ella (``ai_settings`` > ``DOC_ORGANIZE_*``) y nunca usa
 las ``*_config_from_store_or_env`` (obsoletas, se retiran en 1.0.0). doc_organize se importa **dentro** de cada función
 (G15).
 
-Firmas verificadas en el tag ``v0.13.0``::
+Firmas verificadas en el tag ``v0.14.0`` (CHANGELOG, «Firmas finales»)::
 
-    LiteLLMClassificationConfig(base_url, virtual_key, model="claude-classifier", timeout_s=30.0)    # y Taxonomy…
-    LiteLLMTaxonomyManifestDraftConfig(base_url, virtual_key, model="claude-classifier", timeout_s=60.0)
-    LiteLLMUsageConfig(base_url, virtual_key, timeout_s=30.0)
-    GitHubCopilotUsageConfig(username, personal_access_token, timeout_s=30.0)
+    LiteLLMClassificationConfig(base_url, virtual_key, model="claude-classifier", timeout_s=30.0, retries=0,
+        retry_backoff_s=0.5)                                    # y Taxonomy…, …ManifestDraft… (timeout_s=60.0)
+    LiteLLMUsageConfig(base_url, virtual_key, timeout_s=30.0, retries=0, retry_backoff_s=0.5)
+    GitHubCopilotUsageConfig(username, personal_access_token, timeout_s=30.0, retries=0, retry_backoff_s=0.5)
     DomainClassificationClient(config, *, transport=None).classify(*, chunks_text, title, candidate_domains)
     TaxonomyClassificationClient(config, *, transport=None).classify(*, chunks_text, title, candidate_domains,
         candidate_material_types)
     TaxonomyManifestDraftClient(config, *, transport=None).propose_manifest(*, documents: list[SampledDocument])
-    LiteLLMUsageClient(config, *, transport=None).get_usage(*, key=None) -> UsageSnapshot
+    LiteLLMUsageClient(config, *, transport=None).get_usage(*, key=None)   # sin ?key= con la clave propia (L-3e)
     GitHubCopilotUsageClient(config, *, transport=None).get_usage(*, year=None, month=None) -> UsageSnapshot
-    select_document_sample(documents, sample_size) -> list[SampledDocument]
+    select_document_sample(documents, sample_size, *, roots=None) -> list[SampledDocument]          # L-3d
     render_taxonomy_manifest_markdown(manifest, *, reasoning, sample_document_count, total_document_count) -> str
+    ContextBuilder().build(..., *, ai_max_failures=None, ai_max_documents=None) -> Context           # L-3a, L-3b
+    Context.ai_classification_stopped / ai_documents_sent / ai_documents_classified / ai_documents_failed  # L-3c
 
-Huecos que se rodean aquí (``docs/plan/DOC_ORGANIZE_GAPS.md``):
-
-- G33: ``ContextBuilder`` captura el error de IA de cada documento y sigue con el siguiente. Los clientes «vigilados»
-  dejan de llamar tras un error de autenticación o tras ``MAX_CONNECTION_FAILURES`` errores de conexión seguidos.
-- G34: sin reintentos ni presupuesto. Se reintenta la conexión con ``httpx.AsyncHTTPTransport(retries=…)`` y el
-  cliente deja de llamar al llegar a ``AiConnection.budget`` documentos.
-- G35: la librería no cuenta lo que hace la IA. Lo cuenta ``AiTally``.
-- G36: la muestra del borrador usa la carpeta de ``source_path``. Se le pasa la ruta relativa a la ubicación de origen
-  para que no salgan al servicio de IA nombres de las carpetas del contenedor.
+Desde 0.14.0 la librería para la Sub-fase B ante una clave rechazada, tras ``MAX_CONNECTION_FAILURES`` errores de
+conexión seguidos o al llegar al presupuesto, reintenta solo errores de transporte y cuenta lo que hace (G33–G35
+resueltos). La muestra del borrador se toma relativa a la ubicación de origen (``roots``, G36) y el cliente de uso ya
+no pone la clave en la URL (G37; ``core/logging.py`` sigue silenciando ``httpx`` como defensa).
 
 Los mensajes de error de doc_organize llevan la ``base_url``. Aquí se sustituyen por un código fijo (``AiErrorCode``),
 y en ningún caso llevan la clave.
@@ -36,7 +33,6 @@ y en ningún caso llevan la clave.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path, PurePosixPath
@@ -55,10 +51,9 @@ FamilyKey = Literal[
     "github_copilot_usage",
 ]
 AiErrorCode = Literal["ai_auth", "ai_connection", "ai_error"]
-StopReason = Literal["auth", "connection", "budget"]
 UsageSourceKey = Literal["litellm", "github_copilot"]
 
-#: Errores de conexión seguidos tras los que se deja de llamar al servicio en un run (G33).
+#: Errores de conexión seguidos tras los que doc_organize deja de llamar al servicio en un run (``ai_max_failures``).
 MAX_CONNECTION_FAILURES: Final = 3
 #: Documentos de la muestra del borrador de manifiesto (mismos límites que la web integrada).
 MAX_SAMPLE_SIZE: Final = 60
@@ -120,8 +115,8 @@ class AiConnection:
     Attributes:
         values: Campo → valor (solo los que tienen valor).
         timeout_s: Segundos máximos de cada petición.
-        retries: Reintentos de conexión (``httpx.AsyncHTTPTransport``).
-        budget: Documentos que se pueden enviar como mucho (clasificación).
+        retries: Reintentos de un timeout o error de transporte (``*Config.retries``, L-3b).
+        budget: Documentos que se pueden enviar como mucho por construcción (``ai_max_documents``, L-3b).
     """
 
     family: FamilyKey
@@ -129,20 +124,6 @@ class AiConnection:
     timeout_s: float = 30.0
     retries: int = 0
     budget: int = 500
-
-
-@dataclass
-class AiTally:
-    """Lo que hizo la IA en un run (G35): llamadas, documentos con algún eje asignado, fallos y por qué paró."""
-
-    calls: int = 0
-    classified: int = 0
-    failed: int = 0
-    stopped: StopReason | None = None
-    consecutive_connection_failures: int = 0
-
-    def as_dict(self) -> dict[str, Any]:
-        return {"calls": self.calls, "classified": self.classified, "failed": self.failed, "stopped": self.stopped}
 
 
 class AiServiceError(Exception):
@@ -157,10 +138,11 @@ class NoConvertedDocumentsError(Exception):
     """El proyecto no tiene documentos convertidos legibles para la muestra del borrador."""
 
 
-def _transport(connection: AiConnection) -> httpx.AsyncBaseTransport:
-    import httpx
-
-    return httpx.AsyncHTTPTransport(retries=connection.retries)
+def _transport(connection: AiConnection) -> httpx.AsyncBaseTransport | None:
+    """Transporte HTTP de los clientes: el de httpx por defecto (``None``). Los tests lo sustituyen por un
+    ``httpx.MockTransport``; los reintentos los hace doc_organize (``*Config.retries``)."""
+    del connection
+    return None
 
 
 def _litellm_kwargs(connection: AiConnection) -> dict[str, Any]:
@@ -169,6 +151,7 @@ def _litellm_kwargs(connection: AiConnection) -> dict[str, Any]:
         "base_url": values["base_url"],
         "virtual_key": values["virtual_key"],
         "timeout_s": connection.timeout_s,
+        "retries": connection.retries,
     }
     if values.get("model"):
         kwargs["model"] = values["model"]
@@ -176,54 +159,6 @@ def _litellm_kwargs(connection: AiConnection) -> dict[str, Any]:
 
 
 # --- clasificación (subproceso del job, dentro del bucle de ``ContextBuilder.build``) ---------------------------------
-
-
-def _guard(
-    base: type[Any], empty: Callable[[], Any], errors: tuple[type[Exception], type[Exception], type[Exception]]
-) -> type[Any]:
-    """Subclase de ``base`` que cuenta, respeta el presupuesto y deja de llamar tras un fallo de autenticación o
-    varios de conexión (G33, G34). Devuelve el resultado vacío («sin dominio») cuando no llama.
-
-    ``errors``: ``(Error, AuthError, ConnectionError)`` del cliente. Se relanzan con un mensaje fijo (sin ``base_url``):
-    ``ContextBuilder`` los captura, escribe el aviso y sigue sin clasificar ese documento.
-    """
-    generic_error, auth_error, connection_error = errors
-
-    class Guarded(base):  # type: ignore[misc]  # base es una clase de doc_organize (sin tipos)
-        def __init__(self, connection: AiConnection, tally: AiTally) -> None:
-            super().__init__(config_for(connection), transport=_transport(connection))
-            self._budget = connection.budget
-            self._tally = tally
-
-        async def classify(self, **kwargs: Any) -> Any:
-            tally = self._tally
-            if tally.stopped is None and tally.calls >= self._budget:
-                tally.stopped = "budget"
-            if tally.stopped is not None:
-                return empty()
-            tally.calls += 1
-            try:
-                result = await super().classify(**kwargs)
-            except auth_error:
-                tally.failed += 1
-                tally.stopped = "auth"
-                raise auth_error("El servicio de IA rechazó la clave") from None
-            except connection_error:
-                tally.failed += 1
-                tally.consecutive_connection_failures += 1
-                if tally.consecutive_connection_failures >= MAX_CONNECTION_FAILURES:
-                    tally.stopped = "connection"
-                raise connection_error("No se pudo conectar con el servicio de IA") from None
-            except generic_error:
-                tally.failed += 1
-                tally.consecutive_connection_failures = 0
-                raise generic_error("El servicio de IA devolvió un error") from None
-            tally.consecutive_connection_failures = 0
-            if getattr(result, "domain", None) is not None or getattr(result, "material_type", None) is not None:
-                tally.classified += 1
-            return result
-
-    return Guarded
 
 
 def config_for(connection: AiConnection) -> Any:
@@ -241,6 +176,7 @@ def config_for(connection: AiConnection) -> Any:
             username=connection.values["username"],
             personal_access_token=connection.values["pat"],
             timeout_s=connection.timeout_s,
+            retries=connection.retries,
         )
     if connection.family == "litellm_usage":
         kwargs = _litellm_kwargs(connection)
@@ -254,37 +190,36 @@ def config_for(connection: AiConnection) -> Any:
     return config_cls(**_litellm_kwargs(connection))
 
 
-def classification_client(connection: AiConnection, tally: AiTally) -> Any:
-    """Cliente vigilado de la familia de ``connection`` (un eje o taxonomía), para ``ContextBuilder.build``.
+def classification_client(connection: AiConnection) -> Any:
+    """Cliente de la familia de ``connection`` (un eje o taxonomía), para ``ContextBuilder.build``.
 
-    Se usa con ``async with`` dentro del mismo bucle de eventos que la construcción.
+    Se usa con ``async with`` dentro del mismo bucle de eventos que la construcción. El presupuesto y los cortes van
+    en ``classification_limits``.
     """
     from doc_organize.ai import DomainClassificationClient, TaxonomyClassificationClient
-    from doc_organize.core.exceptions import (
-        DomainClassificationAuthError,
-        DomainClassificationConnectionError,
-        DomainClassificationError,
-        TaxonomyClassificationAuthError,
-        TaxonomyClassificationConnectionError,
-        TaxonomyClassificationError,
-    )
-    from doc_organize.core.models import DomainClassificationResult, TaxonomyClassificationResult
 
-    if connection.family == "litellm_taxonomy_classification":
-        cls = _guard(
-            TaxonomyClassificationClient,
-            TaxonomyClassificationResult,
-            (TaxonomyClassificationError, TaxonomyClassificationAuthError, TaxonomyClassificationConnectionError),
-        )
-    elif connection.family == "litellm_classification":
-        cls = _guard(
-            DomainClassificationClient,
-            lambda: DomainClassificationResult(domain=None, confidence=0.0),
-            (DomainClassificationError, DomainClassificationAuthError, DomainClassificationConnectionError),
-        )
-    else:
+    clients = {
+        "litellm_classification": DomainClassificationClient,
+        "litellm_taxonomy_classification": TaxonomyClassificationClient,
+    }
+    if connection.family not in clients:
         raise ValueError(f"{connection.family} no es una familia de clasificación")
-    return cls(connection, tally)
+    return clients[connection.family](config_for(connection), transport=_transport(connection))
+
+
+def classification_limits(connection: AiConnection) -> dict[str, int]:
+    """Argumentos de ``ContextBuilder.build`` que acotan la Sub-fase B (L-3a, L-3b)."""
+    return {"ai_max_failures": MAX_CONNECTION_FAILURES, "ai_max_documents": connection.budget}
+
+
+def classification_stats(context: Any) -> dict[str, Any]:
+    """Lo que hizo la IA en una construcción, desde el ``Context`` de doc_organize (L-3c)."""
+    return {
+        "calls": int(context.ai_documents_sent),
+        "classified": int(context.ai_documents_classified),
+        "failed": int(context.ai_documents_failed),
+        "stopped": context.ai_classification_stopped,
+    }
 
 
 # --- borrador de manifiesto (subproceso del job) ---------------------------------------------------------------------
@@ -302,17 +237,13 @@ class DraftOutcome:
     material_types: list[tuple[str, str]]
 
 
-def _relative_documents(documents: list[Any], folders: list[SourceFolder]) -> list[Any]:
-    """Copias de ``documents`` con ``source_path`` relativo a la ubicación de origen (G36)."""
-    relative: list[Any] = []
-    for document in documents:
-        source = Path(document.source_path)
-        for folder in folders:
-            if source.is_relative_to(folder.root):
-                rel = PurePosixPath(folder.folder, source.relative_to(folder.root).as_posix())
-                relative.append(document.model_copy(update={"source_path": rel.as_posix()}))
-                break
-    return relative
+def location_root(folder: SourceFolder) -> Path:
+    """Raíz de la ubicación de origen de ``folder`` (``folder.root`` sin los niveles de ``folder.folder``).
+
+    La muestra del borrador muestra las carpetas relativas a ella (``2024/obras``), nunca por encima (G36).
+    """
+    levels = len(PurePosixPath(folder.folder).parts)
+    return folder.root.parents[levels - 1] if levels else folder.root
 
 
 def _ai_error(exc: Exception, auth: type[Exception], connection: type[Exception]) -> AiServiceError:
@@ -344,10 +275,10 @@ def draft_manifest(
 
     del name, created_at  # el borrador no depende del proyecto de doc_organize, solo de sus documentos
     documents, _ = converted_documents(folders)
-    documents = _relative_documents(documents, folders)
     if not documents:
         raise NoConvertedDocumentsError()
-    sample = asyncio.run(select_document_sample(documents, min(sample_size, MAX_SAMPLE_SIZE)))
+    roots = sorted({str(location_root(folder)) for folder in folders})
+    sample = asyncio.run(select_document_sample(documents, min(sample_size, MAX_SAMPLE_SIZE), roots=roots))
     if not sample:
         raise NoConvertedDocumentsError()
 

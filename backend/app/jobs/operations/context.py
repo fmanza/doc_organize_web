@@ -1,4 +1,4 @@
-"""``context_build`` y ``context_delete``: contexto del proyecto con doc_organize 0.13.0 (WB-7.2, WB-7.3; L-8).
+"""``context_build`` y ``context_delete``: contexto del proyecto con doc_organize 0.14.0 (WB-7.2, WB-7.3; L-8).
 
 - **Construir**: documentos convertidos con éxito de las cachés de todas las carpetas de origen cuyo original sigue
   ahí; clasificación por dominios (descubiertos, catálogo propio, plantilla o manifiesto: el Markdown lo fija la API
@@ -79,7 +79,7 @@ def _project_rows(
                 documents_count=sum(1 for d in outcome.documents if d.domain_slug is not None),
                 unclassified_count=sum(1 for d in outcome.documents if d.domain_slug is None),
                 failed_count=len(outcome.failed),
-                collisions_count=outcome.collisions,
+                collisions_count=0,  # desde 0.14.0 doc_organize no sobrescribe nombres repetidos (G30)
                 site_built=outcome.site_built,
                 ai_classification=params.ai_classification,
                 domains=outcome.domains,
@@ -182,12 +182,6 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
 
     for path, error in outcome.failed[:MAX_FAILED_SHOWN]:
         ctx.log(f"No se pudo copiar «{namer.display(path)}»: {namer.text(error)}", level="warning")
-    if outcome.collisions:
-        ctx.log(
-            f"{outcome.collisions} documentos comparten nombre con otro del mismo dominio y tipo: en la carpeta "
-            "reorganizada solo queda uno de cada nombre (G30).",
-            level="warning",
-        )
     if outcome.site_error:
         ctx.log(f"El sitio no se pudo construir: {namer.text(outcome.site_error)}", level="warning")
     if outcome.ai is not None:
@@ -206,7 +200,6 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         "unclassified": sum(1 for d in outcome.documents if d.domain_slug is None),
         "failed": len(outcome.failed),
         "failed_paths": [namer.display(path) for path, _ in outcome.failed[:MAX_FAILED_SHOWN]],
-        "collisions": outcome.collisions,
         "missing_originals": outcome.missing,
         "site_built": outcome.site_built,
         "ai": {"enabled": True, **outcome.ai} if outcome.ai is not None else {"enabled": False},
@@ -227,18 +220,9 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
 
 
 def _existing_folder(output: Path, project: Project) -> str | None:
-    """Carpeta reorganizada de ``context.json`` (validada: el fichero se puede cambiar desde el recurso, G32).
-
-    Raises:
-        JobFailed: ``context_folder_invalid`` si no es una carpeta válida del proyecto.
-    """
-    try:
-        return library.context.existing_folder_name(output, name=project.name, created_at=project.created_at)
-    except library.context.ContextFolderInvalidError:
-        raise JobFailed(
-            "context_folder_invalid",
-            "context.json indica una carpeta reorganizada no válida; no se toca nada. Revisa la carpeta del proyecto.",
-        ) from None
+    """Carpeta reorganizada de ``context.json``, o ``None``. doc_organize la valida al leer (G32): uno no válido o
+    dañado cuenta como sin contexto."""
+    return library.context.existing_folder_name(output, name=project.name, created_at=project.created_at)
 
 
 def _measure_context(ctx: JobContext, output: Path, folder_name: str | None) -> TreeSize:
