@@ -7,8 +7,38 @@ export interface StubResponse {
 
 type Handler = StubResponse | ((request: Request) => StubResponse | Promise<StubResponse>);
 
-export const ADMIN = { id: 1, username: 'admin', display_name: 'Admin', role: 'admin' } as const;
-export const USER = { id: 2, username: 'ana', display_name: 'Ana', role: 'user' } as const;
+const DEFAULT_TENANT = { id: 1, slug: 'default', name: 'Predeterminado' } as const;
+const ALL_PERMISSIONS = [
+  'users.manage',
+  'roles.manage',
+  'audit.read',
+  'templates.manage',
+  'projects.create',
+  'projects.all',
+] as const;
+
+/** Admin de instancia (como los `admin` migrados) en el tenant `default`. */
+export const ADMIN = {
+  id: 1,
+  username: 'admin',
+  display_name: 'Admin',
+  tenant: DEFAULT_TENANT,
+  acting_tenant: DEFAULT_TENANT,
+  is_instance_admin: true,
+  role: { id: 1, name: 'Administrador', builtin: 'admin' },
+  permissions: ALL_PERMISSIONS,
+} as const;
+/** Usuario con el rol base «Usuario». */
+export const USER = {
+  id: 2,
+  username: 'ana',
+  display_name: 'Ana',
+  tenant: DEFAULT_TENANT,
+  acting_tenant: DEFAULT_TENANT,
+  is_instance_admin: false,
+  role: { id: 2, name: 'Usuario', builtin: 'user' },
+  permissions: ['projects.create'],
+} as const;
 
 /**
  * Sustituye `fetch` por un enrutador `"MÉTODO /ruta" → respuesta`. Las rutas sin handler responden 404 con

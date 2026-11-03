@@ -1,23 +1,39 @@
-"""``/api/v1/auth``: inicio y cierre de sesión, usuario actual y cambio de contraseña (ADR-003)."""
+"""``/api/v1/auth``: inicio y cierre de sesión, usuario actual, tenant activo y cambio de contraseña (ADR-003,
+ADR-013)."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Request, Response, status
+from sqlalchemy.orm import Session
 
 from app.api.deps import (
     Context,
     CurrentSession,
+    CurrentUser,
     DbSession,
+    InstanceAdmin,
     SettingsDep,
     clear_auth_cookies,
     set_auth_cookies,
     set_csrf_cookie,
 )
-from app.api.v1.schemas import CsrfToken, LoginRequest, Me, PasswordChange
+from app.api.v1.schemas import (
+    CsrfToken,
+    LoginRequest,
+    Me,
+    PasswordChange,
+    Permission,
+    RoleRef,
+    TenantRef,
+    TenantSwitch,
+)
 from app.core.security import new_csrf_token, session_csrf_token
-from app.domain.identity import auth
+from app.db.models import User
+from app.domain.identity import audit, auth
+from app.domain.identity.audit import AuditAction
+from app.domain.tenancy import tenants
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,7 +72,7 @@ def login(
         previous_token=request.cookies.get(settings.session_cookie),
     )
     set_auth_cookies(response, settings, issued.token)
-    return Me.model_validate(issued.session.user)
+    return me_out(db, issued.session.user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Cerrar sesión", responses={**_401, **_403})
@@ -66,10 +82,49 @@ def logout(session: CurrentSession, response: Response, db: DbSession, settings:
     clear_auth_cookies(response, settings)
 
 
+def me_out(db: Session, user: User) -> Me:
+    """``Me`` de ``user`` en su tenant activo."""
+    acting = user.tenant if user.scope_tenant_id == user.tenant_id else tenants.get_tenant(db, user.scope_tenant_id)
+    return Me(
+        id=user.id,
+        username=user.username,
+        display_name=user.display_name,
+        tenant=TenantRef.model_validate(user.tenant),
+        acting_tenant=TenantRef.model_validate(acting),
+        is_instance_admin=user.is_instance_admin,
+        role=RoleRef.model_validate(user.role),
+        permissions=cast(list[Permission], user.permissions),
+    )
+
+
 @router.get("/me", response_model=Me, summary="Usuario actual", responses=_401)
-def me(session: CurrentSession) -> Me:
-    """Usuario de la sesión actual."""
-    return Me.model_validate(session.user)
+def me(user: CurrentUser, db: DbSession) -> Me:
+    """Usuario de la sesión actual, su tenant activo y sus permisos en él."""
+    return me_out(db, user)
+
+
+@router.put(
+    "/tenant",
+    response_model=Me,
+    summary="Cambiar el tenant activo",
+    responses={**_401, **_403, 404: {"description": "El tenant no existe"}},
+)
+def switch_tenant(body: TenantSwitch, session: CurrentSession, user: InstanceAdmin, db: DbSession, ctx: Context) -> Me:
+    """Solo admin de instancia: actúa en ``tenant_id`` (``null``: en el suyo) en esta sesión. Se audita."""
+    target = tenants.get_tenant(db, body.tenant_id) if body.tenant_id is not None else user.tenant
+    session.acting_tenant_id = None if target.id == user.tenant_id else target.id
+    user.act_in(session.acting_tenant_id)
+    db.info["tenant_id"] = target.id
+    audit.record(
+        db,
+        action=AuditAction.SESSION_TENANT_SWITCH,
+        ctx=ctx,
+        actor_id=user.id,
+        target_type="tenant",
+        target_id=target.id,
+    )
+    db.commit()
+    return me_out(db, user)
 
 
 @router.post(

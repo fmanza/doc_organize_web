@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AdminUser, Context, DbSession, SettingsDep
+from app.api.deps import Context, DbSession, InstanceAdmin, SettingsDep
 from app.api.v1.fs import FS_ERRORS, listing
 from app.api.v1.schemas import (
     MAX_FOLDER_PAGE,
@@ -36,7 +36,7 @@ def _page(views: list[SettingView]) -> SettingsPage:
 
 
 @router.get("/settings", response_model=SettingsPage, summary="Ver ajustes administrables", responses=_ERRORS)
-def list_settings(_: AdminUser, db: DbSession) -> SettingsPage:
+def list_settings(_: InstanceAdmin, db: DbSession) -> SettingsPage:
     """Ajustes con su valor efectivo, el de la variable ``DOW_*`` (o por defecto) y su origen."""
     return _page(settings_service.list_settings(db, get_settings()))
 
@@ -47,7 +47,7 @@ def list_settings(_: AdminUser, db: DbSession) -> SettingsPage:
     summary="Cambiar ajustes administrables",
     responses={**_ERRORS, 400: {"description": "Ajuste desconocido"}, 422: {"description": "Valor no válido"}},
 )
-def update_settings(body: SettingsUpdate, admin: AdminUser, db: DbSession, ctx: Context) -> SettingsPage:
+def update_settings(body: SettingsUpdate, admin: InstanceAdmin, db: DbSession, ctx: Context) -> SettingsPage:
     """Aplica los cambios sin reiniciar; ``null`` devuelve el ajuste al valor de la variable o por defecto."""
     return _page(settings_service.update_settings(db, body.values, settings=get_settings(), actor=admin, ctx=ctx))
 
@@ -59,7 +59,7 @@ def update_settings(body: SettingsUpdate, admin: AdminUser, db: DbSession, ctx: 
     responses={**FS_ERRORS, **_ERRORS},
 )
 def browse_mounts(
-    _: AdminUser,
+    _: InstanceAdmin,
     settings: SettingsDep,
     path: Annotated[str, Query(max_length=4096, description="Ruta relativa a DOW_LOCATIONS_ROOT")] = "",
     limit: Annotated[int, Query(ge=1, le=MAX_FOLDER_PAGE)] = 200,
@@ -75,13 +75,13 @@ def browse_mounts(
     summary="Volver a comprobar las capacidades",
     responses=_ERRORS,
 )
-def refresh_capabilities(admin: AdminUser, db: DbSession, ctx: Context) -> None:
+def refresh_capabilities(admin: InstanceAdmin, db: DbSession, ctx: Context) -> None:
     """Pide a los workers vivos que vuelvan a sondear sus capacidades (lo hacen en su siguiente latido)."""
     workers.request_refresh(db, actor=admin, ctx=ctx)
 
 
 @router.get("/workers", response_model=WorkerList, summary="Ver workers", responses=_ERRORS)
-def list_workers(_: AdminUser, db: DbSession, settings: SettingsDep) -> WorkerList:
+def list_workers(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> WorkerList:
     """Workers registrados con sus colas, latido y si siguen vivos."""
     return WorkerList(
         items=[

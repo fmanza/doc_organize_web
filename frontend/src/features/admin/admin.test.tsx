@@ -9,7 +9,9 @@ const ANA = {
   id: 2,
   username: 'ana',
   display_name: 'Ana',
-  role: 'user',
+  tenant_id: 1,
+  role: { id: 2, name: 'Usuario', builtin: 'user' },
+  is_instance_admin: false,
   is_active: true,
   locked_until: null,
   failed_attempts: 0,
@@ -79,7 +81,8 @@ describe('UsersPage', () => {
       username: 'luis',
       display_name: 'Luis',
       password: 'frase-de-paso-luis',
-      role: 'user',
+      role_id: null,
+      is_instance_admin: false,
     });
   });
 

@@ -81,7 +81,7 @@ def list_templates(db: Session, user: User) -> list[TemplateView]:
         TemplateView(name=name, title=info.title, description=info.description, builtin=True)
         for name, info in _builtins().items()
     ]
-    rows = db.scalars(select(TaxonomyTemplate).where(TaxonomyTemplate.tenant_id == user.tenant_id))
+    rows = db.scalars(select(TaxonomyTemplate).where(TaxonomyTemplate.tenant_id == user.scope_tenant_id))
     views.extend(
         TemplateView(name=r.name, title=r.title, description=r.description, builtin=False, updated_at=r.updated_at)
         for r in rows
@@ -107,7 +107,7 @@ def get_template(db: Session, user: User, name: str) -> TemplateView:
             domains=info.domains,
             material_types=info.material_types,
         )
-    row = _custom(db, user.tenant_id, name)
+    row = _custom(db, user.scope_tenant_id, name)
     if row is None:
         raise TemplateNotFoundError()
     try:
@@ -151,10 +151,10 @@ def save_template(
     if is_builtin(name):
         raise TemplateBuiltinError("Ese nombre es de una plantilla incluida: duplícala con otro nombre.")
     info = validate_markdown(markdown)
-    row = _custom(db, actor.tenant_id, name)
+    row = _custom(db, actor.scope_tenant_id, name)
     created = row is None
     if row is None:
-        row = TaxonomyTemplate(tenant_id=actor.tenant_id, name=name, created_by=actor.id, markdown=markdown)
+        row = TaxonomyTemplate(tenant_id=actor.scope_tenant_id, name=name, created_by=actor.id, markdown=markdown)
         db.add(row)
     row.markdown = markdown
     row.title = info.title[:256] if info.title else None
@@ -182,7 +182,7 @@ def delete_template(db: Session, actor: User, name: str, *, ctx: RequestContext)
     """
     if is_builtin(name):
         raise TemplateBuiltinError("Las plantillas incluidas no se pueden borrar.")
-    row = _custom(db, actor.tenant_id, name)
+    row = _custom(db, actor.scope_tenant_id, name)
     if row is None:
         raise TemplateNotFoundError()
     audit.record(

@@ -15,7 +15,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 6 | Duplicados ✅ (2026-11-02) | 0.7.0 | 0.12.1 (L-6, L-11a) |
 | 7 | Contexto y taxonomías ✅ (2026-11-02) | 0.8.0 | 0.13.0 (L-8, L-8a…L-8c) |
 | 8 | IA: clasificación, manifiestos y uso ✅ (2026-11-03) | 0.9.0 | 0.10.0 (L-3); cerrada con 0.13.0 |
-| 9 | Multi-tenant y roles | 0.10.0 | — |
+| 9 | Multi-tenant y roles ✅ (2026-11-03) | 0.10.0 | — |
 | 10 | Endurecimiento y release | 1.0.0 | 1.0.0 |
 
 **DoD común**: comandos de desarrollo en verde (backend y frontend), OpenAPI exportado y cliente regenerado, migración
@@ -198,6 +198,12 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
 - **Cierre de paridad** → doc_organize L-10 (deprecar la web integrada).
 
 ## Fase 9 — Multi-tenant y roles
+
+> **Cerrada el 2026-11-03 (0.10.0)** con doc_organize 0.14.0 (la fase no pedía nada de la librería). Decisiones del
+> mantenedor: roles = permisos de administración del tenant (los miembros de proyecto no cambian), usuarios únicos en
+> la instancia, ubicaciones del admin de instancia (E1), tenant activo en la sesión (E2), solo se borran tenants vacíos
+> (E3), los `admin` pasan a admin de instancia (E4) y `/auth/me` sin `role` (E5). Paridad completa ([ADR-013](../adr/ADR-013-multi-tenant.md)).
+> Sesión: `.ai/sessions/2026-11-03-fase9/`.
 
 - WB-9.1 Tenants activos (la columna `tenant_id` ya existe desde F1), admin de instancia, aislamiento en todas las
   consultas (test IDOR entre tenants), ubicaciones por tenant.

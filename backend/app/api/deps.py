@@ -1,7 +1,8 @@
-"""Dependencias comunes de los routers: BD, ajustes, sesión actual, rol admin y CSRF (ADR-003)."""
+"""Dependencias comunes de los routers: BD, ajustes, sesión actual, tenant activo, permisos y CSRF (ADR-003, ADR-013)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Response
@@ -12,7 +13,7 @@ from app.core.security import session_csrf_token, tokens_match
 from app.db.models import User, UserSession
 from app.db.session import get_session
 from app.domain.identity.audit import RequestContext
-from app.domain.identity.sessions import resolve_session
+from app.domain.identity.sessions import acting_user, resolve_session
 from app.domain.settings.service import effective_settings
 
 CSRF_HEADER = "X-CSRF-Token"
@@ -56,26 +57,56 @@ def current_session(request: Request, db: DbSession, settings: SettingsDep) -> U
 CurrentSession = Annotated[UserSession, Depends(current_session)]
 
 
-def current_user(session: CurrentSession) -> User:
-    """Usuario de la sesión actual."""
-    return session.user
+def current_user(session: CurrentSession, db: DbSession) -> User:
+    """Usuario de la sesión actual, con su tenant activo fijado (ADR-013).
+
+    Solo un admin de instancia actúa en otro tenant (el que eligió con el selector). El tenant activo queda también en
+    ``db.info["tenant_id"]`` para la auditoría de la petición.
+    """
+    user = acting_user(session)
+    db.info["tenant_id"] = user.scope_tenant_id
+    return user
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
-def require_admin(user: CurrentUser) -> User:
-    """Usuario actual con rol ``admin``.
+def require_instance_admin(user: CurrentUser) -> User:
+    """Usuario actual que es admin de instancia (tenants, ubicaciones, ajustes, IA, workers).
 
     Raises:
-        HTTPException: 403 si no es administrador.
+        HTTPException: 403 si no lo es.
     """
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Se necesita el rol de administrador")
+    if not user.is_instance_admin:
+        raise HTTPException(status_code=403, detail="Se necesita ser administrador de la instancia")
     return user
 
 
-AdminUser = Annotated[User, Depends(require_admin)]
+InstanceAdmin = Annotated[User, Depends(require_instance_admin)]
+
+
+def require_permission(*permissions: str) -> Callable[[User], User]:
+    """Dependencia: usuario actual con alguno de ``permissions`` en su tenant activo (los admins de instancia tienen
+    todos).
+
+    Raises:
+        HTTPException: 403 si no tiene ninguno.
+    """
+
+    def _check(user: CurrentUser) -> User:
+        if not any(user.can(permission) for permission in permissions):
+            raise HTTPException(status_code=403, detail="No tienes permiso para esta acción")
+        return user
+
+    return _check
+
+
+UserManager = Annotated[User, Depends(require_permission("users.manage"))]
+RoleManager = Annotated[User, Depends(require_permission("roles.manage"))]
+AuditReader = Annotated[User, Depends(require_permission("audit.read"))]
+TemplateManager = Annotated[User, Depends(require_permission("templates.manage"))]
+#: Leer roles: quien los gestiona y quien los asigna al gestionar usuarios.
+RoleReader = Annotated[User, Depends(require_permission("roles.manage", "users.manage"))]
 
 
 def csrf_protect(request: Request, settings: SettingsDep) -> None:

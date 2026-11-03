@@ -1,5 +1,5 @@
 """API v1: auth, users, sessions y audit (Fase 1); locations, fs, admin e instance (Fase 2); projects y runs (Fase 3);
-documents (Fase 5); duplicates (Fase 6); context (Fase 7); ai (Fase 8).
+documents (Fase 5); duplicates (Fase 6); context (Fase 7); ai (Fase 8); tenancy (Fase 9).
 
 Todo método no seguro bajo ``/api/v1`` exige token CSRF (``csrf_protect``).
 """
@@ -21,12 +21,14 @@ from app.api.v1 import (
     projects,
     runs,
     sessions,
+    tenancy,
     users,
 )
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(csrf_protect)])
 router.include_router(auth.router)
 router.include_router(users.router)
+router.include_router(tenancy.router)
 router.include_router(sessions.router)
 router.include_router(audit.router)
 router.include_router(locations.router)

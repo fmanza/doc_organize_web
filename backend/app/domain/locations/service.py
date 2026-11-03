@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import (
-    DEFAULT_TENANT_ID,
     Location,
     LocationAccess,
     LocationKind,
@@ -37,6 +36,7 @@ from app.domain.locations.paths import (
     run_with_timeout,
 )
 from app.domain.locations.probe import probe
+from app.domain.tenancy.tenants import get_tenant
 
 
 @dataclass(frozen=True)
@@ -69,24 +69,25 @@ class LocationChanges:
     kind: LocationKind | None = None
     usage: LocationUsage | None = None
     access: LocationAccess | None = None
+    tenant_id: int | None = None
 
 
-def list_locations(db: Session, *, limit: int, offset: int) -> tuple[list[Location], int]:
-    """Ubicaciones visibles ordenadas por nombre (todas son ``global`` hasta la Fase 9)."""
-    query = select(Location).where(Location.tenant_id == DEFAULT_TENANT_ID)
+def list_locations(db: Session, *, tenant_id: int, limit: int, offset: int) -> tuple[list[Location], int]:
+    """Ubicaciones del tenant ordenadas por nombre (Fase 9: cada una es de un tenant)."""
+    query = select(Location).where(Location.tenant_id == tenant_id)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = db.scalars(query.order_by(func.lower(Location.name)).limit(limit).offset(offset)).all()
     return list(rows), total
 
 
-def get_location(db: Session, location_id: int) -> Location:
-    """Ubicación visible por id.
+def get_location(db: Session, location_id: int, *, tenant_id: int) -> Location:
+    """Ubicación del tenant por id (autorización antes que existencia, regla 5).
 
     Raises:
-        LocationNotFoundError: No existe o no es visible.
+        LocationNotFoundError: No existe o es de otro tenant (no se revela cuál).
     """
     location = db.get(Location, location_id)
-    if location is None or location.tenant_id != DEFAULT_TENANT_ID:
+    if location is None or location.tenant_id != tenant_id:
         raise LocationNotFoundError()
     return location
 
@@ -122,9 +123,9 @@ def _validate_container_path(db: Session, relative_to_root: str, settings: Setti
     return path
 
 
-def _name_taken(db: Session, name: str, *, exclude_id: int | None = None) -> bool:
+def _name_taken(db: Session, tenant_id: int, name: str, *, exclude_id: int | None = None) -> bool:
     query = select(Location.id).where(
-        Location.tenant_id == DEFAULT_TENANT_ID, func.lower(Location.name) == name.strip().lower()
+        Location.tenant_id == tenant_id, func.lower(Location.name) == name.strip().lower()
     )
     if exclude_id is not None:
         query = query.where(Location.id != exclude_id)
@@ -153,17 +154,21 @@ def create_location(
     settings: Settings,
     actor: User,
     ctx: RequestContext,
+    tenant_id: int,
 ) -> Location:
-    """Registra una ubicación con la carpeta ``path`` (relativa a ``DOW_LOCATIONS_ROOT``) y la sondea.
+    """Registra una ubicación del tenant con la carpeta ``path`` (relativa a ``DOW_LOCATIONS_ROOT``) y la sondea.
+
+    Una carpeta pertenece a una sola ubicación, y por tanto a un solo tenant (no se solapan).
 
     Raises:
         LocationConflictError: Nombre o carpeta ya registrados.
         InvalidLocationPathError: Carpeta no válida.
     """
-    if _name_taken(db, name):
+    if _name_taken(db, tenant_id, name):
         raise LocationConflictError("Ya hay una ubicación con ese nombre.")
     container_path = _validate_container_path(db, path, settings)
     location = Location(
+        tenant_id=tenant_id,
         name=name.strip(),
         container_path=str(container_path),
         display_path=(display_path or "").strip() or None,
@@ -190,14 +195,26 @@ def create_location(
 def update_location(
     db: Session, location: Location, changes: LocationChanges, *, settings: Settings, actor: User, ctx: RequestContext
 ) -> Location:
-    """Aplica ``changes``; si cambia el acceso, vuelve a sondear.
+    """Aplica ``changes``; si cambia el acceso, vuelve a sondear. ``tenant_id`` la pasa a otro tenant (solo si ningún
+    proyecto la usa: un proyecto solo usa ubicaciones de su tenant).
 
     Raises:
-        LocationConflictError: El nombre nuevo ya existe.
+        LocationConflictError: El nombre nuevo ya existe, o se cambia de tenant y algún proyecto la usa.
+        TenantNotFoundError: El tenant nuevo no existe.
     """
     changed: list[str] = []
+    if changes.tenant_id is not None and changes.tenant_id != location.tenant_id:
+        from app.domain.projects.service import projects_using_location
+
+        get_tenant(db, changes.tenant_id)
+        if projects_using_location(db, location.id):
+            raise LocationConflictError("Algún proyecto usa la ubicación: no puede cambiar de tenant.")
+        if _name_taken(db, changes.tenant_id, location.name):
+            raise LocationConflictError("El otro tenant ya tiene una ubicación con ese nombre.")
+        location.tenant_id = changes.tenant_id
+        changed.append("tenant_id")
     if changes.name is not None and changes.name.strip() != location.name:
-        if _name_taken(db, changes.name, exclude_id=location.id):
+        if _name_taken(db, location.tenant_id, changes.name, exclude_id=location.id):
             raise LocationConflictError("Ya hay una ubicación con ese nombre.")
         location.name = changes.name.strip()
         changed.append("name")
@@ -274,7 +291,7 @@ def probe_all(db: Session, settings: Settings) -> dict[str, int]:
         Recuento de ubicaciones por estado.
     """
     counts: dict[str, int] = {}
-    for location in db.scalars(select(Location).where(Location.tenant_id == DEFAULT_TENANT_ID)):
+    for location in db.scalars(select(Location)):  # todas: el sondeo es de la instancia
         _apply_probe(location, settings)
         counts[location.status] = counts.get(location.status, 0) + 1
         db.commit()
@@ -318,7 +335,7 @@ def browse_mounts(path: str | None, *, settings: Settings, limit: int, offset: i
 
 def aggregate_status(db: Session) -> str:
     """Estado agregado para ``/api/health``: ``none``, ``ok``, ``degraded`` o ``unavailable`` (el peor)."""
-    statuses = set(db.scalars(select(Location.status).where(Location.tenant_id == DEFAULT_TENANT_ID)))
+    statuses = set(db.scalars(select(Location.status)))  # /api/health: estado de la instancia
     if not statuses:
         return "none"
     for worst in ("unavailable", "degraded"):

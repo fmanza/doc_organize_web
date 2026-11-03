@@ -17,14 +17,14 @@ import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { useMe } from '../auth/useAuth';
+import { can, useMe } from '../auth/useAuth';
 import { PAGE_SIZE, type SessionInfo, useRevokeSession, useSessions } from './useAdmin';
 
 export function SessionsPage() {
   const { t } = useTranslation();
-  // Un admin ve las sesiones de todos; un usuario, solo las suyas (la API filtra igualmente).
+  // Quien gestiona usuarios ve las de su tenant; el resto, solo las suyas (la API filtra igualmente).
   const { data: me } = useMe();
-  const scope = me?.role === 'admin' ? 'all' : 'own';
+  const scope = can(me, 'users.manage') ? 'all' : 'own';
   const [page, setPage] = useState(1);
   const [revoking, setRevoking] = useState<SessionInfo | null>(null);
   const { data, isPending, isError, error } = useSessions(page);

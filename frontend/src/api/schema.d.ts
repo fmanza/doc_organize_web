@@ -197,7 +197,7 @@ export interface paths {
         };
         /**
          * Consultar auditoría
-         * @description Eventos más recientes primero.
+         * @description Eventos del tenant activo, más recientes primero.
          */
         get: operations["list_audit_api_v1_audit_get"];
         put?: never;
@@ -279,7 +279,7 @@ export interface paths {
         };
         /**
          * Usuario actual
-         * @description Usuario de la sesión actual.
+         * @description Usuario de la sesión actual, su tenant activo y sus permisos en él.
          */
         get: operations["me_api_v1_auth_me_get"];
         put?: never;
@@ -304,6 +304,26 @@ export interface paths {
          * @description Cambia la contraseña y cierra las demás sesiones del usuario.
          */
         post: operations["change_password_api_v1_auth_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/tenant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambiar el tenant activo
+         * @description Solo admin de instancia: actúa en ``tenant_id`` (``null``: en el suyo) en esta sesión. Se audita.
+         */
+        put: operations["switch_tenant_api_v1_auth_tenant_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -417,6 +437,23 @@ export interface paths {
          * @description Sondea la ubicación (existencia, lectura, latencia, espacio y escritura si es ``rw``) y guarda el estado.
          */
         post: operations["probe_location_api_v1_locations__location_id__probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catálogo de permisos */
+        get: operations["list_permissions_api_v1_permissions_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -746,6 +783,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Roles del tenant
+         * @description Roles del tenant activo con su número de usuarios; los base primero (``roles.manage`` o ``users.manage``).
+         */
+        get: operations["list_roles_api_v1_roles_get"];
+        put?: never;
+        /**
+         * Crear rol
+         * @description Nadie da un permiso que no tiene (403 ``permission_escalation``).
+         */
+        post: operations["create_role_api_v1_roles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver rol */
+        get: operations["get_role_api_v1_roles__role_id__get"];
+        put?: never;
+        post?: never;
+        /** Borrar rol */
+        delete: operations["delete_role_api_v1_roles__role_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar rol
+         * @description Quitar permisos cierra las sesiones de quienes tienen el rol.
+         */
+        patch: operations["update_role_api_v1_roles__role_id__patch"];
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -895,7 +978,7 @@ export interface paths {
         };
         /**
          * Listar sesiones activas
-         * @description Sesiones vigentes, la actividad más reciente primero. Un usuario que no es admin solo ve las suyas.
+         * @description Sesiones vigentes del tenant activo, la actividad más reciente primero. Sin ``users.manage``, solo las suyas.
          */
         get: operations["list_sessions_api_v1_sessions_get"];
         put?: never;
@@ -918,7 +1001,8 @@ export interface paths {
         post?: never;
         /**
          * Revocar sesión
-         * @description Cierra la sesión indicada de inmediato. Una sesión ajena da 404 si quien la pide no es admin.
+         * @description Cierra la sesión indicada de inmediato. Una sesión ajena da 404 si quien la pide no gestiona usuarios de su
+         *     tenant.
          */
         delete: operations["revoke_session_api_v1_sessions__session_id__delete"];
         options?: never;
@@ -988,6 +1072,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar tenants
+         * @description Tenants por nombre con sus usuarios, proyectos y ubicaciones.
+         */
+        get: operations["list_tenants_api_v1_tenants_get"];
+        put?: never;
+        /**
+         * Crear tenant
+         * @description Crea el tenant con sus roles base («Administrador» y «Usuario»).
+         */
+        post: operations["create_tenant_api_v1_tenants_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Borrar tenant vacío
+         * @description Solo sin usuarios, proyectos, ubicaciones ni plantillas (decisión E3).
+         */
+        delete: operations["delete_tenant_api_v1_tenants__tenant_id__delete"];
+        options?: never;
+        head?: never;
+        /** Renombrar tenant */
+        patch: operations["update_tenant_api_v1_tenants__tenant_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/tenants/{tenant_id}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Usuarios de un tenant */
+        get: operations["list_tenant_users_api_v1_tenants__tenant_id__users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -997,13 +1143,13 @@ export interface paths {
         };
         /**
          * Listar usuarios
-         * @description Usuarios ordenados por nombre de usuario.
+         * @description Usuarios del tenant activo ordenados por nombre de usuario.
          */
         get: operations["list_users_api_v1_users_get"];
         put?: never;
         /**
          * Crear usuario
-         * @description Crea un usuario activo con la contraseña inicial indicada.
+         * @description Crea un usuario activo del tenant activo (o de ``tenant_id``, solo el admin de instancia).
          */
         post: operations["create_user_api_v1_users_post"];
         delete?: never;
@@ -1021,7 +1167,7 @@ export interface paths {
         };
         /**
          * Buscar usuarios activos
-         * @description Hasta 20 usuarios activos para invitar a un proyecto (cualquier sesión: los propietarios no son admin).
+         * @description Hasta 20 usuarios activos del tenant activo para invitar a un proyecto (cualquier sesión).
          */
         get: operations["lookup_users_api_v1_users_lookup_get"];
         put?: never;
@@ -1050,9 +1196,9 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Editar, desactivar, reactivar o desbloquear usuario
-         * @description Cambia nombre, rol, estado o contraseña, o quita un bloqueo. Desactivar o restablecer la contraseña cierra sus
-         *     sesiones.
+         * Editar, desactivar, reactivar, desbloquear o mover usuario
+         * @description Cambia nombre, rol, estado, contraseña o tenant, o quita un bloqueo. Desactivar, restablecer la contraseña,
+         *     cambiar el rol o el tenant cierra sus sesiones.
          */
         patch: operations["update_user_api_v1_users__user_id__patch"];
         trace?: never;
@@ -1946,6 +2092,11 @@ export interface components {
             kind?: ("local" | "network") | null;
             /** Name */
             name?: string | null;
+            /**
+             * Tenant Id
+             * @description Pasarla a otro tenant (si ningún proyecto la usa)
+             */
+            tenant_id?: number | null;
             /** Usage */
             usage?: ("source" | "destination" | "both") | null;
         };
@@ -1964,18 +2115,21 @@ export interface components {
         };
         /**
          * Me
-         * @description Usuario de la sesión actual.
+         * @description Usuario de la sesión actual: su tenant, el tenant en el que actúa (distinto solo para un admin de instancia que
+         *     lo cambió con el selector), su rol y sus permisos en el tenant activo (Fase 9).
          */
         Me: {
+            acting_tenant: components["schemas"]["TenantRef"];
             /** Display Name */
             display_name: string;
             /** Id */
             id: number;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "admin" | "user";
+            /** Is Instance Admin */
+            is_instance_admin: boolean;
+            /** Permissions */
+            permissions: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
+            role: components["schemas"]["RoleRef"];
+            tenant: components["schemas"]["TenantRef"];
             /** Username */
             username: string;
         };
@@ -2073,6 +2227,14 @@ export interface components {
              * Format: password
              */
             new_password: string;
+        };
+        /**
+         * PermissionList
+         * @description Catálogo de permisos de los roles, en orden.
+         */
+        PermissionList: {
+            /** Items */
+            items: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
         };
         /**
          * ProjectCreate
@@ -2215,6 +2377,57 @@ export interface components {
             name?: string | null;
             /** Source Subpaths */
             source_subpaths?: string[] | null;
+        };
+        /** RoleCreate */
+        RoleCreate: {
+            /** Name */
+            name: string;
+            /** Permissions */
+            permissions?: string[];
+        };
+        /** RoleList */
+        RoleList: {
+            /** Items */
+            items: components["schemas"]["RoleOut"][];
+        };
+        /** RoleOut */
+        RoleOut: {
+            /** Builtin */
+            builtin: ("admin" | "user") | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Permissions */
+            permissions: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Users */
+            users: number;
+        };
+        /** RoleRef */
+        RoleRef: {
+            /** Builtin */
+            builtin: ("admin" | "user") | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /** RoleUpdate */
+        RoleUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Permissions */
+            permissions?: string[] | null;
         };
         /**
          * RunBrief
@@ -2693,6 +2906,67 @@ export interface components {
             /** Updated At */
             updated_at?: string | null;
         };
+        /** TenantCreate */
+        TenantCreate: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * TenantOut
+         * @description Tenant con sus recuentos (``empty``: se puede borrar).
+         */
+        TenantOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Empty */
+            empty: boolean;
+            /** Id */
+            id: number;
+            /** Locations */
+            locations: number;
+            /** Name */
+            name: string;
+            /** Projects */
+            projects: number;
+            /** Slug */
+            slug: string;
+            /** Users */
+            users: number;
+        };
+        /** TenantPage */
+        TenantPage: {
+            /** Items */
+            items: components["schemas"]["TenantOut"][];
+            /** Total */
+            total: number;
+        };
+        /** TenantRef */
+        TenantRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * TenantSwitch
+         * @description Tenant en el que actuar (``null``: el propio).
+         */
+        TenantSwitch: {
+            /** Tenant Id */
+            tenant_id: number | null;
+        };
+        /** TenantUpdate */
+        TenantUpdate: {
+            /** Name */
+            name: string;
+        };
         /**
          * UserBrief
          * @description Usuario activo para invitar a un proyecto.
@@ -2713,16 +2987,26 @@ export interface components {
             /** Display Name */
             display_name: string;
             /**
+             * Is Instance Admin
+             * @description Solo lo da un administrador de la instancia
+             * @default false
+             */
+            is_instance_admin: boolean;
+            /**
              * Password
              * Format: password
              */
             password: string;
             /**
-             * Role
-             * @default user
-             * @enum {string}
+             * Role Id
+             * @description Rol del tenant; sin él, «Usuario»
              */
-            role: "admin" | "user";
+            role_id?: number | null;
+            /**
+             * Tenant Id
+             * @description Solo el admin de instancia; sin él, el tenant activo
+             */
+            tenant_id?: number | null;
             /** Username */
             username: string;
         };
@@ -2736,7 +3020,7 @@ export interface components {
         };
         /**
          * UserOut
-         * @description Usuario visto por un administrador.
+         * @description Usuario visto por quien gestiona usuarios.
          */
         UserOut: {
             /**
@@ -2752,6 +3036,8 @@ export interface components {
             id: number;
             /** Is Active */
             is_active: boolean;
+            /** Is Instance Admin */
+            is_instance_admin: boolean;
             /** Locked Until */
             locked_until: string | null;
             /**
@@ -2759,11 +3045,9 @@ export interface components {
              * Format: date-time
              */
             password_changed_at: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "admin" | "user";
+            role: components["schemas"]["RoleRef"];
+            /** Tenant Id */
+            tenant_id: number;
             /**
              * Updated At
              * Format: date-time
@@ -2792,10 +3076,17 @@ export interface components {
             display_name?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Is Instance Admin */
+            is_instance_admin?: boolean | null;
             /** Password */
             password?: string | null;
-            /** Role */
-            role?: ("admin" | "user") | null;
+            /** Role Id */
+            role_id?: number | null;
+            /**
+             * Tenant Id
+             * @description Mover a otro tenant (solo admin de instancia): pierde sus proyectos y sesiones
+             */
+            tenant_id?: number | null;
             /**
              * Unlock
              * @default false
@@ -3324,7 +3615,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sin rol de administrador */
+            /** @description Sin permiso audit.read */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3504,6 +3795,60 @@ export interface operations {
             };
             /** @description Token CSRF ausente o no válido */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    switch_tenant_api_v1_auth_tenant_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantSwitch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token CSRF ausente o no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El tenant no existe */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3938,6 +4283,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    list_permissions_api_v1_permissions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5218,6 +5597,264 @@ export interface operations {
             };
         };
     };
+    list_roles_api_v1_roles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_role_api_v1_roles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nombre en uso */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Permiso desconocido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_role_api_v1_roles__role_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_role_api_v1_roles__role_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol base o en uso */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_role_api_v1_roles__role_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol base o nombre en uso */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_runs_api_v1_runs_get: {
         parameters: {
             query?: {
@@ -5901,6 +6538,275 @@ export interface operations {
             };
         };
     };
+    list_tenants_api_v1_tenants_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_api_v1_tenants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Identificador en uso */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tenant_api_v1_tenants__tenant_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No está vacío o es default */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_api_v1_tenants__tenant_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_users_api_v1_tenants__tenant_id__users_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe (o es de otro tenant) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_api_v1_users_get: {
         parameters: {
             query?: {
@@ -5931,7 +6837,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sin rol de administrador o token CSRF no válido */
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5985,8 +6891,15 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sin rol de administrador o token CSRF no válido */
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El rol o el tenant no existen */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6076,7 +6989,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sin rol de administrador o token CSRF no válido */
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6139,7 +7052,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sin rol de administrador o token CSRF no válido */
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6153,7 +7066,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Último administrador o autodesactivación */
+            /** @description Último administrador, último gestor del tenant o cambio sobre uno mismo */
             409: {
                 headers: {
                     [name: string]: unknown;

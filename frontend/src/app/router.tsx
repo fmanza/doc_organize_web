@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import { createBrowserRouter, type RouteObject } from 'react-router';
 
-import { RequireAdmin, RequireAuth } from '../features/auth/guards';
+import { RequireAccess, RequireAuth } from '../features/auth/guards';
 import { LoginPage } from '../features/auth/LoginPage';
 import { HomePage } from '../features/health/HomePage';
 import { loadFeatureMessages } from '../i18n';
@@ -101,31 +101,70 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'admin',
-            element: <RequireAdmin />,
             children: [
-              { path: 'users', ...page(async () => (await import('../features/admin/UsersPage')).UsersPage) },
               {
-                path: 'sessions',
-                ...page(async () => (await import('../features/admin/SessionsPage')).SessionsPage),
+                element: <RequireAccess instance />,
+                children: [
+                  {
+                    path: 'tenants',
+                    ...page(async () => (await import('../features/admin/TenantsPage')).TenantsPage),
+                  },
+                  {
+                    path: 'settings',
+                    ...page(async () => (await import('../features/admin/SettingsPage')).SettingsPage),
+                  },
+                  {
+                    path: 'ai-settings',
+                    ...page(async () => (await import('../features/admin/AiSettingsPage')).AiSettingsPage),
+                  },
+                  {
+                    path: 'ai-usage',
+                    ...page(async () => (await import('../features/admin/AiUsagePage')).AiUsagePage),
+                  },
+                ],
               },
-              { path: 'audit', ...page(async () => (await import('../features/admin/AuditPage')).AuditPage) },
               {
-                path: 'settings',
-                ...page(async () => (await import('../features/admin/SettingsPage')).SettingsPage),
+                element: <RequireAccess permission="users.manage" />,
+                children: [
+                  {
+                    path: 'users',
+                    ...page(async () => (await import('../features/admin/UsersPage')).UsersPage),
+                  },
+                  {
+                    path: 'sessions',
+                    ...page(async () => (await import('../features/admin/SessionsPage')).SessionsPage),
+                  },
+                ],
               },
               {
-                path: 'taxonomy-templates',
-                ...page(
-                  async () => (await import('../features/admin/TaxonomyTemplatesPage')).TaxonomyTemplatesPage,
-                ),
+                element: <RequireAccess permission="roles.manage" />,
+                children: [
+                  {
+                    path: 'roles',
+                    ...page(async () => (await import('../features/admin/RolesPage')).RolesPage),
+                  },
+                ],
               },
               {
-                path: 'ai-settings',
-                ...page(async () => (await import('../features/admin/AiSettingsPage')).AiSettingsPage),
+                element: <RequireAccess permission="audit.read" />,
+                children: [
+                  {
+                    path: 'audit',
+                    ...page(async () => (await import('../features/admin/AuditPage')).AuditPage),
+                  },
+                ],
               },
               {
-                path: 'ai-usage',
-                ...page(async () => (await import('../features/admin/AiUsagePage')).AiUsagePage),
+                element: <RequireAccess permission="templates.manage" />,
+                children: [
+                  {
+                    path: 'taxonomy-templates',
+                    ...page(
+                      async () =>
+                        (await import('../features/admin/TaxonomyTemplatesPage')).TaxonomyTemplatesPage,
+                    ),
+                  },
+                ],
               },
             ],
           },

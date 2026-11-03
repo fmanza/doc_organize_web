@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.db.models import (
     ACTIVE_RUN_STATUSES,
-    DEFAULT_TENANT_ID,
     Location,
     MemberRole,
     Project,
@@ -85,15 +84,16 @@ def get_access(
     """Proyecto visible para ``user`` con al menos ``min_role``.
 
     Raises:
-        ProjectNotFoundError: No existe, está borrado (salvo ``include_deleted``) o el usuario no es miembro.
+        ProjectNotFoundError: No existe, es de otro tenant, está borrado (salvo ``include_deleted``) o el usuario no
+            es miembro (ni tiene ``projects.all``).
         ProjectForbiddenError: Es miembro, pero con un rol inferior a ``min_role``.
     """
     project = db.get(Project, project_id)
-    if project is None or project.tenant_id != DEFAULT_TENANT_ID:
+    if project is None or project.tenant_id != user.scope_tenant_id:
         raise ProjectNotFoundError()
     if project.status == "deleted" and not include_deleted:
         raise ProjectNotFoundError()
-    role = "owner" if user.role == "admin" else _member_role(db, project.id, user.id)
+    role = "owner" if user.can("projects.all") else _member_role(db, project.id, user.id)
     if role is None:
         raise ProjectNotFoundError()
     if ROLE_RANK[role] < ROLE_RANK[min_role]:
@@ -102,9 +102,10 @@ def get_access(
 
 
 def visible_project_ids(user: User) -> Select[int]:
-    """Subconsulta de ids de proyecto visibles para ``user`` (todos para un admin), incluidos los borrados."""
-    query = select(Project.id).where(Project.tenant_id == DEFAULT_TENANT_ID)
-    if user.role != "admin":
+    """Subconsulta de ids de proyecto del tenant activo visibles para ``user`` (todos con ``projects.all``), incluidos
+    los borrados."""
+    query = select(Project.id).where(Project.tenant_id == user.scope_tenant_id)
+    if not user.can("projects.all"):
         query = query.where(Project.id.in_(select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)))
     return query
 
@@ -118,8 +119,9 @@ def list_projects(
         query = query.where(func.lower(Project.name).contains(q.strip().lower(), autoescape=True))
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = db.scalars(query.order_by(func.lower(Project.name)).limit(limit).offset(offset)).unique().all()
+    every = user.can("projects.all")
     roles: dict[int, str] = {}
-    if user.role != "admin" and rows:
+    if not every and rows:
         roles = dict(
             db.execute(
                 select(ProjectMember.project_id, ProjectMember.role).where(
@@ -127,7 +129,7 @@ def list_projects(
                 )
             ).all()
         )
-    return [ProjectAccess(p, cast(MemberRole, "owner" if user.role == "admin" else roles[p.id])) for p in rows], total
+    return [ProjectAccess(p, cast(MemberRole, "owner" if every else roles[p.id])) for p in rows], total
 
 
 def last_runs(db: Session, project_ids: list[int]) -> dict[int, Run]:
@@ -160,27 +162,27 @@ def _check_reachable(location: Location) -> None:
         raise LocationUnavailableError("La ubicación no está disponible ahora mismo.")
 
 
-def source_location(db: Session, location_id: int) -> Location:
-    """Ubicación de uso ``source`` o ``both``.
+def source_location(db: Session, location_id: int, *, tenant_id: int) -> Location:
+    """Ubicación del tenant de uso ``source`` o ``both``.
 
     Raises:
-        LocationNotFoundError: No existe.
+        LocationNotFoundError: No existe o es de otro tenant.
         InvalidProjectError: No es de origen.
     """
-    location = get_location(db, location_id)
+    location = get_location(db, location_id, tenant_id=tenant_id)
     if location.usage not in ("source", "both"):
         raise InvalidProjectError("La ubicación de origen no está registrada como origen.")
     return location
 
 
-def destination_location(db: Session, location_id: int) -> Location:
-    """Ubicación de uso ``destination`` o ``both`` con acceso ``rw``.
+def destination_location(db: Session, location_id: int, *, tenant_id: int) -> Location:
+    """Ubicación del tenant de uso ``destination`` o ``both`` con acceso ``rw``.
 
     Raises:
-        LocationNotFoundError: No existe.
+        LocationNotFoundError: No existe o es de otro tenant.
         InvalidProjectError: No es de destino o es de solo lectura.
     """
-    location = get_location(db, location_id)
+    location = get_location(db, location_id, tenant_id=tenant_id)
     if location.usage not in ("destination", "both"):
         raise InvalidProjectError("La ubicación de destino no está registrada como destino.")
     if location.access != "rw":
@@ -313,9 +315,9 @@ def check_destination_free(
             raise ProjectConflictError("Otro proyecto ya usa esa carpeta de salidas (o una que la contiene).")
 
 
-def _name_taken(db: Session, name: str, *, exclude_id: int | None = None) -> bool:
+def _name_taken(db: Session, tenant_id: int, name: str, *, exclude_id: int | None = None) -> bool:
     query = select(Project.id).where(
-        Project.tenant_id == DEFAULT_TENANT_ID,
+        Project.tenant_id == tenant_id,
         Project.status == "active",
         func.lower(Project.name) == name.strip().lower(),
     )
@@ -349,10 +351,13 @@ def create_project(
         InvalidProjectError: Ubicaciones de uso o acceso incorrectos, solapes o nombre de carpeta no válido.
         LocationNotFoundError, InvalidRelativePathError, FolderNotFoundError, LocationUnavailableError: Ubicaciones.
     """
-    if _name_taken(db, name):
+    if not actor.can("projects.create"):
+        raise ProjectForbiddenError("Tu rol no permite crear proyectos.")
+    tenant_id = actor.scope_tenant_id
+    if _name_taken(db, tenant_id, name):
         raise ProjectConflictError("Ya hay un proyecto con ese nombre.")
-    source = source_location(db, source_location_id)
-    destination = destination_location(db, destination_location_id)
+    source = source_location(db, source_location_id, tenant_id=tenant_id)
+    destination = destination_location(db, destination_location_id, tenant_id=tenant_id)
     sources = resolve_sources(source, source_subpaths, settings)
     parent = normalize_relative(destination_parent)
     planned = join_relative(parent, new_folder) if new_folder else parent
@@ -366,6 +371,7 @@ def create_project(
     output, created = prepare_output_folder(destination, destination_parent, new_folder, settings)
     try:
         project = Project(
+            tenant_id=tenant_id,
             name=name.strip(),
             description=(description or "").strip() or None,
             source_location_id=source.id,
@@ -425,7 +431,7 @@ def update_project(
     project = access.project
     changed: list[str] = []
     if changes.name is not None and changes.name.strip() != project.name:
-        if _name_taken(db, changes.name, exclude_id=project.id):
+        if _name_taken(db, project.tenant_id, changes.name, exclude_id=project.id):
             raise ProjectConflictError("Ya hay un proyecto con ese nombre.")
         project.name = changes.name.strip()
         changed.append("name")

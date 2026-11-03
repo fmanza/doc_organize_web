@@ -32,3 +32,43 @@ def test_upgrade_and_downgrade(settings: Settings) -> None:
     command.downgrade(config, "base")
     with get_engine().connect() as conn:
         assert conn.exec_driver_sql("SELECT count(*) FROM alembic_version").scalar() == 0
+
+
+def test_0009_keeps_users_sessions_and_audit(settings: Settings) -> None:
+    """Recrear ``users`` (SQLite) no dispara los ``ON DELETE`` de sus hijas: ``env.py`` desactiva las claves."""
+    config = _config()
+    command.upgrade(config, "0008")
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO users (tenant_id, username, display_name, password_hash, role, is_active, failed_attempts,"
+            " password_changed_at, created_at, updated_at) VALUES"
+            " (1, 'ana', 'Ana', 'x', 'admin', 1, 0, '2026-01-01', '2026-01-01', '2026-01-01'),"
+            " (1, 'luis', 'Luis', 'x', 'user', 1, 0, '2026-01-01', '2026-01-01', '2026-01-01')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO sessions (token_hash, user_id, created_at, last_seen_at, expires_at)"
+            " VALUES ('h', 2, '2026-01-01', '2026-01-01', '2027-01-01')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO audit_log (tenant_id, ts, actor_user_id, action, outcome) VALUES (1, '2026-01-01', 1, 'x', 'ok')"
+        )
+
+    command.upgrade(config, "0009")
+
+    with engine.connect() as conn:
+        rows = conn.exec_driver_sql(
+            "SELECT u.username, u.is_instance_admin, r.builtin FROM users u JOIN roles r ON r.id = u.role_id"
+            " ORDER BY u.username"
+        ).all()
+        assert [tuple(r) for r in rows] == [("ana", 1, "admin"), ("luis", 0, "user")]
+        assert conn.exec_driver_sql("SELECT count(*) FROM sessions").scalar() == 1
+        assert conn.exec_driver_sql("SELECT actor_user_id FROM audit_log").scalar() == 1
+        assert conn.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+
+    command.downgrade(config, "0008")
+
+    with engine.connect() as conn:
+        roles = conn.exec_driver_sql("SELECT username, role FROM users ORDER BY username").all()
+        assert [tuple(r) for r in roles] == [("ana", "admin"), ("luis", "user")]
+        assert conn.exec_driver_sql("SELECT count(*) FROM sessions").scalar() == 1

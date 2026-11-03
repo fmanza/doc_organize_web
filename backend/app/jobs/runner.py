@@ -18,6 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.redact import PathRedactor, RedactingJsonFormatter, RunLogFilter
+from app.core.request_context import bind_tenant
 from app.db.models import Project, Run
 from app.db.session import get_engine
 from app.domain.runs.operations import RUN_PARAMS
@@ -74,6 +75,7 @@ def main(run_id: str) -> None:
         settings = effective_settings(db, base_settings)
         project = db.get(Project, run.project_id) if run.project_id is not None else None
         if project is not None:
+            bind_tenant(project.tenant_id)  # la auditoría del job va al tenant del proyecto (Fase 9)
             db.expunge(project)
         db.expunge(run)
 

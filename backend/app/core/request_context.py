@@ -1,4 +1,5 @@
-"""Identificador de petición (``X-Request-ID``) disponible para los logs y los *problem details*."""
+"""Identificador de petición (``X-Request-ID``) para los logs y los *problem details*, y tenant de la petición o del job
+(Fase 9) para la auditoría."""
 
 from __future__ import annotations
 
@@ -12,6 +13,18 @@ REQUEST_ID_HEADER: Final = "X-Request-ID"
 _VALID: Final = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
+_tenant_id: ContextVar[int | None] = ContextVar("tenant_id", default=None)
+
+
+def current_tenant_id() -> int | None:
+    """Tenant en el que actúa la petición (o el job) en curso, o ``None`` si no se ha fijado."""
+    return _tenant_id.get()
+
+
+def bind_tenant(tenant_id: int | None) -> Token[int | None]:
+    """Fija el tenant del contexto. Lo usa el subproceso del job (un hilo); en la API va en ``db.info["tenant_id"]``,
+    porque FastAPI ejecuta las dependencias síncronas con una copia del contexto."""
+    return _tenant_id.set(tenant_id)
 
 
 def current_request_id() -> str | None:

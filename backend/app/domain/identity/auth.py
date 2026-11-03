@@ -161,14 +161,19 @@ def change_password(
 
 
 def revoke_session(db: Session, session_id: int, *, actor: User, ctx: RequestContext) -> None:
-    """Cierra una sesión: el admin, cualquiera; un usuario, solo las suyas.
+    """Cierra una sesión: quien gestiona usuarios, cualquiera de su tenant activo; un usuario, solo las suyas.
 
     Raises:
-        SessionNotFoundError: No existe, o es de otro usuario y ``actor`` no es admin (no se revela que exista).
+        SessionNotFoundError: No existe, o es de otro usuario y ``actor`` no puede gestionarla (no se revela que exista).
     """
     session = get_session_by_id(db, session_id)
-    if actor.role != "admin" and session.user_id != actor.id:
+    manages = actor.can("users.manage") and session.user.tenant_id == actor.scope_tenant_id
+    if session.user_id != actor.id and not manages:
         raise SessionNotFoundError()
+    if session.user_id != actor.id:
+        from app.domain.identity.users import check_can_manage
+
+        check_can_manage(actor, session.user)  # no cerrar sesiones de quien tiene más permisos
     audit.record(
         db,
         action=AuditAction.SESSION_REVOKE,

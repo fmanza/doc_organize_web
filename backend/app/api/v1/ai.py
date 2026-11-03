@@ -9,7 +9,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import AdminUser, Context, CurrentUser, DbSession, SettingsDep
+from app.api.deps import Context, CurrentUser, DbSession, InstanceAdmin, SettingsDep
 from app.api.v1.schemas import (
     AiFamilyOut,
     AiFamilyUpdate,
@@ -54,7 +54,7 @@ def _family_out(view: FamilyView) -> AiFamilyOut:
 
 
 @router.get("/admin/ai-settings", response_model=AiSettingsOut, summary="Ver la configuración de IA", responses=_ERRORS)
-def get_ai_settings(_: AdminUser, db: DbSession, settings: SettingsDep) -> AiSettingsOut:
+def get_ai_settings(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> AiSettingsOut:
     """Las 5 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos."""
     return AiSettingsOut(
         encryption_configured=crypto.is_configured(settings),
@@ -74,7 +74,7 @@ def get_ai_settings(_: AdminUser, db: DbSession, settings: SettingsDep) -> AiSet
     },
 )
 def put_ai_family(
-    family: str, body: AiFamilyUpdate, admin: AdminUser, db: DbSession, settings: SettingsDep, ctx: Context
+    family: str, body: AiFamilyUpdate, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> AiFamilyOut:
     """Guarda o borra campos (ausente = no se toca; ``null`` o ``""`` = borrar) y lo audita sin valores secretos."""
     view = ai_settings.update_family(db, family, body.fields, settings=settings, actor=admin, ctx=ctx)
@@ -90,7 +90,7 @@ def get_ai_status(_: CurrentUser, db: DbSession, settings: SettingsDep) -> AiSta
 
 @router.get("/admin/ai-usage", response_model=AiUsageOut, summary="Uso y coste de IA", responses=_ERRORS)
 def get_ai_usage(
-    _: AdminUser,
+    _: InstanceAdmin,
     db: DbSession,
     settings: SettingsDep,
     refresh: Annotated[bool, Query(description="Saltar la caché (como mucho una vez cada 30 s)")] = False,

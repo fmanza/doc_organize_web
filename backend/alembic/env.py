@@ -30,9 +30,23 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     with get_engine().connect() as connection:
+        sqlite = connection.dialect.name == "sqlite"
+        if sqlite:
+            # Las migraciones «batch» recrean tablas (copiar, borrar, renombrar). Con las claves activas, borrar una tabla
+            # referenciada dispararía los ``ON DELETE CASCADE/SET NULL`` de sus hijas (sesiones, miembros, auditoría).
+            # El PRAGMA solo vale fuera de una transacción: va antes de abrirla (receta de Alembic para SQLite).
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()  # cierra la transacción implícita de SQLAlchemy: Alembic abre y confirma la suya
         context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
         with context.begin_transaction():
             context.run_migrations()
+            if sqlite:
+                broken = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if broken:
+                    raise RuntimeError(f"La migración deja claves foráneas rotas: {broken[:5]}")
+        if sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+            connection.commit()
 
 
 if context.is_offline_mode():

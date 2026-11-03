@@ -77,6 +77,14 @@ def resolve_session(db: Session, token: str, settings: Settings, *, now: datetim
     return session
 
 
+def acting_user(session: UserSession) -> User:
+    """Usuario de ``session`` con su tenant activo fijado (ADR-013): el elegido con el selector si es admin de
+    instancia; si no, el suyo. Toda autorización a partir de una sesión pasa por aquí."""
+    user = session.user
+    user.act_in(session.acting_tenant_id if user.is_instance_admin else None)
+    return user
+
+
 def find_by_token(db: Session, token: str) -> UserSession | None:
     """Sesión por token, sin validar caducidad."""
     return db.scalar(select(UserSession).where(UserSession.token_hash == hash_token(token)))
@@ -113,11 +121,24 @@ def get_session_by_id(db: Session, session_id: int) -> UserSession:
 
 
 def list_sessions(
-    db: Session, settings: Settings, *, user_id: int | None, limit: int, offset: int, now: datetime | None = None
+    db: Session,
+    settings: Settings,
+    *,
+    tenant_id: int,
+    user_id: int | None,
+    limit: int,
+    offset: int,
+    now: datetime | None = None,
 ) -> tuple[list[UserSession], int]:
-    """Sesiones vigentes, más recientes primero, opcionalmente de un usuario."""
+    """Sesiones vigentes de usuarios del tenant, más recientes primero, opcionalmente de un usuario."""
     now = now or utcnow()
-    query = select(UserSession).where(UserSession.expires_at > now, UserSession.last_seen_at > now - _idle(settings))
+    query = (
+        select(UserSession)
+        .join(User, User.id == UserSession.user_id)
+        .where(
+            User.tenant_id == tenant_id, UserSession.expires_at > now, UserSession.last_seen_at > now - _idle(settings)
+        )
+    )
     if user_id is not None:
         query = query.where(UserSession.user_id == user_id)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0

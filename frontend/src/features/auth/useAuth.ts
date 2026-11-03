@@ -9,6 +9,13 @@ export type PasswordChange = components['schemas']['PasswordChange'];
 
 export const meQueryKey = ['auth', 'me'] as const;
 
+export type Permission = Me['permissions'][number];
+
+/** Si `me` tiene `permission` en su tenant activo (el admin de instancia los tiene todos). */
+export function can(me: Me | null | undefined, permission: Permission): boolean {
+  return !!me && (me.is_instance_admin || me.permissions.includes(permission));
+}
+
 // La política real (incluidas las contraseñas comunes) la valida el servidor (DOW_PASSWORD_MIN_LENGTH); aquí solo se
 // adelanta el mínimo por defecto.
 export const PASSWORD_MIN_LENGTH = 12;

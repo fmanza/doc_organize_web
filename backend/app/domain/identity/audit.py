@@ -9,7 +9,8 @@ from typing import Any, Final
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AuditEntry, User
+from app.core.request_context import current_tenant_id
+from app.db.models import DEFAULT_TENANT_ID, AuditEntry, User
 
 
 class AuditAction:
@@ -55,6 +56,14 @@ class AuditAction:
     RUN_CANCEL: Final = "run.cancel"
     WORKER_CAPABILITIES_REFRESH: Final = "worker.capabilities_refresh"
     SESSION_REVOKE: Final = "session.revoke"
+    SESSION_TENANT_SWITCH: Final = "session.tenant_switch"
+    TENANT_CREATE: Final = "tenant.create"
+    TENANT_UPDATE: Final = "tenant.update"
+    TENANT_DELETE: Final = "tenant.delete"
+    ROLE_CREATE: Final = "role.create"
+    ROLE_UPDATE: Final = "role.update"
+    ROLE_DELETE: Final = "role.delete"
+    USER_MOVE: Final = "user.move"
 
 
 @dataclass(frozen=True)
@@ -87,9 +96,21 @@ def record(
     target_type: str | None = None,
     target_id: int | str | None = None,
     details: dict[str, Any] | None = None,
+    tenant_id: int | None = None,
 ) -> AuditEntry:
-    """Añade un evento a la sesión de BD (lo confirma quien llama). ``details`` no debe contener secretos."""
+    """Añade un evento a la sesión de BD (lo confirma quien llama). ``details`` no debe contener secretos.
+
+    El tenant es ``tenant_id``; si no, el de la petición (``db.info["tenant_id"]``, lo fija la dependencia de sesión),
+    el del job en curso (``current_tenant_id``) o el del actor (Fase 9).
+    """
+    if tenant_id is None:
+        scoped = db.info.get("tenant_id")
+        tenant_id = scoped if isinstance(scoped, int) else current_tenant_id()
+    if tenant_id is None and actor_id is not None:
+        actor = db.get(User, actor_id)
+        tenant_id = actor.tenant_id if actor is not None else None
     entry = AuditEntry(
+        tenant_id=tenant_id if tenant_id is not None else DEFAULT_TENANT_ID,
         action=action,
         outcome=outcome,
         actor_user_id=actor_id,
@@ -105,6 +126,7 @@ def record(
 def list_entries(
     db: Session,
     *,
+    tenant_id: int,
     action: str | None,
     actor_id: int | None,
     actor: str | None = None,
@@ -113,8 +135,9 @@ def list_entries(
     limit: int,
     offset: int,
 ) -> tuple[list[AuditEntry], int]:
-    """Eventos más recientes primero, filtrados por acción (prefijo), actor (id o nombre) y rango ``[since, until)``."""
-    query = select(AuditEntry)
+    """Eventos del tenant, más recientes primero, filtrados por acción (prefijo), actor (id o nombre) y rango
+    ``[since, until)``."""
+    query = select(AuditEntry).where(AuditEntry.tenant_id == tenant_id)
     if action:
         query = query.where(AuditEntry.action.startswith(action, autoescape=True))
     if actor_id is not None:

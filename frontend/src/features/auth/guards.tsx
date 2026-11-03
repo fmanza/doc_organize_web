@@ -4,7 +4,7 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { NoPermission } from '../../components/NoPermission';
-import { useMe } from './useAuth';
+import { can, type Permission, useMe } from './useAuth';
 
 /** Rutas con sesión: sin ella redirige a `/login?next=<ruta actual>`. */
 export function RequireAuth() {
@@ -29,8 +29,12 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-/** Rutas de administración: un usuario sin rol `admin` ve el estado «sin permiso». */
-export function RequireAdmin() {
+/**
+ * Rutas de administración (Fase 9): con `instance`, solo el admin de instancia; con `permission`, quien lo tenga en
+ * su tenant activo. Sin acceso se ve el estado «sin permiso» (la API lo exige igualmente).
+ */
+export function RequireAccess({ permission, instance }: { permission?: Permission; instance?: boolean }) {
   const { data: me } = useMe();
-  return me?.role === 'admin' ? <Outlet /> : <NoPermission />;
+  const allowed = instance ? !!me?.is_instance_admin : permission ? can(me, permission) : !!me;
+  return allowed ? <Outlet /> : <NoPermission />;
 }

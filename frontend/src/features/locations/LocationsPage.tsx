@@ -36,7 +36,7 @@ type Editing = { location: LocationOut | null } | null;
 export function LocationsPage() {
   const { t } = useTranslation();
   const { data: me } = useMe();
-  const isAdmin = me?.role === 'admin';
+  const isAdmin = !!me?.is_instance_admin; // las ubicaciones las registra el admin de instancia (E1)
   const { data, isPending, isError, error } = useLocations();
   const probe = useProbeLocation();
   const remove = useDeleteLocation();

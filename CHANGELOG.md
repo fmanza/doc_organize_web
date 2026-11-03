@@ -5,8 +5,57 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-03
+
+Fase 9 — multi-tenant y roles ([ADR-013](docs/adr/ADR-013-multi-tenant.md),
+[guía](docs/guides/tenants_y_roles.md)). Con ella, la paridad con la web integrada de doc_organize es completa.
+
+### Added
+
+- **backend**: tenants (admin de instancia):
+  - `GET/POST /api/v1/tenants`, `PATCH/DELETE /api/v1/tenants/{id}` y `GET /api/v1/tenants/{id}/users`;
+  - un tenant se crea con sus roles base y solo se borra vacío (409 `tenant_not_empty`; `default`: 409
+    `tenant_protected`);
+  - su auditoría pasa a `default` al borrarlo.
+- **backend**: tenant activo en la sesión (`PUT /api/v1/auth/tenant`, solo admin de instancia, auditado como
+  `session.tenant_switch`).
+- **backend**: roles del tenant con permisos de administración:
+  - catálogo: `users.manage`, `roles.manage`, `audit.read`, `templates.manage`, `projects.create` y
+    `projects.all`;
+  - `GET/POST /api/v1/roles`, `GET/PATCH/DELETE /api/v1/roles/{id}` y `GET /api/v1/permissions`;
+  - los roles base «Administrador» y «Usuario» no cambian; un rol con usuarios no se borra;
+  - nadie da un permiso que no tiene (403 `permission_escalation`);
+  - quitar permisos o cambiar el rol de alguien cierra sus sesiones.
+- **backend**: aislamiento entre tenants en el dominio, con 404 para lo ajeno:
+  - proyectos y todo lo que cuelga de ellos, ubicaciones, plantillas, usuarios, sesiones, roles y auditoría;
+  - la auditoría de cada petición va al tenant activo, y la de un job, al tenant de su proyecto.
+- **backend**: usuarios con `role_id`, `is_instance_admin` y `tenant_id`:
+  - mover a alguien de tenant (solo el admin de instancia) le quita sus membresías y sus sesiones;
+  - siempre quedan un admin de instancia y un gestor de usuarios por tenant.
+- **backend**: migración `0009_tenants_roles`:
+  - crea la tabla `roles`, `users.role_id`, `users.is_instance_admin` y `sessions.acting_tenant_id`;
+  - los `admin` pasan a admin de instancia con el rol «Administrador»; los `user`, a «Usuario» (decisión E4).
+- **frontend**: **Administración → Tenants** y **Administración → Roles**; selector de tenant en la cabecera para el
+  admin de instancia; selector de rol, «Administrador de la instancia» y tenant en el formulario de usuario.
+- **docs**: guía [Tenants y roles](docs/guides/tenants_y_roles.md), ADR-013 y E2E `tenancy.spec.ts`.
+
 ### Changed
 
+- **backend**: `GET /api/v1/auth/me` deja de devolver `role: admin|user`. Ahora trae `tenant`, `acting_tenant`,
+  `is_instance_admin`, `role` (el del tenant) y `permissions` (decisión E5).
+- **backend**: `POST/PATCH /api/v1/users` usan `role_id` en lugar de `role`.
+- **backend**: lo que antes exigía `admin` exige ahora un permiso:
+  - usuarios y sesiones: `users.manage`;
+  - auditoría: `audit.read`;
+  - plantillas: `templates.manage`;
+  - lo que es del servidor, ser admin de instancia: ubicaciones, ajustes, IA, workers y capacidades;
+  - crear proyectos: `projects.create`;
+  - ver y administrar todos los proyectos: `projects.all`.
+- **backend**: las ubicaciones son de un tenant y se registran en el tenant activo. Solo cambian de tenant si ningún
+  proyecto las usa (decisión E1).
+- **backend**: `alembic/env.py` desactiva las claves foráneas de SQLite durante las migraciones y comprueba
+  `PRAGMA foreign_key_check`. Así, recrear una tabla ya no dispara los `ON DELETE` de las demás.
+- **frontend**: el menú y las guardas de administración van por permisos (`RequireAccess`), no por el rol `admin`.
 - **backend**: doc_organize **0.14.0** (L-3a…L-3e, L-8d…L-8f y L-10), que resuelve G30–G37. La web retira sus rodeos
   ([huecos](docs/plan/DOC_ORGANIZE_GAPS.md#resueltos)):
   - IA: fuera los clientes «vigilados»; `ContextBuilder.build(ai_max_failures=3, ai_max_documents=…)`,
