@@ -44,5 +44,6 @@ En la web multiusuario hay tres riesgos:
   ajuste.
 - Con varios procesos `web`, cada uno tiene su propia caché del panel de uso. Como mucho se hace una consulta por
   proceso cada 5 minutos.
-- Cuando doc_organize resuelva L-3a…L-3d, la subclase de la capa anticorrupción podrá retirarse; con L-3e (G37), el
-  silencio de los loggers `httpx`/`httpcore` deja de ser imprescindible, aunque conviene mantenerlo.
+- Desde doc_organize 0.14.0 (L-3a…L-3e) los cortes, el presupuesto, los reintentos y el recuento los hace la
+  librería: la web solo le pasa `ai_max_failures`, `ai_max_documents` y `*Config.retries`. El silencio de los loggers
+  `httpx`/`httpcore` se mantiene como defensa.

@@ -50,7 +50,7 @@ class Settings(BaseSettings):
         context_site_timeout_seconds: Tiempo máximo de ``zensical build`` al construir el contexto (Fase 7); si se
             pasa, el contexto queda sin sitio y con un aviso.
         ai_timeout_seconds: Tiempo máximo de cada petición a un servicio de IA (Fase 8).
-        ai_retries: Reintentos de conexión de cada petición a un servicio de IA (Fase 8, G34).
+        ai_retries: Reintentos de un timeout o error de conexión de cada petición a un servicio de IA (Fase 8, L-3b).
         ai_max_documents_per_run: Documentos que un run puede enviar a la IA como mucho (presupuesto, Fase 8).
 
     Los ajustes de identidad, sondeo, retención, cuota e IA son administrables desde la web (ADR-012): estos valores

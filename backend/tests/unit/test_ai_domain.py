@@ -1,12 +1,9 @@
-"""IA (Fase 8) sin red: cifrado MultiFernet, ``hint``, validación de ``base_url`` y clientes vigilados (G33, G34) con
-los clientes reales de doc_organize sobre ``httpx.MockTransport``."""
+"""IA (Fase 8) sin red: cifrado MultiFernet, ``hint``, validación de ``base_url`` y configuración de los clientes reales
+de doc_organize 0.14.0 (reintentos, presupuesto y clave fuera de la URL) sobre ``httpx.MockTransport``."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-from collections.abc import Callable
-from typing import Any
 
 import httpx
 import pytest
@@ -18,7 +15,7 @@ from app.core.config import Settings
 from app.domain.ai.errors import InvalidAiSettingError
 from app.domain.ai.settings import hint, validate_base_url
 from app.integrations.doc_organize import ai as library_ai
-from app.integrations.doc_organize.ai import AiConnection, AiTally
+from app.integrations.doc_organize.ai import AiConnection
 
 KEY = "sk-unit-test-0000-abcd"
 
@@ -78,79 +75,50 @@ def test_base_url_rejected(url: str) -> None:
         validate_base_url(url)
 
 
-def _reply(content: dict[str, Any]) -> httpx.Response:
-    return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(content)}}]})
+def test_config_carries_timeout_retries_and_model() -> None:
+    connection = AiConnection(
+        family="litellm_classification",
+        values={"base_url": "https://litellm.example.internal", "virtual_key": KEY, "model": "clasificador"},
+        timeout_s=12.0,
+        retries=3,
+        budget=7,
+    )
+
+    config = library_ai.config_for(connection)
+
+    assert (config.timeout_s, config.retries, config.model) == (12.0, 3, "clasificador")
+    assert library_ai.classification_limits(connection) == {
+        "ai_max_failures": library_ai.MAX_CONNECTION_FAILURES,
+        "ai_max_documents": 7,
+    }
+    copilot = library_ai.config_for(
+        AiConnection(family="github_copilot_usage", values={"username": "octo", "pat": KEY}, retries=1)
+    )
+    assert copilot.retries == 1 and copilot.personal_access_token == KEY
 
 
-def _classify(
-    monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response], calls: int, budget: int = 100
-) -> tuple[AiTally, list[Any], list[httpx.Request]]:
+def test_usage_and_draft_families_are_not_classifiers() -> None:
+    with pytest.raises(ValueError):
+        library_ai.classification_client(AiConnection(family="litellm_usage", values={}))
+
+
+def test_usage_does_not_put_the_key_in_the_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """L-3e (G37): con 0.14.0 la clave propia ya no va en ``/key/info?key=``."""
     seen: list[httpx.Request] = []
 
     def _handle(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return handler(request)
+        return httpx.Response(200, json={"info": {"spend": 1.5}})
 
     monkeypatch.setattr(library_ai, "_transport", lambda _: httpx.MockTransport(_handle))
     connection = AiConnection(
-        family="litellm_classification",
-        values={"base_url": "https://litellm.example.internal", "virtual_key": KEY},
-        budget=budget,
+        family="litellm_usage", values={"base_url": "https://litellm.example.internal", "virtual_key": KEY}
     )
-    tally = AiTally()
 
-    async def _run() -> list[Any]:
-        outcomes: list[Any] = []
-        async with library_ai.classification_client(connection, tally) as client:
-            for _ in range(calls):
-                try:
-                    outcomes.append(await client.classify(chunks_text="texto", title="t", candidate_domains=["a", "b"]))
-                except Exception as exc:  # noqa: BLE001 - se comprueba el tipo y el mensaje
-                    outcomes.append(exc)
-        return outcomes
+    report = asyncio.run(library_ai.fetch_usage("litellm", connection))
 
-    return tally, asyncio.run(_run()), seen
-
-
-def test_guarded_client_counts_and_respects_budget(monkeypatch: pytest.MonkeyPatch) -> None:
-    tally, outcomes, seen = _classify(monkeypatch, lambda _: _reply({"domain": "a", "confidence": 0.9}), 5, budget=3)
-
-    assert len(seen) == 3 and tally.calls == 3 and tally.classified == 3
-    assert tally.stopped == "budget"
-    assert [o.domain for o in outcomes] == ["a", "a", "a", None, None]
-    assert seen[0].headers["authorization"] == f"Bearer {KEY}"
-
-
-def test_guarded_client_stops_after_auth_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    tally, outcomes, seen = _classify(monkeypatch, lambda _: httpx.Response(401), 4)
-
-    assert len(seen) == 1 and tally.stopped == "auth" and tally.failed == 1
-    assert isinstance(outcomes[0], Exception)
-    assert "example.internal" not in str(outcomes[0]) and KEY not in str(outcomes[0])
-    assert all(o.domain is None for o in outcomes[1:])
-
-
-def test_guarded_client_stops_after_consecutive_connection_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _down(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("caído", request=request)
-
-    tally, _, seen = _classify(monkeypatch, _down, 6)
-
-    assert len(seen) == library_ai.MAX_CONNECTION_FAILURES and tally.stopped == "connection"
-
-
-def test_guarded_client_resets_connection_streak_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    answers = iter([httpx.ConnectError, None, httpx.ConnectError, None, httpx.ConnectError, None])
-
-    def _flaky(request: httpx.Request) -> httpx.Response:
-        error = next(answers)
-        if error is not None:
-            raise error("intermitente", request=request)
-        return _reply({"domain": "b"})
-
-    tally, _, seen = _classify(monkeypatch, _flaky, 6)
-
-    assert len(seen) == 6 and tally.stopped is None and tally.classified == 3 and tally.failed == 3
+    assert report.items[0].cost_usd == 1.5
+    assert KEY not in str(seen[0].url) and seen[0].headers["authorization"] == f"Bearer {KEY}"
 
 
 def test_connection_repr_hides_secret() -> None:

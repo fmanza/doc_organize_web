@@ -5,6 +5,18 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **backend**: doc_organize **0.14.0** (L-3a…L-3e, L-8d…L-8f y L-10), que resuelve G30–G37. La web retira sus rodeos
+  ([huecos](docs/plan/DOC_ORGANIZE_GAPS.md#resueltos)):
+  - IA: fuera los clientes «vigilados»; `ContextBuilder.build(ai_max_failures=3, ai_max_documents=…)`,
+    `*Config.retries` (solo errores de transporte, con espera creciente) y el recuento del run desde el `Context`;
+  - borrador: muestra con `select_document_sample(roots=)`;
+  - contexto: cada documento con nombre repetido conserva su copia (`<stem>-<8 hex>/`, ruta de `organized_path`), sin
+    aviso ni `collisions` en el resultado; fuera `clear_temporaries` y la validación propia de `context.json` (un
+    `context.json` no válido cuenta como sin contexto y reconstruir lo sustituye).
+- **docs**: guía de contexto (nombres repetidos), ADR-014 y huecos G30–G37 en «Resueltos».
+
 ## [0.9.0] - 2026-11-03
 
 Fase 8 — IA: clasificación, manifiestos y uso. Con doc_organize **0.13.0** (la fase pedía 0.10.0, L-3). Cierra la

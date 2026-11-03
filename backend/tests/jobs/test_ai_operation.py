@@ -126,6 +126,26 @@ def test_build_respects_the_budget(
     assert result["ai"]["calls"] <= 1
 
 
+def test_build_stops_after_consecutive_connection_errors(
+    run: Any, project: Project, migrated: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L-3a: tras ``MAX_CONNECTION_FAILURES`` errores de conexión seguidos doc_organize deja de llamar (G33)."""
+    calls: list[httpx.Request] = []
+
+    def _down(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        raise httpx.ConnectError("caído", request=request)
+
+    monkeypatch.setattr(library_ai, "_transport", lambda _: httpx.MockTransport(_down))
+    monkeypatch.setattr(library_ai, "MAX_CONNECTION_FAILURES", 1)
+    ctx, params = run(AI_DOMAINS)
+    ctx.settings = migrated.model_copy(update={"ai_retries": 0})
+
+    result = operation.run_build(ctx, params, project)
+
+    assert len(calls) == 1 and result["ai"]["stopped"] == "connection" and result["ai"]["failed"] == 1
+
+
 def test_build_without_configuration_fails_cleanly(
     run: Any, project: Project, monkeypatch: pytest.MonkeyPatch, litellm: Any
 ) -> None:

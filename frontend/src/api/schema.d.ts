@@ -4229,7 +4229,7 @@ export interface operations {
             query?: {
                 /** @description Slug del dominio; sin él, los documentos sin clasificar */
                 domain?: string | null;
-                /** @description Solo fallidos o con colisión (G30) */
+                /** @description Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0) */
                 only?: ("failed" | "collision") | null;
                 limit?: number;
                 offset?: number;

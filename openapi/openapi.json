@@ -5713,7 +5713,7 @@
             }
           },
           {
-            "description": "Solo fallidos o con colisión (G30)",
+            "description": "Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0)",
             "in": "query",
             "name": "only",
             "required": false,
@@ -5730,7 +5730,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Solo fallidos o con colisión (G30)",
+              "description": "Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0)",
               "title": "Only"
             }
           },

@@ -185,7 +185,10 @@ def list_context_documents(
     domain: Annotated[
         str | None, Query(max_length=128, description="Slug del dominio; sin él, los documentos sin clasificar")
     ] = None,
-    only: Annotated[context.DocumentFilter | None, Query(description="Solo fallidos o con colisión (G30)")] = None,
+    only: Annotated[
+        context.DocumentFilter | None,
+        Query(description="Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0)"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ContextDocumentPage:

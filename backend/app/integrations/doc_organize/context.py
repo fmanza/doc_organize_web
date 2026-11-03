@@ -1,25 +1,29 @@
-"""Contexto, sitio y plantillas de taxonomía de doc_organize 0.13.0 (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8c).
+"""Contexto, sitio y plantillas de taxonomía de doc_organize 0.14.0 (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8f).
 
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v0.13.0``::
+Firmas verificadas en el tag ``v0.14.0``::
 
     ContextBuilder().build(project, documents: list[ConversionResult], candidate_domains=None, threshold=0.5,
-        ai_classification_enabled=False, ..., output_folder_name="organizado", taxonomy_manifest=None,
-        taxonomy_template_name=None, *, on_progress=None, cancel_token=None) -> Context   # guarda context.json
+        ai_classification_enabled=False, ai_classification_client=None, output_folder_name="organizado", ...,
+        taxonomy_manifest=None, taxonomy_classification_client=None, taxonomy_template_name=None, *,
+        on_progress=None, cancel_token=None, ai_max_failures=None, ai_max_documents=None) -> Context
+    DomainDocument.organized_path    # .md copiado, relativo a la carpeta reorganizada (L-8d)
     Reorganizer().reorganize(project, context, on_document_copied=None, *, on_document_failed=None) -> Path
     Reorganizer().delete_output(project, context)
     SiteGenerator().generate(project, context, *, build=True, site_dir=None, timeout=None) -> SiteResult
     SiteGenerator().build_site(project, *, timeout=None)        # SiteBuildError
     SiteGenerator().delete_site(project, *, site_dir=None)
-    ContextRegistry().load_context/save_context/delete_context(project)
+    ContextRegistry().load_context/save_context/delete_context(project)   # ContextError si output_folder_name no vale
     parse_taxonomy_template(text, *, source=) / render_taxonomy_template(manifest, body="")
     list_builtin_templates() / load_builtin_template(name)       # TaxonomyTemplateError
     load_taxonomy_manifest(project) / save_taxonomy_manifest(project, raw_markdown)
 
 Desde 0.12.1/0.13.0 doc_organize no sigue enlaces simbólicos al copiar (G27): las raíces que recibe salen del
-resolvedor de ubicaciones, ya resueltas.
+resolvedor de ubicaciones, ya resueltas. Desde 0.14.0 tampoco se sobrescriben documentos con el mismo nombre (G30),
+las escrituras atómicas no siguen enlaces (G31) y ``Context`` valida ``output_folder_name`` al leer ``context.json``
+(G32): la web ya no necesita sus rodeos.
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ import stat as stat_mode
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Final
@@ -47,7 +51,7 @@ CANCEL_POLL_SECONDS: Final = 1.0
 
 
 class ContextFolderInvalidError(Exception):
-    """``context.json`` del destino tiene una carpeta reorganizada no válida o distinta de la esperada (G32)."""
+    """La carpeta reorganizada de ``context.json`` no es la de la vista previa confirmada del borrado."""
 
 
 class TemplateInvalidError(Exception):
@@ -135,7 +139,7 @@ class ContextOutcome:
         failed: ``(ruta absoluta, error)`` de los documentos que no se pudieron copiar (G27).
         missing: Documentos convertidos de la caché cuyo original ya no está en el origen (no entran).
         site_error: Por qué no se construyó el sitio (puede llevar rutas: el job lo limpia).
-        ai: Recuento de la IA (``AiTally.as_dict``), o ``None`` si no se usó.
+        ai: Recuento de la IA (``classification_stats``), o ``None`` si no se usó.
     """
 
     output_folder_name: str = ""
@@ -143,7 +147,6 @@ class ContextOutcome:
     documents: list[ContextDoc] = field(default_factory=list)
     failed: list[tuple[str, str]] = field(default_factory=list)
     missing: int = 0
-    collisions: int = 0
     site_built: bool = False
     site_error: str | None = None
     ai: dict[str, Any] | None = None
@@ -257,7 +260,6 @@ def save_manifest(output_root: Path, text: str, *, name: str, created_at: dateti
 
     info = parse_template(text)
     try:
-        clear_temporaries(output_root)
         asyncio.run(save_taxonomy_manifest(_project(name, output_root, created_at), text))
     except (TaxonomyManifestError, TaxonomyTemplateError) as exc:
         raise TemplateInvalidError(str(exc)) from None
@@ -318,11 +320,9 @@ def converted_documents(folders: list[SourceFolder]) -> tuple[list[Any], int]:
 def existing_folder_name(output_root: Path, *, name: str, created_at: datetime) -> str | None:
     """``output_folder_name`` del ``context.json`` que haya en ``output_root`` (o ``None``).
 
-    ``context.json`` vive en el destino y se puede cambiar fuera de la app: doc_organize no valida ese campo al leerlo
-    (G32) y lo usa para copiar y borrar. Se valida aquí.
-
-    Raises:
-        ContextFolderInvalidError: El nombre guardado no es una carpeta válida del proyecto.
+    Desde 0.14.0 doc_organize valida el nombre al leerlo (G32): un ``context.json`` cambiado desde el recurso (``..``,
+    ruta absoluta, nombre reservado) o dañado da ``ContextError`` y cuenta como sin contexto. Reconstruir lo sustituye
+    con la carpeta que valida la API.
     """
     from doc_organize import ContextRegistry
     from doc_organize.core.exceptions import ContextError
@@ -331,57 +331,20 @@ def existing_folder_name(output_root: Path, *, name: str, created_at: datetime) 
         context = asyncio.run(ContextRegistry().load_context(_project(name, output_root, created_at)))
     except (ContextError, OSError, ValueError):
         return None
-    folder = str(context.output_folder_name)
-    if check_folder_name(folder) is not None:
-        raise ContextFolderInvalidError()
-    return folder
+    return str(context.output_folder_name)
 
 
-#: Temporales de las escrituras «atómicas» de doc_organize 0.13.0, que no usan ``O_NOFOLLOW`` (G31).
-_ROOT_TEMPORARIES: Final = ("taxonomy_manifest.tmp", "context.tmp", "zensical.toml.tmp")
-_DOMAIN_TEMPORARIES: Final = ("DOMAIN.tmp", "index.tmp")
-
-
-def clear_temporaries(output_root: Path, output_folder_name: str | None = None) -> int:
-    """Quita los temporales de doc_organize que no sean ficheros normales (p. ej. un enlace puesto desde el recurso de
-    red): doc_organize escribiría a través de ellos (G31). Devuelve cuántos ha quitado (el enlace, nunca su destino).
-
-    Reduce la ventana, no la cierra: el arreglo es que doc_organize cree el temporal con ``O_EXCL | O_NOFOLLOW``.
-    """
-    from doc_organize import ProjectLayout
-
-    layout = ProjectLayout(output_root)
-    candidates = [output_root / name for name in _ROOT_TEMPORARIES]
-    if output_folder_name:
-        candidates.append(Path(layout.reorganized_dir(output_folder_name)) / "index.md.tmp")
-    domains = Path(layout.domains_dir)
-    if os.path.isdir(domains) and not os.path.islink(domains):
-        for entry in os.scandir(domains):
-            if entry.is_dir(follow_symlinks=False):
-                candidates.extend(Path(entry.path) / name for name in _DOMAIN_TEMPORARIES)
-    removed = 0
-    for path in candidates:
-        if os.path.lexists(path) and not _is_file(str(path)):
-            try:
-                os.unlink(path)
-            except OSError:
-                raise DocOrganizeOperationError("Un temporal del contexto no es un fichero normal.") from None
-            removed += 1
-    return removed
-
-
-def _organized(document: Any, output_folder_name: str, slug: str) -> str:
-    from doc_organize.context.reorganizer import resolve_document_slug_parts
-
-    kind, stem = resolve_document_slug_parts(document)
-    return PurePosixPath(output_folder_name, slug, kind, stem, Path(document.source_path).name).as_posix()
+def _organized(document: Any, output_folder_name: str) -> str:
+    """Copia del original en la carpeta reorganizada, relativa a la carpeta del proyecto: junto al ``.md`` copiado
+    (``DomainDocument.organized_path``, que ya desambigua los nombres repetidos, L-8d)."""
+    folder = PurePosixPath(str(document.organized_path)).parent
+    return PurePosixPath(output_folder_name, folder, Path(document.source_path).name).as_posix()
 
 
 def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> ContextOutcome:
     failed_paths = {path for path, _ in failed}
     docs: list[ContextDoc] = []
     domains: list[dict[str, Any]] = []
-    seen: dict[str, int] = {}
     for domain in context.domains:
         domains.append(
             {
@@ -393,10 +356,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
             }
         )
         for document in domain.documents:
-            organized = _organized(document, context.output_folder_name, domain.slug)
-            # Sin distinguir mayúsculas: en SMB «Acta» y «acta» son la misma carpeta.
-            target = str(PurePosixPath(organized).parent).casefold()
-            seen[target] = seen.get(target, 0) + 1
+            organized = _organized(document, context.output_folder_name)
             docs.append(
                 ContextDoc(
                     domain_slug=domain.slug,
@@ -410,14 +370,6 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     classified_by=str(document.classified_by) if document.classified_by else None,
                 )
             )
-    # G30: dos documentos con la misma carpeta de destino (mismo dominio, tipo y ``stem``) se sobrescriben.
-    collided = {target for target, count in seen.items() if count > 1}
-    docs = [
-        replace(d, collision=True)
-        if d.organized_path and str(PurePosixPath(d.organized_path).parent).casefold() in collided
-        else d
-        for d in docs
-    ]
     docs.extend(
         ContextDoc(
             domain_slug=None,
@@ -436,7 +388,6 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         documents=docs,
         failed=failed,
         missing=missing,
-        collisions=sum(1 for d in docs if d.collision),
         site_built=bool(context.site_built),
     )
 
@@ -469,7 +420,7 @@ def build_context(
     )
     from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
-    from app.integrations.doc_organize.ai import AiTally, classification_client
+    from app.integrations.doc_organize.ai import classification_client, classification_limits, classification_stats
 
     if request.ai is not None:
         expected = (
@@ -507,13 +458,10 @@ def build_context(
         failed.append((path, error[:MAX_ERROR_CHARS]))
         on_progress("context_reorganize", index, total, path)
 
-    tally: AiTally | None = None
-
     def _classified(event: Any) -> None:  # progreso de la Sub-fase B (un documento enviado a la IA)
         on_progress("context_ai", int(event.processed), int(event.total) if event.total else None, None)
 
     async def _classify() -> Any:
-        nonlocal tally
         kwargs: dict[str, Any] = {
             "candidate_domains": request.candidate_domains or None,
             "threshold": request.threshold,
@@ -524,12 +472,16 @@ def build_context(
         }
         if request.ai is None:
             return await ContextBuilder().build(project, documents, **kwargs)
-        tally = AiTally()
-        async with classification_client(request.ai, tally) as client:
+        async with classification_client(request.ai) as client:
             client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
             kwargs[client_arg] = client
             return await ContextBuilder().build(
-                project, documents, ai_classification_enabled=True, on_progress=_classified, **kwargs
+                project,
+                documents,
+                ai_classification_enabled=True,
+                on_progress=_classified,
+                **classification_limits(request.ai),
+                **kwargs,
             )
 
     async def _run() -> ContextOutcome | None:
@@ -550,7 +502,6 @@ def build_context(
             generator = SiteGenerator()
             if request.build_site:
                 on_progress("context_site", 0, None, None)
-                clear_temporaries(request.output_root, request.output_folder_name)
                 await generator.generate(project, context, build=False)
                 context.site_generated = True
                 try:
@@ -564,14 +515,12 @@ def build_context(
                 await generator.delete_site(project)
                 context.site_generated = False
                 context.site_built = False
-            clear_temporaries(request.output_root, request.output_folder_name)
             await ContextRegistry().save_context(project, context)
         outcome = _outcome(context, failed, missing)
         outcome.site_error = site_error
-        outcome.ai = tally.as_dict() if tally is not None else None
+        outcome.ai = classification_stats(context) if request.ai is not None else None
         return outcome
 
-    clear_temporaries(request.output_root, request.output_folder_name)
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)
     watcher.start()
     try:
@@ -585,11 +534,12 @@ def build_context(
 def delete_context(output_root: Path, *, name: str, created_at: datetime, expected_folder: str | None) -> bool:
     """Borra la carpeta reorganizada, el sitio y ``context.json``/``domains/`` (``False`` si no había ``context.json``).
 
-    ``expected_folder`` es la carpeta de la vista previa confirmada: si ``context.json`` dice otra (o una que no es
-    válida, G32), no se borra nada. Sin ``context.json`` se borra la carpeta de la vista previa.
+    ``expected_folder`` es la carpeta de la vista previa confirmada: si ``context.json`` dice otra, no se borra nada.
+    Sin ``context.json`` se borra la carpeta de la vista previa. Uno no válido (G32: lo rechaza doc_organize al leerlo)
+    no se borra: hay que reconstruir antes.
 
     Raises:
-        ContextFolderInvalidError: La carpeta de ``context.json`` no es válida o no es la de la vista previa.
+        ContextFolderInvalidError: La carpeta de ``context.json`` no es la de la vista previa.
         DocOrganizeOperationError: No se pudo borrar (p. ej. la carpeta reorganizada pasa por un enlace).
     """
     from doc_organize import Context, ContextRegistry, Reorganizer, SiteGenerator
@@ -609,7 +559,7 @@ def delete_context(output_root: Path, *, name: str, created_at: datetime, expect
             await SiteGenerator().delete_site(project)
             return False
         folder = str(context.output_folder_name)
-        if check_folder_name(folder) is not None or folder != expected_folder:
+        if folder != expected_folder:
             raise ContextFolderInvalidError()
         await Reorganizer().delete_output(project, context)
         await SiteGenerator().delete_site(project)
