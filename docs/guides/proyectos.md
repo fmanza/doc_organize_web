@@ -20,7 +20,8 @@ en su propio disco.
    ([Escaneo](escaneo.md)).
 3. **Ubicación de destino** y la carpeta de salidas, de una de estas formas:
     - **Crear carpeta nueva**: elige dónde y escribe el nombre. No puede existir ya.
-    - **Usar una carpeta vacía**: tiene que estar vacía.
+    - **Usar una carpeta vacía**: tiene que estar vacía y no puede ser la raíz de la ubicación. Si la ubicación está
+      vacía y no tiene subcarpetas, elige **Crear carpeta nueva** (la carpeta se crea dentro de la raíz).
 
 La carpeta de salidas pasa a **pertenecer al proyecto**: vaciar o borrar el proyecto puede borrar todo su contenido,
 por eso no se acepta una carpeta con ficheros. Tampoco puede estar dentro del origen (ni contenerlo) ni coincidir con

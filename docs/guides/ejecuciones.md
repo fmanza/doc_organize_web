@@ -49,6 +49,8 @@ al momento. Si estaba en marcha, se detiene en el siguiente punto seguro y lo ya
 | Superó el tiempo máximo; se guardó lo hecho hasta parar | Duró más de `DOW_JOB_TIMEOUT_SECONDS` (6 h por defecto). Se pidió una parada ordenada: un escaneo conserva lo convertido y el siguiente continúa desde ahí |
 | El worker no puede atender alguna de las opciones del escaneo | El worker que la reclamó no tiene GPU, audio/vídeo o el modelo pedido |
 | La ubicación «…» no está disponible | El origen o el destino no respondía |
+| El worker se quedó sin memoria | El sistema terminó la operación al pasar el límite de memoria del worker (`DOW_WORKER_MEM_LIMIT`, 6 GB por defecto). Un escaneo conserva lo ya convertido y continúa al relanzarlo; si se repite, sube el límite ([despliegue](despliegue.md#variables)) o escanea las carpetas de origen por separado |
+| La operación terminó de forma inesperada | El proceso de la ejecución se cortó por otra causa. El detalle está en el registro de la ejecución y en `docker compose logs worker` |
 
 Se puede volver a lanzar. Si una ejecución se queda en cola mucho tiempo, comprueba en **Inicio** que el worker está
 «en marcha».

@@ -557,7 +557,7 @@ provides-extras = ["dev", "docs", "export", "site", "ocr-gpu", "av", "ai", "cont
 
 [[package]]
 name = "doc-organize-web"
-version = "0.10.0"
+version = "0.10.1"
 source = { virtual = "." }
 default-groups = ["cpu", "dev"]
 dependencies = [
