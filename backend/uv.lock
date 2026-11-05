@@ -478,8 +478,8 @@ wheels = [
 
 [[package]]
 name = "doc-organize"
-version = "0.14.0"
-source = { url = "https://github.com/fmanza/doc_organize/releases/download/v0.14.0/doc_organize-0.14.0-py3-none-any.whl" }
+version = "1.0.0rc2"
+source = { url = "https://github.com/fmanza/doc_organize/releases/download/v1.0.0rc2/doc_organize-1.0.0rc2-py3-none-any.whl" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
@@ -493,7 +493,7 @@ dependencies = [
     { name = "tzdata" },
 ]
 wheels = [
-    { url = "https://github.com/fmanza/doc_organize/releases/download/v0.14.0/doc_organize-0.14.0-py3-none-any.whl", hash = "sha256:ed42bb386425e9a9ff491914d63297a7b4c9c379b9f772456ed324eb967719de" },
+    { url = "https://github.com/fmanza/doc_organize/releases/download/v1.0.0rc2/doc_organize-1.0.0rc2-py3-none-any.whl", hash = "sha256:7f9941acdac9e9fca458a3bb32ee3bb598aeacfd95422af5a78ba3827eeae161" },
 ]
 
 [package.optional-dependencies]
@@ -522,24 +522,17 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.19" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "cryptography", marker = "extra == 'dev'", specifier = ">=41.0" },
-    { name = "cryptography", marker = "extra == 'web'", specifier = ">=41.0" },
     { name = "docling", extras = ["asr"], marker = "extra == 'av'", specifier = ">=2.0.0" },
     { name = "docling", extras = ["rapidocr"], specifier = ">=2.0.0" },
     { name = "easyocr", marker = "extra == 'ocr-gpu'", specifier = ">=1.7" },
-    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.100" },
-    { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.100" },
     { name = "httpx", marker = "extra == 'ai'", specifier = ">=0.24" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1.0" },
-    { name = "jinja2", marker = "extra == 'web'", specifier = ">=3.1.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.5" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "opencv-python", marker = "extra == 'ocr-gpu'", specifier = ">=4.8" },
     { name = "openpyxl", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "openpyxl", marker = "extra == 'export'", specifier = ">=3.1" },
-    { name = "openpyxl", marker = "extra == 'web'", specifier = ">=3.1" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pydantic", specifier = ">=2.0" },
@@ -548,24 +541,19 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "python-magic", marker = "sys_platform != 'win32'", specifier = ">=0.4" },
     { name = "python-magic-bin", marker = "sys_platform == 'win32'", specifier = ">=0.4" },
-    { name = "python-multipart", marker = "extra == 'dev'", specifier = ">=0.0.6" },
-    { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.6" },
     { name = "pyyaml", marker = "extra == 'context'", specifier = ">=6.0" },
     { name = "rapidfuzz", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0,<0.18" },
-    { name = "starlette", marker = "extra == 'dev'", specifier = ">=0.35" },
     { name = "torch", marker = "extra == 'ocr-gpu'", specifier = ">=2.0" },
     { name = "torchvision", marker = "extra == 'ocr-gpu'", specifier = ">=0.15" },
     { name = "types-aiofiles", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "types-openpyxl", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "tzdata", specifier = ">=2024.1" },
-    { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.23" },
-    { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.23" },
     { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.71" },
     { name = "zensical", marker = "extra == 'site'", specifier = ">=0.0.71" },
 ]
-provides-extras = ["dev", "docs", "export", "site", "web", "ocr-gpu", "av", "ai", "context"]
+provides-extras = ["dev", "docs", "export", "site", "ocr-gpu", "av", "ai", "context"]
 
 [[package]]
 name = "doc-organize-web"
@@ -612,7 +600,7 @@ gpu = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
     { name = "cryptography", specifier = ">=50.0.2" },
-    { name = "doc-organize", extras = ["ai", "context", "export", "site"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.14.0/doc_organize-0.14.0-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ai", "context", "export", "site"], url = "https://github.com/fmanza/doc_organize/releases/download/v1.0.0rc2/doc_organize-1.0.0rc2-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3" },
@@ -636,7 +624,7 @@ dev = [
 ]
 docs = [{ name = "zensical", specifier = ">=0.0.67" }]
 gpu = [
-    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v0.14.0/doc_organize-0.14.0-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v1.0.0rc2/doc_organize-1.0.0rc2-py3-none-any.whl" },
     { name = "torch", specifier = ">=2.2.2,<3", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
     { name = "torchvision", specifier = ">=0.17,<1", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
 ]
