@@ -1,7 +1,7 @@
 {
   "name": "doc-organize-web-frontend",
   "private": true,
-  "version": "0.10.1",
+  "version": "1.0.0-rc.1",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "gen:api": "openapi-typescript ../openapi/openapi.json -o src/api/schema.d.ts"
+    "gen:api": "openapi-typescript ../openapi/openapi.json -o src/api/schema.d.ts",
+    "safe": "node scripts/npm-safe.mjs"
   },
   "dependencies": {
     "@mantine/core": "9.7.3",

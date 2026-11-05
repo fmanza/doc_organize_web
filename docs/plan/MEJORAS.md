@@ -38,4 +38,6 @@ Prioridad: **P1** entra en el plan base · **P2** recomendable en su fase · **P
 | P2 | Métricas: documentos/minuto, errores de conversión, cola por tipo | Dimensionar OCR/GPU |
 | P2 | Backup de `config.db` y de las `cache.db` | La caché evita reconvertir horas de OCR |
 | P2 | Importador opcional desde la web antigua (aunque se empiece limpio) | Si más adelante interesa recuperar usuarios/ajustes |
-| P3 | Re-escaneos programados y notificaciones | Proyectos con origen vivo |
+| P3 | Re-escaneos programados | Proyectos con origen vivo. Los avisos al terminar llegaron en la Fase 10 (M2) |
+| P3 | Segundo factor (TOTP) y comprobación de contraseñas filtradas | Riesgos aceptados de ASVS L2 en la 1.0 ([ASVS_L2.md](../security/ASVS_L2.md)) |
+| P3 | Tokens de API personales | Integraciones sin sesión de navegador |

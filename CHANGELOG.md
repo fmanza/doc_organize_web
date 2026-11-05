@@ -5,6 +5,78 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.0.0rc1] - 2026-11-05
+
+Fase 10 — endurecimiento y release 1.0 ([ADR-015](docs/adr/ADR-015-endurecimiento.md),
+[ASVS L2](docs/security/ASVS_L2.md)). Primera versión candidata de la 1.0, con doc_organize 1.0.0rc2; la 1.0.0 fijará
+doc_organize 1.0.0 (L-15), con la misma API.
+
+### Added
+
+- **backend**: los escaneos largos van en **tramos** (G38). Cada `DOW_SCAN_RECYCLE_DOCUMENTS` documentos convertidos
+  (200) el escaneo para de forma ordenada y el worker lo sigue en un subproceso nuevo: misma ejecución, memoria limpia.
+  - El tramo nuevo salta las carpetas terminadas.
+  - La carpeta a medias se retoma sin repetir «forzar».
+  - El resultado suma los tramos (`segments`).
+  - Si se pide cancelar o vence el tiempo entre tramos, la ejecución se cierra.
+- **backend**: límite por IP. Admite 10 inicios de sesión y 120 escrituras a `/api/v1` por minuto
+  (`DOW_RATE_LIMIT_LOGIN`, `DOW_RATE_LIMIT_WRITE`); al pasarse, 429 `rate_limited` con `Retry-After`.
+- **backend**: `GET /metrics` en formato Prometheus, solo con el secreto `dow_metrics_token` (si no, 404). Incluye:
+  - peticiones y duración por ruta (plantilla), ejecuciones por estado, cola y operación;
+  - fallidas por código, workers vivos y tamaño de `config.db`.
+- **backend**: `python -m app.cli restore <copia> [--yes]` restaura `config.db` y las cachés con la API de backup de
+  SQLite.
+  - Sin `--yes` solo enseña la vista previa.
+  - Se niega con ejecuciones en marcha o un worker vivo.
+  - Guarda lo de antes como `.pre-restore-<UTC>`.
+- **backend**: `workers.resources` (migración `0010`) con la memoria del contenedor (límite, pico, uso), los OOM y el
+  tamaño de tramo, en `GET /api/v1/admin/workers` junto con `gpu_ready`.
+- **frontend**: listados por páginas con la página y el tamaño en la URL (`?page=`, `?size=` de 25, 50 o 100):
+  - **Documentos** deja el scroll infinito (50 por página);
+  - **Duplicados**, 10 grupos por página y los grupos de más de 5 documentos plegados;
+  - Ubicaciones y Tenants pasan a ir por páginas;
+  - Ejecuciones, Proyectos, Auditoría, Usuarios y Sesiones usan el mismo control.
+- **frontend**: **Continuar el escaneo** en un escaneo que se quedó sin memoria, se cortó, superó el tiempo o se canceló
+  (editores). Lanza otro con las mismas opciones y sin «forzar».
+- **frontend**: aviso cuando termina una ejecución propia, en la aplicación y, si se da permiso desde el menú de
+  usuario, también del navegador con la pestaña en segundo plano.
+- **frontend**: Ajustes → Workers enseña la GPU, la memoria (pico de límite), las veces sin memoria y el tamaño de tramo
+  de cada worker.
+- **frontend**: con un proyecto abierto, sus secciones en el menú lateral (cambio del mantenedor en las pruebas).
+- **frontend**: aviso de cómo montar carpetas cuando `/mnt` está vacía (cambio del mantenedor en las pruebas).
+- **docker**: `--build-arg WITH_LIBREOFFICE=true` (`soffice`) y `WITH_AV=true` (ffmpeg y Whisper, grupo `av`), en
+  compose con `DOW_WITH_LIBREOFFICE`/`DOW_WITH_AV`.
+- **docker**: `docker-compose.gpu.yml` y `scripts/smoke_variants.py` para probar cada variante en su contenedor.
+  Verificadas en un equipo con RTX 5070:
+  - GPU: OCR con EasyOCR, 4,5 s frente a 14-30 s en CPU;
+  - LibreOffice 7.4 y ffmpeg 5.1 con Whisper.
+  - Imágenes: 3,2 GB la CPU, 5,8 GB con LibreOffice y AV, 11 GB la GPU.
+- **backend**: `scripts/load_test.py`, prueba de carga en proceso con 100 000 documentos, 10 000 grupos y 5 000
+  ejecuciones sintéticos. Todos los listados por debajo de 500 ms de p95; el más lento, la búsqueda por nombre, 273 ms.
+- **frontend**: `npm run safe -- install …` instala con `--before=<hoy - 14 días>`.
+
+### Changed
+
+- **frontend**: en el proyecto, **Duplicados** va el primero, en los botones y en el menú.
+- **backend**: cabeceras `Strict-Transport-Security` (un año, fuera de `development`) y `Cache-Control: no-store` en
+  toda la API.
+- **backend**: el cuerpo de las peticiones se limita a `DOW_MAX_REQUEST_MB` (16): 413 `body_too_large`, y 411 a una
+  escritura sin `Content-Length`.
+- **backend**: `resume`, el estado interno entre tramos, no sale en el resultado de una ejecución.
+- **ia**: vuelve la regla de versiones con al menos 14 días (ADR-001 §6):
+  - `exclude-newer = "2 weeks"` en uv, sin cambios en el lock;
+  - `cooldown` de 14 días en Dependabot;
+  - `npm run safe`.
+- **docs**: guías de despliegue (restaurar, métricas, límites, variantes, GPU), ejecuciones (tramos, continuar,
+  avisos), documentos y duplicados (páginas). Nuevos ADR-015 y el estado ASVS L2.
+
+### Security
+
+- Revisión ASVS L2 completa ([ASVS_L2.md](docs/security/ASVS_L2.md)): sin CRITICAL ni HIGH.
+  - Corregidos tres MEDIUM: sin límite por IP, API sin `no-store` y cuerpo sin límite.
+  - Corregido un LOW: sin HSTS.
+  - Riesgos aceptados en la 1.0: sin segundo factor y sin comprobar contraseñas filtradas.
+
 ## [0.10.1] - 2026-11-05
 
 Hotfix de lo encontrado probando la 0.10.0 con documentos reales, y doc_organize 1.0.0rc2.

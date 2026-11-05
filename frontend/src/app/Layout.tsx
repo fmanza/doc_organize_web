@@ -1,18 +1,17 @@
-import { AppShell, Badge, Group, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { AppShell, Group, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { NavLink as RouterNavLink, Outlet } from 'react-router';
+import { NavLink as RouterNavLink, Outlet, useMatch } from 'react-router';
 
 import { UserMenu } from '../features/auth/UserMenu';
+import { RunNotifier } from '../features/runs/RunNotifier';
 import { can, type Permission, useMe } from '../features/auth/useAuth';
 import { TenantSwitcher } from './TenantSwitcher';
 
-// Secciones del ROADMAP: se habilitan al implementar su fase.
-const SECTIONS: { key: string; phase: number }[] = [
-  { key: 'scan', phase: 4 },
-  { key: 'cache', phase: 5 },
-  { key: 'duplicates', phase: 6 },
-  { key: 'context', phase: 7 },
-];
+/**
+ * Secciones de un proyecto: solo se muestran con un proyecto abierto, porque sus rutas cuelgan de su id. Duplicados la
+ * primera (decisión del mantenedor, Fase 10).
+ */
+const PROJECT_SECTIONS = ['duplicates', 'scan', 'documents', 'context'] as const;
 
 /** Secciones de administración con lo que exige cada una (las mismas guardas que el router). */
 const ADMIN_SECTIONS: { key: string; permission?: Permission; instance?: boolean }[] = [
@@ -30,11 +29,13 @@ const ADMIN_SECTIONS: { key: string; permission?: Permission; instance?: boolean
 export function Layout() {
   const { t } = useTranslation();
   const { data: me } = useMe();
+  const projectId = useMatch('/projects/:projectId/*')?.params.projectId;
   const adminSections = ADMIN_SECTIONS.filter((section) =>
     section.instance ? me?.is_instance_admin : section.permission ? can(me, section.permission) : false,
   );
   return (
     <AppShell header={{ height: 56 }} navbar={{ width: 240, breakpoint: 'sm' }} padding="md">
+      <RunNotifier />
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Title order={1} size="h3">
@@ -51,21 +52,25 @@ export function Layout() {
         <AppShell.Section grow component={ScrollArea} type="auto">
           <Stack gap={4}>
             <NavLink component={RouterNavLink} to="/" label={t('nav.home')} end />
-            <NavLink component={RouterNavLink} to="/projects" label={t('nav.projects')} />
+            <NavLink
+              component={RouterNavLink}
+              to="/projects"
+              label={t('nav.projects')}
+              end={projectId !== undefined}
+              opened={projectId !== undefined}
+            >
+              {projectId !== undefined &&
+                PROJECT_SECTIONS.map((key) => (
+                  <NavLink
+                    key={key}
+                    component={RouterNavLink}
+                    to={`/projects/${projectId}/${key}`}
+                    label={t(`nav.${key}`)}
+                  />
+                ))}
+            </NavLink>
             <NavLink component={RouterNavLink} to="/runs" label={t('nav.runs')} />
             <NavLink component={RouterNavLink} to="/locations" label={t('nav.locations')} />
-            {SECTIONS.map((section) => (
-              <NavLink
-                key={section.key}
-                label={t(`nav.${section.key}`)}
-                disabled
-                rightSection={
-                  <Badge size="xs" variant="light">
-                    {t('nav.phase', { phase: section.phase })}
-                  </Badge>
-                }
-              />
-            ))}
             {adminSections.length > 0 && (
               <>
                 <Text size="xs" fw={700} c="dimmed" mt="md" px="sm">

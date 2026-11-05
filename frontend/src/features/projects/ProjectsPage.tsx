@@ -1,20 +1,10 @@
-import {
-  Anchor,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Pagination,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Anchor, Button, Center, Group, Loader, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { RunStatusBadge } from '../runs/RunStatusBadge';
@@ -25,7 +15,8 @@ import { PROJECTS_PAGE_SIZE, useProjects } from './useProjects';
 export function ProjectsPage() {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
+  const paging = usePageState(PROJECTS_PAGE_SIZE);
+  const { page } = paging;
   const [creating, setCreating] = useState(false);
   const { data, isPending, isError, error } = useProjects(q, page);
 
@@ -41,7 +32,7 @@ export function ProjectsPage() {
         value={q}
         onChange={(event) => {
           setQ(event.currentTarget.value);
-          setPage(1);
+          paging.setPage(1, true);
         }}
         maw={360}
       />
@@ -97,9 +88,7 @@ export function ProjectsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && data.total > PROJECTS_PAGE_SIZE && (
-        <Pagination total={Math.ceil(data.total / PROJECTS_PAGE_SIZE)} value={page} onChange={setPage} />
-      )}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
       {creating && <ProjectFormModal opened onClose={() => setCreating(false)} />}
     </Stack>
   );

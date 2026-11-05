@@ -322,8 +322,19 @@ class InstanceCapabilities(BaseModel):
     scan_options: ScanOptionsAvailability
 
 
+class WorkerResources(BaseModel):
+    """Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o
+    sin límite."""
+
+    memory_limit_bytes: int | None = None
+    memory_peak_bytes: int | None = None
+    memory_current_bytes: int | None = None
+    oom_kills: int | None = None
+    scan_recycle_documents: int | None = None
+
+
 class WorkerOut(_Out):
-    """Worker registrado (solo admin)."""
+    """Worker registrado (solo admin), con su GPU y sus recursos (Fase 10)."""
 
     id: str
     queues: list[str]
@@ -333,6 +344,8 @@ class WorkerOut(_Out):
     heartbeat_at: datetime
     alive: bool
     capabilities_at: datetime | None
+    gpu_ready: bool | None = None
+    resources: WorkerResources | None = None
 
 
 class WorkerList(BaseModel):

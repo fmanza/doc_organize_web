@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { formatDateTime } from '../../components/format';
+import { formatBytes, formatDateTime } from '../../components/format';
 import {
   type InstanceCapabilities,
   type SettingOut,
@@ -144,11 +144,45 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
   );
 }
 
+type Resources = NonNullable<
+  NonNullable<ReturnType<typeof useWorkers>['data']>['items'][number]['resources']
+>;
+
+/** Pico y límite de memoria del contenedor y OOM (M3, Fase 10): si el pico roza el límite, sube DOW_WORKER_MEM_LIMIT. */
+function WorkerMemory({ resources }: { resources: Resources | null }) {
+  const { t } = useTranslation();
+  if (!resources) {
+    return <>—</>;
+  }
+  const peak = resources.memory_peak_bytes ?? resources.memory_current_bytes ?? null;
+  const limit = resources.memory_limit_bytes ?? null;
+  return (
+    <Stack gap={2}>
+      <Text size="sm">
+        {t('workers.memoryUse', {
+          peak: peak === null ? '—' : formatBytes(peak),
+          limit: limit === null ? t('workers.noLimit') : formatBytes(limit),
+        })}
+      </Text>
+      {(resources.oom_kills ?? 0) > 0 && (
+        <Badge color="red" variant="light">
+          {t('workers.oom', { count: resources.oom_kills ?? 0 })}
+        </Badge>
+      )}
+      {resources.scan_recycle_documents ? (
+        <Text size="xs" c="dimmed">
+          {t('workers.recycle', { count: resources.scan_recycle_documents })}
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
 function WorkersCard() {
   const { t } = useTranslation();
   const workers = useWorkers();
   return (
-    <Card withBorder maw={720}>
+    <Card withBorder maw={960}>
       <Title order={3} size="h4" mb="sm">
         {t('workers.title')}
       </Title>
@@ -160,7 +194,7 @@ function WorkersCard() {
         </Text>
       )}
       {workers.data && workers.data.items.length > 0 && (
-        <Table.ScrollContainer minWidth={560}>
+        <Table.ScrollContainer minWidth={760}>
           <Table>
             <Table.Thead>
               <Table.Tr>
@@ -168,6 +202,8 @@ function WorkersCard() {
                 <Table.Th>{t('workers.queues')}</Table.Th>
                 <Table.Th>{t('workers.state')}</Table.Th>
                 <Table.Th>{t('workers.heartbeat')}</Table.Th>
+                <Table.Th>{t('workers.gpu')}</Table.Th>
+                <Table.Th>{t('workers.memory')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -185,6 +221,14 @@ function WorkersCard() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>{formatDateTime(worker.heartbeat_at)}</Table.Td>
+                  <Table.Td>
+                    {worker.gpu_ready === null || worker.gpu_ready === undefined
+                      ? '—'
+                      : t(worker.gpu_ready ? 'capabilities.yes' : 'capabilities.no')}
+                  </Table.Td>
+                  <Table.Td>
+                    <WorkerMemory resources={worker.resources ?? null} />
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

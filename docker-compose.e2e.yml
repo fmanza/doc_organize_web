@@ -16,8 +16,14 @@ x-e2e-volumes: &e2e-volumes
 services:
   web:
     volumes: *e2e-volumes
+    environment:
+      # Cada test inicia sesión desde la misma IP: el límite por IP (Fase 10) lo prueban los tests de la API.
+      DOW_RATE_LIMIT_LOGIN: "1000"
   worker:
     volumes: *e2e-volumes
+    environment:
+      # Un tramo por documento: el escaneo E2E (2 documentos) recorre de verdad el reciclado del subproceso (G38).
+      DOW_SCAN_RECYCLE_DOCUMENTS: "1"
   litellm-fake:
     image: doc_organize_web:${DOW_TAG:-dev}
     entrypoint: ["python", "/e2e/fake_litellm.py"]

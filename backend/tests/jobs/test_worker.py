@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.db.models import AuditEntry, Location, Project, Run, RunEvent, Worker, utcnow
 from app.jobs import queue
-from app.jobs.worker import JobWorker, purge_workspace
+from app.jobs.context import RECYCLE_EXIT
+from app.jobs.worker import JobWorker, Slot, purge_workspace
 from app.workspace import runs as workspace
 from tests.conftest import project_payload
 
@@ -360,3 +361,87 @@ def test_finish_writes_status_and_end_together(db: Session, user_client: TestCli
 
     types = [e.type for e in db.scalars(select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.seq))]
     assert types == ["status", "status", "status", "end"]
+
+
+# --- Fase 10: tramos (G38) -----------------------------------------------------------------------------------------
+
+
+class _Exited:
+    """Subproceso ya terminado con ``exitcode``."""
+
+    def __init__(self, exitcode: int) -> None:
+        self.exitcode = exitcode
+        self.pid = 0
+
+    def is_alive(self) -> bool:
+        return False
+
+    def join(self, timeout: float | None = None) -> None:
+        return None
+
+
+def _recycled_slot(worker: JobWorker, db: Session, run_id: str) -> None:
+    assert queue.claim_next(db, worker.id, ("cpu",)) == run_id
+    worker.slots[run_id] = Slot(run_id=run_id, process=_Exited(RECYCLE_EXIT), started=123.0)  # type: ignore[arg-type]
+
+
+def test_a_recycled_run_is_relaunched_without_closing_it(
+    worker: JobWorker, user_client: TestClient, project_id: int, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = _enqueue(user_client, project_id, operation="noop")
+    _recycled_slot(worker, db, run_id)
+    relaunched: list[tuple[str, Slot | None]] = []
+    monkeypatch.setattr(worker, "_start", lambda rid, previous=None: relaunched.append((rid, previous)))
+
+    worker._reap()
+
+    assert [rid for rid, _ in relaunched] == [run_id]
+    previous = relaunched[0][1]
+    assert previous is not None and previous.started == 123.0  # el timeout cuenta desde el primer tramo
+    db.expire_all()
+    run = db.get(Run, run_id)
+    assert run is not None and run.status == "running"
+
+
+@pytest.mark.parametrize(("reason", "status", "code"), [("user", "cancelled", None), ("timeout", "failed", "timeout")])
+def test_a_recycled_run_that_was_asked_to_stop_is_closed(
+    worker: JobWorker,
+    user_client: TestClient,
+    project_id: int,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    status: str,
+    code: str | None,
+) -> None:
+    run_id = _enqueue(user_client, project_id, operation="noop")
+    _recycled_slot(worker, db, run_id)
+    queue.request_stop(db, run_id, reason=reason)
+    monkeypatch.setattr(worker, "_start", lambda *_, **__: pytest.fail("no debe relanzarse"))
+
+    worker._reap()
+
+    db.expire_all()
+    run = db.get(Run, run_id)
+    assert run is not None and (run.status, run.error_code) == (status, code)
+
+
+def test_the_relaunched_slot_keeps_the_clock(worker: JobWorker, monkeypatch: pytest.MonkeyPatch) -> None:
+    started: list[object] = []
+
+    class _Process:
+        pid = 1
+
+        def __init__(self, **kwargs: object) -> None:
+            started.append(kwargs)
+
+        def start(self) -> None:
+            return None
+
+    monkeypatch.setattr(worker.mp, "Process", _Process)
+    previous = Slot(run_id="r", process=_Exited(RECYCLE_EXIT), started=5.0, timeout_seen=9.0)  # type: ignore[arg-type]
+
+    worker._start("r", previous=previous)
+
+    slot = worker.slots.pop("r")
+    assert (slot.started, slot.timeout_seen, slot.segment) == (5.0, 9.0, 2)

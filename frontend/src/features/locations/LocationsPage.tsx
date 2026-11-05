@@ -17,6 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { formatDateTime } from '../../components/format';
 import { StatusLight } from '../../components/StatusLight';
 import { useMe } from '../auth/useAuth';
@@ -37,7 +39,8 @@ export function LocationsPage() {
   const { t } = useTranslation();
   const { data: me } = useMe();
   const isAdmin = !!me?.is_instance_admin; // las ubicaciones las registra el admin de instancia (E1)
-  const { data, isPending, isError, error } = useLocations();
+  const paging = usePageState();
+  const { data, isPending, isError, error } = useLocations({ offset: paging.offset, limit: paging.pageSize });
   const probe = useProbeLocation();
   const remove = useDeleteLocation();
   const [editing, setEditing] = useState<Editing>(null);
@@ -139,6 +142,7 @@ export function LocationsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
+      {data && <PageControls state={paging} total={data.total} label={t('locations.pages')} />}
       {editing && (
         <LocationFormModal
           key={editing.location?.id ?? 'new'}

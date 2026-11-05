@@ -118,7 +118,7 @@ export function FolderBrowser({
           )}
           {data.items.length === 0 && (
             <Text size="sm" c="dimmed">
-              {t('folders.empty')}
+              {locationId === null && path === '' ? t('folders.emptyMounts') : t('folders.empty')}
             </Text>
           )}
           {data.items.map((item) => (

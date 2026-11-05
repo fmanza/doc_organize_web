@@ -7,6 +7,8 @@
 - Pasado ``DOW_JOB_TIMEOUT_SECONDS`` se pide una parada ordenada (como al cancelar, con ``cancel_reason=timeout``) para
   que la operación guarde lo hecho (la caché de un escaneo, G16); si no para en ``DOW_TIMEOUT_GRACE_SECONDS``, se
   termina. El run acaba ``failed``/``timeout`` en los dos casos.
+- Un subproceso que sale con ``RECYCLE_EXIT`` (un escaneo largo que llegó a ``DOW_SCAN_RECYCLE_DOCUMENTS``, G38) se
+  relanza para el **mismo run**, que sigue ``running``: el tiempo máximo cuenta desde el primer tramo.
 - Tareas periódicas en un hilo aparte (con varios workers solo uno las hace): sondeo de ubicaciones, purga del
   workspace y publicación de las capacidades del contenedor.
 
@@ -24,6 +26,7 @@ import signal
 import socket
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from multiprocessing.process import BaseProcess
@@ -50,6 +53,7 @@ from app.domain.locations.service import probe_all
 from app.domain.settings.service import effective_settings
 from app.integrations.doc_organize import library_version, run_probe
 from app.jobs import queue, runner
+from app.jobs.context import RECYCLE_EXIT
 from app.workspace import runs as workspace
 
 logger = logging.getLogger(__name__)
@@ -89,6 +93,41 @@ def oom_kills(paths: tuple[str, ...] = OOM_EVENTS) -> int | None:
     return None
 
 
+#: Límite, pico y uso de memoria del contenedor (cgroup v2, y v1 como alternativa); ``max`` = sin límite.
+CGROUP_MEMORY: Final[Mapping[str, tuple[str, ...]]] = {
+    "memory_limit_bytes": ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"),
+    "memory_peak_bytes": ("/sys/fs/cgroup/memory.peak", "/sys/fs/cgroup/memory/memory.max_usage_in_bytes"),
+    "memory_current_bytes": ("/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.usage_in_bytes"),
+}
+#: Un ``memory.limit_in_bytes`` de cgroup v1 por encima de esto es «sin límite» (``PAGE_COUNTER_MAX``).
+NO_LIMIT_V1: Final = 1 << 60
+
+
+def _read_number(paths: tuple[str, ...]) -> int | None:
+    for path in paths:
+        try:
+            with open(path, encoding="ascii") as handle:
+                value = handle.read().strip()
+        except OSError:
+            continue
+        if value == "max":
+            return None
+        try:
+            number = int(value)
+        except ValueError:
+            continue
+        return None if number >= NO_LIMIT_V1 else number
+    return None
+
+
+def resources(settings: Settings, memory: Mapping[str, tuple[str, ...]] = CGROUP_MEMORY) -> dict[str, int | None]:
+    """Memoria del contenedor, OOM y tramos del escaneo (M3, Fase 10), para la ficha de workers del admin."""
+    found: dict[str, int | None] = {key: _read_number(paths) for key, paths in memory.items()}
+    found["oom_kills"] = oom_kills()
+    found["scan_recycle_documents"] = settings.scan_recycle_documents
+    return found
+
+
 def crash_reason(exitcode: int | None, oom_before: int | None, oom_now: int | None) -> tuple[str, str, str]:
     """Por qué terminó un subproceso que no paró el worker: sin memoria si lo mató un SIGKILL ajeno y el contador
     de OOM del cgroup ha subido (o no se puede leer: un SIGKILL que no manda el worker casi siempre es el OOM)."""
@@ -108,6 +147,7 @@ class Slot:
     timeout_seen: float | None = None
     stop_reason: tuple[str, str | None, str | None] | None = None
     oom_kills_at_start: int | None = field(default_factory=oom_kills)
+    segment: int = 1
 
 
 class JobWorker:
@@ -191,7 +231,7 @@ class JobWorker:
                 break
             self._start(run_id)
 
-    def _start(self, run_id: str) -> None:
+    def _start(self, run_id: str, previous: Slot | None = None) -> None:
         process = self.mp.Process(target=runner.main, args=(run_id,), name=f"dow-run-{run_id[:8]}")
         try:
             process.start()
@@ -200,8 +240,28 @@ class JobWorker:
             with self.factory() as db:
                 queue.finish(db, run_id, "failed", code="spawn_failed", message="No se pudo iniciar la operación.")
             return
-        self.slots[run_id] = Slot(run_id=run_id, process=process)
-        logger.info("Run lanzado", extra={"run_id": run_id, "pid": process.pid})
+        slot = Slot(run_id=run_id, process=process)
+        if previous is not None:  # mismo run: el timeout y la cancelación siguen contando desde el primer tramo
+            slot.started, slot.timeout_seen, slot.cancel_seen = previous.started, previous.timeout_seen, None
+            slot.segment = previous.segment + 1
+        self.slots[run_id] = slot
+        logger.info("Run lanzado", extra={"run_id": run_id, "pid": process.pid, "segment": slot.segment})
+
+    def _recycle(self, slot: Slot) -> tuple[str, str | None, str | None] | None:
+        """Relanza el run de un subproceso que salió con ``RECYCLE_EXIT`` (``None``) o, si entretanto se pidió parar,
+        devuelve cómo cerrarlo: lo hecho ya está guardado en el run y en la caché."""
+        with self.factory() as db:
+            row = db.execute(
+                select(Run.status, Run.cancel_requested, Run.cancel_reason).where(Run.id == slot.run_id)
+            ).one_or_none()
+        if row is None or row.status != "running":
+            return CRASHED
+        if row.cancel_requested:
+            return (
+                ("failed", "timeout", TIMEOUT_MESSAGE) if row.cancel_reason == "timeout" else ("cancelled", None, None)
+            )
+        self._start(slot.run_id, previous=slot)
+        return None
 
     def _reap(self) -> None:
         for run_id, slot in list(self.slots.items()):
@@ -209,9 +269,15 @@ class JobWorker:
                 continue
             slot.process.join()
             del self.slots[run_id]
-            status, code, message = slot.stop_reason or crash_reason(
-                slot.process.exitcode, slot.oom_kills_at_start, oom_kills()
-            )
+            if slot.stop_reason is None and slot.process.exitcode == RECYCLE_EXIT:
+                closing = self._recycle(slot)
+                if closing is None:
+                    continue
+                status, code, message = closing
+            else:
+                status, code, message = slot.stop_reason or crash_reason(
+                    slot.process.exitcode, slot.oom_kills_at_start, oom_kills()
+                )
             with self.factory() as db:
                 # Si el subproceso cerró el run él mismo, ``finish`` no hace nada.
                 if queue.finish(db, run_id, status, code=code, message=message):
@@ -260,6 +326,7 @@ class JobWorker:
                 db.commit()
                 return
             worker.heartbeat_at = utcnow()
+            worker.resources = resources(self.settings)
             refresh = worker.refresh_requested
             worker.refresh_requested = False
             db.commit()

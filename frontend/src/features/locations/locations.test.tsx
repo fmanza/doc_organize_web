@@ -105,6 +105,21 @@ describe('LocationsPage', () => {
     expect(callsTo(fetchMock, 'POST', '/api/v1/locations')).toHaveLength(0);
   });
 
+  it('explica cómo montar carpetas si /mnt está vacía', async () => {
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [], total: 0 } },
+      'GET /api/v1/admin/mounts': { body: { ...folders('', []).body, location_id: null } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Nueva ubicación' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText(/No hay carpetas montadas en \/mnt/)).toBeInTheDocument();
+  });
+
   it('el admin borra una ubicación solo tras escribir su nombre', async () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
@@ -244,6 +259,23 @@ describe('SettingsPage', () => {
               alive: true,
               capabilities_at: '2026-10-31T08:00:00Z',
             },
+            {
+              id: 'worker-gpu:9',
+              queues: ['gpu'],
+              version: '1.0.0',
+              doc_organize_version: '1.0.0',
+              started_at: '2026-10-31T08:00:00Z',
+              heartbeat_at: '2026-10-31T08:00:00Z',
+              alive: true,
+              capabilities_at: '2026-10-31T08:00:00Z',
+              gpu_ready: true,
+              resources: {
+                memory_limit_bytes: 8 * 1024 ** 3,
+                memory_peak_bytes: 6 * 1024 ** 3,
+                oom_kills: 2,
+                scan_recycle_documents: 200,
+              },
+            },
           ],
         },
       },
@@ -258,6 +290,11 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/doc_organize 0\.10\.0/)).toBeInTheDocument();
     expect(screen.getByText('Colas atendidas: cpu')).toBeInTheDocument();
     expect(await screen.findByText('worker-1:7')).toBeInTheDocument();
-    expect(screen.getByText('En marcha')).toBeInTheDocument();
+    expect(screen.getAllByText('En marcha')).toHaveLength(2);
+    // M3 (Fase 10): GPU, memoria y OOM de cada worker.
+    const gpuRow = screen.getByText('worker-gpu:9').closest('tr') as HTMLElement;
+    expect(within(gpuRow).getByText('Pico 6 GB de 8 GB')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('2 veces sin memoria')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Escaneo en tramos de 200 documentos')).toBeInTheDocument();
   });
 });

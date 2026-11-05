@@ -11,6 +11,11 @@ Cada carpeta de origen es un **ámbito propio de doc_organize** (decisión del m
   demás ni las de carpetas que ya no son del proyecto. Su vista previa (``dry_run``) cuenta la caché, cuántos
   documentos ya no existen y el tamaño de las salidas, sin hashear el origen.
 
+Un escaneo largo se parte en **tramos** (G38, Fase 10): tras ``DOW_SCAN_RECYCLE_DOCUMENTS`` documentos convertidos la
+llamada para de forma ordenada, el subproceso sale con ``JobRecycle`` y el worker lanza otro para el mismo run. El
+nuevo tramo lee de ``runs.result`` lo ya sumado y las carpetas terminadas (``resume``), salta esas carpetas y retoma la
+que estaba a medias: la caché hace que solo se convierta lo que falta.
+
 Las rutas absolutas de doc_organize se convierten en relativas a la ubicación antes de guardarse o mostrarse.
 """
 
@@ -33,7 +38,7 @@ from app.domain.scan.options import missing_options
 from app.domain.scan.state import folder_state
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize import ScanFailure, ScanOutcome, ScanProgress, ScanRequest
-from app.jobs.context import JobCancelled, JobContext, JobFailed
+from app.jobs.context import JobCancelled, JobContext, JobFailed, JobRecycle
 from app.jobs.operations._files import ProjectPaths, measure, project_paths, require_rw, resolve_in
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
 from app.jobs.operations.search_index import reindex_project
@@ -56,6 +61,10 @@ SUMMARY_COUNTS: Final = (
     "error_retries_capped",
 )
 SUMMARY_SECONDS: Final = ("duration_seconds", "discovery_duration_seconds", "total_conversion_seconds")
+#: Recuentos del descubrimiento: al retomar una carpeta a medias se cuentan solo en su primer tramo.
+DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged"})
+#: Clave de ``runs.result`` con lo necesario para retomar en otro tramo (se quita al terminar).
+RESUME: Final = "resume"
 #: Fase de doc_organize → fase que ve el usuario.
 PHASES: Final = {"started": "discovery", "discovery": "discovery", "conversion": "conversion", "ocr": "ocr"}
 
@@ -213,8 +222,10 @@ def _mark_used(ctx: JobContext, project: Project, subpath: str) -> None:
         db.commit()
 
 
-def _accumulate(total: dict[str, Any], outcome: ScanOutcome) -> None:
+def _accumulate(total: dict[str, Any], outcome: ScanOutcome, *, resumed: bool = False) -> None:
     for key in (*SUMMARY_COUNTS, *SUMMARY_SECONDS):
+        if resumed and key in DISCOVERY_COUNTS:
+            continue
         value = outcome.summary.get(key)
         if isinstance(value, int | float):
             total[key] = round(total.get(key, 0) + value, 3) if key in SUMMARY_SECONDS else total.get(key, 0) + value
@@ -233,6 +244,39 @@ def _index(ctx: JobContext, paths: ProjectPaths, result: dict[str, Any]) -> None
             "No se pudo actualizar la búsqueda de texto completo; lánzala desde «Buscar en el contenido».",
             level="warning",
         )
+
+
+@dataclass
+class Resume:
+    """Estado entre tramos de un mismo run (``runs.result[RESUME]``).
+
+    Attributes:
+        done: Carpetas ya terminadas (se saltan).
+        partial: Carpeta en la que paró el tramo anterior (se retoma sin «forzar» ni contar de nuevo el descubrimiento).
+        failed: Carpetas que fallaron en tramos anteriores.
+    """
+
+    done: set[str]
+    partial: str | None
+    failed: list[str]
+
+    def dump(self) -> dict[str, Any]:
+        return {"done": sorted(self.done), "partial": self.partial, "failed": self.failed}
+
+
+def _previous_segment(ctx: JobContext) -> tuple[dict[str, Any], Resume] | None:
+    """Lo guardado por el tramo anterior de este run, o ``None`` si es el primero."""
+    with ctx.session_factory() as db:
+        previous = db.scalar(select(Run.result).where(Run.id == ctx.run_id))
+    if not isinstance(previous, dict) or not isinstance(state := previous.get(RESUME), dict):
+        return None
+    result = {key: value for key, value in previous.items() if key != RESUME}
+    partial = state.get("partial")
+    return result, Resume(
+        done={str(f) for f in state.get("done") or []},
+        partial=partial if isinstance(partial, str) else None,
+        failed=[str(f) for f in state.get("failed") or []],
+    )
 
 
 def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[str, Any]:
@@ -262,12 +306,23 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
         current = masker.relative(event.current) if event.current else None
         ctx.progress(PHASES.get(event.phase, event.phase), event.processed, event.total, current)
 
-    result: dict[str, Any] = {"folders": len(folders), "force": params.force}
-    failed: list[str] = []
-    warned = saved = 0
+    previous = _previous_segment(ctx)
+    if previous is None:
+        result: dict[str, Any] = {"folders": len(folders), "force": params.force}
+        resume = Resume(done=set(), partial=None, failed=[])
+    else:
+        result, resume = previous
+        result["segments"] = int(result.get("segments", 1)) + 1
+        ctx.log(f"Tramo {result['segments']}: el escaneo sigue en un proceso nuevo donde lo dejó el anterior.")
+    failed = resume.failed
+    warned = 0
+    saved = min(int(result.get("errors", 0)), MAX_SAVED_ERRORS)
     for index, folder in enumerate(folders, start=1):
         if ctx.cancelled:
             raise JobCancelled(result)
+        if folder.subpath in resume.done:
+            continue
+        resumed = folder.subpath == resume.partial
         if len(folders) > 1:
             ctx.log(f"Carpeta {index} de {len(folders)}: «{folder.label}».")
         folder.state.mkdir(parents=True, exist_ok=True)
@@ -279,27 +334,34 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
             models_dir=ctx.settings.models_dir,
             use_ocr=params.use_ocr,
             use_gpu=params.use_gpu,
-            force=params.force,
+            # «Forzar» ya vació la caché de la carpeta en el primer tramo: al retomarla, lo convertido no se repite.
+            force=params.force and not resumed,
             include_audio_video=params.include_audio_video,
             extract_images=params.extract_images,
             use_picture_description=params.use_picture_description,
+            max_conversions=ctx.settings.scan_recycle_documents,
         )
         try:
             outcome = library.run_scan(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)
         except (library.DocOrganizeOperationError, OSError):
             # Un corte de red o un fallo de doc_organize en esta carpeta no impide escanear las demás.
             failed.append(folder.label)
+            resume.done.add(folder.subpath)
             ctx.log(f"No se pudo escanear la carpeta «{folder.label}».", level="error")
             continue
-        _accumulate(result, outcome)
+        _accumulate(result, outcome, resumed=resumed)
         room = max(0, MAX_SAVED_ERRORS - saved)
         _save_failures(ctx, project, outcome.failures[:room], masker)
         saved += min(room, len(outcome.failures))
         for warning in outcome.warnings[: max(0, MAX_WARNINGS - warned)]:
             ctx.log(masker.text(warning), level="warning")
         warned += len(outcome.warnings)
+        if outcome.recycled and not ctx.cancelled:
+            ctx.log(f"Tramo {result.get('segments', 1)} terminado: el escaneo sigue en un proceso nuevo.")
+            raise JobRecycle({**result, RESUME: Resume(resume.done, folder.subpath, failed).dump()})
         if outcome.cancelled:
             raise JobCancelled(result)
+        resume.done.add(folder.subpath)
         _mark_used(ctx, project, folder.subpath)
     if params.force:
         with ctx.session_factory() as db:

@@ -25,6 +25,9 @@ frontend/test-results/
 # Ubicaciones de prueba de docker-compose.dev.yml (solo documentos sintéticos)
 dev-data/
 
+# Montajes locales de cada máquina (rutas del host)
+docker-compose.override.yml
+
 # Build y documentación generada
 build/
 dist/

@@ -150,3 +150,40 @@ describe('DuplicatesPage', () => {
     expect(real).toMatchObject({ dry_run: false, preview_run_id: DRY_ID, confirm_name: 'Proyecto A' });
   });
 });
+
+describe('Fase 10: grupos largos', () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it('pliega un grupo de muchos documentos y pagina de 10 en 10', async () => {
+    const big: DuplicateGroup = {
+      group_id: 'g-big',
+      reason: 'exact_duplicate',
+      members: Array.from({ length: 8 }, (_, index) =>
+        member(`2024/copia-${index}.pdf`, `2026-01-0${index + 1}T00:00:00Z`, index === 0),
+      ),
+    };
+    const fetchMock = routes({
+      [`GET /api/v1/runs/${PREVIEW_ID}/duplicate-groups`]: {
+        body: { run: PREVIEW, items: [big], total: 25 },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/duplicates');
+
+    expect(await screen.findByText('2024/copia-4.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('2024/copia-5.pdf')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ver 3 documentos más' }));
+    expect(screen.getByText('2024/copia-7.pdf')).toBeInTheDocument();
+
+    expect(screen.getByText('1–10 de 25')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Página siguiente' }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', `/api/v1/runs/${PREVIEW_ID}/duplicate-groups`).some(
+          (request) => new URL(request.url).searchParams.get('offset') === '10',
+        ),
+      ).toBe(true),
+    );
+  });
+});

@@ -16,6 +16,7 @@ from app.api.v1.schemas import (
     SettingsUpdate,
     WorkerList,
     WorkerOut,
+    WorkerResources,
 )
 from app.core.config import get_settings
 from app.domain.locations import service as locations
@@ -94,6 +95,8 @@ def list_workers(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> Work
                 heartbeat_at=w.heartbeat_at,
                 alive=workers.is_alive(w, settings),
                 capabilities_at=w.capabilities_at,
+                gpu_ready=bool(w.capabilities.get("gpu_ready")) if w.capabilities else None,
+                resources=WorkerResources.model_validate(w.resources) if w.resources else None,
             )
             for w in workers.list_workers(db)
         ]

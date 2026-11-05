@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount } from '../../components/format';
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { useMe } from '../auth/useAuth';
 import {
   type Tenant,
@@ -34,7 +36,8 @@ const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
 export function TenantsPage() {
   const { t } = useTranslation();
   const { data: me } = useMe();
-  const tenants = useTenants();
+  const paging = usePageState();
+  const tenants = useTenants(true, { offset: paging.offset, limit: paging.pageSize });
   const create = useCreateTenant();
   const switchTenant = useSwitchTenant();
   const [slug, setSlug] = useState('');
@@ -166,6 +169,7 @@ export function TenantsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
+      {tenants.data && <PageControls state={paging} total={tenants.data.total} label={t('tenants.pages')} />}
       {renaming && <RenameModal tenant={renaming} onClose={() => setRenaming(null)} />}
       {deleting && <DeleteModal tenant={deleting} onClose={() => setDeleting(null)} />}
     </Stack>

@@ -311,6 +311,27 @@ def test_health_and_capabilities_reflect_workers(
     assert client.get("/api/health").json()["worker"] == "stale"
 
 
+def test_the_resume_state_of_a_segmented_scan_is_not_shown(
+    user_client: TestClient, project_id: int, db: Session
+) -> None:
+    run_id = str(_enqueue(user_client, project_id, operation="noop")["id"])
+    db.execute(update(Run).where(Run.id == run_id).values(result={"converted": 3, "resume": {"partial": "2024"}}))
+    db.commit()
+
+    assert user_client.get(f"/api/v1/runs/{run_id}").json()["result"] == {"converted": 3}
+
+
+def test_workers_show_gpu_and_memory(admin_client: TestClient, db: Session) -> None:
+    resources = {"memory_limit_bytes": 6 << 30, "memory_peak_bytes": 5 << 30, "oom_kills": 1}
+    db.add(Worker(id="w:gpu", queues=["gpu"], version="t", capabilities={"gpu_ready": True}, resources=resources))
+    db.commit()
+
+    [worker] = admin_client.get("/api/v1/admin/workers").json()["items"]
+
+    assert worker["gpu_ready"] is True
+    assert worker["resources"]["memory_limit_bytes"] == 6 << 30 and worker["resources"]["oom_kills"] == 1
+
+
 def test_active_runs_per_user_are_capped(user_client: TestClient, project_id: int) -> None:
     for _ in range(5):
         _enqueue(user_client, project_id, operation="noop")

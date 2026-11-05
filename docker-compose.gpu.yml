@@ -1,0 +1,16 @@
+# Pruebas de la variante GPU en un equipo con NVIDIA (driver >= 580) y Docker con soporte de GPU (Fase 10).
+# Encima de la pila E2E: las carpetas sintéticas de dev-data/e2e también en el worker de la cola gpu.
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.gpu.yml --profile gpu up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.gpu.yml --profile setup-gpu \
+#     run --rm models-init-gpu
+#   docker compose ... exec -T worker-gpu python - --gpu < scripts/smoke_variants.py
+# Solo documentos sintéticos (repositorio público).
+
+services:
+  worker-gpu:
+    volumes:
+      - data:/data
+      - workspace:/workspace
+      - models:/models:ro
+      - ./dev-data/e2e:/mnt/e2e:ro
+      - ./dev-data/e2e-out:/mnt/e2e-out

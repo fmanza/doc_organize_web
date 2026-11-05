@@ -5,7 +5,9 @@ Usa la API de backup de SQLite (``sqlite3.Connection.backup``), que copia una ba
 mismas rutas relativas que en ``/data`` y un ``manifest.json`` con tamaño y SHA-256. ``search.db`` no se copia: se
 regenera desde las salidas (run ``search_index``).
 
-La restauración llega en la Fase 10; hasta entonces, se restaura parando la aplicación y copiando los ficheros.
+La restauración (Fase 10) es ``restore_backup``: con la web y el worker parados, comprueba la copia, guarda cada base
+de datos actual como ``<fichero>.pre-restore-<UTC>`` y vuelca encima la de la copia con la misma API de backup. Las
+cachés que existan ahora y no estén en la copia no se tocan. Las migraciones las aplica el ``entrypoint`` al arrancar.
 """
 
 from __future__ import annotations
@@ -121,6 +123,94 @@ def prune(root: Path, keep: int) -> list[Path]:
     for path in old:
         shutil.rmtree(path)
     return old
+
+
+class RestoreError(Exception):
+    """No se puede restaurar (copia no válida, destino fuera de ``/data`` o aplicación en marcha); mensaje apto."""
+
+
+@dataclass(frozen=True)
+class RestoreItem:
+    """Base de datos que se restaura: ruta relativa a ``/data`` y si ya existe (se guarda antes como ``pre-restore``)."""
+
+    path: str
+    replaces: bool
+
+
+def _restorable(relative: str) -> bool:
+    """Solo ``config.db`` y ``projects/<id>/…/cache.db``: un manifiesto manipulado no escribe otra cosa en ``/data``."""
+    parts = Path(relative).parts
+    return relative == CONFIG_DB or (len(parts) >= 3 and parts[0] == "projects" and parts[-1] == CACHE_DB)
+
+
+def restore_plan(settings: Settings, path: Path) -> list[RestoreItem]:
+    """Lo que haría ``restore_backup`` (vista previa), tras comprobar la copia.
+
+    Raises:
+        RestoreError: La copia no es válida o lleva rutas que no son bases de datos de la aplicación.
+    """
+    problems = verify_backup(path)
+    if problems:
+        raise RestoreError("La copia no es válida: " + " ".join(problems))
+    entries = json.loads((path / MANIFEST).read_text(encoding="utf-8"))["files"]
+    data = settings.data_dir.resolve()
+    items: list[RestoreItem] = []
+    for entry in entries:
+        relative = str(entry["path"])
+        target = settings.data_dir / relative
+        if not _restorable(relative) or not target.resolve().is_relative_to(data):
+            raise RestoreError(f"La copia lleva una ruta que no es una base de datos de la aplicación: {relative}.")
+        items.append(RestoreItem(path=relative, replaces=target.exists()))
+    if not any(item.path == CONFIG_DB for item in items):
+        raise RestoreError("La copia no tiene config.db.")
+    return items
+
+
+def _busy(settings: Settings) -> str | None:
+    """Por qué no se puede restaurar ahora (runs en marcha o un worker vivo), o ``None``."""
+    database = settings.data_dir / CONFIG_DB
+    if not database.is_file():
+        return None
+    with closing(sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True, timeout=5)) as conn:
+        try:
+            running = conn.execute("SELECT count(*) FROM runs WHERE status = 'running'").fetchone()[0]
+            workers = conn.execute(
+                "SELECT count(*) FROM workers WHERE heartbeat_at >= datetime('now', ?)",
+                (f"-{3 * settings.worker_heartbeat_seconds} seconds",),
+            ).fetchone()[0]
+        except sqlite3.OperationalError:  # BD sin migrar: nada en marcha
+            return None
+    if running:
+        return f"Hay {running} ejecuciones en marcha."
+    if workers:
+        return "Hay un worker en marcha: para la web y el worker antes de restaurar."
+    return None
+
+
+def restore_backup(settings: Settings, path: Path) -> list[RestoreItem]:
+    """Restaura la copia ``path`` sobre ``/data`` y devuelve lo restaurado.
+
+    Raises:
+        RestoreError: La copia no es válida o la aplicación está en marcha (no se ha tocado nada).
+        OSError, sqlite3.Error: Fallo a medias; las bases de datos ya sustituidas tienen su ``pre-restore``.
+    """
+    items = restore_plan(settings, path)
+    reason = _busy(settings)
+    if reason:
+        raise RestoreError(reason)
+    stamp = datetime.now(UTC).strftime(_STAMP)
+    previous = os.umask(0o077)
+    try:
+        for item in items:
+            target = settings.data_dir / item.path
+            if item.replaces:
+                _copy(target, target.with_name(f"{target.name}.pre-restore-{stamp}"))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with closing(sqlite3.connect(path / item.path)) as src, closing(sqlite3.connect(target, timeout=30)) as dst:
+                src.backup(dst)
+    finally:
+        os.umask(previous)
+    return items
 
 
 def verify_backup(path: Path) -> list[str]:

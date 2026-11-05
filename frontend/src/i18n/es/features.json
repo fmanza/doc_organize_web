@@ -132,6 +132,7 @@
     "list": "Subcarpetas",
     "up": "Subir un nivel",
     "empty": "Esta carpeta no tiene subcarpetas.",
+    "emptyMounts": "No hay carpetas montadas en /mnt. Móntalas en docker compose (en web y worker) y reinicia; ver la guía «Ubicaciones».",
     "select": "Elegir esta carpeta",
     "selected": "Carpeta elegida: {{path}}",
     "nothingSelected": "Aún no has elegido una carpeta.",
@@ -188,7 +189,8 @@
       "pathRequired": "Elige una subcarpeta de /mnt",
       "pathFixed": "No se puede cambiar: para usar otra carpeta, registra una ubicación nueva.",
       "displayPathHint": "Opcional, solo informativo (por ejemplo \\\\nas.example.internal\\expedientes)."
-    }
+    },
+    "pages": "Páginas de ubicaciones"
   },
   "settings": {
     "title": "Ajustes",
@@ -290,7 +292,15 @@
     "state": "Estado",
     "heartbeat": "Último latido",
     "alive": "En marcha",
-    "stale": "Sin latido"
+    "stale": "Sin latido",
+    "gpu": "GPU",
+    "memory": "Memoria",
+    "memoryUse": "Pico {{peak}} de {{limit}}",
+    "noLimit": "sin límite",
+    "oom_one": "{{count}} vez sin memoria",
+    "oom_other": "{{count}} veces sin memoria",
+    "recycle_one": "Escaneo en tramos de {{count}} documento",
+    "recycle_other": "Escaneo en tramos de {{count}} documentos"
   },
   "projects": {
     "title": "Proyectos",
@@ -592,7 +602,8 @@
       "reasoning": "Criterio de la IA",
       "sample_documents": "Documentos de muestra",
       "total_documents": "Documentos convertidos",
-      "material_types": "Tipos de material"
+      "material_types": "Tipos de material",
+      "segments": "Tramos"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -618,7 +629,26 @@
     },
     "scanErrorsLink": "Ver los {{count}} documentos con errores",
     "duplicatesLink": "Revisar los grupos de duplicados",
-    "contextLink": "Ver el contexto"
+    "contextLink": "Ver el contexto",
+    "segments_one": "El escaneo se hizo en {{count}} tramo.",
+    "segments_other": "El escaneo se hizo en {{count}} tramos: cada tramo es un proceso nuevo, para que la memoria no se agote en escaneos largos.",
+    "logShowAll_one": "Ver {{count}} aviso anterior",
+    "logShowAll_other": "Ver los {{count}} avisos anteriores",
+    "continue": {
+      "title": "Continuar el escaneo",
+      "body": "Lo convertido hasta parar está guardado en la caché: un escaneo nuevo con las mismas opciones solo convierte lo que falta.",
+      "button": "Continuar el escaneo",
+      "busy": "Hay otra operación en marcha en el proyecto."
+    },
+    "notify": {
+      "title": "{{operation}} ha terminado",
+      "succeeded": "Terminó bien en «{{project}}».",
+      "failed": "Falló en «{{project}}».",
+      "cancelled": "Se canceló en «{{project}}».",
+      "open": "Ver la ejecución",
+      "close": "Cerrar el aviso",
+      "enable": "Avisarme en el navegador cuando termine una ejecución"
+    }
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -758,9 +788,9 @@
       "total_other": "{{formatted}} documentos.",
       "indexedAt": "Búsqueda actualizada el {{date}}."
     },
-    "retry": "No se pudieron cargar más documentos. Reintentar",
     "status": "Estado",
-    "allStatuses": "Todos los estados"
+    "allStatuses": "Todos los estados",
+    "pages": "Páginas de documentos"
   },
   "duplicates": {
     "title": "Duplicados",
@@ -834,7 +864,10 @@
     "keepGroup": "Documento que se conserva en el grupo {{number}} ({{name}})",
     "excluded": "No se aplica",
     "chosen": "Elegido a mano",
-    "resetChoices": "Restablecer las elecciones"
+    "resetChoices": "Restablecer las elecciones",
+    "pages": "Páginas de grupos",
+    "showAll_one": "Ver {{count}} documento más",
+    "showAll_other": "Ver {{count}} documentos más"
   },
   "context": {
     "back": "← Volver a «{{name}}»",

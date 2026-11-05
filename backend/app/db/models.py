@@ -429,6 +429,8 @@ class Worker(Base):
     capabilities: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
     capabilities_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     refresh_requested: Mapped[bool] = mapped_column(default=False)
+    #: Memoria del contenedor (cgroup), OOM y tramos del escaneo, del último latido (Fase 10).
+    resources: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
 
 
 class PeriodicTask(Base):

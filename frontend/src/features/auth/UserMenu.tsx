@@ -1,4 +1,5 @@
 import { Badge, Button, Menu } from '@mantine/core';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
@@ -9,6 +10,9 @@ export function UserMenu() {
   const navigate = useNavigate();
   const { data: me } = useMe();
   const logout = useLogout();
+  const [permission, setPermission] = useState(() =>
+    typeof window.Notification === 'undefined' ? 'denied' : window.Notification.permission,
+  );
 
   if (!me) {
     return null;
@@ -45,6 +49,12 @@ export function UserMenu() {
         <Menu.Item component={Link} to="/account/sessions">
           {t('auth.mySessions')}
         </Menu.Item>
+        {permission === 'default' && (
+          // M2: el permiso solo se pide al pulsar (los navegadores lo exigen y es lo que espera el usuario).
+          <Menu.Item onClick={() => void window.Notification.requestPermission().then(setPermission)}>
+            {t('runs.notify.enable')}
+          </Menu.Item>
+        )}
         <Menu.Item onClick={onLogout} disabled={logout.isPending}>
           {t('auth.logout')}
         </Menu.Item>

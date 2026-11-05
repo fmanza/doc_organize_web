@@ -45,10 +45,9 @@
     "projects": "Proyectos",
     "runs": "Ejecuciones",
     "scan": "Escaneo",
-    "cache": "Documentos",
+    "documents": "Documentos",
     "duplicates": "Duplicados",
     "context": "Contexto",
-    "phase": "Fase {{phase}}",
     "admin": "Administración",
     "users": "Usuarios",
     "sessions": "Sesiones",
@@ -82,7 +81,7 @@
   },
   "home": {
     "title": "Inicio",
-    "intro": "Organización de documentos con doc_organize para varios usuarios: ubicaciones, proyectos y ejecuciones. Las secciones se habilitan fase a fase según el ROADMAP."
+    "intro": "Organización de documentos con doc_organize para varios usuarios: ubicaciones, proyectos, escaneo, documentos, duplicados, contexto e IA, por ejecuciones en segundo plano."
   },
   "health": {
     "loading": "Comprobando el servicio…",
@@ -156,6 +155,18 @@
     "deleteBody": "Se borra el tenant «{{name}}» con sus roles. Su auditoría pasa al tenant predeterminado.",
     "notEmpty": "Solo se borra si no tiene usuarios, proyectos, ubicaciones ni plantillas.",
     "switch": "Tenant activo",
-    "current": "Tenant: {{name}}"
+    "current": "Tenant: {{name}}",
+    "pages": "Páginas de tenants"
+  },
+  "paging": {
+    "range": "{{first}}–{{last}} de {{total}}",
+    "size": "Elementos por página",
+    "perPage": "{{size}} por página",
+    "page": "Página {{page}}",
+    "first": "Primera página",
+    "previous": "Página anterior",
+    "next": "Página siguiente",
+    "last": "Última página",
+    "label": "Páginas"
   }
 }

@@ -282,3 +282,33 @@ describe('ProjectDetailPage', () => {
     expect(await request?.json()).toEqual({ user_id: 3, role: 'editor' });
   });
 });
+
+describe('Fase 10: menú del proyecto', () => {
+  it('con un proyecto abierto, Duplicados va la primera', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/members': { body: { items: [], total: 0 } },
+      'GET /api/v1/runs': { body: { items: [], total: 0 } },
+    });
+
+    renderRoute('/projects/7');
+
+    const nav = await screen.findByRole('navigation', { name: 'Navegación principal' });
+    await within(nav).findByRole('link', { name: 'Duplicados' });
+    const names = within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+    expect(names.slice(names.indexOf('Proyectos') + 1, names.indexOf('Proyectos') + 5)).toEqual([
+      'Duplicados',
+      'Escaneo',
+      'Documentos',
+      'Contexto',
+    ]);
+    const buttons = screen.getAllByRole('link').filter((link) => link.closest('nav') === null);
+    const order = buttons
+      .map((link) => link.textContent)
+      .filter((text) => ['Duplicados', 'Documentos'].includes(text ?? ''));
+    expect(order[0]).toBe('Duplicados');
+  });
+});

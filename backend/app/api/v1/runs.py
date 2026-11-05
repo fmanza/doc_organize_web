@@ -101,7 +101,8 @@ def run_out(
         is_write=run.is_write,
         params=public_params(run.params),
         progress=RunProgress.model_validate(run.progress) if run.progress else None,
-        result=run.result,
+        # ``resume`` es estado interno entre tramos de un escaneo (G38): no es parte del resultado.
+        result={key: value for key, value in run.result.items() if key != "resume"} if run.result else None,
         error_code=run.error_code,
         error_message=run.error_message,
         cancel_requested=run.cancel_requested,

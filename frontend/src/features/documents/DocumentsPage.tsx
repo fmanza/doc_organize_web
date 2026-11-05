@@ -13,24 +13,24 @@ import {
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { useProject } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
 import {
   CONVERSION_STATUSES,
   type ConversionStatus,
+  DOCUMENTS_PAGE_SIZE,
   type DocumentOut,
   ROOT_FOLDER,
   useDocuments,
 } from './useDocuments';
-
-const ROW_HEIGHT = 64;
 
 const STATUS_COLOR: Record<string, string> = { success: 'green', error: 'red' };
 
@@ -39,9 +39,8 @@ function folderLabel(folder: string, root: string): string {
 }
 
 /**
- * Documentos del proyecto (caché de doc_organize, sustituye al visor de caché de `dashboard.html.j2`): lista
- * virtualizada y paginada en servidor (100 000 documentos), búsqueda en la ruta, filtro por carpeta, acceso al visor y
- * exportaciones.
+ * Documentos del proyecto (caché de doc_organize, sustituye al visor de caché de `dashboard.html.j2`): lista paginada
+ * en servidor con la página en la URL (100 000 documentos, Fase 10), búsqueda en la ruta, filtros, visor y exportaciones.
  */
 export function DocumentsPage() {
   const { t } = useTranslation();
@@ -51,7 +50,12 @@ export function DocumentsPage() {
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [folder, setFolder] = useState<string | null>(null);
   const [conversionStatus, setConversionStatus] = useState<ConversionStatus | null>(null);
-  const documents = useDocuments(projectId, { search: debounced, folder, conversionStatus });
+  const paging = usePageState(DOCUMENTS_PAGE_SIZE);
+  const documents = useDocuments(
+    projectId,
+    { search: debounced, folder, conversionStatus },
+    { offset: paging.offset, limit: paging.pageSize },
+  );
 
   if (project.isPending) {
     return (
@@ -64,8 +68,8 @@ export function DocumentsPage() {
     return <ErrorAlert error={project.error} />;
   }
   const root = t('documents.rootFolder');
-  const rows = documents.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = documents.data?.pages[0]?.total ?? 0;
+  const rows = documents.data?.items ?? [];
+  const total = documents.data?.total ?? 0;
 
   return (
     <Stack>
@@ -83,7 +87,11 @@ export function DocumentsPage() {
         <TextInput
           label={t('documents.search')}
           value={search}
-          onChange={(event) => setSearch(event.currentTarget.value)}
+          onChange={(event) => {
+            // Otro filtro: la página 7 de la búsqueda anterior no tiene sentido en la nueva.
+            setSearch(event.currentTarget.value);
+            paging.setPage(1, true);
+          }}
           maxLength={200}
           style={{ flex: 1, minWidth: 200 }}
         />
@@ -92,7 +100,10 @@ export function DocumentsPage() {
           placeholder={t('documents.allFolders')}
           clearable
           value={folder}
-          onChange={setFolder}
+          onChange={(value) => {
+            setFolder(value);
+            paging.setPage(1, true);
+          }}
           data={project.data.source_subpaths.map((subpath) => ({
             value: subpath === '' ? ROOT_FOLDER : subpath,
             label: folderLabel(subpath, root),
@@ -103,14 +114,17 @@ export function DocumentsPage() {
           placeholder={t('documents.allStatuses')}
           clearable
           value={conversionStatus}
-          onChange={(value) => setConversionStatus(value as ConversionStatus | null)}
+          onChange={(value) => {
+            setConversionStatus(value as ConversionStatus | null);
+            paging.setPage(1, true);
+          }}
           data={CONVERSION_STATUSES.map((status) => ({
             value: status,
             label: t(`documents.conversion.${status}`),
           }))}
         />
       </Group>
-      {documents.isError && !documents.isFetchNextPageError ? (
+      {documents.isError ? (
         <ErrorAlert error={documents.error} />
       ) : documents.isPending ? (
         <Center>
@@ -125,112 +139,38 @@ export function DocumentsPage() {
           <Text size="sm" role="status">
             {t('documents.total', { count: total, formatted: formatCount(total) })}
           </Text>
-          <DocumentList
-            // Una lista nueva por filtro: vuelve arriba y no pide páginas de los datos provisionales anteriores.
-            key={`${debounced}|${folder ?? ''}|${conversionStatus ?? ''}`}
-            projectId={projectId}
-            rows={rows}
-            total={total}
-            root={root}
-            hasMore={documents.hasNextPage && !documents.isPlaceholderData}
-            loadMore={() => void documents.fetchNextPage()}
-            loadingMore={documents.isFetchingNextPage}
-            failed={documents.isFetchNextPageError}
-          />
+          <DocumentList projectId={projectId} rows={rows} root={root} />
+          <PageControls state={paging} total={total} label={t('documents.pages')} />
         </>
       )}
     </Stack>
   );
 }
 
-interface DocumentListProps {
-  projectId: number;
-  rows: DocumentOut[];
-  total: number;
-  root: string;
-  hasMore: boolean;
-  loadMore: () => void;
-  loadingMore: boolean;
-  /** La última página siguiente falló: no se vuelve a pedir sola (se ofrece «Reintentar»). */
-  failed: boolean;
-}
-
-/** Lista virtualizada: solo se pintan las filas visibles; al acercarse al final pide la página siguiente. */
-function DocumentList({
-  projectId,
-  rows,
-  total,
-  root,
-  hasMore,
-  loadMore,
-  loadingMore,
-  failed,
-}: DocumentListProps) {
+/** Una página de documentos (como mucho 100 filas: sin virtualizar). */
+function DocumentList({ projectId, rows, root }: { projectId: number; rows: DocumentOut[]; root: string }) {
   const { t } = useTranslation();
-  const parent = useRef<HTMLDivElement>(null);
-  // El React Compiler no memoiza este componente (la API del virtualizador devuelve funciones): es lo esperado.
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const virtualizer = useVirtualizer({
-    count: rows.length + (hasMore ? 1 : 0),
-    getScrollElement: () => parent.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 10,
-  });
-  const items = virtualizer.getVirtualItems();
-  const lastIndex = items.at(-1)?.index ?? 0;
-
-  const needsMore = hasMore && !loadingMore && !failed && lastIndex >= rows.length - 1;
-  useEffect(() => {
-    if (needsMore) {
-      loadMore();
-    }
-    // loadMore cambia en cada render; basta con reaccionar a needsMore.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsMore]);
-
   return (
-    <Box
-      ref={parent}
-      role="list"
+    <Stack
+      component="ul"
+      gap={0}
       aria-label={t('documents.title')}
-      tabIndex={0}
-      style={{ height: '60vh', overflow: 'auto', border: '1px solid var(--mantine-color-default-border)' }}
+      p={0}
+      m={0}
+      style={{ listStyle: 'none', border: '1px solid var(--mantine-color-default-border)' }}
     >
-      <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-        {items.map((item) => {
-          const row = rows[item.index];
-          return (
-            <Box
-              key={item.key}
-              role="listitem"
-              aria-setsize={total}
-              aria-posinset={item.index + 1}
-              px="sm"
-              py={6}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: ROW_HEIGHT,
-                transform: `translateY(${item.start}px)`,
-                borderBottom: '1px solid var(--mantine-color-default-border)',
-              }}
-            >
-              {row ? (
-                <DocumentRow projectId={projectId} row={row} root={root} />
-              ) : failed ? (
-                <Button variant="subtle" size="xs" onClick={loadMore}>
-                  {t('documents.retry')}
-                </Button>
-              ) : (
-                <Loader size="sm" aria-label={t('common.loading')} />
-              )}
-            </Box>
-          );
-        })}
-      </div>
-    </Box>
+      {rows.map((row) => (
+        <Box
+          component="li"
+          key={`${row.folder}/${row.path}`}
+          px="sm"
+          py={6}
+          style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+        >
+          <DocumentRow projectId={projectId} row={row} root={root} />
+        </Box>
+      ))}
+    </Stack>
   );
 }
 

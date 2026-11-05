@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { callsTo, session, stubApi, USER } from '../../test/api';
-import { runOut } from '../../test/fixtures';
+import { PROJECT, runOut } from '../../test/fixtures';
 import { renderRoute } from '../../test/render';
 
 type Listener = (event: MessageEvent<string>) => void;
@@ -158,5 +158,141 @@ describe('RunDetailPage', () => {
     expect(
       await screen.findByText('Superó el tiempo máximo; se guardó lo hecho hasta parar.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Fase 10', () => {
+  const FAILED_SCAN = runOut({
+    operation: 'scan',
+    status: 'failed',
+    params: { operation: 'scan', force: true, use_ocr: true, folders: ['2024'] },
+    error_code: 'out_of_memory',
+    error_message: 'El worker se quedó sin memoria.',
+    result: { converted: 200, segments: 3 },
+    can_cancel: false,
+  });
+
+  it('un escaneo que se quedó sin memoria se continúa con sus opciones y sin forzar', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const NEXT = '22222222-2222-4222-8222-222222222222';
+    const fetchMock = stubApi({
+      ...session(USER),
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: FAILED_SCAN },
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'POST /api/v1/projects/7/runs': { status: 202, body: runOut({ id: NEXT, operation: 'scan' }) },
+      [`GET /api/v1/runs/${NEXT}`]: { body: runOut({ id: NEXT, operation: 'scan' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute(`/runs/${RUN_ID}`);
+
+    expect(await screen.findByText(/3 tramos/)).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Continuar el escaneo' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const body: unknown = await callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')[0]?.json();
+    expect(body).toEqual({ operation: 'scan', use_ocr: true, folders: ['2024'] });
+  });
+
+  it('un lector no puede continuarlo', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    stubApi({
+      ...session(USER),
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: FAILED_SCAN },
+      'GET /api/v1/projects/7': { body: { ...PROJECT, role: 'viewer' } },
+    });
+
+    renderRoute(`/runs/${RUN_ID}`);
+
+    expect(await screen.findByText('El worker se quedó sin memoria.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Continuar el escaneo' })).toBeNull());
+  });
+
+  it('el log enseña los últimos 200 avisos y el resto a petición', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    FakeEventSource.instances = [];
+    stubApi({ ...session(USER), [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ status: 'running' }) } });
+    const user = userEvent.setup();
+
+    renderRoute(`/runs/${RUN_ID}`);
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+    act(() => {
+      for (let index = 1; index <= 205; index += 1) {
+        source.emit(
+          'log',
+          { ts: '2026-11-05T08:00:00Z', level: 'info', message: `aviso ${index}` },
+          String(index),
+        );
+      }
+    });
+
+    expect(await screen.findByText(/aviso 205/)).toBeInTheDocument();
+    expect(screen.queryByText(/aviso 5$/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ver los 5 avisos anteriores' }));
+    expect(screen.getByText(/aviso 5$/)).toBeInTheDocument();
+  });
+
+  it('avisa cuando termina una ejecución propia', async () => {
+    let running = true;
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects': { body: { items: [], total: 0 } },
+      'GET /api/v1/runs': () => ({
+        body: {
+          items: [
+            running
+              ? runOut({ status: 'running', operation: 'scan' })
+              : runOut({ status: 'succeeded', operation: 'scan', finished_at: '2026-11-05T08:00:00Z' }),
+          ],
+          total: 1,
+        },
+      }),
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderRoute('/projects');
+      await screen.findByRole('heading', { name: 'Proyectos' });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      running = false;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16_000);
+      });
+
+      expect(await screen.findByText('Escaneo ha terminado')).toBeInTheDocument();
+      expect(screen.getByText(/Terminó bien en «Proyecto A»/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('Fase 10: aviso de una ejecución corta', () => {
+  it('avisa aunque empiece y acabe entre dos consultas, pero no de las antiguas', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects': { body: { items: [], total: 0 } },
+      'GET /api/v1/runs': {
+        body: {
+          items: [
+            runOut({ id: 'vieja', status: 'failed', operation: 'scan', finished_at: '2026-01-01T00:00:00Z' }),
+            runOut({
+              status: 'succeeded',
+              operation: 'export_zip',
+              finished_at: new Date(Date.now() + 1000).toISOString(),
+            }),
+          ],
+          total: 2,
+        },
+      },
+    });
+
+    renderRoute('/projects');
+
+    expect(await screen.findByText(/^Exportar ZIP ha terminado$|ha terminado$/)).toBeInTheDocument();
+    expect(screen.queryByText(/Falló en/)).not.toBeInTheDocument();
   });
 });

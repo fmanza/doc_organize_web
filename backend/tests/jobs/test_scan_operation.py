@@ -23,7 +23,7 @@ from app.domain.runs.operations import ScanParams
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize import ScanFailure, ScanOutcome, ScanProgress, ScanRequest
 from app.jobs import queue
-from app.jobs.context import JobCancelled, JobContext, JobFailed
+from app.jobs.context import JobCancelled, JobContext, JobFailed, JobRecycle
 from app.jobs.operations import scan as scan_op
 from app.jobs.operations.scan import folder_state
 from tests.conftest import project_payload
@@ -284,3 +284,95 @@ def test_cancel_between_folders_keeps_the_counts(
         scan_op.run(ctx, ScanParams(), project)
 
     assert stopped.value.result is not None and stopped.value.result["converted"] == 2
+
+
+# --- Fase 10: tramos (G38) -----------------------------------------------------------------------------------------
+
+
+def _save_segment(db: Session, run_id: str, result: dict[str, Any]) -> None:
+    """Lo que hace el runner con ``JobRecycle``: guardar el resultado en el run, que sigue ``running``."""
+    db.execute(update(Run).where(Run.id == run_id).values(result=result))
+    db.commit()
+
+
+def test_a_long_scan_continues_in_a_new_segment(
+    ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ctx.settings = ctx.settings.model_copy(update={"scan_recycle_documents": 3})
+    calls: list[ScanRequest] = []
+    outcomes = iter(
+        [
+            # Tramo 1: «2024» llega al límite a mitad.
+            ScanOutcome(cancelled=True, recycled=True, summary={"scanned": 10, "new": 10, "converted": 3}),
+            # Tramo 2: retoma «2024» (el descubrimiento ya contado) y escanea «2025».
+            ScanOutcome(summary={"scanned": 10, "new": 7, "unchanged": 3, "converted": 7}),
+            ScanOutcome(summary={"scanned": 1, "new": 1, "converted": 1}),
+        ]
+    )
+
+    def fake(request: ScanRequest, **_: Any) -> ScanOutcome:
+        calls.append(request)
+        return next(outcomes)
+
+    monkeypatch.setattr(library, "run_scan", fake)
+
+    with pytest.raises(JobRecycle) as first:
+        scan_op.run(ctx, ScanParams(), project)
+    assert first.value.result[scan_op.RESUME] == {"done": [], "partial": "2024", "failed": []}
+    assert first.value.result["converted"] == 3
+    _save_segment(db, ctx.run_id, first.value.result)
+
+    result = scan_op.run(ctx, ScanParams(), project)
+
+    assert [c.output_subdir for c in calls] == ["2024", "2024", "2025"]
+    assert all(c.max_conversions == 3 for c in calls)
+    assert result["segments"] == 2 and scan_op.RESUME not in result
+    assert result["converted"] == 11 and result["scanned"] == 11 and result["new"] == 11
+    logs = [e.data["message"] for e in db.scalars(select(RunEvent).where(RunEvent.type == "log"))]
+    assert any(m.startswith("Tramo 2:") for m in logs)
+
+
+def test_a_forced_scan_does_not_empty_the_cache_again_when_resuming(
+    ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[ScanRequest] = []
+    outcomes = iter(
+        [
+            ScanOutcome(cancelled=True, recycled=True, summary={"converted": 200}),
+            ScanOutcome(summary={"converted": 5}),
+            ScanOutcome(summary={"converted": 1}),
+        ]
+    )
+
+    def fake(request: ScanRequest, **_: Any) -> ScanOutcome:
+        calls.append(request)
+        return next(outcomes)
+
+    monkeypatch.setattr(library, "run_scan", fake)
+    monkeypatch.setattr(library, "cached_paths", lambda output, state: [])
+
+    with pytest.raises(JobRecycle) as first:
+        scan_op.run(ctx, ScanParams(force=True), project)
+    _save_segment(db, ctx.run_id, first.value.result)
+    result = scan_op.run(ctx, ScanParams(force=True), project)
+
+    assert [c.force for c in calls] == [True, False, True]
+    assert result["converted"] == 206
+    assert len(db.scalars(select(AuditEntry).where(AuditEntry.action == "project.scan_force")).all()) == 1
+
+
+def test_a_finished_folder_is_not_scanned_again(
+    ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[ScanRequest] = []
+    monkeypatch.setattr(library, "run_scan", lambda request, **_: calls.append(request) or _outcome(request))
+    _save_segment(
+        db,
+        ctx.run_id,
+        {"folders": 2, "force": False, "converted": 4, scan_op.RESUME: {"done": ["2024"], "partial": "2025"}},
+    )
+
+    result = scan_op.run(ctx, ScanParams(), project)
+
+    assert [c.output_subdir for c in calls] == ["2025"]
+    assert result["converted"] == 5 and result["segments"] == 2

@@ -114,3 +114,32 @@ def test_same_relative_name_in_two_folders_does_not_collide(tmp_path: Path, mode
     assert len(outputs) == 2
     assert {p.parent.parent.name for p in outputs} == {"2024", "2025"}
     assert {p.read_text(encoding="utf-8").strip().splitlines()[-1] for p in outputs} == {"Factura 2024", "Factura 2025"}
+
+
+def test_max_conversions_splits_a_long_scan_into_segments(tmp_path: Path, models_dir: Path) -> None:
+    """Fase 10 (G38): con ``max_conversions`` la llamada para limpia tras N documentos y la siguiente sigue."""
+    source = tmp_path / "origen"
+    source.mkdir()
+    for i in range(12):  # 5 + 5 + 2: el último tramo acaba sin pasar el límite
+        (source / f"nota{i:02d}.html").write_text(f"<html><body><p>Nota {i}</p></body></html>", encoding="utf-8")
+    (tmp_path / "salidas").mkdir()
+    request = ScanRequest(
+        folders=[source],
+        output_root=tmp_path / "salidas",
+        state_root=tmp_path / "estado",
+        models_dir=models_dir,
+        use_ocr=False,
+        max_conversions=5,
+    )
+
+    segments = []
+    for _ in range(5):
+        outcome = run_scan(request, on_progress=lambda _: None, is_cancelled=lambda: False)
+        segments.append(outcome)
+        if not outcome.recycled:
+            break
+
+    assert [s.recycled for s in segments] == [True, True, False]
+    assert sum(s.summary["converted"] for s in segments) == 12
+    assert all(s.summary["converted"] >= 5 for s in segments[:2])
+    assert len(list((tmp_path / "salidas").rglob("nota*.md"))) == 12

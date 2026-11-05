@@ -52,6 +52,13 @@ class Settings(BaseSettings):
         ai_timeout_seconds: Tiempo máximo de cada petición a un servicio de IA (Fase 8).
         ai_retries: Reintentos de un timeout o error de conexión de cada petición a un servicio de IA (Fase 8, L-3b).
         ai_max_documents_per_run: Documentos que un run puede enviar a la IA como mucho (presupuesto, Fase 8).
+        scan_recycle_documents: Documentos convertidos tras los que el escaneo sigue en un subproceso nuevo del mismo
+            run (la memoria de Docling crece durante un escaneo largo, G38; 0 = nunca; Fase 10).
+        rate_limit_login: Intentos de inicio de sesión por minuto e IP (Fase 10).
+        rate_limit_write: Peticiones de escritura a ``/api/v1`` por minuto e IP (Fase 10).
+        max_request_mb: Tamaño máximo del cuerpo de una petición (413 si se pasa; Fase 10).
+        metrics_token: Token *Bearer* de ``/metrics``; sin él, ``/metrics`` no existe (404; secreto
+            ``dow_metrics_token``, Fase 10).
 
     Los ajustes de identidad, sondeo, retención, cuota e IA son administrables desde la web (ADR-012): estos valores
     son el defecto.
@@ -89,6 +96,11 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = Field(default=30, ge=5, le=300)
     ai_retries: int = Field(default=2, ge=0, le=5)
     ai_max_documents_per_run: int = Field(default=500, ge=1, le=100_000)
+    scan_recycle_documents: int = Field(default=200, ge=0, le=1_000_000)
+    rate_limit_login: int = Field(default=10, ge=1, le=10_000)
+    rate_limit_write: int = Field(default=120, ge=1, le=100_000)
+    max_request_mb: int = Field(default=16, ge=1, le=1024)
+    metrics_token: SecretStr | None = None
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> Self:

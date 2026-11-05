@@ -2,8 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 0.10.1 (hotfix de la Fase 9, multi-tenant y roles; paridad completa con la web integrada), con
-  doc_organize 1.0.0rc2 (pre-release de la librería pura). Siguiente: Fase 10 (endurecimiento y release 1.0).
+- **Versión actual**: 1.0.0rc1 (Fase 10: endurecimiento ASVS L2, restauración, métricas, escaneos en tramos y
+  listados paginados), con doc_organize 1.0.0rc2. Siguiente: doc_organize 1.0.0 (L-15) y la 1.0.0 de la web.
   Plan: `docs/plan/ROADMAP.md`.
 - **Usuarios**: equipos que organizan grandes fondos documentales en una red interna, en tenants aislados; admin de
   instancia, roles del tenant con permisos y miembros de proyecto `owner`/`editor`/`viewer` (ADR-013).

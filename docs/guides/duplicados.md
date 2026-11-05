@@ -25,8 +25,9 @@ aplicación.
 
 ## Revisar
 
-«Revisar los grupos de duplicados», en el detalle de la ejecución, abre los grupos. Se ven de 20 en 20, filtrados por
-motivo. Cada grupo muestra sus documentos lado a lado: ruta, tamaño, fecha de modificación y el principio del hash.
+«Revisar los grupos de duplicados», en el detalle de la ejecución, abre los grupos. Se ven de 10 en 10 (la página
+está en la dirección), filtrados por motivo. Un grupo de más de 5 documentos se ve plegado, con los 5 primeros y el
+que se conserva; «Ver N documentos más» abre el resto. Cada grupo muestra sus documentos lado a lado: ruta, tamaño, fecha de modificación y el principio del hash.
 «Ver convertido» abre su Markdown en el [visor](documentos.md#visor).
 
 - **Conservar por defecto** decide qué documento se queda en cada grupo: el más antiguo (como doc_organize), el más

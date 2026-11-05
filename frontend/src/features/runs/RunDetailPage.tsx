@@ -17,13 +17,28 @@ import {
 } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatBytes, formatCount, formatDateTime, formatDuration } from '../../components/format';
+import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
 import { RunResult } from './RunResult';
 import { RunStatusBadge } from './RunStatusBadge';
-import { artifactUrl, isActive, type RunProgress, useCancelRun, useRun, useRunEvents } from './useRuns';
+import {
+  artifactUrl,
+  isActive,
+  type RunOut as Run,
+  type RunLogEntry,
+  type RunProgress,
+  useCancelRun,
+  useRun,
+  useRunEvents,
+} from './useRuns';
+
+/** Líneas del log que se ven sin pedir «ver todo» (un escaneo grande deja miles de avisos). */
+const LOG_VISIBLE = 200;
+/** Fallos de un escaneo tras los que tiene sentido seguir donde se quedó (la caché guarda lo convertido). */
+const CONTINUABLE = new Set(['out_of_memory', 'crashed', 'timeout', 'interrupted', 'scan_failed']);
 
 /** Texto del anuncio para lectores de pantalla: solo cambia con la fase o cada 10 % (no en cada evento). */
 function useProgressAnnouncement(progress: RunProgress | null): string {
@@ -145,6 +160,12 @@ export function RunDetailPage() {
             t(`runs.errors.${run.error_code ?? 'internal'}`, { defaultValue: run.error_code })}
         </Alert>
       )}
+      {continuable(run) && <ContinueScan run={run} />}
+      {typeof run.result?.segments === 'number' && run.result.segments > 1 && (
+        <Text size="sm" c="dimmed">
+          {t('runs.segments', { count: run.result.segments })}
+        </Text>
+      )}
       <SimpleGrid cols={{ base: 1, sm: 3 }} component="dl">
         {facts.map(([label, value]) => (
           <div key={label}>
@@ -190,20 +211,7 @@ export function RunDetailPage() {
           )}
         </Card>
       )}
-      {live.log.length > 0 && (
-        <Card withBorder>
-          <Title order={3} size="h4" mb="sm">
-            {t('runs.logTitle')}
-          </Title>
-          <List size="sm">
-            {live.log.map((entry) => (
-              <List.Item key={entry.id}>
-                {formatDateTime(entry.ts)} — {entry.message}
-              </List.Item>
-            ))}
-          </List>
-        </Card>
-      )}
+      {live.log.length > 0 && <RunLog log={live.log} />}
       <Card withBorder>
         <Title order={3} size="h4" mb="sm">
           {t('runs.artifactsTitle')}
@@ -246,5 +254,83 @@ export function RunDetailPage() {
         </Stack>
       </Modal>
     </Stack>
+  );
+}
+
+function continuable(run: Run): boolean {
+  return (
+    run.operation === 'scan' &&
+    run.project_id !== null &&
+    run.params.dry_run !== true &&
+    (run.status === 'cancelled' || (run.status === 'failed' && CONTINUABLE.has(run.error_code ?? '')))
+  );
+}
+
+/**
+ * Relanza un escaneo que no terminó con sus mismas opciones (M1, Fase 10): la caché conserva lo convertido y el nuevo
+ * solo convierte lo que falta. Sin «forzar»: ya vació la caché la primera vez y repetirlo empezaría de cero.
+ */
+function ContinueScan({ run }: { run: Run }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const projectId = run.project_id ?? 0;
+  const project = useProject(projectId);
+  const enqueue = useEnqueueRun(projectId);
+  if (!project.data || !canDo(project.data, 'editor')) {
+    return null;
+  }
+  const { force: _force, dry_run: _dryRun, ...params } = run.params;
+  return (
+    <Alert color="blue" title={t('runs.continue.title')}>
+      <Stack gap="xs">
+        <Text size="sm">{t('runs.continue.body')}</Text>
+        {enqueue.isError && <ErrorAlert error={enqueue.error} />}
+        <Group>
+          <Button
+            size="xs"
+            loading={enqueue.isPending}
+            disabled={project.data.active_run}
+            onClick={() =>
+              enqueue.mutate({ ...params, operation: 'scan' } as RunRequest, {
+                onSuccess: (next) => void navigate(`/runs/${next.id}`),
+              })
+            }
+          >
+            {t('runs.continue.button')}
+          </Button>
+          {project.data.active_run && (
+            <Text size="xs" c="dimmed">
+              {t('runs.continue.busy')}
+            </Text>
+          )}
+        </Group>
+      </Stack>
+    </Alert>
+  );
+}
+
+/** Avisos del run: los últimos `LOG_VISIBLE` y, a petición, todos. */
+function RunLog({ log }: { log: RunLogEntry[] }) {
+  const { t } = useTranslation();
+  const [all, setAll] = useState(false);
+  const hidden = all ? 0 : Math.max(0, log.length - LOG_VISIBLE);
+  return (
+    <Card withBorder>
+      <Title order={3} size="h4" mb="sm">
+        {t('runs.logTitle')}
+      </Title>
+      {hidden > 0 && (
+        <Button variant="subtle" size="xs" mb="xs" onClick={() => setAll(true)}>
+          {t('runs.logShowAll', { count: hidden })}
+        </Button>
+      )}
+      <List size="sm">
+        {log.slice(hidden).map((entry) => (
+          <List.Item key={entry.id}>
+            {formatDateTime(entry.ts)} — {entry.message}
+          </List.Item>
+        ))}
+      </List>
+    </Card>
   );
 }

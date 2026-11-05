@@ -3,7 +3,6 @@ import {
   Center,
   Code,
   Loader,
-  Pagination,
   Group,
   SegmentedControl,
   Stack,
@@ -15,6 +14,8 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { PAGE_SIZE, useAudit } from './useAdmin';
@@ -31,7 +32,8 @@ export function AuditPage() {
   const { t } = useTranslation();
   const [action, setAction] = useState('');
   const [actor, setActor] = useState('');
-  const [page, setPage] = useState(1);
+  const paging = usePageState(PAGE_SIZE);
+  const { page } = paging;
   const { data, isPending, isError, error } = useAudit(action, actor.trim(), page);
 
   return (
@@ -48,7 +50,7 @@ export function AuditPage() {
             value={action}
             onChange={(value) => {
               setAction(value);
-              setPage(1);
+              paging.setPage(1, true);
             }}
             w="fit-content"
           />
@@ -58,7 +60,7 @@ export function AuditPage() {
           value={actor}
           onChange={(event) => {
             setActor(event.currentTarget.value);
-            setPage(1);
+            paging.setPage(1, true);
           }}
           maw={240}
         />
@@ -108,9 +110,7 @@ export function AuditPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && data.total > PAGE_SIZE && (
-        <Pagination total={Math.ceil(data.total / PAGE_SIZE)} value={page} onChange={setPage} />
-      )}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
     </Stack>
   );
 }

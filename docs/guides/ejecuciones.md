@@ -21,18 +21,33 @@ escanear). Si lanzas otra, la aplicación avisa de que hay una en curso. Las vis
 
 **Ejecuciones** lista las de tus proyectos de la más reciente a la más antigua, con filtros por estado y operación;
 desde un proyecto, «Ver todas» muestra solo las suyas. Cada fila es una ejecución completa: operación, proyecto,
-estado, cuándo se lanzó, cuánto duró y quién la lanzó.
+estado, cuándo se lanzó, cuánto duró y quién la lanzó. La lista va por páginas; la página está en la dirección de la
+pantalla, así que «Atrás» vuelve a la anterior y puedes compartir el enlace.
+
+### Avisos al terminar
+
+Cuando termina una ejecución que lanzaste tú, aparece un aviso abajo a la derecha (bien, fallida o cancelada) con un
+enlace a su detalle, estés en la pantalla que estés. Si además quieres que avise el navegador con la pestaña en segundo
+plano, elige «Avisarme en el navegador cuando termine una ejecución» en el menú de tu usuario y acepta el permiso.
 
 ## Detalle
 
 - **Progreso**: fase, elementos procesados (de un total, si se conoce) y elemento actual. Se actualiza solo; los
   lectores de pantalla anuncian los cambios de fase y cada 10 %.
-- **Avisos**: mensajes de la operación (p. ej. «Cancelación solicitada»).
+- **Avisos**: mensajes de la operación (p. ej. «Cancelación solicitada»). Se ven los 200 últimos; «Ver los N avisos
+  anteriores» muestra el resto.
 - **Resultado**: recuentos al terminar (ficheros, tamaños, documentos convertidos…). En un escaneo, enlace a los
   documentos con errores ([Escaneo](escaneo.md)); en una exportación, ficheros y tamaño ([Documentos](documentos.md)).
 - **Ficheros**: lo que deja la ejecución (resultados y su registro, `run.log`, sin rutas internas del servidor ni
   trazas de error, con un máximo de 20 MB) para descargar. Se borran pasados
   `run_retention_days` días (30 por defecto); el historial se conserva.
+
+### Escaneos largos: tramos
+
+Docling usa cada vez más memoria durante un escaneo largo con OCR. Para que no se agote, el worker parte el escaneo en
+**tramos**: cada 200 documentos convertidos (`DOW_SCAN_RECYCLE_DOCUMENTS`) para de forma ordenada y sigue en un
+proceso nuevo, que empieza con la memoria limpia. Es la misma ejecución: el progreso, los avisos («Tramo 2: el escaneo
+sigue…») y el resultado continúan, y al terminar el detalle dice en cuántos tramos se hizo. No tienes que hacer nada.
 
 ## Cancelar
 
@@ -52,5 +67,10 @@ al momento. Si estaba en marcha, se detiene en el siguiente punto seguro y lo ya
 | El worker se quedó sin memoria | El sistema terminó la operación al pasar el límite de memoria del worker (`DOW_WORKER_MEM_LIMIT`, 6 GB por defecto). Un escaneo conserva lo ya convertido y continúa al relanzarlo; si se repite, sube el límite ([despliegue](despliegue.md#variables)) o escanea las carpetas de origen por separado |
 | La operación terminó de forma inesperada | El proceso de la ejecución se cortó por otra causa. El detalle está en el registro de la ejecución y en `docker compose logs worker` |
 
-Se puede volver a lanzar. Si una ejecución se queda en cola mucho tiempo, comprueba en **Inicio** que el worker está
-«en marcha».
+Un escaneo que se quedó sin memoria, se cortó, superó el tiempo o se canceló muestra **Continuar el escaneo** en su
+detalle (editores y propietarios): lanza otro con las mismas carpetas y opciones y, como la caché guarda lo convertido,
+solo convierte lo que falta. Si el original usaba «Forzar reconversión», el nuevo no la repite: ya vació la caché y
+volver a hacerlo empezaría de cero.
+
+Cualquier otra operación se puede volver a lanzar. Si una ejecución se queda en cola mucho tiempo, comprueba en
+**Inicio** que el worker está «en marcha».
