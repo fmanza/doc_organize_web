@@ -4,7 +4,7 @@ La web construye los ``*Config`` con los valores que resuelve ella (``ai_setting
 las ``*_config_from_store_or_env`` (obsoletas, se retiran en 1.0.0). doc_organize se importa **dentro** de cada función
 (G15).
 
-Firmas verificadas en el tag ``v0.14.0`` (CHANGELOG, «Firmas finales»)::
+Firmas verificadas en el tag ``v0.14.0`` (CHANGELOG, «Firmas finales»), sin cambios en ``v1.0.0rc2``::
 
     LiteLLMClassificationConfig(base_url, virtual_key, model="claude-classifier", timeout_s=30.0, retries=0,
         retry_backoff_s=0.5)                                    # y Taxonomy…, …ManifestDraft… (timeout_s=60.0)

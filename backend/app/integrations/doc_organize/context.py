@@ -3,7 +3,8 @@
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v0.14.0``::
+Firmas verificadas en el tag ``v0.14.0``, sin cambios en ``v1.0.0rc2`` (que solo retira la web, ``auth`` y lo
+obsoleto)::
 
     ContextBuilder().build(project, documents: list[ConversionResult], candidate_domains=None, threshold=0.5,
         ai_classification_enabled=False, ai_classification_client=None, output_folder_name="organizado", ...,

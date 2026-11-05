@@ -5,6 +5,13 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **backend**: doc_organize **1.0.0rc2**, la pre-release de la librería pura (L-11…L-14): se retiran su web integrada,
+  `auth/`, el `tenant_id` de `Project`/`Context`, las `*_config_from_store_or_env` y `MkDocsGenerator`. La web no usaba
+  nada de eso: no cambia el código, solo el wheel fijado (hash en `uv.lock`). La 1.0.0 final se fijará al cerrar la
+  Fase 10.
+
 ## [0.10.0] - 2026-11-03
 
 Fase 9 — multi-tenant y roles ([ADR-013](docs/adr/ADR-013-multi-tenant.md),
