@@ -145,6 +145,33 @@ describe('ProjectsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Proyecto A' })).toBeInTheDocument();
   });
 
+  it('con el destino vacío explica la raíz y deja crear una carpeta nueva en ella', async () => {
+    stubApi({
+      ...detailRoutes(),
+      'GET /api/v1/projects': { body: { items: [], total: 0 } },
+      'GET /api/v1/fs/browse': (request) => {
+        const id = Number(new URL(request.url).searchParams.get('location_id'));
+        return id === 1 ? folders(1, ['2024']) : folders(2, []);
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects');
+    await user.click(await screen.findByRole('button', { name: 'Nuevo proyecto' }));
+    const dialog = await screen.findByRole('dialog');
+    await choose(user, 'Ubicación de destino', 'Salidas');
+    await user.click(within(dialog).getByRole('radio', { name: 'Usar una carpeta vacía' }));
+
+    expect(await within(dialog).findByText('Esta carpeta no tiene subcarpetas.')).toBeInTheDocument();
+    const select = within(dialog).getByRole('button', { name: 'Elegir esta carpeta' });
+    expect(select).toBeDisabled();
+    expect(within(dialog).getByText(/no puede ser la carpeta del proyecto/)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Crear carpeta nueva' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Elegir esta carpeta' }));
+    expect(within(dialog).getByText('Carpeta elegida: la raíz de «Salidas»')).toBeInTheDocument();
+  });
+
   it('no deja crear sin carpetas de origen', async () => {
     const fetchMock = stubApi({
       ...session(USER),

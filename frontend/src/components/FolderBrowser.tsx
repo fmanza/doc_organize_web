@@ -23,15 +23,26 @@ interface FolderBrowserProps {
   rootLabel: string;
   /** Si se indica, aparece «Elegir esta carpeta» con la ruta relativa actual. */
   onSelect?: (path: string) => void;
-  /** Ruta relativa seleccionada, para resaltarla. */
+  /** Ruta relativa seleccionada, para resaltarla (``''`` es la raíz de la ubicación). */
   selected?: string | undefined;
+  /** Si la raíz de la ubicación se puede elegir; si no, «Elegir esta carpeta» se desactiva en ella y se explica. */
+  rootSelectable?: boolean;
+  /** Por qué no se puede elegir la raíz (solo con ``rootSelectable={false}``). */
+  rootHint?: string;
 }
 
 /**
  * Explorador de carpetas reutilizable (sustituye a `_folder_browser_macros`): solo rutas relativas a la ubicación,
  * migas para subir, lista paginada en servidor y estados de carga, vacío, error y ubicación no disponible (503).
  */
-export function FolderBrowser({ locationId, rootLabel, onSelect, selected }: FolderBrowserProps) {
+export function FolderBrowser({
+  locationId,
+  rootLabel,
+  onSelect,
+  selected,
+  rootSelectable = true,
+  rootHint,
+}: FolderBrowserProps) {
   const { t } = useTranslation();
   const [path, setPath] = useState('');
   const [page, setPage] = useState(1);
@@ -42,6 +53,7 @@ export function FolderBrowser({ locationId, rootLabel, onSelect, selected }: Fol
     setPage(1);
   };
   const crumbs = path ? path.split('/') : [];
+  const blocked = !rootSelectable && path === '';
 
   return (
     <Stack gap="sm">
@@ -62,16 +74,30 @@ export function FolderBrowser({ locationId, rootLabel, onSelect, selected }: Fol
         ))}
       </Breadcrumbs>
       {onSelect && (
-        <Group>
-          <Button size="xs" onClick={() => onSelect(path)} variant={selected === path ? 'filled' : 'light'}>
-            {t('folders.select')}
-          </Button>
-          <Text size="sm" c="dimmed">
-            {selected !== undefined && selected !== ''
-              ? t('folders.selected', { path: selected })
-              : t('folders.nothingSelected')}
-          </Text>
-        </Group>
+        <Stack gap={4}>
+          <Group>
+            <Button
+              size="xs"
+              onClick={() => onSelect(path)}
+              variant={selected === path ? 'filled' : 'light'}
+              disabled={blocked}
+            >
+              {t('folders.select')}
+            </Button>
+            <Text size="sm" c="dimmed">
+              {selected === undefined || (selected === '' && !rootSelectable)
+                ? t('folders.nothingSelected')
+                : selected === ''
+                  ? t('folders.selectedRoot', { name: rootLabel })
+                  : t('folders.selected', { path: selected })}
+            </Text>
+          </Group>
+          {blocked && rootHint && (
+            <Text size="xs" c="orange">
+              {rootHint}
+            </Text>
+          )}
+        </Stack>
       )}
       {isPending && (
         <Center>

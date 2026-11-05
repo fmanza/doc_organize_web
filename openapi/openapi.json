@@ -4632,7 +4632,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.10.0"
+    "version": "0.10.1"
   },
   "openapi": "3.1.0",
   "paths": {

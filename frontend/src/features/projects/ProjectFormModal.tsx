@@ -241,6 +241,9 @@ export function ProjectFormModal({ opened, onClose }: ProjectFormModalProps) {
                       rootLabel={destinationName}
                       selected={field.value}
                       onSelect={(path) => field.onChange(path)}
+                      // La raíz de la ubicación no puede ser la carpeta del proyecto (el backend la rechaza).
+                      rootSelectable={mode === 'new'}
+                      rootHint={t('projects.form.rootNotAllowed')}
                     />
                   </Input.Wrapper>
                 )}

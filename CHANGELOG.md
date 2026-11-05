@@ -5,6 +5,19 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-05
+
+Hotfix de lo encontrado probando la 0.10.0 con documentos reales, y doc_organize 1.0.0rc2.
+
+### Fixed
+
+- **frontend**: al crear un proyecto con una ubicación de destino vacía no se podía elegir carpeta. En «Usar una
+  carpeta vacía» la raíz de la ubicación no vale (el backend la rechaza) y ahora se explica, con «Elegir esta carpeta»
+  desactivado en ella; en «Crear carpeta nueva» elegir la raíz ya no se muestra como «Aún no has elegido una carpeta».
+- **backend**: un escaneo largo que pasaba el límite de memoria del worker (`DOW_WORKER_MEM_LIMIT`, 6 GB) acababa
+  como «La operación terminó de forma inesperada». El worker lee el contador `oom_kill` del cgroup y lo cierra como
+  `out_of_memory`, con qué hacer: relanzar (el escaneo continúa donde quedó), subir el límite o escanear por partes.
+
 ### Changed
 
 - **backend**: doc_organize **1.0.0rc2**, la pre-release de la librería pura (L-11…L-14): se retiran su web integrada,

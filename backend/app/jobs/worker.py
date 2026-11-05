@@ -62,6 +62,39 @@ PURGE_EVERY: Final = timedelta(hours=1)
 ORPHANS_EVERY: Final = timedelta(minutes=1)
 STALE_WORKER_ROWS: Final = timedelta(days=1)
 TIMEOUT_MESSAGE: Final = "La operación superó el tiempo máximo."
+CRASHED: Final = ("failed", "crashed", "La operación terminó de forma inesperada.")
+OUT_OF_MEMORY: Final = (
+    "failed",
+    "out_of_memory",
+    "El worker se quedó sin memoria y el sistema terminó la operación (límite: DOW_WORKER_MEM_LIMIT). Un escaneo "
+    "continúa donde se quedó al relanzarlo; si se repite, sube el límite o escanea las carpetas por separado.",
+)
+#: Código de salida de ``multiprocessing`` para un SIGKILL (``-signal.SIGKILL``; fijo: Windows no lo define).
+SIGKILL_EXIT: Final = -9
+#: Contador de procesos matados por falta de memoria en el cgroup del contenedor (v2, y v1 como alternativa).
+OOM_EVENTS: Final = ("/sys/fs/cgroup/memory.events", "/sys/fs/cgroup/memory/memory.oom_control")
+
+
+def oom_kills(paths: tuple[str, ...] = OOM_EVENTS) -> int | None:
+    """``oom_kill`` del cgroup del contenedor, o ``None`` si no se puede leer (fuera de Linux o sin cgroup)."""
+    for path in paths:
+        try:
+            with open(path, encoding="ascii") as handle:
+                for line in handle:
+                    key, _, value = line.partition(" ")
+                    if key == "oom_kill":
+                        return int(value)
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def crash_reason(exitcode: int | None, oom_before: int | None, oom_now: int | None) -> tuple[str, str, str]:
+    """Por qué terminó un subproceso que no paró el worker: sin memoria si lo mató un SIGKILL ajeno y el contador
+    de OOM del cgroup ha subido (o no se puede leer: un SIGKILL que no manda el worker casi siempre es el OOM)."""
+    killed = exitcode == SIGKILL_EXIT
+    oom = oom_before is None or oom_now is None or oom_now > oom_before
+    return OUT_OF_MEMORY if killed and oom else CRASHED
 
 
 @dataclass
@@ -74,6 +107,7 @@ class Slot:
     cancel_seen: float | None = None
     timeout_seen: float | None = None
     stop_reason: tuple[str, str | None, str | None] | None = None
+    oom_kills_at_start: int | None = field(default_factory=oom_kills)
 
 
 class JobWorker:
@@ -175,10 +209,8 @@ class JobWorker:
                 continue
             slot.process.join()
             del self.slots[run_id]
-            status, code, message = slot.stop_reason or (
-                "failed",
-                "crashed",
-                "La operación terminó de forma inesperada.",
+            status, code, message = slot.stop_reason or crash_reason(
+                slot.process.exitcode, slot.oom_kills_at_start, oom_kills()
             )
             with self.factory() as db:
                 # Si el subproceso cerró el run él mismo, ``finish`` no hace nada.

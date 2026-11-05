@@ -134,7 +134,8 @@
     "empty": "Esta carpeta no tiene subcarpetas.",
     "select": "Elegir esta carpeta",
     "selected": "Carpeta elegida: {{path}}",
-    "nothingSelected": "Aún no has elegido una carpeta."
+    "nothingSelected": "Aún no has elegido una carpeta.",
+    "selectedRoot": "Carpeta elegida: la raíz de «{{name}}»"
   },
   "locations": {
     "title": "Ubicaciones",
@@ -340,7 +341,8 @@
       "existingRequired": "Elige una carpeta vacía",
       "newFolder": "Nombre de la carpeta nueva",
       "newFolderHint": "Sin / \\ : * ? \" < > |; no puede existir ya.",
-      "folderRequired": "Escribe el nombre de la carpeta"
+      "folderRequired": "Escribe el nombre de la carpeta",
+      "rootNotAllowed": "La raíz de la ubicación no puede ser la carpeta del proyecto: entra en una subcarpeta vacía o elige «Crear carpeta nueva»."
     },
     "edit": {
       "title": "Editar proyecto",
@@ -611,7 +613,8 @@
       "ai_auth": "El servicio de IA rechazó la clave.",
       "ai_connection": "No se pudo conectar con el servicio de IA.",
       "ai_error": "El servicio de IA devolvió un error.",
-      "no_converted_documents": "El proyecto no tiene documentos convertidos."
+      "no_converted_documents": "El proyecto no tiene documentos convertidos.",
+      "out_of_memory": "El worker se quedó sin memoria. Un escaneo continúa donde se quedó al relanzarlo."
     },
     "scanErrorsLink": "Ver los {{count}} documentos con errores",
     "duplicatesLink": "Revisar los grupos de duplicados",

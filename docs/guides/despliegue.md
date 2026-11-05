@@ -111,7 +111,7 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_TAG` | `dev` | Etiqueta de la imagen |
 | `DOW_PORT` | `8080` | Puerto publicado en `127.0.0.1` |
 | `DOW_LOG_LEVEL` | `INFO` | Nivel de log (JSON por stdout) |
-| `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento) |
+| `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento). Si un escaneo largo termina con «El worker se quedó sin memoria», súbelo (p. ej. `8g`) |
 | `DOW_WORKER_GPU_MEM_LIMIT` | `8g` | Límite de memoria de `worker-gpu` |
 
 Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`). Los administradores pueden
