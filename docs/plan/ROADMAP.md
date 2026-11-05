@@ -16,7 +16,7 @@ ubicaciones `ro`, confirmaciones y auditoría estén probados antes de mover fic
 | 7 | Contexto y taxonomías ✅ (2026-11-02) | 0.8.0 | 0.13.0 (L-8, L-8a…L-8c) |
 | 8 | IA: clasificación, manifiestos y uso ✅ (2026-11-03) | 0.9.0 | 0.10.0 (L-3); cerrada con 0.13.0 |
 | 9 | Multi-tenant y roles ✅ (2026-11-03) | 0.10.0 | — |
-| 10 | Endurecimiento y release | 1.0.0 | 1.0.0 |
+| 10 | Endurecimiento y release ✅ (2026-11-05, 1.0.0rc1) | 1.0.0 | 1.0.0 (cerrada con 1.0.0rc2; la 1.0.0 fija la final, L-15) |
 
 **DoD común**: comandos de desarrollo en verde (backend y frontend), OpenAPI exportado y cliente regenerado, migración
 Alembic con `downgrade`, tests de autorización (401/403/404 e IDOR), imagen construida y `/api/health` 200, CHANGELOG,
@@ -212,6 +212,20 @@ con confirmación; si el origen es `ro` solo puedo generar informe o copiar a cu
   instancia.
 
 ## Fase 10 — Endurecimiento y release 1.0
+
+> **Cerrada el 2026-11-05 (1.0.0rc1)** con doc_organize 1.0.0rc2. La 1.0.0 llega al fijar doc_organize 1.0.0 (L-15),
+> con la misma API. Mejoras opcionales incluidas: continuar un escaneo (M1), avisos al terminar (M2) y recursos de los
+> workers (M3). También, por petición del mantenedor tras probar con documentos reales:
+>
+> - escaneos en tramos contra el OOM (G38, L-16);
+> - listados paginados con la página en la URL;
+> - Duplicados el primero en el proyecto;
+> - sus cambios de prueba (menú del proyecto, aviso de `/mnt` vacía).
+>
+> GPU, LibreOffice y AV, verificadas en el equipo de desarrollo (RTX 5070, Docker Desktop + WSL2): en el servidor
+> Linux queda como paso del despliegue. Carga: 100 000 documentos con todos los p95 por debajo de 500 ms
+> ([ADR-015](../adr/ADR-015-endurecimiento.md), [ASVS L2](../security/ASVS_L2.md)). Sesión:
+> `.ai/sessions/2026-11-05-fase10/`.
 
 - OWASP ASVS L2 (`/security-review` completo) y remediación; cabeceras, CSP, rate limiting, `/metrics`.
 - Backup/restauración de `config.db` y de `data/projects/*/cache.db` (`sqlite3 .backup`).

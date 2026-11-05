@@ -30,6 +30,10 @@ test('escanea el origen, sigue el progreso y el segundo escaneo es incremental',
   await scanAll(page);
   await expect(resultValue(page, 'Documentos encontrados')).toHaveText('2');
   await expect(resultValue(page, 'Convertidos')).toHaveText('2');
+  // Fase 10 (G38): el E2E recicla el subproceso en cada documento; la ejecución es una sola y suma los tramos.
+  await expect(page.getByText(/El escaneo se hizo en \d+ tramos/)).toBeVisible();
+  // M2: aviso de la ejecución propia que termina (la lista de ejecuciones en marcha se mira cada 15 s).
+  await expect(page.getByText(`Terminó bien en «${project}».`)).toBeVisible({ timeout: 30_000 });
 
   // La carpeta queda marcada como escaneada y el segundo escaneo no convierte nada.
   await page.goto(`/projects/${id}/scan`);

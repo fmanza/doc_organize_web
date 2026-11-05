@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
@@ -17,7 +17,7 @@ export type ConversionStatus = (typeof CONVERSION_STATUSES)[number];
 export type SearchPage = components['schemas']['SearchPage'];
 export type SearchHit = components['schemas']['SearchHitOut'];
 
-export const DOCUMENTS_PAGE_SIZE = 100;
+export const DOCUMENTS_PAGE_SIZE = 50;
 /** Valor de los selectores de carpeta para la raíz de la ubicación (la API lo normaliza a «»). */
 export const ROOT_FOLDER = '.';
 export const SEARCH_PAGE_SIZE = 20;
@@ -31,19 +31,22 @@ export interface DocumentFilters {
   conversionStatus: ConversionStatus | null;
 }
 
-/** Documentos de la caché paginados en servidor, página a página para la lista virtualizada. */
-export function useDocuments(projectId: number, filters: DocumentFilters) {
-  return useInfiniteQuery({
-    queryKey: ['projects', projectId, 'documents', filters],
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }) =>
+/** Una página de los documentos de la caché (paginados en servidor: 100 000 documentos por proyecto). */
+export function useDocuments(
+  projectId: number,
+  filters: DocumentFilters,
+  page: { offset: number; limit: number },
+) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'documents', filters, page.offset, page.limit],
+    queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/documents', {
           params: {
             path: { project_id: projectId },
             query: {
-              limit: DOCUMENTS_PAGE_SIZE,
-              offset: pageParam,
+              limit: page.limit,
+              offset: page.offset,
               search: filters.search || null,
               folder: filters.folder,
               conversion_status: filters.conversionStatus,
@@ -51,10 +54,6 @@ export function useDocuments(projectId: number, filters: DocumentFilters) {
           },
         }),
       ),
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
-      return loaded < last.total && last.items.length > 0 ? loaded : undefined;
-    },
     placeholderData: keepPreviousData,
   });
 }

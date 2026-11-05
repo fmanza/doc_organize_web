@@ -41,3 +41,24 @@ def test_crash_reason(exitcode: int, before: int | None, now: int | None, code: 
     assert status == "failed" and reason == code
     if code == "out_of_memory":
         assert "DOW_WORKER_MEM_LIMIT" in message and "relanzarlo" in message
+
+
+def test_resources_reads_the_container_memory(tmp_path: Path) -> None:
+    from app.core.config import Settings
+
+    (tmp_path / "max").write_text("6442450944\n", encoding="ascii")
+    (tmp_path / "peak").write_text("6000000000\n", encoding="ascii")
+    (tmp_path / "unlimited").write_text("max\n", encoding="ascii")
+    (tmp_path / "v1").write_text(str(1 << 62), encoding="ascii")  # cgroup v1 sin límite
+    memory = {
+        "memory_limit_bytes": (str(tmp_path / "no-existe"), str(tmp_path / "max")),
+        "memory_peak_bytes": (str(tmp_path / "peak"),),
+        "memory_current_bytes": (str(tmp_path / "unlimited"),),
+        "other": (str(tmp_path / "v1"),),
+    }
+
+    found = worker.resources(Settings(environment="test", scan_recycle_documents=50), memory)
+
+    assert found["memory_limit_bytes"] == 6442450944 and found["memory_peak_bytes"] == 6000000000
+    assert found["memory_current_bytes"] is None and found["other"] is None
+    assert found["scan_recycle_documents"] == 50

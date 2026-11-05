@@ -39,6 +39,24 @@ class JobCancelled(Exception):
         self.result = result
 
 
+#: Código de salida del subproceso que pide seguir el mismo run en un proceso nuevo (``EX_TEMPFAIL``).
+RECYCLE_EXIT: Final = 75
+
+
+class JobRecycle(Exception):
+    """La operación paró de forma ordenada para seguir en un subproceso nuevo del mismo run (G38).
+
+    El worker relanza el run sin cerrarlo; la operación retoma lo que falta con ``result`` (que se guarda en el run).
+
+    Attributes:
+        result: Lo hecho hasta parar y lo necesario para retomar.
+    """
+
+    def __init__(self, result: dict[str, Any]) -> None:
+        super().__init__("recycle")
+        self.result = result
+
+
 class JobFailed(Exception):
     """Fallo esperado de una operación, con código y mensaje aptos para el usuario (sin rutas del contenedor).
 

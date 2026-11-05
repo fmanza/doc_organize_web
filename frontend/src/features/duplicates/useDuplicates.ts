@@ -9,7 +9,7 @@ export type DuplicateReason = DuplicateGroup['reason'];
 export type DedupChoice = components['schemas']['DedupChoice'];
 export type DedupMode = components['schemas']['DedupApplyParams']['mode'];
 
-export const GROUPS_PAGE_SIZE = 20;
+export const GROUPS_PAGE_SIZE = 10;
 /** Página para reunir todos los grupos al aplicar (máximo de la API). */
 const ALL_PAGE_SIZE = 200;
 /** Grupos que admite una aplicación (`DedupApplyParams.groups`). */

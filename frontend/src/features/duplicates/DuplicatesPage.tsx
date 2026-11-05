@@ -9,7 +9,6 @@ import {
   Group,
   Loader,
   NumberInput,
-  Pagination,
   Radio,
   SegmentedControl,
   Select,
@@ -24,6 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { formatBytes, formatCount, formatDateTime } from '../../components/format';
 import { canDo, useEnqueueRun, useProject } from '../projects/useProjects';
 import { RunResult } from '../runs/RunResult';
@@ -64,7 +65,8 @@ export function DuplicatesPage() {
   const [fuzzy, setFuzzy] = useState(false);
   const [threshold, setThreshold] = useState<number>(DEFAULT_FUZZY);
   const [reason, setReason] = useState<DuplicateReason | null>(null);
-  const [page, setPage] = useState(1);
+  const paging = usePageState(GROUPS_PAGE_SIZE);
+  const page = paging.page;
   const [applying, setApplying] = useState(false);
 
   const runId = params.get('run') ?? last.data?.preview?.id ?? null;
@@ -196,7 +198,7 @@ export function DuplicatesPage() {
               value={reason ?? 'all'}
               onChange={(value) => {
                 setReason(value === 'all' ? null : (value as DuplicateReason));
-                setPage(1);
+                paging.setPage(1, true);
               }}
               data={[
                 { value: 'all', label: t('duplicates.reasons.all') },
@@ -263,13 +265,12 @@ export function DuplicatesPage() {
                   onChange={(change) => override(group.group_id, change)}
                 />
               ))}
-              {groups.data.total > GROUPS_PAGE_SIZE && (
-                <Pagination
-                  total={Math.ceil(groups.data.total / GROUPS_PAGE_SIZE)}
-                  value={page}
-                  onChange={setPage}
-                />
-              )}
+              <PageControls
+                state={paging}
+                total={groups.data.total}
+                label={t('duplicates.pages')}
+                fixedSize
+              />
             </>
           )}
           {applying && (
@@ -289,6 +290,9 @@ export function DuplicatesPage() {
   );
 }
 
+/** Miembros que se ven de un grupo plegado. */
+const FOLDED_MEMBERS = 5;
+
 interface GroupCardProps {
   /** Posición del grupo en la búsqueda (para su nombre accesible). */
   number: number;
@@ -305,6 +309,13 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
   const { t } = useTranslation();
   const name = `keep-${group.group_id}`;
   const label = { number, name: group.members[0]?.path.split('/').at(-1) ?? '' };
+  const [expanded, setExpanded] = useState(false);
+  // Un grupo grande se pliega a los primeros (y al que se conserva, si está más abajo): la página no se alarga.
+  const folded = !expanded && group.members.length > FOLDED_MEMBERS;
+  const visible = folded
+    ? group.members.filter((member, index) => index < FOLDED_MEMBERS || member.key === choice.keep)
+    : group.members;
+  const hidden = group.members.length - visible.length;
   return (
     <Card
       withBorder
@@ -354,7 +365,7 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {group.members.map((member) => (
+              {visible.map((member) => (
                 <Table.Tr key={member.key}>
                   <Table.Td>
                     <Radio
@@ -390,6 +401,11 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
           </Table>
         </Table.ScrollContainer>
       </Radio.Group>
+      {hidden > 0 && (
+        <Button variant="subtle" size="xs" mt="xs" onClick={() => setExpanded(true)}>
+          {t('duplicates.showAll', { count: hidden })}
+        </Button>
+      )}
     </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, ensureOk, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
@@ -17,11 +17,16 @@ export const PERMISSIONS: readonly Permission[] = [
   'projects.all',
 ];
 
-export function useTenants(enabled = true) {
+/** Tenants de la instancia: una página o, sin `page`, los 200 primeros (selector de tenant y formularios). */
+export function useTenants(
+  enabled = true,
+  page: { offset: number; limit: number } = { offset: 0, limit: 200 },
+) {
   return useQuery({
-    queryKey: ['tenants'],
+    queryKey: ['tenants', page.offset, page.limit],
     enabled,
-    queryFn: async () => unwrap(await api.GET('/api/v1/tenants', { params: { query: { limit: 200 } } })),
+    queryFn: async () => unwrap(await api.GET('/api/v1/tenants', { params: { query: page } })),
+    placeholderData: keepPreviousData,
   });
 }
 

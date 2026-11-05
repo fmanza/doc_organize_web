@@ -18,10 +18,12 @@ export function isAdminView(location: AnyLocation): location is LocationOut {
   return 'container_path' in location;
 }
 
-export function useLocations() {
+/** Ubicaciones del tenant: una página del listado o, sin `page`, las 200 primeras (para elegir en un formulario). */
+export function useLocations(page: { offset: number; limit: number } = { offset: 0, limit: 200 }) {
   return useQuery({
-    queryKey: ['locations'],
-    queryFn: async () => unwrap(await api.GET('/api/v1/locations', { params: { query: { limit: 200 } } })),
+    queryKey: ['locations', 'list', page.offset, page.limit],
+    queryFn: async () => unwrap(await api.GET('/api/v1/locations', { params: { query: page } })),
+    placeholderData: keepPreviousData,
   });
 }
 

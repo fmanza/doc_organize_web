@@ -51,8 +51,10 @@ npm run gen:api        # tras exportar openapi/openapi.json
 npm run build
 ```
 
-Las dependencias nuevas se instalan con versión exacta: `npm install <paquete>@<versión>`. La fecha de corte
-(`--before=<fecha>`, versiones con ≥ 2 semanas) está suspendida hasta la 1.0.
+Las dependencias nuevas se instalan con versión exacta y solo con versiones publicadas hace al menos 14 días
+([ADR-001 §6](../adr/ADR-001-stack-y-proyecto-aparte.md)): `npm run safe -- install --save-exact <paquete>@<versión>`
+añade `--before=<hoy - 14 días>` (npm 11 no tiene una opción relativa). `npm ci` instala lo fijado en el lock y no lo
+necesita.
 
 ## Con Docker Desktop
 

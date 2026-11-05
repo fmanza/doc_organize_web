@@ -33,6 +33,7 @@ nav = [
     "guides/despliegue.md",
     "guides/carpetas_de_red.md",
     "guides/publicar_version.md",
+    "security/ASVS_L2.md",
   ] },
   { "Desarrollo" = [
     "guides/desarrollo.md",
@@ -50,6 +51,7 @@ nav = [
       "adr/ADR-012-ajustes-administrables.md",
       "adr/ADR-013-multi-tenant.md",
       "adr/ADR-014-uso-de-servicios-de-ia.md",
+      "adr/ADR-015-endurecimiento.md",
     ] },
     { "Plan" = [
       "plan/README.md",

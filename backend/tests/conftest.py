@@ -35,6 +35,9 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Settin
     for name in ("data", "workspace", "static"):
         monkeypatch.setenv(f"DOW_{name.upper()}_DIR", str(tmp_path / name))
     monkeypatch.setenv("DOW_LOCATIONS_ROOT", str(tmp_path / "mnt"))
+    # Los límites por IP (Fase 10) no deben frenar a los tests, que hacen todo desde «testclient»; los suyos los bajan.
+    monkeypatch.setenv("DOW_RATE_LIMIT_LOGIN", "10000")
+    monkeypatch.setenv("DOW_RATE_LIMIT_WRITE", "100000")
     get_settings.cache_clear()
     get_engine.cache_clear()
     yield get_settings()

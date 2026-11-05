@@ -3116,7 +3116,7 @@ export interface components {
         };
         /**
          * WorkerOut
-         * @description Worker registrado (solo admin).
+         * @description Worker registrado (solo admin), con su GPU y sus recursos (Fase 10).
          */
         WorkerOut: {
             /** Alive */
@@ -3125,6 +3125,8 @@ export interface components {
             capabilities_at: string | null;
             /** Doc Organize Version */
             doc_organize_version: string | null;
+            /** Gpu Ready */
+            gpu_ready?: boolean | null;
             /**
              * Heartbeat At
              * Format: date-time
@@ -3134,6 +3136,7 @@ export interface components {
             id: string;
             /** Queues */
             queues: string[];
+            resources?: components["schemas"]["WorkerResources"] | null;
             /**
              * Started At
              * Format: date-time
@@ -3141,6 +3144,23 @@ export interface components {
             started_at: string;
             /** Version */
             version: string;
+        };
+        /**
+         * WorkerResources
+         * @description Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o
+         *     sin límite.
+         */
+        WorkerResources: {
+            /** Memory Current Bytes */
+            memory_current_bytes?: number | null;
+            /** Memory Limit Bytes */
+            memory_limit_bytes?: number | null;
+            /** Memory Peak Bytes */
+            memory_peak_bytes?: number | null;
+            /** Oom Kills */
+            oom_kills?: number | null;
+            /** Scan Recycle Documents */
+            scan_recycle_documents?: number | null;
         };
     };
     responses: never;

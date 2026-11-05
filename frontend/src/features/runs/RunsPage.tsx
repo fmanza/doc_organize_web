@@ -1,8 +1,10 @@
-import { Center, Group, Loader, Pagination, Select, Stack, Text, Title } from '@mantine/core';
+import { Center, Group, Loader, Select, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { RunsTable } from './RunsTable';
 import { type Operation, RUNS_PAGE_SIZE, type RunStatus, useRuns } from './useRuns';
@@ -15,7 +17,8 @@ export function RunsPage() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<RunStatus | null>(null);
   const [operation, setOperation] = useState<Operation | null>(null);
-  const [page, setPage] = useState(1);
+  const paging = usePageState(RUNS_PAGE_SIZE);
+  const { page } = paging;
   const projectParam = Number(useSearchParams()[0].get('project_id'));
   const projectId = Number.isInteger(projectParam) && projectParam > 0 ? projectParam : undefined;
   const { data, isPending, isError, error } = useRuns(
@@ -40,7 +43,7 @@ export function RunsPage() {
           value={status}
           onChange={(value) => {
             setStatus(value as RunStatus | null);
-            setPage(1);
+            paging.setPage(1, true);
           }}
         />
         <Select
@@ -51,7 +54,7 @@ export function RunsPage() {
           value={operation}
           onChange={(value) => {
             setOperation(value as Operation | null);
-            setPage(1);
+            paging.setPage(1, true);
           }}
         />
       </Group>
@@ -63,9 +66,7 @@ export function RunsPage() {
       {isError && <ErrorAlert error={error} />}
       {data && data.items.length === 0 && <Text c="dimmed">{t('runs.empty')}</Text>}
       {data && data.items.length > 0 && <RunsTable runs={data.items} showProject />}
-      {data && data.total > RUNS_PAGE_SIZE && (
-        <Pagination total={Math.ceil(data.total / RUNS_PAGE_SIZE)} value={page} onChange={setPage} />
-      )}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
     </Stack>
   );
 }

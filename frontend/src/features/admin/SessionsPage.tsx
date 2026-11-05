@@ -5,7 +5,6 @@ import {
   Group,
   Loader,
   Modal,
-  Pagination,
   Stack,
   Table,
   Text,
@@ -15,6 +14,8 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { can, useMe } from '../auth/useAuth';
@@ -25,7 +26,8 @@ export function SessionsPage() {
   // Quien gestiona usuarios ve las de su tenant; el resto, solo las suyas (la API filtra igualmente).
   const { data: me } = useMe();
   const scope = can(me, 'users.manage') ? 'all' : 'own';
-  const [page, setPage] = useState(1);
+  const paging = usePageState(PAGE_SIZE);
+  const { page } = paging;
   const [revoking, setRevoking] = useState<SessionInfo | null>(null);
   const { data, isPending, isError, error } = useSessions(page);
   const revoke = useRevokeSession();
@@ -101,9 +103,7 @@ export function SessionsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && data.total > PAGE_SIZE && (
-        <Pagination total={Math.ceil(data.total / PAGE_SIZE)} value={page} onChange={setPage} />
-      )}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
       <Modal opened={revoking !== null} onClose={close} title={t('admin.sessions.confirmTitle')}>
         {revoking && (
           <Stack>

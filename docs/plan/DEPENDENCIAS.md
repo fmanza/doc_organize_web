@@ -2,7 +2,9 @@
 
 Política (≈ util_bbdd_web): `uv.lock` con `exclude-newer` (≥ 2 semanas, excepciones justificadas en
 `pyproject.toml`), npm con versiones exactas e instalación `--before=<fecha>`, imágenes base con versión exacta.
-La regla de ≥ 2 semanas está **suspendida hasta la 1.0** (2026-11-01); la Fase 10 la reactiva.
+La regla de ≥ 2 semanas estuvo suspendida del 2026-11-01 a la Fase 10, que la reactiva (2026-11-05):
+`exclude-newer = "2 weeks"`, `npm run safe` (`--before`) y `cooldown` de 14 días en Dependabot. Grupo nuevo `av`
+(`doc_organize[av]`: Whisper y sus dependencias), solo en la imagen con `WITH_AV=true`.
 Las versiones concretas se fijan en la Fase 0 a partir de las de util_bbdd_web 1.10.1 para no divergir.
 
 ## Backend (`backend/pyproject.toml`)

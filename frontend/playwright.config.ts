@@ -5,6 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Todos los E2E usan el mismo admin, con un tope de 5 ejecuciones activas, y el escaneo E2E va en tramos (Fase 10):
+  // con más procesos a la vez, las ejecuciones se acumulan en la cola y el tope las rechaza.
+  workers: 3,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],

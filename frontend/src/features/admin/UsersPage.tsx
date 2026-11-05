@@ -4,7 +4,6 @@ import {
   Center,
   Group,
   Loader,
-  Pagination,
   Stack,
   Table,
   Text,
@@ -15,6 +14,8 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { PageControls } from '../../components/Paging';
+import { usePageState } from '../../components/usePageState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { PAGE_SIZE, type User, useUsers } from './useAdmin';
@@ -36,7 +37,8 @@ function UserStatus({ user }: { user: User }) {
 export function UsersPage() {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
+  const paging = usePageState(PAGE_SIZE);
+  const { page } = paging;
   const [editing, setEditing] = useState<Editing>(null);
   const { data, isPending, isError, error } = useUsers(q.trim(), page);
 
@@ -51,7 +53,7 @@ export function UsersPage() {
         value={q}
         onChange={(event) => {
           setQ(event.currentTarget.value);
-          setPage(1);
+          paging.setPage(1, true);
         }}
         maw={320}
       />
@@ -110,9 +112,7 @@ export function UsersPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && data.total > PAGE_SIZE && (
-        <Pagination total={Math.ceil(data.total / PAGE_SIZE)} value={page} onChange={setPage} />
-      )}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
       {editing && (
         <UserFormModal
           key={editing.user?.id ?? 'new'}

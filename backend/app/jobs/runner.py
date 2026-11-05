@@ -24,7 +24,7 @@ from app.db.session import get_engine
 from app.domain.runs.operations import RUN_PARAMS
 from app.domain.settings.service import effective_settings
 from app.jobs import queue
-from app.jobs.context import JobCancelled, JobContext, JobFailed
+from app.jobs.context import RECYCLE_EXIT, JobCancelled, JobContext, JobFailed, JobRecycle
 from app.jobs.operations import REGISTRY
 from app.workspace import runs as workspace
 
@@ -99,10 +99,13 @@ def main(run_id: str) -> None:
     code: str | None = "internal"
     message: str | None = "Error interno al ejecutar la operación."
     result: dict[str, Any] | None = None
+    recycle = False
     try:
         params = RUN_PARAMS.validate_python(run.params)
         result = REGISTRY[run.operation](ctx, params, project)
         status, code, message = "succeeded", None, None
+    except JobRecycle as exc:
+        result, recycle = exc.result, True
     except JobCancelled as exc:
         result = exc.result
         status, code, message = "cancelled", None, None
@@ -117,6 +120,16 @@ def main(run_id: str) -> None:
         logger.error("Error no controlado en el run", extra={"run_id": run_id, "exc_type": type(exc).__name__})
     finally:
         ctx.stop_cancel_watch()
+
+    if recycle:
+        # El run sigue ``running``: el worker lanza otro subproceso que retoma con ``result`` (sin cerrar el run).
+        logger.info("Run en pausa para seguir en un proceso nuevo", extra={"run_id": run_id})
+        file_handler.close()
+        logging.getLogger().removeHandler(file_handler)
+        with factory() as db:
+            db.execute(update(Run).where(Run.id == run_id).values(result=result))
+            db.commit()
+        sys.exit(RECYCLE_EXIT)
 
     logger.info("Run terminado", extra={"run_id": run_id, "status": status})
     file_handler.close()

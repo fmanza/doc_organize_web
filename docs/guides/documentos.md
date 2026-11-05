@@ -19,7 +19,9 @@ la fecha de la última actualización y el estado de la conversión:
   distinguir mayúsculas.
 - **Estado** muestra solo los documentos convertidos, con error, pendientes…
 - **Carpeta** limita la lista a una carpeta de origen.
-- La lista carga los documentos poco a poco mientras te desplazas: funciona igual con cien que con cien mil.
+- La lista va **por páginas** (50 por defecto; 25, 50 o 100 en el selector de abajo) y cada página la pide al
+  servidor: funciona igual con cien documentos que con cien mil. La página está en la dirección (`?page=3`), así que
+  «Atrás» y los enlaces compartidos vuelven a ella. Cambiar la búsqueda o un filtro vuelve a la primera.
 
 ## Visor
 

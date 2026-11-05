@@ -153,14 +153,14 @@ export function ProjectDetailPage() {
             {t('projects.recentRuns')}
           </Title>
           <Group>
+            <Button component={Link} to={`/projects/${project.id}/duplicates`} variant="light">
+              {t('projects.duplicates')}
+            </Button>
             <Button component={Link} to={`/projects/${project.id}/scan`}>
               {canDo(project, 'editor') ? t('projects.scan') : t('projects.scanView')}
             </Button>
             <Button component={Link} to={`/projects/${project.id}/documents`} variant="light">
               {t('projects.documents')}
-            </Button>
-            <Button component={Link} to={`/projects/${project.id}/duplicates`} variant="light">
-              {t('projects.duplicates')}
             </Button>
             <Button component={Link} to={`/projects/${project.id}/context`} variant="light">
               {t('projects.context')}

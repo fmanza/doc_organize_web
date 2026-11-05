@@ -185,3 +185,77 @@ describe('ContentSearchPage', () => {
     expect(screen.getByRole('button', { name: 'Actualizar la búsqueda' })).toBeInTheDocument();
   });
 });
+
+describe('Fase 10: documentos por páginas', () => {
+  it('pagina en el servidor, recuerda la página en la URL y vuelve a la 1 al buscar', async () => {
+    const row = (index: number) => ({
+      folder: '2024',
+      path: `doc-${index}.pdf`,
+      status: 'new',
+      conversion_status: 'success',
+      error_message: null,
+      error_retry_count: 0,
+      updated_at: '2026-11-01T08:00:00Z',
+      output_path: `2024/doc-${index}.md`,
+    });
+    const fetchMock = stubApi({
+      ...session(USER),
+      ...PROJECT_ROUTES,
+      'GET /api/v1/projects/7/documents': (request) => {
+        const offset = Number(new URL(request.url).searchParams.get('offset'));
+        return { body: { items: [row(offset)], total: 120 } };
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/documents?page=2');
+
+    expect(await screen.findByText('doc-50.pdf')).toBeInTheDocument();
+    expect(screen.getByText('51–100 de 120')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Página 3' }));
+    expect(await screen.findByText('doc-100.pdf')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: 'Buscar por nombre o subcarpeta' }), 'x');
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').some((request) => {
+          const params = new URL(request.url).searchParams;
+          return params.get('search') === 'x' && params.get('offset') === '0';
+        }),
+      ).toBe(true),
+    );
+  });
+});
+
+it('una página de la URL que ya no existe deja volver a la primera', async () => {
+  stubApi({
+    ...session(USER),
+    ...PROJECT_ROUTES,
+    'GET /api/v1/projects/7/documents': (request) => ({
+      body: {
+        items:
+          new URL(request.url).searchParams.get('offset') === '0'
+            ? [
+                {
+                  folder: '2024',
+                  path: 'unico.pdf',
+                  status: 'new',
+                  conversion_status: 'success',
+                  error_message: null,
+                  error_retry_count: 0,
+                  updated_at: '2026-11-01T08:00:00Z',
+                  output_path: '2024/unico.md',
+                },
+              ]
+            : [],
+        total: 1,
+      },
+    }),
+  });
+  const user = userEvent.setup();
+
+  renderRoute('/projects/7/documents?page=9');
+
+  await user.click(await screen.findByRole('button', { name: 'Página 1' }));
+  expect(await screen.findByText('unico.pdf')).toBeInTheDocument();
+});

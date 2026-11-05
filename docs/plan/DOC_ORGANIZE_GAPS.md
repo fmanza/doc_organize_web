@@ -6,13 +6,15 @@ Mismo contrato que `UTIL_BBDD_GAPS.md`: **no se parchea doc_organize desde la we
 Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 2026-10-31). Versión consumida desde la
 Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resueltos»). Desde la Fase 5: **0.11.0**; desde el 2026-11-02
 (antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
-(antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos).
+(antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos). La Fase 10 abre G38 (L-16, después de la
+1.0); G11, G12 y G25 siguen abiertos y no bloquean la 1.0.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
 | G25 | No hay forma pública de obtener `DocumentMetadata` de la caché (`CacheEntry` no guarda tamaño ni fecha) | Buscar duplicados exigiría rehashear todo el origen (`DocumentScanner`), horas en carpetas grandes de red | Fase 6: la web construye `DocumentMetadata` con el hash de la caché más un `stat`, y rehashea solo los grupos que se aplican | Opcional: guardar tamaño y fecha en la caché o un `DocumentMetadata.from_cache_entry` | — |
 | G11 | Sin reintentos ante errores de E/S transitorios ni timeout por documento | Escaneos largos en red fallan enteros por un corte | Reintentar el run entero (incremental gracias a la caché); desde la Fase 4, una llamada por carpeta y timeout del job con parada ordenada | Reintentos y timeout configurables | L-9 |
 | G12 | Detectores (`GpuStatus`, `AvStatus`, `OfficeStatus`) sin punto de entrada público | La ficha de capacidades duplicaría la detección | Importar los módulos internos desde la capa anticorrupción | `doc_organize.diagnostics` | L-9b |
+| G38 | La memoria del proceso crece durante un escaneo largo con OCR y no hay forma de limitar los documentos de una llamada | Prueba con 521 documentos reales: el worker (6 GiB) murió por OOM tras 2 h 13 min (`exitcode -9`) | Fase 10: tramos. La capa anticorrupción cuenta las conversiones con los `ProgressEvent`, para con el `CancelToken` al llegar a `DOW_SCAN_RECYCLE_DOCUMENTS` (200) y el worker sigue el mismo run en un subproceso nuevo ([ADR-015](../adr/ADR-015-endurecimiento.md)) | `ScanOptions.max_documents` (parar limpio tras N y decirlo en el evento final) y liberar Docling/OCR entre documentos, o documentar el crecimiento. Además, el `CancelToken` no se atiende entre documentos de la fase OCR (ni para tramos ni para cancelar): un OCR largo no se parte. No bloquea la 1.0 | L-16 |
 
 ## Resueltos
 

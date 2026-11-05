@@ -164,8 +164,9 @@ Las salidas largas de validación (`.txt`, informes) van a `build/logs/`.
 
 ### Dependencias
 
-- **Regla de versiones con ≥ 2 semanas suspendida hasta la 1.0** (decisión del mantenedor, 2026-11-01): sin
-  `exclude-newer` en uv, sin `--before` en npm y sin *cooldown* en Dependabot. La Fase 10 la reactiva (ADR-001 §6).
+- **Solo versiones publicadas hace ≥ 2 semanas** (ADR-001 §6; reactivada en la Fase 10, 2026-11-05):
+  `exclude-newer = "2 weeks"` en uv, `npm run safe -- install --save-exact …` (añade `--before`) y *cooldown* de 14
+  días en Dependabot. doc_organize, por la URL de su release, queda fuera.
 - Python: `uv.lock` con versiones y hashes fijados. doc_organize como wheel de su release en GitHub con hash (ADR-006).
 - npm: `package-lock.json`, versiones exactas.
 - Imágenes base con versión exacta en `docker/Dockerfile`.
@@ -222,4 +223,4 @@ PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION
 
 ---
 
-*Actualizado: 2026-11-01*
+*Actualizado: 2026-11-05*

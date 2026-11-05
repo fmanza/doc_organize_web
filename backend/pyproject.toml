@@ -1,6 +1,6 @@
 [project]
 name = "doc_organize_web"
-version = "0.10.1"
+version = "1.0.0rc1"
 description = "Aplicación web multiusuario sobre doc_organize: ubicaciones, proyectos y ejecuciones agrupadas."
 readme = "../README.md"
 requires-python = ">=3.12,<3.13"
@@ -47,13 +47,18 @@ gpu = [
     "torchvision>=0.17,<1",
     "doc_organize[ocr-gpu]==1.0.0rc2",
 ]
+# Audio y vídeo (Fase 10, imagen con `WITH_AV=true`): Whisper de docling[asr]; ffmpeg lo pone el Dockerfile.
+av = [
+    "doc_organize[av]==1.0.0rc2",
+]
 
 [tool.uv]
 package = false
 default-groups = ["dev", "cpu"]
 conflicts = [[{ group = "cpu" }, { group = "gpu" }]]
-# Cadena de suministro: la regla de versiones con ≥ 2 semanas (`exclude-newer`) está suspendida hasta la 1.0
-# (decisión del mantenedor, 2026-11-01); la Fase 10 la reactiva. El lock sigue fijando versiones y hashes.
+# Cadena de suministro (ADR-001 §6): solo versiones publicadas hace al menos 2 semanas. Suspendida del 2026-11-01 a la
+# Fase 10, que la reactiva. doc_organize llega por URL de su release (ADR-006), fuera de esta regla.
+exclude-newer = "2 weeks"
 
 # docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). Cada variante
 # los toma de su índice de PyTorch (grupos `cpu` y `gpu`).

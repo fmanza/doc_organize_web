@@ -9,11 +9,17 @@
 # Worker con GPU (cola gpu, driver NVIDIA >= 580):       docker compose --profile setup-gpu run --rm models-init-gpu
 #                                                         docker compose --profile gpu up -d --build
 
+# Variantes opcionales de la imagen (Fase 10): DOW_WITH_LIBREOFFICE=true y DOW_WITH_AV=true al construir.
+x-build-args: &build-args
+  WITH_LIBREOFFICE: ${DOW_WITH_LIBREOFFICE:-false}
+  WITH_AV: ${DOW_WITH_AV:-false}
+
 x-app: &app
   image: doc_organize_web:${DOW_TAG:-dev}
   build:
     context: .
     dockerfile: docker/Dockerfile
+    args: *build-args
   environment:
     DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
   volumes:
@@ -45,6 +51,8 @@ services:
     environment:
       DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
       DOW_WORKER_QUEUES: cpu
+      # Tramos de un escaneo largo (G38, Fase 10): un proceso nuevo cada N documentos convertidos; 0 = nunca.
+      DOW_SCAN_RECYCLE_DOCUMENTS: ${DOW_SCAN_RECYCLE_DOCUMENTS:-200}
     # El worker cierra sus subprocesos al recibir SIGTERM; tiempo para que los runs queden marcados.
     stop_grace_period: 30s
     # Docling consume mucha memoria por documento (R3): límite explícito, ajustable por instancia.
@@ -64,12 +72,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: runtime-gpu
+      args: *build-args
     profiles: ["gpu"]
     command: ["python", "-m", "app.jobs.worker"]
     environment:
       DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
       DOW_WORKER_QUEUES: gpu
       DOW_WORKER_CONCURRENCY: "1"
+      DOW_SCAN_RECYCLE_DOCUMENTS: ${DOW_SCAN_RECYCLE_DOCUMENTS:-200}
     stop_grace_period: 30s
     mem_limit: ${DOW_WORKER_GPU_MEM_LIMIT:-8g}
     healthcheck:

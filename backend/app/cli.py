@@ -5,6 +5,7 @@ Uso::
     python -m app.cli create-admin --username admin [--display-name "Administración"] [--password-stdin]
     python -m app.cli backup [--dest /data/backups] [--keep 7]
     python -m app.cli verify-backup /data/backups/20261102T030000Z
+    python -m app.cli restore /data/backups/20261102T030000Z [--yes]
     python -m app.cli rotate-secrets
 
 ``rotate-secrets`` vuelve a cifrar las credenciales de IA con la primera clave de ``DOW_FERNET_KEYS`` (ADR-004): se
@@ -109,6 +110,31 @@ def run_verify(path: str) -> int:
     return 1 if problems else 0
 
 
+def run_restore(path: str, *, yes: bool) -> int:
+    """Restaura una copia (sin ``--yes``, solo enseña qué haría); devuelve el código de salida."""
+    settings = get_settings()
+    try:
+        plan = backup.restore_plan(settings, Path(path))
+    except backup.RestoreError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    for item in plan:
+        print(f"  {item.path}: {'se sustituye (la actual se guarda como .pre-restore)' if item.replaces else 'nueva'}")
+    if not yes:
+        print("Vista previa: no se ha cambiado nada. Para la web y el worker y repite con --yes para restaurar.")
+        return 0
+    try:
+        backup.restore_backup(settings, Path(path))
+    except backup.RestoreError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except (OSError, sqlite3.Error) as exc:
+        print(f"Error: la restauración no terminó ({type(exc).__name__}); revisa los .pre-restore.", file=sys.stderr)
+        return 1
+    print(f"Copia restaurada ({len(plan)} bases de datos). Arranca la web y el worker: aplican las migraciones.")
+    return 0
+
+
 def run_rotate() -> int:
     """Vuelve a cifrar las credenciales de IA con la primera clave; devuelve el código de salida."""
     session_factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
@@ -140,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     copy.add_argument("--keep", type=int, help="copias que se conservan en la carpeta (borra las más antiguas)")
     verify = commands.add_parser("verify-backup", help="comprueba una copia (hashes e integridad de SQLite)")
     verify.add_argument("path", help="carpeta de la copia")
+    restore = commands.add_parser("restore", help="restaura una copia sobre /data (con la web y el worker parados)")
+    restore.add_argument("path", help="carpeta de la copia")
+    restore.add_argument("--yes", action="store_true", help="restaura de verdad (sin él, solo la vista previa)")
     commands.add_parser("rotate-secrets", help="vuelve a cifrar las credenciales de IA con la primera clave")
     args = parser.parse_args(argv)
 
@@ -150,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_backup(args.dest, args.keep)
     if args.command == "verify-backup":
         return run_verify(args.path)
+    if args.command == "restore":
+        return run_restore(args.path, yes=args.yes)
     if args.command == "rotate-secrets":
         return run_rotate()
     return 2  # pragma: no cover - argparse exige un comando

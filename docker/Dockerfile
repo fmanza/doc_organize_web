@@ -2,11 +2,15 @@
 # doc_organize_web — imagen única para API (target "runtime") y worker (mismo target, otro comando).
 # Build:  docker compose build            (o docker build -f docker/Dockerfile .)
 # Variantes (D6): runtime (CPU, por defecto: es la última etapa) y runtime-gpu (CUDA 13.0, driver NVIDIA >= 580;
-# Fase 4). Pendientes: WITH_LIBREOFFICE=true, WITH_AV=true.
+# Fase 4). Opcionales en las dos (Fase 10), apagadas por defecto para no engordar la imagen:
+#   --build-arg WITH_LIBREOFFICE=true   soffice para las hojas .xls legadas
+#   --build-arg WITH_AV=true            audio y vídeo: ffmpeg y Whisper (grupo `av` de backend/pyproject.toml)
 
 ARG PYTHON_IMAGE=python:3.12.14-slim-bookworm
 ARG NODE_IMAGE=node:24.21.0-alpine
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13.1
+ARG WITH_LIBREOFFICE=false
+ARG WITH_AV=false
 
 FROM ${UV_IMAGE} AS uv
 
@@ -21,6 +25,7 @@ RUN npm run build
 # ---------- 2. Dependencias Python ----------
 # torch y torchvision (vía docling) salen del índice CPU de PyTorch: grupo `cpu`, por defecto (backend/pyproject.toml).
 FROM ${PYTHON_IMAGE} AS backend-build
+ARG WITH_AV
 COPY --from=uv /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -28,7 +33,8 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv
 WORKDIR /src/backend
 COPY backend/pyproject.toml backend/uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev $([ "$WITH_AV" = true ] && echo --group av)
 
 # ---------- 2b. Herramientas de desarrollo (CI y equipos sin uv local) ----------
 # docker build -f docker/Dockerfile --target backend-dev -t doc_organize_web:backend-dev .
@@ -41,15 +47,21 @@ CMD ["uv", "run", "--frozen", "pytest"]
 # ---------- 2c. Dependencias de la variante GPU ----------
 # Grupo `gpu`: torch del índice CUDA 13.0 de PyTorch y doc_organize[ocr-gpu] (EasyOCR). Varios GB: fuera del CI.
 FROM backend-build AS backend-build-gpu
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-group cpu --group gpu
+ARG WITH_AV
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-group cpu --group gpu $([ "$WITH_AV" = true ] && echo --group av)
 
 # ---------- 3. Base común de runtime ----------
 # libmagic1: python-magic (doc_organize). libgl1 y libglib2.0-0: OpenCV, que llega con RapidOCR (y EasyOCR en GPU).
 # Modelos sin Internet (ADR-011): el worker no descarga nada (HF_HUB_OFFLINE=1); los modelos van al volumen /models
 # con el servicio models-init (python -m app.integrations.doc_organize.models download), que sí tiene red.
 FROM ${PYTHON_IMAGE} AS runtime-base
+ARG WITH_LIBREOFFICE
+ARG WITH_AV
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libmagic1 libgl1 libglib2.0-0 \
+    $([ "$WITH_LIBREOFFICE" = true ] && echo libreoffice-calc-nogui) \
+    $([ "$WITH_AV" = true ] && echo ffmpeg) \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \

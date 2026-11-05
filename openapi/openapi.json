@@ -4560,7 +4560,7 @@
         "type": "object"
       },
       "WorkerOut": {
-        "description": "Worker registrado (solo admin).",
+        "description": "Worker registrado (solo admin), con su GPU y sus recursos (Fase 10).",
         "properties": {
           "alive": {
             "title": "Alive",
@@ -4589,6 +4589,17 @@
             ],
             "title": "Doc Organize Version"
           },
+          "gpu_ready": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Ready"
+          },
           "heartbeat_at": {
             "format": "date-time",
             "title": "Heartbeat At",
@@ -4604,6 +4615,16 @@
             },
             "title": "Queues",
             "type": "array"
+          },
+          "resources": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkerResources"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "started_at": {
             "format": "date-time",
@@ -4627,12 +4648,74 @@
         ],
         "title": "WorkerOut",
         "type": "object"
+      },
+      "WorkerResources": {
+        "description": "Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o\nsin límite.",
+        "properties": {
+          "memory_current_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Current Bytes"
+          },
+          "memory_limit_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Limit Bytes"
+          },
+          "memory_peak_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Peak Bytes"
+          },
+          "oom_kills": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oom Kills"
+          },
+          "scan_recycle_documents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Recycle Documents"
+          }
+        },
+        "title": "WorkerResources",
+        "type": "object"
       }
     }
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "0.10.1"
+    "version": "1.0.0rc1"
   },
   "openapi": "3.1.0",
   "paths": {
