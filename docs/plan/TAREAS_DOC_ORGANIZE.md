@@ -93,7 +93,7 @@ Publicadas en **0.14.0** (2026-11-03), junto con L-8d…L-8f y L-10; la web las 
 | L-13 | Documentación | Navegación sin web; guías de instalación/inicio rápido solo CLI/librería; guía de migración «de la web integrada a doc_organize_web»; `zensical build --strict` sin avisos |
 | L-13b | Migrar la documentación a Zensical (decisión P4; se puede adelantar a 0.10.0, es independiente) | `mkdocs.yml` → `zensical.toml` (nav, tema, extensiones); referencia de API generada desde *docstrings* (verificar el equivalente a `mkdocstrings` — PENDIENTE DE VERIFICAR); workflows `docs.yml` y `docs-zip-release.yml` y `scripts/build_docs_zip.py`; extra `docs` con `zensical`; `CLAUDE.md` y SHARED cambian `mkdocs build/serve` por `zensical build --strict/serve`; se retiran `mkdocs`, `mkdocs-material` y `mkdocstrings` del extra `docs`. Junto con L-8, **ninguna dependencia de mkdocs queda en el repositorio** |
 | L-14 | Instrucciones IA | Ver `INSTRUCCIONES_IA.md` (parte doc_organize) |
-| L-15 | Cierre | `/version-closure` 1.0.0, CHANGELOG con *breaking changes*, release con wheel. Se pide cuando la Fase 10 de la web cierra con 1.0.0rc1 (validada con 1.0.0rc2) |
+| L-15 ✅ (1.0.0, 2026-11-05) | Cierre | `/version-closure` 1.0.0, CHANGELOG con *breaking changes*, release con wheel. Se pide cuando la Fase 10 de la web cierra con 1.0.0rc1 (validada con 1.0.0rc2) |
 
 ## Después de la 1.0.0 — petición de la Fase 10 (hueco G38)
 

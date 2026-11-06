@@ -5,6 +5,16 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-06
+
+Primera versión estable. El código es el de [1.0.0rc1](#100rc1---2026-11-05); solo cambia doc_organize, que pasa a su
+1.0.0 final (L-15), con la misma API que 1.0.0rc2.
+
+### Changed
+
+- **backend**: doc_organize 1.0.0, wheel de su release en GitHub con su hash en `uv.lock`
+  (`sha256:632e1dbb43ee64914d61e42a03256250f265d33e1cfb8c58d7b01a0baf041034`).
+
 ## [1.0.0rc1] - 2026-11-05
 
 Fase 10 — endurecimiento y release 1.0 ([ADR-015](docs/adr/ADR-015-endurecimiento.md),
