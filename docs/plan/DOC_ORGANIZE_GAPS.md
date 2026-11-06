@@ -6,7 +6,7 @@ Mismo contrato que `UTIL_BBDD_GAPS.md`: **no se parchea doc_organize desde la we
 Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 2026-10-31). Versión consumida desde la
 Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resueltos»). Desde la Fase 5: **0.11.0**; desde el 2026-11-02
 (antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
-(antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos). La Fase 10 abre G38 (L-16, después de la
+(antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos); desde el 2026-11-06: **1.0.0** (L-15), la misma API. La Fase 10 abre G38 (L-16, después de la
 1.0); G11, G12 y G25 siguen abiertos y no bloquean la 1.0.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |

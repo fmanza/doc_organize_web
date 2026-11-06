@@ -8,7 +8,7 @@ cuando todas las filas hasta la Fase 8 estén cubiertas, y eliminación en 1.0.0
 > doc_organize puede retirar la web integrada en 1.0.0 (L-11).
 >
 > **2026-11-05 (1.0.0rc1)**: doc_organize retiró la web integrada en 1.0.0rc1 (L-11), con su guía de migración, y la
-> Fase 10 cierra la web con esa librería (1.0.0rc2). Queda la 1.0.0 final de doc_organize (L-15). El inventario no
+> Fase 10 cierra la web con esa librería (1.0.0rc2). La web 1.0.0 (2026-11-06) fija la 1.0.0 final de doc_organize (L-15). El inventario no
 > cambia: la Fase 10 no sustituye pantallas, endurece las existentes.
 
 > **Estado**: inventario generado el 2026-10-31 desde el código (decoradores de rutas y carpeta `templates/`), pendiente
