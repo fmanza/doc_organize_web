@@ -117,6 +117,33 @@ def test_documents_search_and_folder_filter(user_client: TestClient, project: di
     assert unknown.status_code == 422 and unknown.json()["code"] == "folder_not_saved"
 
 
+def test_documents_sort_across_folders_like_one_cache(user_client: TestClient, project: dict[str, object]) -> None:
+    """web 1.3.0 (doc_organize 1.2.0, G40): con varias carpetas y otro orden, las páginas de cada caché se mezclan con el
+    criterio de la librería (empates por ruta) y la paginación sigue siendo coherente."""
+    base = f"/api/v1/projects/{project['id']}/documents"
+
+    retries = user_client.get(base, params={"sort": "error_retry_count", "order": "desc"}).json()
+    by_path = user_client.get(base, params={"sort": "path", "order": "desc"}).json()
+    first = user_client.get(base, params={"sort": "path", "order": "desc", "limit": 2}).json()
+    second = user_client.get(base, params={"sort": "path", "order": "desc", "limit": 2, "offset": 2}).json()
+
+    assert [r["path"] for r in retries["items"]] == ["roto.pdf", "factura.txt", "facturas/enero .pdf", "Café.docx"]
+    expected = ["Café.docx", "roto.pdf", "facturas/enero .pdf", "factura.txt"]
+    assert [r["path"] for r in by_path["items"]] == expected
+    assert [r["path"] for r in first["items"] + second["items"]] == expected
+    assert retries["total"] == by_path["total"] == 4
+
+
+def test_documents_sort_within_one_folder(user_client: TestClient, project: dict[str, object]) -> None:
+    base = f"/api/v1/projects/{project['id']}/documents"
+
+    body = user_client.get(base, params={"folder": "2024", "sort": "conversion_status", "order": "desc"}).json()
+
+    assert [r["path"] for r in body["items"]][0] == "factura.txt"  # «success» antes que «error» en descendente
+    assert body["items"][-1]["path"] == "roto.pdf"
+    assert user_client.get(base, params={"sort": "sha256"}).status_code == 422
+
+
 def test_documents_need_membership(
     user_client: TestClient, project: dict[str, object], make_user: Callable[..., User]
 ) -> None:

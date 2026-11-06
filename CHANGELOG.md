@@ -5,6 +5,27 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-07
+
+Documentos ordenables por columna con doc_organize 1.2.0 (G40).
+
+### Added
+
+- **backend**, **frontend**: Documentos se ordena por ruta, última actualización, estado de conversión o fallos
+  seguidos («Ordenar por» y el botón de sentido), con `sort` y `order` en `GET /api/v1/projects/{id}/documents`.
+  - Con una carpeta, o filtrando por una, ordena doc_organize directamente.
+  - Con varias, la web pide a cada caché su página ordenada y las mezcla con el mismo criterio que la librería
+    (empates por ruta, vacíos al final): el orden es el mismo que si todo estuviera en una caché.
+
+### Changed
+
+- **backend**: doc_organize 1.2.0, wheel de su release en GitHub con su hash en `uv.lock`
+  (`sha256:b59419526becc69bd3fdada6cd2898b0b82f52808cead7800ce4dc0fb89618d5`).
+
+### Docs
+
+- **docs**: G40 pasa a resueltos (L-18 ✅). No quedan huecos abiertos en doc_organize.
+
 ## [1.2.0] - 2026-11-06
 
 Listados homogéneos, roles como usuarios y borrado de la auditoría por fechas.

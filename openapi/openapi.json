@@ -4839,7 +4839,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6938,7 +6938,7 @@
     },
     "/api/v1/projects/{project_id}/documents": {
       "get": {
-        "description": "Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda\nmira la ruta relativa a la carpeta, nunca la del servidor.",
+        "description": "Documentos de la caché de doc_organize (por carpeta de origen y ruta si no se pide otro orden), con su estado\nde conversión. La búsqueda mira la ruta relativa a la carpeta, nunca la del servidor.",
         "operationId": "list_documents_api_v1_projects__project_id__documents_get",
         "parameters": [
           {
@@ -7035,6 +7035,47 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar (sin ella, carpeta y ruta)",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "path",
+                    "updated_at",
+                    "conversion_status",
+                    "status",
+                    "error_retry_count"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar (sin ella, carpeta y ruta)",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],

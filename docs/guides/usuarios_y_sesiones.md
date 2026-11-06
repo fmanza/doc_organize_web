@@ -83,5 +83,5 @@ Todos los listados de la aplicación funcionan igual (desde la 1.2.0):
 - **Buscar**: el cuadro de búsqueda filtra por el texto de las columnas principales (sin distinguir mayúsculas).
 - **Ordenar**: pulsa el título de una columna; otra vez, para invertir el orden. La flecha indica la columna y el
   sentido. Los grupos de duplicados, que son tarjetas, tienen un selector «Ordenar por».
-- Los **documentos** del proyecto se ordenan siempre por ruta, por ahora: doc_organize todavía no permite otro
-  orden en su caché (hueco G40).
+- Los **documentos** del proyecto se ordenan con «Ordenar por» (ruta, última actualización, estado de conversión o
+  fallos seguidos) desde la 1.3.0. Sin elegir nada, salen por carpeta y ruta.

@@ -111,7 +111,7 @@ Publicadas en **0.14.0** (2026-11-03), junto con L-8d…L-8f y L-10; la web las 
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
-| L-18 | Ordenar las páginas de la caché | `CacheManager.load_cache_page(..., order_by="file_path"\|"timestamp"\|"conversion_status"\|"status"\|"size_bytes"\|"error_retry_count", descending=False)`: desempate por `file_path`, `NULL` al final, `ValueError` ante otra columna, índices aditivos si hacen falta (< 300 ms con 100 000 entradas). Release 1.2.0 con wheel y SHA-256 | G40 |
+| L-18 ✅ (1.2.0, 2026-11-07) | Ordenar las páginas de la caché | `CacheManager.load_cache_page(..., order_by="file_path"\|"timestamp"\|"conversion_status"\|"status"\|"size_bytes"\|"error_retry_count", descending=False)`: desempate por `file_path`, `NULL` al final, `ValueError` ante otra columna, índices aditivos si hacen falta (< 300 ms con 100 000 entradas). Release 1.2.0 con wheel y SHA-256 | G40 |
 
 ## Lo que se queda en la librería y lo que se va
 

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, DbSession, SettingsDep
+from app.api.v1.listing import DocumentSort, OrderQuery, listing
 from app.api.v1.schemas import MAX_PAGE_SIZE, DocumentOut, DocumentPage, SearchHitOut, SearchPage
 from app.domain.documents import service as documents
 from app.domain.projects import service as projects
@@ -54,9 +55,13 @@ def list_documents(
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[
+        DocumentSort | None, Query(description="Columna por la que ordenar (sin ella, carpeta y ruta)")
+    ] = None,
+    order: OrderQuery = "asc",
 ) -> DocumentPage:
-    """Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda
-    mira la ruta relativa a la carpeta, nunca la del servidor."""
+    """Documentos de la caché de doc_organize (por carpeta de origen y ruta si no se pide otro orden), con su estado
+    de conversión. La búsqueda mira la ruta relativa a la carpeta, nunca la del servidor."""
     access = projects.get_access(db, project_id, user)
     rows, total = documents.list_documents(
         settings,
@@ -66,6 +71,7 @@ def list_documents(
         conversion_status=conversion_status,
         limit=limit,
         offset=offset,
+        listing=listing(None, sort, order),
     )
     return DocumentPage(items=[DocumentOut.model_validate(row) for row in rows], total=total)
 

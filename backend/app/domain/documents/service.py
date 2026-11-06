@@ -25,6 +25,7 @@ from app.domain.documents.errors import (
 )
 from app.domain.documents.outputs import output_paths
 from app.domain.documents.paths import DocumentNamer, folder_roots
+from app.domain.listing import ListQuery
 from app.domain.locations.errors import FolderNotFoundError
 from app.domain.locations.paths import join_relative, normalize_relative, resolve_within, run_with_timeout
 from app.domain.projects.service import state_dir
@@ -81,6 +82,29 @@ def select_folders(project: Project, folder: str | None) -> list[str]:
     return [clean]
 
 
+#: Orden de la API → orden de la caché de doc_organize (web 1.3.0, G40).
+DOCUMENT_ORDER: Final[dict[str, library_cache.CacheOrder]] = {
+    "path": "file_path",
+    "updated_at": "timestamp",
+    "conversion_status": "conversion_status",
+    "status": "status",
+    "error_retry_count": "error_retry_count",
+}
+
+
+def _merge(
+    pages: list[tuple[str, list[library_cache.CachedDocument]]], order: library_cache.CacheOrder, descending: bool
+) -> list[tuple[str, library_cache.CachedDocument]]:
+    """Junta páginas ya ordenadas de varias cachés con el criterio de doc_organize: por ``order`` en el sentido pedido,
+    los vacíos al final y los empates por ruta ascendente (los ordenamientos de Python son estables)."""
+    attribute = library_cache.ORDER_ATTRIBUTE[order]
+    entries = sorted(((subpath, entry) for subpath, page in pages for entry in page), key=lambda item: item[1].path)
+    filled = [item for item in entries if getattr(item[1], attribute) not in (None, "")]
+    empty = [item for item in entries if getattr(item[1], attribute) in (None, "")]
+    filled.sort(key=lambda item: getattr(item[1], attribute), reverse=descending)
+    return filled + empty
+
+
 def list_documents(
     settings: Settings,
     project: Project,
@@ -90,13 +114,21 @@ def list_documents(
     conversion_status: str | None = None,
     limit: int,
     offset: int,
+    listing: ListQuery | None = None,
 ) -> tuple[list[DocumentRow], int]:
-    """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta relativa a su carpeta y
-    filtro por estado de conversión.
+    """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta relativa a su carpeta,
+    filtro por estado de conversión y orden (web 1.3.0, doc_organize 1.2.0).
+
+    Sin orden, o con una sola carpeta, cada caché da su página ya ordenada y se encadenan por carpeta (como siempre).
+    Con varias carpetas y otro orden, cada caché da sus ``offset + limit`` primeros y se mezclan: una página profunda
+    cuesta más, pero el orden es el mismo que si todo estuviera en una caché.
 
     Raises:
         FolderNotInProjectError: ``folder`` no es una carpeta de origen del proyecto.
     """
+    listing = listing or ListQuery()
+    order: library_cache.CacheOrder = DOCUMENT_ORDER[listing.sort] if listing.sort else "file_path"
+    descending = listing.sort is not None and listing.order == "desc"
     state = state_dir(settings, project.id)
     search = (search or "").strip() or None
     source = project.source_location
@@ -116,42 +148,58 @@ def list_documents(
         for subpath, folder_root in roots.items()
     ]
     total = sum(count for _, count in counts)
-    rows: list[DocumentRow] = []
-    skip, wanted = offset, limit
-    for subpath, count in counts:
-        if wanted <= 0:
-            break
-        if skip >= count:
-            skip -= count
-            continue
-        page = library_cache.documents_page(
+
+    def page_of(subpath: str, size: int, skip: int) -> list[library_cache.CachedDocument]:
+        return library_cache.documents_page(
             folder_cache(state, subpath),
             root=roots[subpath][-1],
-            limit=wanted,
+            limit=size,
             offset=skip,
             search=search,
             conversion_status=conversion_status,
+            order_by=order,
+            descending=descending,
         )
-        skip = 0
-        wanted -= len(page)
-        namer = DocumentNamer([(subpath, roots[subpath])], source.name)
-        for entry in page:
-            parts = namer.split(entry.path)
-            relative = parts[1] if parts else Path(entry.path).name
-            rows.append(
-                DocumentRow(
-                    folder=subpath,
-                    path=relative,
-                    status=entry.status,
-                    conversion_status=entry.conversion_status,
-                    error_message=namer.text(entry.error_message)[:MAX_ERROR_MESSAGE] if entry.error_message else None,
-                    error_retry_count=entry.error_retry_count,
-                    updated_at=datetime.fromtimestamp(entry.updated_at, UTC),
-                    output_path=output_paths(subpath, relative).markdown
-                    if entry.conversion_status == "success" and parts
-                    else None,
-                )
+
+    picked: list[tuple[str, library_cache.CachedDocument]] = []
+    with_documents = [(subpath, count) for subpath, count in counts if count > 0]
+    if listing.sort is not None and len(with_documents) > 1:
+        wanted = offset + limit
+        pages = [(subpath, page_of(subpath, min(wanted, count), 0)) for subpath, count in with_documents]
+        picked = _merge(pages, order, descending)[offset : offset + limit]
+    else:
+        skip, wanted = offset, limit
+        for subpath, count in counts:
+            if wanted <= 0:
+                break
+            if skip >= count:
+                skip -= count
+                continue
+            page = page_of(subpath, wanted, skip)
+            skip = 0
+            wanted -= len(page)
+            picked.extend((subpath, entry) for entry in page)
+
+    namers = {subpath: DocumentNamer([(subpath, roots[subpath])], source.name) for subpath in roots}
+    rows: list[DocumentRow] = []
+    for subpath, entry in picked:
+        namer = namers[subpath]
+        parts = namer.split(entry.path)
+        relative = parts[1] if parts else Path(entry.path).name
+        rows.append(
+            DocumentRow(
+                folder=subpath,
+                path=relative,
+                status=entry.status,
+                conversion_status=entry.conversion_status,
+                error_message=namer.text(entry.error_message)[:MAX_ERROR_MESSAGE] if entry.error_message else None,
+                error_retry_count=entry.error_retry_count,
+                updated_at=datetime.fromtimestamp(entry.updated_at, UTC),
+                output_path=output_paths(subpath, relative).markdown
+                if entry.conversion_status == "success" and parts
+                else None,
             )
+        )
     return rows, total
 
 
