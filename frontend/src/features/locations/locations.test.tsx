@@ -230,20 +230,22 @@ describe('SettingsPage', () => {
         body: {
           status: 'ok',
           checked_at: '2026-10-31T08:00:00Z',
-          queues: ['cpu'],
+          queues: ['cpu', 'gpu'],
+          // 1.0.1: la suma de los workers vivos; la GPU solo la tiene el de la cola gpu.
+          capability_queues: { gpu_ready: ['gpu'], gpu_active: ['gpu'], ffmpeg_installed: ['cpu', 'gpu'] },
           doc_organize_version: '0.10.0',
           capabilities: {
             gpu_support_installed: true,
-            gpu_active: false,
+            gpu_active: true,
             asr_installed: false,
             ffmpeg_installed: true,
             av_ready: false,
             libreoffice_installed: false,
             models_ready: true,
             picture_description_ready: false,
-            gpu_ready: false,
+            gpu_ready: true,
           },
-          scan_options: { use_gpu: false, include_audio_video: false, use_picture_description: false },
+          scan_options: { use_gpu: true, include_audio_video: false, use_picture_description: false },
         },
       },
       'GET /api/v1/admin/workers': {
@@ -283,12 +285,16 @@ describe('SettingsPage', () => {
 
     renderRoute('/admin/settings');
 
-    const gpu = await screen.findByText('OCR con GPU (EasyOCR)');
-    expect(within(gpu.parentElement as HTMLElement).getByText('No')).toBeInTheDocument();
-    const ffmpeg = screen.getByText('ffmpeg');
-    expect(within(ffmpeg.parentElement as HTMLElement).getByText('Sí')).toBeInTheDocument();
+    const gpu = (await screen.findByText('OCR con GPU (EasyOCR)')).parentElement as HTMLElement;
+    expect(within(gpu).getByText('Sí')).toBeInTheDocument();
+    expect(within(gpu).getByText('cola gpu')).toBeInTheDocument();
+    const ffmpeg = screen.getByText('ffmpeg').parentElement as HTMLElement;
+    expect(within(ffmpeg).getByText('Sí')).toBeInTheDocument();
+    expect(within(ffmpeg).queryByText(/^colas? /)).not.toBeInTheDocument(); // la tienen todas las colas
+    const libreoffice = screen.getByText('LibreOffice (.xls antiguos)').parentElement as HTMLElement;
+    expect(within(libreoffice).getByText('No')).toBeInTheDocument();
     expect(screen.getByText(/doc_organize 0\.10\.0/)).toBeInTheDocument();
-    expect(screen.getByText('Colas atendidas: cpu')).toBeInTheDocument();
+    expect(screen.getByText('Colas atendidas: cpu, gpu')).toBeInTheDocument();
     expect(await screen.findByText('worker-1:7')).toBeInTheDocument();
     expect(screen.getAllByText('En marcha')).toHaveLength(2);
     // M3 (Fase 10): GPU, memoria y OOM de cada worker.

@@ -5,6 +5,33 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-06
+
+doc_organize 1.1.0, que incluye su hotfix 1.0.1 (G39). La web todavía no usa la API nueva de la 1.1.0
+(`max_documents`, timeouts y reintentos, `from_cache_entry`): llegará en la 1.1.0 de la web.
+
+### Changed
+
+- **backend**: doc_organize 1.1.0, wheel de su release en GitHub con su hash en `uv.lock`
+  (`sha256:eef6dfa70562cff70771183384452b4a67fd3f56bf2bb8e0c77de69e8bc760d8`). Con sus valores por defecto escanea
+  igual que la 1.0.0. Además:
+  - los documentos que no son PDF ni imagen ya no pasan por OCR ni se convierten dos veces (G39); las entradas
+    `OCR_PENDING` antiguas se reprocesan una vez en el siguiente escaneo con OCR;
+  - cancelar o partir en tramos durante el OCR conserva lo ya procesado (G38);
+  - libera memoria durante la conversión y el OCR, y no sigue las *junctions* de Windows.
+
+### Fixed
+
+- **backend**, **frontend**: la ficha «Capacidades de la instancia» sumaba solo el worker de la cola `cpu` y decía «No»
+  a la GPU aunque un `worker-gpu` la tuviera lista. Ahora una capacidad está si algún worker vivo la tiene, y la ficha
+  dice en qué colas cuando no son todas (p. ej. «cola gpu»). `GET /api/v1/instance/capabilities` añade
+  `capability_queues`.
+
+### Docs
+
+- **docs**: hueco G39 (los documentos que no son PDF pasan por OCR y se convierten dos veces) y su petición L-17 a
+  doc_organize (hotfix 1.0.1). G12 pasa a resueltos: los detectores son públicos desde doc_organize 0.10.0.
+
 ## [1.0.0] - 2026-11-06
 
 Primera versión estable. El código es el de [1.0.0rc1](#100rc1---2026-11-05); solo cambia doc_organize, que pasa a su

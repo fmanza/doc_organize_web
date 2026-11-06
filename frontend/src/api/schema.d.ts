@@ -1914,6 +1914,13 @@ export interface components {
          */
         InstanceCapabilities: {
             capabilities: components["schemas"]["CapabilitiesOut"] | null;
+            /**
+             * Capability Queues
+             * @description Por cada capacidad que algún worker vivo tiene, las colas de esos workers (p. ej. gpu_ready → gpu)
+             */
+            capability_queues?: {
+                [key: string]: string[];
+            };
             /** Checked At */
             checked_at: string | null;
             /** Doc Organize Version */

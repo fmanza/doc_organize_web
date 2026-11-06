@@ -1622,6 +1622,17 @@
               }
             ]
           },
+          "capability_queues": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Por cada capacidad que algún worker vivo tiene, las colas de esos workers (p. ej. gpu_ready → gpu)",
+            "title": "Capability Queues",
+            "type": "object"
+          },
           "checked_at": {
             "anyOf": [
               {
@@ -4715,7 +4726,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "openapi": "3.1.0",
   "paths": {

@@ -30,7 +30,7 @@ Estado de partida (verificado en el repo, 2026-10-31): `pyproject.toml` 0.9.0 pe
 |---|---|---|---|
 | L-7 | Módulo `export/` | Mover la lógica de `web/routes/downloads.py` (ZIP de proyecto en *streaming*, vista previa de exportación, Excel de caché, Excel de errores de escaneo) a `doc_organize.export` (extra `export` = `openpyxl`); nuevo comando CLI `doc_organize export` | G8 |
 | L-8 | Sitio de contexto con Zensical | Sustituir `MkDocsGenerator` (escribe `mkdocs.yml` y lanza `mkdocs build`) por `SiteGenerator` que escribe `zensical.toml` + `index.md` y lanza `zensical build`; `generate(..., build: bool, site_dir: Path)`; extra `site` = `zensical`; error tipado si falta, en lugar de `site_built=False` silencioso. `MkDocsGenerator` queda como alias *deprecated* en 0.11.0 y se retira en 1.0.0. Contextos ya generados con `mkdocs.yml`: se regeneran al reconstruir el contexto | G10 |
-| L-9 | Robustez en carpetas de red | Reintentos configurables ante `OSError` transitorios en escaneo/hash/copia; prechequeo `size+mtime` antes del hash; rutas UNC y largas en Windows (CLI); política de enlaces simbólicos (no seguir fuera de la raíz); timeout por documento en la conversión | G11 |
+| L-9 ✅ (1.1.0, 2026-11-06) | Robustez en carpetas de red | Reintentos configurables ante `OSError` transitorios en escaneo/hash/copia; prechequeo `size+mtime` antes del hash; rutas UNC y largas en Windows (CLI); política de enlaces simbólicos (no seguir fuera de la raíz); timeout por documento en la conversión | G11 |
 | L-9b | Detectores como API | `GpuStatus`, `AvStatus`, `OfficeStatus` expuestos en `doc_organize.diagnostics` para la ficha «capacidades de la instancia» | G12 |
 
 ## Peticiones de las Fases 4 a 6 (huecos G16–G26)
@@ -99,7 +99,13 @@ Publicadas en **0.14.0** (2026-11-03), junto con L-8d…L-8f y L-10; la web las 
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
-| L-16 | Escaneos largos sin crecer en memoria | `ScanOptions.max_documents`: la llamada para de forma ordenada tras convertir N documentos, guarda la caché y el evento final dice que quedan pendientes (hoy la web cuenta los `ProgressEvent` y usa el `CancelToken`). Investigar por qué crece la memoria de Docling/RapidOCR entre documentos (¿convertidor o modelos retenidos?) y liberarla, o documentarlo. Atender el `CancelToken` entre documentos también en la fase OCR (hoy solo en la conversión) | G38 |
+| L-16 ✅ (1.1.0, 2026-11-06) | Escaneos largos sin crecer en memoria | `ScanOptions.max_documents`: la llamada para de forma ordenada tras convertir N documentos, guarda la caché y el evento final dice que quedan pendientes (hoy la web cuenta los `ProgressEvent` y usa el `CancelToken`). Investigar por qué crece la memoria de Docling/RapidOCR entre documentos (¿convertidor o modelos retenidos?) y liberarla, o documentarlo. Atender el `CancelToken` entre documentos también en la fase OCR (hoy solo en la conversión) | G38 |
+
+## Hotfix 1.0.1 — prueba local de la 1.0.0 (hueco G39)
+
+| ID | Tarea | Detalle | Hueco |
+|---|---|---|---|
+| L-17 ✅ (1.0.1, 2026-11-06) | OCR solo para PDF e imágenes | `/hotfix` P2: `DocumentConverter._needs_ocr` devuelve `True` solo si `docling_result.input.format` es `PDF` o `IMAGE` y `parse_score` es NaN. Test con un .docx y un .xlsx sintéticos (`ocr_required` falso, sin `ocr_file_started`). Las entradas `OCR_PENDING` de otros formatos que ya hay en la caché se reprocesan una vez o se limpian. Release 1.0.1 con wheel y SHA-256 | G39 |
 
 ## Lo que se queda en la librería y lo que se va
 

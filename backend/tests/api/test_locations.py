@@ -305,7 +305,65 @@ def test_capabilities_for_any_session(user_client: TestClient, published_capabil
     assert body["queues"] == ["cpu"]
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
-    assert body["doc_organize_version"] == "1.0.0"
+    assert body["doc_organize_version"] == "1.1.0"
+
+
+def test_capabilities_add_up_the_live_workers(user_client: TestClient, db: Session) -> None:
+    """1.0.1: con un worker de cpu y otro de gpu, la ficha dice «Sí» a la GPU y en qué cola (antes, solo el de cpu)."""
+    base = {
+        "gpu_support_installed": True,
+        "gpu_active": False,
+        "asr_installed": True,
+        "ffmpeg_installed": True,
+        "av_ready": True,
+        "libreoffice_installed": True,
+        "models_ready": True,
+        "picture_description_ready": False,
+        "gpu_ready": False,
+    }
+    now = datetime.now(UTC)
+    db.add_all(
+        [
+            Worker(
+                id="worker:cpu",
+                queues=["cpu"],
+                version="test",
+                heartbeat_at=now,
+                capabilities_at=datetime(2026, 11, 6, 1, tzinfo=UTC),
+                capabilities=base,
+            ),
+            Worker(
+                id="worker:gpu",
+                queues=["gpu"],
+                version="test",
+                heartbeat_at=now,
+                capabilities_at=datetime(2026, 11, 6, 2, tzinfo=UTC),
+                capabilities=base | {"gpu_active": True, "gpu_ready": True, "libreoffice_installed": False},
+            ),
+            Worker(
+                id="worker:viejo",
+                queues=["gpu"],
+                version="test",
+                heartbeat_at=datetime(2026, 1, 1, tzinfo=UTC),
+                capabilities=base | {"picture_description_ready": True},
+            ),
+        ]
+    )
+    db.commit()
+
+    body = user_client.get("/api/v1/instance/capabilities").json()
+
+    assert body["status"] == "ok"
+    assert body["queues"] == ["cpu", "gpu"]
+    caps = body["capabilities"]
+    assert (caps["gpu_ready"], caps["gpu_active"], caps["libreoffice_installed"]) == (True, True, True)
+    assert caps["picture_description_ready"] is False  # el worker caído no cuenta
+    assert body["capability_queues"]["gpu_ready"] == ["gpu"]
+    assert body["capability_queues"]["libreoffice_installed"] == ["cpu"]
+    assert body["capability_queues"]["av_ready"] == ["cpu", "gpu"]
+    assert "picture_description_ready" not in body["capability_queues"]
+    assert body["checked_at"].startswith("2026-11-06T01:00")  # la comprobación más antigua
+    assert body["scan_options"]["use_gpu"] is True
 
 
 def test_health_reports_worst_location_status(admin_client: TestClient, location: dict[str, object], mnt: Path) -> None:
