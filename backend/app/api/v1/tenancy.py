@@ -12,6 +12,7 @@ from fastapi import APIRouter, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import Context, DbSession, InstanceAdmin, RoleManager, RoleReader
+from app.api.v1.listing import OrderQuery, SearchQuery, TenantSort, UserSort, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     Permission,
@@ -62,9 +63,12 @@ def list_tenants(
     db: DbSession,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[TenantSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> TenantPage:
-    """Tenants por nombre con sus usuarios, proyectos y ubicaciones."""
-    rows, total = tenants.list_tenants(db, limit=limit, offset=offset)
+    """Tenants (por nombre si no se pide otro orden) con sus usuarios, proyectos y ubicaciones."""
+    rows, total = tenants.list_tenants(db, limit=limit, offset=offset, listing=listing(q, sort, order))
     return TenantPage(items=[_tenant_out(r) for r in rows], total=total)
 
 
@@ -116,9 +120,13 @@ def list_tenant_users(
     q: Annotated[str | None, Query(max_length=64)] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[UserSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> UserPage:
     tenants.get_tenant(db, tenant_id)
-    rows, total = users.list_users(db, tenant_id=tenant_id, q=q, limit=limit, offset=offset)
+    rows, total = users.list_users(
+        db, tenant_id=tenant_id, q=q, limit=limit, offset=offset, listing=listing(q, sort, order)
+    )
     return UserPage(items=[UserOut.model_validate(u) for u in rows], total=total)
 
 

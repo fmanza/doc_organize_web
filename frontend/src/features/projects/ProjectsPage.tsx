@@ -1,24 +1,26 @@
-import { Anchor, Button, Center, Group, Loader, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Button, Center, Group, Loader, Stack, Table, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { RunStatusBadge } from '../runs/RunStatusBadge';
 import { ProjectFormModal } from './ProjectFormModal';
-import { PROJECTS_PAGE_SIZE, useProjects } from './useProjects';
+import { type ProjectSort, useProjects } from './useProjects';
+
+const PROJECT_SORT: readonly ProjectSort[] = ['name', 'source', 'destination', 'last_run'];
 
 /** Lista y selector de proyectos (sustituye a `project_selector.html.j2`): los del usuario o, para un admin, todos. */
 export function ProjectsPage() {
   const { t } = useTranslation();
-  const [q, setQ] = useState('');
-  const paging = usePageState(PROJECTS_PAGE_SIZE);
-  const { page } = paging;
+  const list = useListState(PROJECT_SORT);
+  const { paging, q } = list;
   const [creating, setCreating] = useState(false);
-  const { data, isPending, isError, error } = useProjects(q, page);
+  const { data, isPending, isError, error } = useProjects(list.query);
 
   return (
     <Stack>
@@ -27,15 +29,7 @@ export function ProjectsPage() {
         <Button onClick={() => setCreating(true)}>{t('projects.new')}</Button>
       </Group>
       <Text c="dimmed">{t('projects.intro')}</Text>
-      <TextInput
-        label={t('projects.search')}
-        value={q}
-        onChange={(event) => {
-          setQ(event.currentTarget.value);
-          paging.setPage(1, true);
-        }}
-        maw={360}
-      />
+      <SearchBox value={q} onChange={list.setQ} label={t('projects.search')} />
       {isPending && (
         <Center>
           <Loader aria-label={t('common.loading')} />
@@ -50,11 +44,19 @@ export function ProjectsPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('projects.fields.name')}</Table.Th>
-                <Table.Th>{t('projects.fields.source')}</Table.Th>
-                <Table.Th>{t('projects.fields.destination')}</Table.Th>
+                <SortableTh state={list} sortKey="name">
+                  {t('projects.fields.name')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="source">
+                  {t('projects.fields.source')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="destination">
+                  {t('projects.fields.destination')}
+                </SortableTh>
                 <Table.Th>{t('projects.fields.role')}</Table.Th>
-                <Table.Th>{t('projects.fields.lastRun')}</Table.Th>
+                <SortableTh state={list} sortKey="last_run">
+                  {t('projects.fields.lastRun')}
+                </SortableTh>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -88,7 +90,7 @@ export function ProjectsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} />}
       {creating && <ProjectFormModal opened onClose={() => setCreating(false)} />}
     </Stack>
   );

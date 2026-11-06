@@ -5,6 +5,40 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-06
+
+Listados homogéneos, roles como usuarios y borrado de la auditoría por fechas.
+
+### Added
+
+- **backend**, **frontend**: todos los listados se pueden **ordenar por columna** y **buscar**, con 25 filas por página
+  como mucho y la página, la búsqueda y el orden en la dirección.
+  - En el servidor (`q`, `sort` y `order` en los endpoints de usuarios, tenants, ubicaciones, proyectos, ejecuciones,
+    sesiones, auditoría, errores de escaneo, grupos de duplicados y documentos del contexto): `sort` solo admite las
+    columnas de cada listado (422 con otra), los vacíos van al final y la paginación es estable.
+  - En el cliente, las listas cortas: roles, miembros, plantillas, uso de IA, workers y los documentos de cada grupo de
+    duplicados.
+  - Los grupos de duplicados, que son tarjetas, tienen un selector «Ordenar por».
+- **backend**, **frontend**: **eliminar auditoría por fechas** (`POST /api/v1/audit/purge`), solo el administrador de
+  la instancia y solo en su tenant activo:
+  - primero una vista previa (`dry_run`) con el número de entradas; después hay que teclear ese número
+    (`confirm_count`), y si cambió entretanto responde 409;
+  - nunca borra las entradas de hoy (422);
+  - el borrado queda en la auditoría (`audit.purge`, con el rango y el número).
+
+### Changed
+
+- **frontend**: **Roles** funciona como Usuarios: listado con «Nuevo rol» y, en cada fila, «Editar» en un modal. Los
+  predeterminados salen como «Predeterminado» y se abren con «Ver», en solo lectura; borrar un rol pide confirmación.
+- **frontend**: 25 filas por página en todos los listados, sin selector de tamaño (Documentos iba de 50 en 50). Los
+  grupos de duplicados siguen de 10 en 10.
+
+### Docs
+
+- **docs**: guías de usuarios y sesiones (listados y borrado de auditoría) y de tenants y roles; ASVS V7.
+- **docs**: hueco **G40** y su petición **L-18** a doc_organize: los documentos solo se ordenan por ruta hasta que
+  `load_cache_page` admita otro orden.
+
 ## [1.1.0] - 2026-11-06
 
 La web usa la API nueva de doc_organize 1.1.0 (G38, G11) y la ficha de workers dice lo que hace cada uno. No quedan

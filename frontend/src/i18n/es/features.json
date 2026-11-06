@@ -50,7 +50,8 @@
       "revokeLabel": "Revocar sesión de {{username}}",
       "confirmTitle": "Revocar sesión",
       "confirmBody": "Se cerrará la sesión de {{username}} desde {{ip}}.",
-      "confirmCurrent": "Es tu sesión actual: tendrás que volver a iniciar sesión."
+      "confirmCurrent": "Es tu sesión actual: tendrás que volver a iniciar sesión.",
+      "search": "Buscar sesiones"
     },
     "audit": {
       "title": "Auditoría",
@@ -110,6 +111,26 @@
           "update": "Edición de rol",
           "delete": "Baja de rol"
         }
+      },
+      "search": "Buscar en la auditoría",
+      "purge": {
+        "open": "Eliminar por fechas",
+        "title": "Eliminar auditoría por fechas",
+        "intro": "Borra para siempre las entradas de auditoría de este tenant entre dos fechas (UTC). No se pueden borrar las de hoy, y el borrado queda registrado en la propia auditoría. Las copias de seguridad anteriores las conservan.",
+        "since": "Desde (incluido)",
+        "until": "Hasta (sin incluir)",
+        "untilHint": "Como tarde, hoy: las entradas de hoy no se borran.",
+        "invalidRange": "La fecha de inicio tiene que ser anterior a la de fin, y la de fin no puede pasar de hoy.",
+        "check": "Comprobar",
+        "nothing": "No hay entradas en ese rango.",
+        "warningTitle": "Esto no se puede deshacer",
+        "warning_one": "Se eliminará {{formatted}} entrada de auditoría.",
+        "warning_other": "Se eliminarán {{formatted}} entradas de auditoría.",
+        "confirm": "Para confirmar, escribe el número de entradas ({{count}})",
+        "delete_one": "Eliminar {{count}} entrada",
+        "delete_other": "Eliminar {{count}} entradas",
+        "done_one": "Se ha eliminado {{formatted}} entrada.",
+        "done_other": "Se han eliminado {{formatted}} entradas."
       }
     }
   },
@@ -190,7 +211,8 @@
       "pathFixed": "No se puede cambiar: para usar otra carpeta, registra una ubicación nueva.",
       "displayPathHint": "Opcional, solo informativo (por ejemplo \\\\nas.example.internal\\expedientes)."
     },
-    "pages": "Páginas de ubicaciones"
+    "pages": "Páginas de ubicaciones",
+    "search": "Buscar ubicaciones"
   },
   "settings": {
     "title": "Ajustes",
@@ -321,7 +343,8 @@
     "ioRetries_one": "{{count}} reintento de lectura",
     "ioRetries_other": "{{count}} reintentos de lectura",
     "reuseHashes": "Reutiliza los hashes sin cambios",
-    "rehashAll": "Rehashea todos los ficheros"
+    "rehashAll": "Rehashea todos los ficheros",
+    "search": "Buscar workers"
   },
   "projects": {
     "title": "Proyectos",
@@ -388,7 +411,8 @@
       "remove": "Quitar",
       "removeLabel": "Quitar a {{name}}",
       "roleOf": "Rol de {{name}}",
-      "noUsers": "Ningún usuario activo coincide."
+      "noUsers": "Ningún usuario activo coincide.",
+      "search": "Buscar miembros"
     },
     "danger": {
       "title": "Zona de peligro",
@@ -670,7 +694,8 @@
       "open": "Ver la ejecución",
       "close": "Cerrar el aviso",
       "enable": "Avisarme en el navegador cuando termine una ejecución"
-    }
+    },
+    "search": "Buscar ejecuciones"
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -758,7 +783,8 @@
       "path": "Documento",
       "message": "Error",
       "retries": "Fallos seguidos"
-    }
+    },
+    "search": "Buscar en los errores"
   },
   "documents": {
     "title": "Documentos",
@@ -812,7 +838,8 @@
     },
     "status": "Estado",
     "allStatuses": "Todos los estados",
-    "pages": "Páginas de documentos"
+    "pages": "Páginas de documentos",
+    "sortedByPath": "ordenados por ruta"
   },
   "duplicates": {
     "title": "Duplicados",
@@ -889,7 +916,13 @@
     "resetChoices": "Restablecer las elecciones",
     "pages": "Páginas de grupos",
     "showAll_one": "Ver {{count}} documento más",
-    "showAll_other": "Ver {{count}} documentos más"
+    "showAll_other": "Ver {{count}} documentos más",
+    "sort": {
+      "position": "Orden de la vista previa",
+      "reason": "Motivo",
+      "member_count": "Número de documentos"
+    },
+    "groupSearch": "Buscar en los grupos"
   },
   "context": {
     "back": "← Volver a «{{name}}»",
@@ -967,7 +1000,8 @@
       "copy": "Copia",
       "view": "Ver conversión",
       "notCopied": "No copiado",
-      "overwritten": "Nombre repetido"
+      "overwritten": "Nombre repetido",
+      "search": "Buscar documentos"
     },
     "manifest": {
       "title": "Manifiesto de taxonomía",
@@ -1043,7 +1077,8 @@
       "body": "Los contextos ya construidos con ella no cambian.",
       "confirm": "Borrar plantilla"
     },
-    "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista)."
+    "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista).",
+    "search": "Buscar plantillas"
   },
   "ai": {
     "settings": {
@@ -1115,7 +1150,8 @@
       "date": "Fecha",
       "product": "Producto",
       "quantity": "Cantidad",
-      "cost": "Coste"
+      "cost": "Coste",
+      "search": "Buscar en el uso de {{source}}"
     },
     "errors": {
       "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",

@@ -11,11 +11,12 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Final
 
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import ACTIVE_RUN_STATUSES, DuplicateGroupRow, Project, Run, utcnow
 from app.domain.duplicates.errors import DuplicatePreviewRequiredError, GroupNotInPreviewError, SourceReadOnlyError
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.runs.operations import DedupApplyParams
 
 #: Vigencia de una vista previa de duplicados para aplicarla (después, otra escritura pudo cambiar el origen).
@@ -97,14 +98,25 @@ def validate_apply(db: Session, project: Project, params: DedupApplyParams) -> D
 
 
 def list_groups(
-    db: Session, run_id: str, *, reason: str | None, limit: int, offset: int
+    db: Session, run_id: str, *, reason: str | None, limit: int, offset: int, listing: ListQuery | None = None
 ) -> tuple[list[DuplicateGroupRow], int]:
-    """Grupos de una vista previa en su orden (exactos, versiones, parecidos), paginados."""
+    """Grupos de una vista previa (en su orden si no se pide otro: exactos, versiones, parecidos), paginados y
+    filtrados por texto en las rutas de sus documentos."""
+    listing = listing or ListQuery()
     query = select(DuplicateGroupRow).where(DuplicateGroupRow.run_id == run_id)
     if reason:
         query = query.where(DuplicateGroupRow.reason == reason)
+    query = apply_search(query, listing.q, [cast(DuplicateGroupRow.members, String)])
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(DuplicateGroupRow.position).limit(limit).offset(offset)).all()
+    columns = {
+        "position": DuplicateGroupRow.position,
+        "reason": DuplicateGroupRow.reason,
+        "member_count": DuplicateGroupRow.member_count,
+    }
+    query = apply_sort(
+        query, listing, columns, default=[DuplicateGroupRow.position], tiebreak=DuplicateGroupRow.group_id
+    )
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     return list(rows), int(total)
 
 

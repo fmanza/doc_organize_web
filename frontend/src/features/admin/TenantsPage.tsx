@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount } from '../../components/format';
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { useMe } from '../auth/useAuth';
 import {
   type Tenant,
@@ -27,8 +28,11 @@ import {
   useDeleteTenant,
   useRenameTenant,
   useSwitchTenant,
+  type TenantSort,
   useTenants,
 } from './useTenancy';
+
+const TENANT_SORT: readonly TenantSort[] = ['name', 'slug', 'users', 'projects', 'locations'];
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
@@ -36,8 +40,9 @@ const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
 export function TenantsPage() {
   const { t } = useTranslation();
   const { data: me } = useMe();
-  const paging = usePageState();
-  const tenants = useTenants(true, { offset: paging.offset, limit: paging.pageSize });
+  const list = useListState(TENANT_SORT);
+  const { paging } = list;
+  const tenants = useTenants(true, list.query);
   const create = useCreateTenant();
   const switchTenant = useSwitchTenant();
   const [slug, setSlug] = useState('');
@@ -90,6 +95,7 @@ export function TenantsPage() {
         {create.isError && <ErrorAlert error={create.error} mt="xs" />}
       </Card>
       {switchTenant.isError && <ErrorAlert error={switchTenant.error} />}
+      <SearchBox value={list.q} onChange={list.setQ} label={t('tenants.search')} />
       {tenants.isPending ? (
         <Center>
           <Loader aria-label={t('common.loading')} />
@@ -101,11 +107,21 @@ export function TenantsPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('tenants.name')}</Table.Th>
-                <Table.Th>{t('tenants.slug')}</Table.Th>
-                <Table.Th>{t('tenants.users')}</Table.Th>
-                <Table.Th>{t('tenants.projects')}</Table.Th>
-                <Table.Th>{t('tenants.locations')}</Table.Th>
+                <SortableTh state={list} sortKey="name">
+                  {t('tenants.name')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="slug">
+                  {t('tenants.slug')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="users">
+                  {t('tenants.users')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="projects">
+                  {t('tenants.projects')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="locations">
+                  {t('tenants.locations')}
+                </SortableTh>
                 <Table.Th>
                   <VisuallyHidden>{t('common.actions')}</VisuallyHidden>
                 </Table.Th>

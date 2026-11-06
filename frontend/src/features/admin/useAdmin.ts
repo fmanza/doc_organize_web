@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, ensureOk, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 import { meQueryKey } from '../auth/useAuth';
@@ -11,17 +12,14 @@ export type SessionInfo = components['schemas']['SessionOut'];
 export type AuditEntry = components['schemas']['AuditEntryOut'];
 export type UserRole = User['role'];
 
-export const PAGE_SIZE = 50;
+export type UserSort = SortOf<'/api/v1/users'>;
+export type SessionSort = SortOf<'/api/v1/sessions'>;
+export type AuditSort = SortOf<'/api/v1/audit'>;
 
-export function useUsers(q: string, page: number) {
+export function useUsers(query: ListParams<UserSort>) {
   return useQuery({
-    queryKey: ['users', { q, page }],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/users', {
-          params: { query: { q: q || null, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE } },
-        }),
-      ),
+    queryKey: ['users', query],
+    queryFn: async () => unwrap(await api.GET('/api/v1/users', { params: { query } })),
     placeholderData: keepPreviousData,
   });
 }
@@ -47,15 +45,10 @@ export function useUpdateUser() {
   });
 }
 
-export function useSessions(page: number) {
+export function useSessions(query: ListParams<SessionSort>) {
   return useQuery({
-    queryKey: ['sessions', { page }],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/sessions', {
-          params: { query: { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE } },
-        }),
-      ),
+    queryKey: ['sessions', query],
+    queryFn: async () => unwrap(await api.GET('/api/v1/sessions', { params: { query } })),
     placeholderData: keepPreviousData,
   });
 }
@@ -74,22 +67,27 @@ export function useRevokeSession() {
   });
 }
 
-export function useAudit(action: string, actor: string, page: number) {
+export function useAudit(action: string, actor: string, list: ListParams<AuditSort>) {
   return useQuery({
-    queryKey: ['audit', { action, actor, page }],
+    queryKey: ['audit', { action, actor, ...list }],
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/audit', {
-          params: {
-            query: {
-              action: action || null,
-              actor: actor || null,
-              limit: PAGE_SIZE,
-              offset: (page - 1) * PAGE_SIZE,
-            },
-          },
+          params: { query: { action: action || null, actor: actor || null, ...list } },
         }),
       ),
     placeholderData: keepPreviousData,
+  });
+}
+
+export type AuditPurge = components['schemas']['AuditPurgeIn'];
+
+/** Cuenta (`dry_run`) o borra la auditoría del tenant activo en un rango de fechas (web 1.2.0, admin de instancia). */
+export function useAuditPurge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: AuditPurge) => unwrap(await api.POST('/api/v1/audit/purge', { body })),
+    onSuccess: (_data, body) =>
+      body.dry_run ? undefined : queryClient.invalidateQueries({ queryKey: ['audit'] }),
   });
 }

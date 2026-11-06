@@ -26,7 +26,6 @@ import { ExportPanel } from './ExportPanel';
 import {
   CONVERSION_STATUSES,
   type ConversionStatus,
-  DOCUMENTS_PAGE_SIZE,
   type DocumentOut,
   ROOT_FOLDER,
   useDocuments,
@@ -50,7 +49,7 @@ export function DocumentsPage() {
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [folder, setFolder] = useState<string | null>(null);
   const [conversionStatus, setConversionStatus] = useState<ConversionStatus | null>(null);
-  const paging = usePageState(DOCUMENTS_PAGE_SIZE);
+  const paging = usePageState();
   const documents = useDocuments(
     projectId,
     { search: debounced, folder, conversionStatus },
@@ -137,7 +136,8 @@ export function DocumentsPage() {
       ) : (
         <>
           <Text size="sm" role="status">
-            {t('documents.total', { count: total, formatted: formatCount(total) })}
+            {t('documents.total', { count: total, formatted: formatCount(total) })} ·{' '}
+            {t('documents.sortedByPath')}
           </Text>
           <DocumentList projectId={projectId} rows={rows} root={root} />
           <PageControls state={paging} total={total} label={t('documents.pages')} />

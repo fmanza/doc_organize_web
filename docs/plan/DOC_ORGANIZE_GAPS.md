@@ -8,10 +8,11 @@ Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resu
 (antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
 (antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos); desde el 2026-11-06: **1.0.0** (L-15), la misma API. La Fase 10 abre G38 (L-16, después de la
 1.0) y la prueba local de la 1.0.0 abre G39 (L-17, hotfix 1.0.1). Desde el 2026-11-06 (web 1.0.1): **1.1.0**, que resuelve
-G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25: no quedan huecos abiertos.
+G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abre G40 (L-18): ordenar los documentos de la caché por más columnas.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
+| G40 | `CacheManager.load_cache_page` solo ordena por `file_path` ascendente | La web 1.2.0 ordena todas sus listas, pero la de documentos (hasta ~100 000 por proyecto) solo por ruta | Documentos se lista por ruta y la interfaz lo dice; leer `cache.db` con SQL propio queda descartado (esquema interno de la librería) | `load_cache_page(order_by=…, descending=…)` con desempate por `file_path` y `NULL` al final | L-18 |
 
 ## Resueltos
 

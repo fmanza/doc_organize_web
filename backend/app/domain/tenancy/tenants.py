@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.db.models import (
 )
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.tenancy.errors import (
     TenantNotEmptyError,
     TenantNotFoundError,
@@ -61,10 +62,27 @@ def _count(db: Session, model: type[User] | type[Project] | type[Location] | typ
     return {int(tenant_id): int(count) for tenant_id, count in rows}
 
 
-def list_tenants(db: Session, *, limit: int, offset: int) -> tuple[list[TenantView], int]:
-    """Tenants por nombre con sus recuentos (los proyectos incluyen los borrados: siguen en el historial)."""
-    total = db.scalar(select(func.count()).select_from(Tenant)) or 0
-    rows = db.scalars(select(Tenant).order_by(func.lower(Tenant.name)).limit(limit).offset(offset)).all()
+def _count_column(model: type[User] | type[Project] | type[Location]) -> Any:
+    return select(func.count()).where(model.tenant_id == Tenant.id).correlate(Tenant).scalar_subquery()
+
+
+def list_tenants(
+    db: Session, *, limit: int, offset: int, listing: ListQuery | None = None
+) -> tuple[list[TenantView], int]:
+    """Tenants (por nombre si no se pide otro orden) con sus recuentos (los proyectos incluyen los borrados: siguen en
+    el historial), filtrados por texto en el nombre o el identificador."""
+    listing = listing or ListQuery()
+    query = apply_search(select(Tenant), listing.q, [Tenant.name, Tenant.slug])
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    columns = {
+        "name": func.lower(Tenant.name),
+        "slug": Tenant.slug,
+        "users": _count_column(User),
+        "projects": _count_column(Project),
+        "locations": _count_column(Location),
+    }
+    query = apply_sort(query, listing, columns, default=[func.lower(Tenant.name)], tiebreak=Tenant.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     users, projects, locations = _count(db, User), _count(db, Project), _count(db, Location)
     return [TenantView(t, users.get(t.id, 0), projects.get(t.id, 0), locations.get(t.id, 0)) for t in rows], total
 

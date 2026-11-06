@@ -18,7 +18,8 @@ import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { formatDateTime } from '../../components/format';
 import { StatusLight } from '../../components/StatusLight';
 import { useMe } from '../auth/useAuth';
@@ -30,7 +31,10 @@ import {
   useDeleteLocation,
   useLocations,
   useProbeLocation,
+  type LocationSort,
 } from './useLocations';
+
+const LOCATION_SORT: readonly LocationSort[] = ['name', 'usage', 'access', 'status', 'probed_at'];
 
 type Editing = { location: LocationOut | null } | null;
 
@@ -39,8 +43,9 @@ export function LocationsPage() {
   const { t } = useTranslation();
   const { data: me } = useMe();
   const isAdmin = !!me?.is_instance_admin; // las ubicaciones las registra el admin de instancia (E1)
-  const paging = usePageState();
-  const { data, isPending, isError, error } = useLocations({ offset: paging.offset, limit: paging.pageSize });
+  const list = useListState(LOCATION_SORT);
+  const { paging } = list;
+  const { data, isPending, isError, error } = useLocations(list.query);
   const probe = useProbeLocation();
   const remove = useDeleteLocation();
   const [editing, setEditing] = useState<Editing>(null);
@@ -60,6 +65,7 @@ export function LocationsPage() {
         {isAdmin && <Button onClick={() => setEditing({ location: null })}>{t('locations.new')}</Button>}
       </Group>
       <Text c="dimmed">{t(isAdmin ? 'locations.introAdmin' : 'locations.intro')}</Text>
+      <SearchBox value={list.q} onChange={list.setQ} label={t('locations.search')} />
       {isPending && (
         <Center>
           <Loader aria-label={t('common.loading')} />
@@ -68,18 +74,30 @@ export function LocationsPage() {
       {isError && <ErrorAlert error={error} />}
       {probe.isError && <ErrorAlert error={probe.error} />}
       {data && data.items.length === 0 && (
-        <Text c="dimmed">{t(isAdmin ? 'locations.emptyAdmin' : 'locations.empty')}</Text>
+        <Text c="dimmed">
+          {t(list.q ? 'listing.empty' : isAdmin ? 'locations.emptyAdmin' : 'locations.empty')}
+        </Text>
       )}
       {data && data.items.length > 0 && (
         <Table.ScrollContainer minWidth={760}>
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('locations.fields.name')}</Table.Th>
-                <Table.Th>{t('locations.fields.usage')}</Table.Th>
-                <Table.Th>{t('locations.fields.access')}</Table.Th>
-                <Table.Th>{t('locations.fields.status')}</Table.Th>
-                <Table.Th>{t('locations.fields.probedAt')}</Table.Th>
+                <SortableTh state={list} sortKey="name">
+                  {t('locations.fields.name')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="usage">
+                  {t('locations.fields.usage')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="access">
+                  {t('locations.fields.access')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="status">
+                  {t('locations.fields.status')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="probed_at">
+                  {t('locations.fields.probedAt')}
+                </SortableTh>
                 <Table.Th>
                   <VisuallyHidden>{t('common.actions')}</VisuallyHidden>
                 </Table.Th>

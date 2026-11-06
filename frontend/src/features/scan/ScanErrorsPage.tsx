@@ -1,23 +1,15 @@
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Center,
-  Group,
-  Loader,
-  Pagination,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core';
-import { useState } from 'react';
+import { Alert, Anchor, Badge, Center, Group, Loader, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
 import { formatCount, formatDateTime } from '../../components/format';
-import { SCAN_ERRORS_PAGE_SIZE, useScanErrors } from './useScan';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
+import { type ScanErrorSort, useScanErrors } from './useScan';
+
+const SCAN_ERROR_SORT: readonly ScanErrorSort[] = ['path', 'message', 'retry_count'];
 
 /**
  * Documentos que no se pudieron convertir (sustituye a `scan_errors.html.j2`): de un run (`/runs/:runId/errors`) o del
@@ -27,8 +19,8 @@ export function ScanErrorsPage() {
   const { t } = useTranslation();
   const params = useParams();
   const target = params.runId ? { runId: params.runId } : { projectId: Number(params.projectId) };
-  const [page, setPage] = useState(1);
-  const { data, isPending, isError, error } = useScanErrors(target, page);
+  const list = useListState(SCAN_ERROR_SORT);
+  const { data, isPending, isError, error } = useScanErrors(target, list.query);
 
   if (isPending) {
     return (
@@ -40,7 +32,6 @@ export function ScanErrorsPage() {
   if (isError) {
     return <ErrorAlert error={error} />;
   }
-  const pages = Math.max(1, Math.ceil(data.total / SCAN_ERRORS_PAGE_SIZE));
   return (
     <Stack>
       {'projectId' in target ? (
@@ -63,7 +54,10 @@ export function ScanErrorsPage() {
       ) : (
         <Alert color="gray">{t('scanErrors.noScan')}</Alert>
       )}
-      {data.run && data.total === 0 && <Text>{t('scanErrors.empty')}</Text>}
+      {data.run && (data.total > 0 || list.q) && (
+        <SearchBox value={list.q} onChange={list.setQ} label={t('scanErrors.search')} />
+      )}
+      {data.run && data.total === 0 && <Text>{t(list.q ? 'listing.empty' : 'scanErrors.empty')}</Text>}
       {data.total > 0 && (
         <>
           <Text size="sm">
@@ -73,9 +67,15 @@ export function ScanErrorsPage() {
             <Table striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{t('scanErrors.fields.path')}</Table.Th>
-                  <Table.Th>{t('scanErrors.fields.message')}</Table.Th>
-                  <Table.Th>{t('scanErrors.fields.retries')}</Table.Th>
+                  <SortableTh state={list} sortKey="path">
+                    {t('scanErrors.fields.path')}
+                  </SortableTh>
+                  <SortableTh state={list} sortKey="message">
+                    {t('scanErrors.fields.message')}
+                  </SortableTh>
+                  <SortableTh state={list} sortKey="retry_count">
+                    {t('scanErrors.fields.retries')}
+                  </SortableTh>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -104,7 +104,7 @@ export function ScanErrorsPage() {
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-          {pages > 1 && <Pagination total={pages} value={page} onChange={setPage} />}
+          <PageControls state={list.paging} total={data.total} label={t('paging.label')} />
         </>
       )}
     </Stack>

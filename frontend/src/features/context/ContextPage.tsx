@@ -8,7 +8,6 @@ import {
   Group,
   Loader,
   NumberInput,
-  Pagination,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -26,6 +25,9 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { formatCount, formatDateTime } from '../../components/format';
 import { useAiStatus } from '../admin/useAi';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
@@ -36,7 +38,7 @@ import {
   type Catalog,
   type ContextOut,
   type DocumentFilter,
-  DOCUMENTS_PAGE_SIZE,
+  type ContextDocumentSort,
   MAX_TEMPLATE_BYTES,
   useContextDocuments,
   useManifest,
@@ -51,6 +53,13 @@ import {
  * manifiesto), ver dominios y documentos, editar el manifiesto de taxonomía, abrir el sitio aislado y borrar. Con la
  * Fase 8, también clasificar con IA lo que las reglas dejan sin clasificar y pedir un borrador del manifiesto.
  */
+const CONTEXT_DOCUMENT_SORT: readonly ContextDocumentSort[] = [
+  'title',
+  'path',
+  'document_type',
+  'organized_path',
+];
+
 export function ContextPage() {
   const { t } = useTranslation();
   const projectId = Number(useParams().projectId);
@@ -337,11 +346,11 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
   const { t } = useTranslation();
   const [domain, setDomain] = useState<string | null>(context.domains[0]?.slug ?? null);
   const [only, setOnly] = useState<DocumentFilter | null>(null);
-  const [page, setPage] = useState(1);
-  const documents = useContextDocuments(projectId, domain, only, page);
+  const list = useListState(CONTEXT_DOCUMENT_SORT, 'doc');
+  const documents = useContextDocuments(projectId, domain, only, list.query);
   const select = (slug: string | null) => {
     setDomain(slug);
-    setPage(1);
+    list.paging.setPage(1, true);
   };
 
   return (
@@ -414,7 +423,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
           aria-label={t('context.documents.filter')}
           onChange={(value) => {
             setOnly(value === 'all' ? null : (value as DocumentFilter));
-            setPage(1);
+            list.paging.setPage(1, true);
           }}
           data={[
             { value: 'all', label: t('context.documents.all') },
@@ -423,6 +432,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
           ]}
         />
       </Group>
+      <SearchBox value={list.q} onChange={list.setQ} label={t('context.documents.search')} />
       {documents.isError ? (
         <ErrorAlert error={documents.error} />
       ) : !documents.data ? (
@@ -431,7 +441,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
         </Center>
       ) : documents.data.total === 0 ? (
         <Text c="dimmed" role="status">
-          {t('context.documents.empty')}
+          {t(list.q ? 'listing.empty' : 'context.documents.empty')}
         </Text>
       ) : (
         <>
@@ -445,10 +455,18 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{t('context.documents.title')}</Table.Th>
-                  <Table.Th>{t('context.documents.original')}</Table.Th>
-                  <Table.Th>{t('context.documents.type')}</Table.Th>
-                  <Table.Th>{t('context.documents.copy')}</Table.Th>
+                  <SortableTh state={list} sortKey="title">
+                    {t('context.documents.title')}
+                  </SortableTh>
+                  <SortableTh state={list} sortKey="path">
+                    {t('context.documents.original')}
+                  </SortableTh>
+                  <SortableTh state={list} sortKey="document_type">
+                    {t('context.documents.type')}
+                  </SortableTh>
+                  <SortableTh state={list} sortKey="organized_path">
+                    {t('context.documents.copy')}
+                  </SortableTh>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -502,14 +520,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-          {documents.data.total > DOCUMENTS_PAGE_SIZE && (
-            <Pagination
-              mt="sm"
-              total={Math.ceil(documents.data.total / DOCUMENTS_PAGE_SIZE)}
-              value={page}
-              onChange={setPage}
-            />
-          )}
+          <PageControls state={list.paging} total={documents.data.total} label={t('paging.label')} />
         </>
       )}
     </Card>

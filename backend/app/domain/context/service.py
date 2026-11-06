@@ -31,6 +31,7 @@ from app.domain.documents.errors import OutputNotFoundError, OutputTooLargeError
 from app.domain.documents.service import read_inside
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import FolderNotFoundError, LocationUnavailableError
 from app.domain.locations.paths import resolve_within, run_with_timeout
 from app.domain.runs.errors import WriteLockedError
@@ -70,6 +71,7 @@ def list_documents(
     only: DocumentFilter | None = None,
     limit: int,
     offset: int,
+    listing: ListQuery | None = None,
 ) -> tuple[list[ContextDocument], int]:
     """Documentos de un dominio (``domain``) o sin clasificar (``None``), en el orden del contexto.
 
@@ -85,8 +87,21 @@ def list_documents(
         where.append(ContextDocument.failed.is_(True))
     elif only == "collision":
         where.append(ContextDocument.collision.is_(True))
-    total = db.scalar(select(func.count()).select_from(ContextDocument).where(*where)) or 0
-    rows = db.scalars(select(ContextDocument).where(*where).order_by(ContextDocument.seq).limit(limit).offset(offset))
+    listing = listing or ListQuery()
+    query = apply_search(
+        select(ContextDocument).where(*where),
+        listing.q,
+        [ContextDocument.title, ContextDocument.path, ContextDocument.document_type, ContextDocument.organized_path],
+    )
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    columns = {
+        "title": func.lower(ContextDocument.title),
+        "path": ContextDocument.path,
+        "document_type": ContextDocument.document_type,
+        "organized_path": ContextDocument.organized_path,
+    }
+    query = apply_sort(query, listing, columns, default=[ContextDocument.seq], tiebreak=ContextDocument.seq)
+    rows = db.scalars(query.limit(limit).offset(offset))
     return list(rows), int(total)
 
 

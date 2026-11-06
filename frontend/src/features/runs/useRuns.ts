@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, unwrap } from '../../api/client';
 import type { components, operations } from '../../api/schema';
 
@@ -10,7 +11,6 @@ export type Operation = RunOut['operation'];
 export type RunProgress = components['schemas']['RunProgress'];
 export type RunFilters = NonNullable<operations['list_runs_api_v1_runs_get']['parameters']['query']>;
 
-export const RUNS_PAGE_SIZE = 25;
 export const ACTIVE_STATUSES: readonly RunStatus[] = ['queued', 'running'];
 
 export function isActive(run: Pick<RunOut, 'status'>): boolean {
@@ -18,19 +18,16 @@ export function isActive(run: Pick<RunOut, 'status'>): boolean {
 }
 
 /** Historial paginado; se refresca cada 5 s mientras alguna ejecución de la página siga activa. */
+export type RunSort = SortOf<'/api/v1/runs'>;
+
 export function useRuns(
-  filters: Omit<RunFilters, 'limit' | 'offset'>,
-  page: number,
-  pageSize = RUNS_PAGE_SIZE,
+  filters: Omit<RunFilters, 'limit' | 'offset' | 'q' | 'sort' | 'order'>,
+  list: ListParams<RunSort>,
 ) {
   return useQuery({
-    queryKey: ['runs', 'list', filters, page, pageSize],
+    queryKey: ['runs', 'list', filters, list],
     queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/runs', {
-          params: { query: { ...filters, limit: pageSize, offset: (page - 1) * pageSize } },
-        }),
-      ),
+      unwrap(await api.GET('/api/v1/runs', { params: { query: { ...filters, ...list } } })),
     placeholderData: keepPreviousData,
     refetchInterval: (query) => (query.state.data?.items.some(isActive) ? 5_000 : false),
   });

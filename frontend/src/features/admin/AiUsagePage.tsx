@@ -16,6 +16,9 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useClientTable } from '../../components/useListState';
 import { formatDateTime } from '../../components/format';
 import { type AiUsageSource, useAiUsage, useRefreshAiUsage } from './useAi';
 
@@ -55,9 +58,25 @@ export function AiUsagePage() {
   );
 }
 
+type UsageItem = NonNullable<ReturnType<typeof useAiUsage>['data']>[number]['items'][number];
+
+const USAGE_COLUMNS = {
+  date: (item: UsageItem) => item.date,
+  product: (item: UsageItem) => item.product,
+  quantity: (item: UsageItem) => item.quantity,
+  cost: (item: UsageItem) => item.cost_usd,
+};
+
 function SourceCard({ source }: { source: AiUsageSource }) {
   const { t } = useTranslation();
   const title = t(`ai.usage.sources.${source.source}`);
+  // Una tabla por fuente: cada una con su página y su orden en la URL (`?github-page=2`).
+  const table = useClientTable(
+    source.items,
+    USAGE_COLUMNS,
+    (item) => `${item.date} ${item.product} ${item.sku ?? ''}`,
+    `${source.source}-`,
+  );
   return (
     <Card withBorder component="section" aria-label={title}>
       <Group justify="space-between" mb="xs">
@@ -100,37 +119,53 @@ function SourceCard({ source }: { source: AiUsageSource }) {
               {t('ai.usage.empty')}
             </Text>
           ) : (
-            <Table.ScrollContainer minWidth={560}>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>{t('ai.usage.date')}</Table.Th>
-                    <Table.Th>{t('ai.usage.product')}</Table.Th>
-                    <Table.Th>{t('ai.usage.quantity')}</Table.Th>
-                    <Table.Th>{t('ai.usage.cost')}</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {source.items.map((item, index) => (
-                    <Table.Tr key={`${item.date}-${item.product}-${item.sku ?? ''}-${index}`}>
-                      <Table.Td>{item.date}</Table.Td>
-                      <Table.Td>
-                        {item.product}
-                        {item.sku && (
-                          <Text size="xs" c="dimmed">
-                            {item.sku}
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        {quantity.format(item.quantity)} {item.unit_type}
-                      </Table.Td>
-                      <Table.Td>{item.cost_usd === null ? '—' : money.format(item.cost_usd)}</Table.Td>
+            <>
+              <SearchBox
+                value={table.q}
+                onChange={table.setQ}
+                label={t('ai.usage.search', { source: title })}
+              />
+              <Table.ScrollContainer minWidth={560}>
+                <Table>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <SortableTh state={table} sortKey="date">
+                        {t('ai.usage.date')}
+                      </SortableTh>
+                      <SortableTh state={table} sortKey="product">
+                        {t('ai.usage.product')}
+                      </SortableTh>
+                      <SortableTh state={table} sortKey="quantity">
+                        {t('ai.usage.quantity')}
+                      </SortableTh>
+                      <SortableTh state={table} sortKey="cost">
+                        {t('ai.usage.cost')}
+                      </SortableTh>
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {table.pageRows.map((item, index) => (
+                      <Table.Tr key={`${item.date}-${item.product}-${item.sku ?? ''}-${index}`}>
+                        <Table.Td>{item.date}</Table.Td>
+                        <Table.Td>
+                          {item.product}
+                          {item.sku && (
+                            <Text size="xs" c="dimmed">
+                              {item.sku}
+                            </Text>
+                          )}
+                        </Table.Td>
+                        <Table.Td>
+                          {quantity.format(item.quantity)} {item.unit_type}
+                        </Table.Td>
+                        <Table.Td>{item.cost_usd === null ? '—' : money.format(item.cost_usd)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+              <PageControls state={table.paging} total={table.total} label={t('paging.label')} />
+            </>
           )}
         </Stack>
       )}

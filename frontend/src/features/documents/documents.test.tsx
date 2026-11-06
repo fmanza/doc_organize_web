@@ -100,7 +100,7 @@ describe('DocumentsPage', () => {
 
     renderRoute('/projects/7/documents');
 
-    expect(await screen.findByText('1 documento.')).toBeInTheDocument();
+    expect(await screen.findByText('1 documento. · ordenados por ruta')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Excel de errores' }));
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
     const body: unknown = await callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')[0]?.json();
@@ -210,10 +210,11 @@ describe('Fase 10: documentos por páginas', () => {
 
     renderRoute('/projects/7/documents?page=2');
 
-    expect(await screen.findByText('doc-50.pdf')).toBeInTheDocument();
-    expect(screen.getByText('51–100 de 120')).toBeInTheDocument();
+    // 1.2.0: 25 filas por página.
+    expect(await screen.findByText('doc-25.pdf')).toBeInTheDocument();
+    expect(screen.getByText('26–50 de 120')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Página 3' }));
-    expect(await screen.findByText('doc-100.pdf')).toBeInTheDocument();
+    expect(await screen.findByText('doc-50.pdf')).toBeInTheDocument();
 
     await user.type(screen.getByRole('textbox', { name: 'Buscar por nombre o subcarpeta' }), 'x');
     await waitFor(() =>

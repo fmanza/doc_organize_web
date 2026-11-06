@@ -17,7 +17,6 @@ export type ConversionStatus = (typeof CONVERSION_STATUSES)[number];
 export type SearchPage = components['schemas']['SearchPage'];
 export type SearchHit = components['schemas']['SearchHitOut'];
 
-export const DOCUMENTS_PAGE_SIZE = 50;
 /** Valor de los selectores de carpeta para la raíz de la ubicación (la API lo normaliza a «»). */
 export const ROOT_FOLDER = '.';
 export const SEARCH_PAGE_SIZE = 20;

@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, ensureOk, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 
@@ -27,28 +28,18 @@ export type RunRequest =
 /** Lanzar la prueba del motor con sus valores por defecto (el cliente generado exige todos los campos). */
 export const NOOP_RUN: RunRequest = { operation: 'noop', steps: 5, step_seconds: 1, fail_at_step: null };
 
-export const PROJECTS_PAGE_SIZE = 50;
 export const ROLE_RANK: Record<MemberRole, number> = { viewer: 1, editor: 2, owner: 3 };
 
 export function canDo(project: Pick<ProjectOut, 'role'>, minRole: MemberRole): boolean {
   return ROLE_RANK[project.role] >= ROLE_RANK[minRole];
 }
 
-export function useProjects(q: string, page: number) {
+export type ProjectSort = SortOf<'/api/v1/projects'>;
+
+export function useProjects(query: ListParams<ProjectSort>) {
   return useQuery({
-    queryKey: ['projects', 'list', q, page],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/projects', {
-          params: {
-            query: {
-              ...(q ? { q } : {}),
-              limit: PROJECTS_PAGE_SIZE,
-              offset: (page - 1) * PROJECTS_PAGE_SIZE,
-            },
-          },
-        }),
-      ),
+    queryKey: ['projects', 'list', query],
+    queryFn: async () => unwrap(await api.GET('/api/v1/projects', { params: { query } })),
     placeholderData: keepPreviousData,
   });
 }

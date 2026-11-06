@@ -1,24 +1,24 @@
-import { Group, Pagination, Select, Text } from '@mantine/core';
+import { Group, Pagination, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 
 import { formatCount } from './format';
-import { PAGE_SIZES, type PageState } from './usePageState';
+import { type PageState } from './usePageState';
 
 interface PageControlsProps {
   state: PageState;
   total: number;
   /** Nombre del listado para los lectores de pantalla («Páginas de documentos»). */
   label: string;
-  /** Sin selector de tamaño (listados con tamaño fijo). */
+  /** Obsoleto desde la 1.2.0: todos los listados tienen 25 filas y ninguno muestra el selector. */
   fixedSize?: boolean;
 }
 
-/** «1–25 de 1 234», paginación y tamaño de página; no pinta nada si todo cabe en la primera página. */
-export function PageControls({ state, total, label, fixedSize = false }: PageControlsProps) {
+/** «1–25 de 1 234» y paginación (25 filas fijas, web 1.2.0); no pinta nada si todo cabe en la primera página. */
+export function PageControls({ state, total, label }: PageControlsProps) {
   const { t } = useTranslation();
   const pages = Math.max(1, Math.ceil(total / state.pageSize));
   // Todo cabe en una página: sin controles, salvo que la URL apunte a otra página (vieja o a mano), para poder volver.
-  if (total <= (fixedSize ? state.pageSize : PAGE_SIZES[0]) && state.page === 1) {
+  if (total <= state.pageSize && state.page === 1) {
     return null;
   }
   const first = Math.min(total, state.offset + 1);
@@ -41,17 +41,6 @@ export function PageControls({ state, total, label, fixedSize = false }: PageCon
           getItemProps={(page) => ({ 'aria-label': t('paging.page', { page }) })}
           aria-label={label}
         />
-        {!fixedSize && (
-          <Select
-            aria-label={t('paging.size')}
-            size="xs"
-            w={110}
-            allowDeselect={false}
-            value={String(state.pageSize)}
-            onChange={(value) => value && state.setPageSize(Number(value))}
-            data={PAGE_SIZES.map((size) => ({ value: String(size), label: t('paging.perPage', { size }) }))}
-          />
-        )}
       </Group>
     </Group>
   );

@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
+from app.api.v1.listing import OrderQuery, RunSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     ArtifactOut,
@@ -125,10 +126,20 @@ def list_runs(
     operation: Annotated[Operation | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[RunSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> RunPage:
-    """Runs de los proyectos visibles, más recientes primero (agrupados por ejecución)."""
+    """Runs de los proyectos visibles (más recientes primero si no se pide otro orden)."""
     rows, total = service.list_runs(
-        db, user, project_id=project_id, status=status_, operation=operation, limit=limit, offset=offset
+        db,
+        user,
+        project_id=project_id,
+        status=status_,
+        operation=operation,
+        limit=limit,
+        offset=offset,
+        listing=listing(q, sort, order),
     )
     names = service.project_names(db, {r.project_id for r in rows if r.project_id is not None})
     roles = _roles(db, user, {r.project_id for r in rows if r.project_id is not None})
@@ -161,10 +172,13 @@ def list_scan_errors(
     db: DbSession,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[ScanErrorSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> ScanErrorPage:
     """Documentos que no se pudieron convertir en este run (vacío si no es un escaneo)."""
     run, _ = service.get_run(db, run_id, user)
-    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset)
+    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset, listing=listing(q, sort, order))
     return ScanErrorPage(
         run=RunBrief.model_validate(run), items=[ScanErrorOut.model_validate(r) for r in rows], total=total
     )

@@ -7,7 +7,6 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
   Title,
   VisuallyHidden,
 } from '@mantine/core';
@@ -15,13 +14,16 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { PAGE_SIZE, type User, useUsers } from './useAdmin';
+import { type User, type UserSort, useUsers } from './useAdmin';
 import { UserFormModal } from './UserFormModal';
 
 type Editing = { user: User | null } | null;
+
+const USER_SORT: readonly UserSort[] = ['username', 'display_name', 'role', 'status', 'created_at'];
 
 function UserStatus({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -36,11 +38,9 @@ function UserStatus({ user }: { user: User }) {
 
 export function UsersPage() {
   const { t } = useTranslation();
-  const [q, setQ] = useState('');
-  const paging = usePageState(PAGE_SIZE);
-  const { page } = paging;
+  const list = useListState(USER_SORT);
   const [editing, setEditing] = useState<Editing>(null);
-  const { data, isPending, isError, error } = useUsers(q.trim(), page);
+  const { data, isPending, isError, error } = useUsers(list.query);
 
   return (
     <Stack>
@@ -48,15 +48,7 @@ export function UsersPage() {
         <Title order={2}>{t('admin.users.title')}</Title>
         <Button onClick={() => setEditing({ user: null })}>{t('admin.users.new')}</Button>
       </Group>
-      <TextInput
-        label={t('admin.users.search')}
-        value={q}
-        onChange={(event) => {
-          setQ(event.currentTarget.value);
-          paging.setPage(1, true);
-        }}
-        maw={320}
-      />
+      <SearchBox value={list.q} onChange={list.setQ} label={t('admin.users.search')} />
       {isPending && (
         <Center>
           <Loader aria-label={t('common.loading')} />
@@ -69,11 +61,21 @@ export function UsersPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('auth.username')}</Table.Th>
-                <Table.Th>{t('admin.users.displayName')}</Table.Th>
-                <Table.Th>{t('admin.users.role')}</Table.Th>
-                <Table.Th>{t('admin.users.status')}</Table.Th>
-                <Table.Th>{t('admin.users.createdAt')}</Table.Th>
+                <SortableTh state={list} sortKey="username">
+                  {t('auth.username')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="display_name">
+                  {t('admin.users.displayName')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="role">
+                  {t('admin.users.role')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="status">
+                  {t('admin.users.status')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="created_at">
+                  {t('admin.users.createdAt')}
+                </SortableTh>
                 <Table.Th>
                   <VisuallyHidden>{t('common.actions')}</VisuallyHidden>
                 </Table.Th>
@@ -112,7 +114,7 @@ export function UsersPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
+      {data && <PageControls state={list.paging} total={data.total} label={t('paging.label')} />}
       {editing && (
         <UserFormModal
           key={editing.user?.id ?? 'new'}

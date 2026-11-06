@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep
+from app.api.v1.listing import OrderQuery, SearchQuery, SessionSort, listing
 from app.api.v1.schemas import MAX_PAGE_SIZE, SessionOut, SessionPage
 from app.domain.identity import auth, sessions
 
@@ -27,12 +28,21 @@ def list_sessions(
     user_id: Annotated[int | None, Query(ge=1, description="Solo admin: sesiones de ese usuario")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[SessionSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> SessionPage:
     """Sesiones vigentes del tenant activo, la actividad más reciente primero. Sin ``users.manage``, solo las suyas."""
     if not user.can("users.manage"):
         user_id = current.user_id
     rows, total = sessions.list_sessions(
-        db, settings, tenant_id=user.scope_tenant_id, user_id=user_id, limit=limit, offset=offset
+        db,
+        settings,
+        tenant_id=user.scope_tenant_id,
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        listing=listing(q, sort, order),
     )
     items = [
         SessionOut(

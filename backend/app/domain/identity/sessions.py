@@ -13,6 +13,7 @@ from app.core.security import hash_token, new_session_token
 from app.db.models import User, UserSession, utcnow
 from app.domain.identity.audit import RequestContext
 from app.domain.identity.errors import SessionNotFoundError
+from app.domain.listing import ListQuery, apply_search, apply_sort
 
 # ``last_seen_at`` se escribe como mucho una vez por minuto y sesión: SQLite tiene un único escritor.
 TOUCH_INTERVAL = timedelta(seconds=60)
@@ -129,8 +130,11 @@ def list_sessions(
     limit: int,
     offset: int,
     now: datetime | None = None,
+    listing: ListQuery | None = None,
 ) -> tuple[list[UserSession], int]:
-    """Sesiones vigentes de usuarios del tenant, más recientes primero, opcionalmente de un usuario."""
+    """Sesiones vigentes de usuarios del tenant (más recientes primero si no se pide otro orden), opcionalmente de un
+    usuario, filtradas por texto en el usuario, la IP o el navegador."""
+    listing = listing or ListQuery()
     now = now or utcnow()
     query = (
         select(UserSession)
@@ -141,11 +145,16 @@ def list_sessions(
     )
     if user_id is not None:
         query = query.where(UserSession.user_id == user_id)
+    query = apply_search(query, listing.q, [User.username, UserSession.ip, UserSession.user_agent])
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(
-        query.options(joinedload(UserSession.user))
-        .order_by(UserSession.last_seen_at.desc())
-        .limit(limit)
-        .offset(offset)
-    ).all()
+    columns = {
+        "username": User.username,
+        "ip": UserSession.ip,
+        "user_agent": func.lower(UserSession.user_agent),
+        "created_at": UserSession.created_at,
+        "last_seen_at": UserSession.last_seen_at,
+        "expires_at": UserSession.expires_at,
+    }
+    query = apply_sort(query, listing, columns, default=[UserSession.last_seen_at.desc()], tiebreak=UserSession.id)
+    rows = db.scalars(query.options(joinedload(UserSession.user)).limit(limit).offset(offset)).all()
     return list(rows), total

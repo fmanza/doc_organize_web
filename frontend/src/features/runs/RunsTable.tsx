@@ -3,29 +3,41 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { formatDateTime, formatDuration } from '../../components/format';
+import { SortableTh } from '../../components/listing';
+import { type ListState } from '../../components/useListState';
 import { RunStatusBadge } from './RunStatusBadge';
-import type { RunOut } from './useRuns';
+import type { RunOut, RunSort } from './useRuns';
 
 interface RunsTableProps {
   runs: RunOut[];
   /** Muestra la columna de proyecto (historial global). */
   showProject?: boolean;
+  /** Con él, las columnas se ordenan (historial completo, web 1.2.0); sin él, cabeceras fijas (últimos runs). */
+  list?: Pick<ListState<RunSort>, 'sort' | 'order' | 'toggleSort'>;
 }
 
 /** Historial agrupado por ejecución: una fila por run con enlace a su detalle. */
-export function RunsTable({ runs, showProject = false }: RunsTableProps) {
+export function RunsTable({ runs, showProject = false, list }: RunsTableProps) {
   const { t } = useTranslation();
+  const head = (key: RunSort, label: string) =>
+    list ? (
+      <SortableTh state={list} sortKey={key}>
+        {label}
+      </SortableTh>
+    ) : (
+      <Table.Th>{label}</Table.Th>
+    );
   return (
     <Table.ScrollContainer minWidth={showProject ? 820 : 680}>
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t('runs.fields.operation')}</Table.Th>
-            {showProject && <Table.Th>{t('runs.fields.project')}</Table.Th>}
-            <Table.Th>{t('runs.fields.status')}</Table.Th>
-            <Table.Th>{t('runs.fields.createdAt')}</Table.Th>
-            <Table.Th>{t('runs.fields.duration')}</Table.Th>
-            <Table.Th>{t('runs.fields.createdBy')}</Table.Th>
+            {head('operation', t('runs.fields.operation'))}
+            {showProject && head('project', t('runs.fields.project'))}
+            {head('status', t('runs.fields.status'))}
+            {head('created_at', t('runs.fields.createdAt'))}
+            {head('duration', t('runs.fields.duration'))}
+            {head('created_by', t('runs.fields.createdBy'))}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>

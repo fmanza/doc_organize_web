@@ -24,7 +24,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh, SortSelect } from '../../components/listing';
+import { sortRows, useListState, useLocalSort } from '../../components/useListState';
 import { formatBytes, formatCount, formatDateTime } from '../../components/format';
 import { canDo, useEnqueueRun, useProject } from '../projects/useProjects';
 import { RunResult } from '../runs/RunResult';
@@ -35,6 +36,7 @@ import {
   type DuplicateGroup,
   type DuplicateReason,
   type GroupOverride,
+  type GroupSort,
   GROUPS_PAGE_SIZE,
   type KeepPolicy,
   storedReview,
@@ -54,6 +56,8 @@ const DEFAULT_FUZZY = 85;
  * Resolutor de duplicados en dos pasos (sustituye a `duplicates_resolver.html.j2`): buscar (vista previa, sin tocar
  * ficheros), revisar grupo a grupo qué se conserva y aplicar solo lo confirmado.
  */
+const GROUP_SORT: readonly GroupSort[] = ['position', 'reason', 'member_count'];
+
 export function DuplicatesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -65,8 +69,8 @@ export function DuplicatesPage() {
   const [fuzzy, setFuzzy] = useState(false);
   const [threshold, setThreshold] = useState<number>(DEFAULT_FUZZY);
   const [reason, setReason] = useState<DuplicateReason | null>(null);
-  const paging = usePageState(GROUPS_PAGE_SIZE);
-  const page = paging.page;
+  const list = useListState(GROUP_SORT, '', GROUPS_PAGE_SIZE);
+  const { paging } = list;
   const [applying, setApplying] = useState(false);
 
   const runId = params.get('run') ?? last.data?.preview?.id ?? null;
@@ -83,7 +87,7 @@ export function DuplicatesPage() {
       return next;
     });
   const preview = useRun(runId);
-  const groups = useDuplicateGroups(runId, reason, page);
+  const groups = useDuplicateGroups(runId, reason, list.query);
 
   if (project.isPending || last.isPending) {
     return (
@@ -235,6 +239,14 @@ export function DuplicatesPage() {
             </Group>
           </Group>
 
+          <Group align="flex-end">
+            <SearchBox value={list.q} onChange={list.setQ} label={t('duplicates.groupSearch')} />
+            <SortSelect
+              state={list}
+              label={t('listing.sortLabel')}
+              options={GROUP_SORT.map((value) => ({ value, label: t(`duplicates.sort.${value}`) }))}
+            />
+          </Group>
           {groups.isError ? (
             <ErrorAlert error={groups.error} />
           ) : !groups.data ? (
@@ -243,7 +255,7 @@ export function DuplicatesPage() {
             </Center>
           ) : groups.data.total === 0 ? (
             <Text c="dimmed" role="status">
-              {t('duplicates.empty')}
+              {t(list.q ? 'listing.empty' : 'duplicates.empty')}
             </Text>
           ) : (
             <>
@@ -256,7 +268,7 @@ export function DuplicatesPage() {
               {groups.data.items.map((group, index) => (
                 <GroupCard
                   key={group.group_id}
-                  number={(page - 1) * GROUPS_PAGE_SIZE + index + 1}
+                  number={paging.offset + index + 1}
                   manual={overrides[group.group_id]?.keep !== undefined}
                   projectId={projectId}
                   group={group}
@@ -265,12 +277,7 @@ export function DuplicatesPage() {
                   onChange={(change) => override(group.group_id, change)}
                 />
               ))}
-              <PageControls
-                state={paging}
-                total={groups.data.total}
-                label={t('duplicates.pages')}
-                fixedSize
-              />
+              <PageControls state={paging} total={groups.data.total} label={t('duplicates.pages')} />
             </>
           )}
           {applying && (
@@ -304,17 +311,36 @@ interface GroupCardProps {
   onChange: (change: GroupOverride) => void;
 }
 
+type Member = DuplicateGroup['members'][number];
+type MemberSort = 'document' | 'size' | 'modified' | 'hash';
+
+function memberValue(member: Member, key: MemberSort): string | number | null {
+  switch (key) {
+    case 'document':
+      return member.key;
+    case 'size':
+      return member.size_bytes;
+    case 'modified':
+      return member.modified_at;
+    case 'hash':
+      return member.sha256;
+  }
+}
+
 /** Un grupo con sus documentos lado a lado: cuál se conserva y si el grupo se aplica. */
 function GroupCard({ number, manual, projectId, group, choice, editable, onChange }: GroupCardProps) {
   const { t } = useTranslation();
   const name = `keep-${group.group_id}`;
   const label = { number, name: group.members[0]?.path.split('/').at(-1) ?? '' };
   const [expanded, setExpanded] = useState(false);
+  // Orden de los documentos del grupo (web 1.2.0): local, no va a la URL.
+  const memberSort = useLocalSort<MemberSort>();
+  const members = sortRows(group.members, memberSort, memberValue);
   // Un grupo grande se pliega a los primeros (y al que se conserva, si está más abajo): la página no se alarga.
-  const folded = !expanded && group.members.length > FOLDED_MEMBERS;
+  const folded = !expanded && members.length > FOLDED_MEMBERS;
   const visible = folded
-    ? group.members.filter((member, index) => index < FOLDED_MEMBERS || member.key === choice.keep)
-    : group.members;
+    ? members.filter((member, index) => index < FOLDED_MEMBERS || member.key === choice.keep)
+    : members;
   const hidden = group.members.length - visible.length;
   return (
     <Card
@@ -358,10 +384,18 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>{t('duplicates.fields.keep')}</Table.Th>
-                <Table.Th>{t('duplicates.fields.document')}</Table.Th>
-                <Table.Th>{t('duplicates.fields.size')}</Table.Th>
-                <Table.Th>{t('duplicates.fields.modified')}</Table.Th>
-                <Table.Th>{t('duplicates.fields.hash')}</Table.Th>
+                <SortableTh state={memberSort} sortKey="document">
+                  {t('duplicates.fields.document')}
+                </SortableTh>
+                <SortableTh state={memberSort} sortKey="size">
+                  {t('duplicates.fields.size')}
+                </SortableTh>
+                <SortableTh state={memberSort} sortKey="modified">
+                  {t('duplicates.fields.modified')}
+                </SortableTh>
+                <SortableTh state={memberSort} sortKey="hash">
+                  {t('duplicates.fields.hash')}
+                </SortableTh>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
