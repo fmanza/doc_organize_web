@@ -1,12 +1,13 @@
 """Workers vistos desde la API: vivos o caídos, capacidades publicadas y petición de refresco.
 
 Un worker está **vivo** si su latido es más reciente que 3× ``worker_heartbeat_seconds``. Las capacidades de la
-instancia son las del worker vivo más reciente de la cola ``cpu`` (o de cualquiera, si no hay de ``cpu``).
+instancia suman las de los workers vivos: una capacidad está si algún worker la tiene, y se dice en qué colas (1.0.1:
+antes solo se miraba el worker de ``cpu`` y la ficha decía «No» a la GPU de un ``worker-gpu``).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
@@ -53,23 +54,45 @@ class CapabilitiesView:
         checked_at: Cuándo se obtuvieron.
         capabilities: Datos del sondeo.
         queues: Colas con algún worker vivo.
+        capability_queues: Por cada capacidad booleana que algún worker vivo tiene, las colas de esos workers.
     """
 
     status: Literal["ok", "pending", "no_worker"]
     checked_at: datetime | None
     capabilities: dict[str, Any] | None
     queues: list[str]
+    capability_queues: dict[str, list[str]] = field(default_factory=dict)
+
+
+def _merge(published: list[Worker]) -> tuple[dict[str, Any], dict[str, list[str]]]:
+    """Suma las capacidades de ``published`` (el primero manda en los valores que no son booleanos): un booleano es
+    verdadero si lo es en algún worker, y se anotan las colas de los workers que lo tienen."""
+    merged: dict[str, Any] = {}
+    queues: dict[str, set[str]] = {}
+    for worker in published:
+        for key, value in (worker.capabilities or {}).items():
+            if isinstance(value, bool):
+                merged[key] = merged.get(key, False) or value
+                if value:
+                    queues.setdefault(key, set()).update(worker.queues)
+            else:
+                merged.setdefault(key, value)
+    return merged, {key: sorted(found) for key, found in sorted(queues.items())}
 
 
 def capabilities(db: Session, settings: Settings) -> CapabilitiesView:
-    """Capacidades de la instancia según los workers."""
+    """Capacidades de la instancia: la suma de las de los workers vivos (``checked_at``, la comprobación más antigua)."""
     workers = list_workers(db)
     alive = [w for w in workers if is_alive(w, settings)]
     queues = sorted({q for w in alive for q in w.queues})
-    candidates = sorted(alive, key=lambda w: ("cpu" not in w.queues, -(w.capabilities_at or w.started_at).timestamp()))
-    for worker in candidates:
-        if worker.capabilities is not None:
-            return CapabilitiesView("ok", worker.capabilities_at, worker.capabilities, queues)
+    published = sorted(
+        (w for w in alive if w.capabilities is not None),
+        key=lambda w: ("cpu" not in w.queues, -(w.capabilities_at or w.started_at).timestamp()),
+    )
+    if published:
+        merged, by_queue = _merge(published)
+        checked = [w.capabilities_at for w in published if w.capabilities_at is not None]
+        return CapabilitiesView("ok", min(checked) if checked else None, merged, queues, by_queue)
     if alive:
         return CapabilitiesView("pending", None, None, queues)
     known = [w for w in workers if w.capabilities is not None]

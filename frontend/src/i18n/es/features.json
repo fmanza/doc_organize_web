@@ -271,6 +271,8 @@
     "refresh": "Volver a comprobar",
     "pending": "Comprobando… (el worker tarda un minuto la primera vez)",
     "gpu": "OCR con GPU (EasyOCR)",
+    "onlyQueues_one": "cola {{queues}}",
+    "onlyQueues_other": "colas {{queues}}",
     "av": "Audio y vídeo (Whisper + ffmpeg)",
     "ffmpeg": "ffmpeg",
     "libreoffice": "LibreOffice (.xls antiguos)",

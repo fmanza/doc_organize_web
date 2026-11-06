@@ -28,6 +28,7 @@ def get_capabilities(_: CurrentUser, db: DbSession, settings: SettingsDep) -> In
         checked_at=view.checked_at,
         capabilities=CapabilitiesOut(**view.capabilities) if view.capabilities else None,
         queues=view.queues,
+        capability_queues=view.capability_queues,
         doc_organize_version=library_version(),
         scan_options=ScanOptionsAvailability(**available_options(db, settings)),
     )

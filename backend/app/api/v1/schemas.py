@@ -318,6 +318,10 @@ class InstanceCapabilities(BaseModel):
     checked_at: datetime | None
     capabilities: CapabilitiesOut | None
     queues: list[str]
+    capability_queues: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Por cada capacidad que algún worker vivo tiene, las colas de esos workers (p. ej. gpu_ready → gpu)",
+    )
     doc_organize_version: str | None
     scan_options: ScanOptionsAvailability
 

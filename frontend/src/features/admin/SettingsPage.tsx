@@ -93,14 +93,22 @@ function SettingRow({ setting }: { setting: SettingOut }) {
   );
 }
 
-function YesNo({ ok, label }: { ok: boolean; label: string }) {
+/** Sí/No de una capacidad; si solo la tienen los workers de algunas colas, las nombra (1.0.1). */
+function YesNo({ ok, label, only }: { ok: boolean; label: string; only?: string[] | undefined }) {
   const { t } = useTranslation();
   return (
     <Group justify="space-between">
       <Text size="sm">{label}</Text>
-      <Badge color={ok ? 'green' : 'gray'} variant="light">
-        {ok ? t('capabilities.yes') : t('capabilities.no')}
-      </Badge>
+      <Group gap="xs">
+        {ok && only && only.length > 0 && (
+          <Text size="xs" c="dimmed">
+            {t('capabilities.onlyQueues', { queues: only.join(', '), count: only.length })}
+          </Text>
+        )}
+        <Badge color={ok ? 'green' : 'gray'} variant="light">
+          {ok ? t('capabilities.yes') : t('capabilities.no')}
+        </Badge>
+      </Group>
     </Group>
   );
 }
@@ -108,6 +116,11 @@ function YesNo({ ok, label }: { ok: boolean; label: string }) {
 function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
   const { t } = useTranslation();
   const caps = data.capabilities;
+  // Colas que tienen una capacidad, solo si no son todas las atendidas (p. ej. la GPU, solo en «gpu»).
+  const only = (key: string): string[] | undefined => {
+    const queues = data.capability_queues?.[key];
+    return queues && queues.length < data.queues.length ? queues : undefined;
+  };
   return (
     <Stack gap="xs">
       {data.status === 'pending' && (
@@ -123,12 +136,24 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
       )}
       {caps && (
         <>
-          <YesNo ok={caps.gpu_ready} label={t('capabilities.gpu')} />
-          <YesNo ok={caps.av_ready} label={t('capabilities.av')} />
-          <YesNo ok={caps.ffmpeg_installed} label={t('capabilities.ffmpeg')} />
-          <YesNo ok={caps.libreoffice_installed} label={t('capabilities.libreoffice')} />
-          <YesNo ok={caps.models_ready} label={t('capabilities.models')} />
-          <YesNo ok={caps.picture_description_ready} label={t('capabilities.pictureDescription')} />
+          <YesNo ok={caps.gpu_ready} label={t('capabilities.gpu')} only={only('gpu_ready')} />
+          <YesNo ok={caps.av_ready} label={t('capabilities.av')} only={only('av_ready')} />
+          <YesNo
+            ok={caps.ffmpeg_installed}
+            label={t('capabilities.ffmpeg')}
+            only={only('ffmpeg_installed')}
+          />
+          <YesNo
+            ok={caps.libreoffice_installed}
+            label={t('capabilities.libreoffice')}
+            only={only('libreoffice_installed')}
+          />
+          <YesNo ok={caps.models_ready} label={t('capabilities.models')} only={only('models_ready')} />
+          <YesNo
+            ok={caps.picture_description_ready}
+            label={t('capabilities.pictureDescription')}
+            only={only('picture_description_ready')}
+          />
           <Text size="xs" c="dimmed">
             {t('capabilities.checkedAt', { date: formatDateTime(data.checked_at) })} ·{' '}
             {t('capabilities.library', { version: data.doc_organize_version ?? '—' })}
