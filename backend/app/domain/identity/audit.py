@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session, aliased
 
+from app.core.errors import AppError
 from app.core.request_context import current_tenant_id
-from app.db.models import DEFAULT_TENANT_ID, AuditEntry, User
+from app.db.models import DEFAULT_TENANT_ID, AuditEntry, User, utcnow
+from app.domain.listing import ListQuery, apply_search, apply_sort
+
+logger = logging.getLogger(__name__)
 
 
 class AuditAction:
@@ -64,6 +69,7 @@ class AuditAction:
     ROLE_UPDATE: Final = "role.update"
     ROLE_DELETE: Final = "role.delete"
     USER_MOVE: Final = "user.move"
+    AUDIT_PURGE: Final = "audit.purge"
 
 
 @dataclass(frozen=True)
@@ -134,6 +140,7 @@ def list_entries(
     until: datetime | None = None,
     limit: int,
     offset: int,
+    listing: ListQuery | None = None,
 ) -> tuple[list[AuditEntry], int]:
     """Eventos del tenant, más recientes primero, filtrados por acción (prefijo), actor (id o nombre) y rango
     ``[since, until)``."""
@@ -148,6 +155,102 @@ def list_entries(
         query = query.where(AuditEntry.ts >= since)
     if until is not None:
         query = query.where(AuditEntry.ts < until)
+    listing = listing or ListQuery()
+    author = aliased(User)
+    query = query.outerjoin(author, author.id == AuditEntry.actor_user_id)
+    query = apply_search(
+        query,
+        listing.q,
+        [AuditEntry.action, author.username, AuditEntry.target_type, AuditEntry.target_id, AuditEntry.ip],
+    )
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(AuditEntry.id.desc()).limit(limit).offset(offset)).all()
+    columns = {
+        "ts": AuditEntry.ts,
+        "action": AuditEntry.action,
+        "outcome": AuditEntry.outcome,
+        "actor": func.lower(author.username),
+        "target": AuditEntry.target_type,
+        "ip": AuditEntry.ip,
+    }
+    query = apply_sort(query, listing, columns, default=[AuditEntry.id.desc()], tiebreak=AuditEntry.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     return list(rows), total
+
+
+class PurgeRangeError(AppError):
+    """Rango de purga no válido: vacío o con entradas de hoy."""
+
+    status = 422
+    title = "Rango de fechas no válido"
+    code = "purge_range"
+
+
+class PurgeChangedError(AppError):
+    """Las entradas del rango cambiaron desde la vista previa: hay que volver a comprobar."""
+
+    status = 409
+    title = "La auditoría ha cambiado"
+    code = "purge_changed"
+
+
+@dataclass(frozen=True)
+class PurgeResult:
+    """Resultado de una purga: ``matched`` entradas en el rango; ``deleted``, las borradas (0 en la vista previa)."""
+
+    matched: int
+    deleted: int
+
+
+def start_of_today(now: datetime | None = None) -> datetime:
+    """Inicio del día de hoy (UTC): la purga no borra nada de hoy, ni la actividad que se está investigando."""
+    return (now or utcnow()).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def purge(
+    db: Session,
+    *,
+    tenant_id: int,
+    since: datetime,
+    until: datetime,
+    dry_run: bool,
+    confirm_count: int | None,
+    actor: User,
+    ctx: RequestContext,
+    now: datetime | None = None,
+) -> PurgeResult:
+    """Borra las entradas del tenant en ``[since, until)`` (web 1.2.0, solo el admin de instancia).
+
+    La vista previa (``dry_run``) solo cuenta. El borrado real exige ``confirm_count`` igual a las entradas que hay
+    ahora en el rango, y registra ``audit.purge`` con el rango y el número: esa entrada es de hoy, así que nunca cae
+    en un rango purgable.
+
+    Raises:
+        PurgeRangeError: ``since`` no es anterior a ``until`` o ``until`` pasa del inicio de hoy.
+        PurgeChangedError: ``confirm_count`` no coincide con las entradas del rango.
+    """
+    if since >= until:
+        raise PurgeRangeError("La fecha de inicio tiene que ser anterior a la de fin.")
+    if until > start_of_today(now):
+        raise PurgeRangeError(
+            "No se pueden borrar entradas de hoy: el rango tiene que terminar como tarde hoy a las 00:00 (UTC)."
+        )
+    in_range = (AuditEntry.tenant_id == tenant_id, AuditEntry.ts >= since, AuditEntry.ts < until)
+    matched = db.scalar(select(func.count()).select_from(AuditEntry).where(*in_range)) or 0
+    if dry_run:
+        return PurgeResult(matched=matched, deleted=0)
+    if confirm_count != matched:
+        raise PurgeChangedError(
+            f"Ahora hay {matched} entradas en ese rango, no {confirm_count}: vuelve a comprobarlo antes de borrar."
+        )
+    deleted = db.execute(delete(AuditEntry).where(*in_range)).rowcount  # type: ignore[attr-defined]
+    record(
+        db,
+        action=AuditAction.AUDIT_PURGE,
+        ctx=ctx,
+        actor_id=actor.id,
+        tenant_id=tenant_id,
+        details={"since": since.isoformat(), "until": until.isoformat(), "deleted": int(deleted)},
+    )
+    db.commit()
+    logger.info("Auditoría purgada", extra={"tenant_id": tenant_id, "deleted": int(deleted)})
+    return PurgeResult(matched=matched, deleted=int(deleted))

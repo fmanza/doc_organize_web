@@ -19,6 +19,7 @@ from app.db.models import (
 )
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import (
     FolderNotFoundError,
     InvalidLocationPathError,
@@ -72,11 +73,24 @@ class LocationChanges:
     tenant_id: int | None = None
 
 
-def list_locations(db: Session, *, tenant_id: int, limit: int, offset: int) -> tuple[list[Location], int]:
-    """Ubicaciones del tenant ordenadas por nombre (Fase 9: cada una es de un tenant)."""
+def list_locations(
+    db: Session, *, tenant_id: int, limit: int, offset: int, listing: ListQuery | None = None
+) -> tuple[list[Location], int]:
+    """Ubicaciones del tenant (por nombre si no se pide otro orden; Fase 9: cada una es de un tenant), filtradas por
+    texto en el nombre o la ruta visible."""
+    listing = listing or ListQuery()
     query = select(Location).where(Location.tenant_id == tenant_id)
+    query = apply_search(query, listing.q, [Location.name, Location.display_path])
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(func.lower(Location.name)).limit(limit).offset(offset)).all()
+    columns = {
+        "name": func.lower(Location.name),
+        "usage": Location.usage,
+        "access": Location.access,
+        "status": Location.status,
+        "probed_at": Location.probed_at,
+    }
+    query = apply_sort(query, listing, columns, default=[func.lower(Location.name)], tiebreak=Location.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     return list(rows), total
 
 

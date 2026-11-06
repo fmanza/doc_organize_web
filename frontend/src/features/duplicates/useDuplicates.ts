@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 
@@ -79,17 +80,20 @@ export function useLastDuplicates(projectId: number) {
   });
 }
 
-export function useDuplicateGroups(runId: string | null, reason: DuplicateReason | null, page: number) {
+export type GroupSort = SortOf<'/api/v1/runs/{run_id}/duplicate-groups'>;
+
+export function useDuplicateGroups(
+  runId: string | null,
+  reason: DuplicateReason | null,
+  list: ListParams<GroupSort>,
+) {
   return useQuery({
-    queryKey: ['duplicate-groups', runId, reason, page],
+    queryKey: ['duplicate-groups', runId, reason, list],
     enabled: runId !== null,
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/runs/{run_id}/duplicate-groups', {
-          params: {
-            path: { run_id: runId ?? '' },
-            query: { reason, limit: GROUPS_PAGE_SIZE, offset: (page - 1) * GROUPS_PAGE_SIZE },
-          },
+          params: { path: { run_id: runId ?? '' }, query: { reason, ...list } },
         }),
       ),
     placeholderData: keepPreviousData,

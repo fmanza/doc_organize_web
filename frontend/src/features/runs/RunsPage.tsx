@@ -4,21 +4,30 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { RunsTable } from './RunsTable';
-import { type Operation, RUNS_PAGE_SIZE, type RunStatus, useRuns } from './useRuns';
+import { type Operation, type RunSort, type RunStatus, useRuns } from './useRuns';
 
 const STATUSES: RunStatus[] = ['queued', 'running', 'succeeded', 'failed', 'cancelled'];
 const OPERATIONS: Operation[] = ['noop', 'history_clear', 'project_move', 'project_delete'];
+const RUN_SORT: readonly RunSort[] = [
+  'operation',
+  'project',
+  'status',
+  'created_at',
+  'duration',
+  'created_by',
+];
 
 /** Historial de ejecuciones de los proyectos visibles, agrupado por ejecución y con filtros. */
 export function RunsPage() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<RunStatus | null>(null);
   const [operation, setOperation] = useState<Operation | null>(null);
-  const paging = usePageState(RUNS_PAGE_SIZE);
-  const { page } = paging;
+  const list = useListState(RUN_SORT);
+  const { paging } = list;
   const projectParam = Number(useSearchParams()[0].get('project_id'));
   const projectId = Number.isInteger(projectParam) && projectParam > 0 ? projectParam : undefined;
   const { data, isPending, isError, error } = useRuns(
@@ -27,7 +36,7 @@ export function RunsPage() {
       ...(status ? { status } : {}),
       ...(operation ? { operation } : {}),
     },
-    page,
+    list.query,
   );
 
   return (
@@ -57,6 +66,7 @@ export function RunsPage() {
             paging.setPage(1, true);
           }}
         />
+        <SearchBox value={list.q} onChange={list.setQ} label={t('runs.search')} />
       </Group>
       {isPending && (
         <Center>
@@ -65,8 +75,8 @@ export function RunsPage() {
       )}
       {isError && <ErrorAlert error={error} />}
       {data && data.items.length === 0 && <Text c="dimmed">{t('runs.empty')}</Text>}
-      {data && data.items.length > 0 && <RunsTable runs={data.items} showProject />}
-      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
+      {data && data.items.length > 0 && <RunsTable runs={data.items} showProject list={list} />}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} />}
     </Stack>
   );
 }

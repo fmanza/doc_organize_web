@@ -19,6 +19,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useClientTable } from '../../components/useListState';
 import { formatDateTime } from '../../components/format';
 import {
   MAX_TEMPLATE_BYTES,
@@ -44,6 +47,12 @@ interface Editing {
  * Plantillas de taxonomía (sustituye a `taxonomy_templates_admin.html.j2`): las incluidas en doc_organize son de solo
  * lectura y se pueden duplicar; las personalizadas se crean, editan, importan y exportan como Markdown.
  */
+const TEMPLATE_COLUMNS = {
+  name: (item: TaxonomyTemplate) => item.name,
+  title: (item: TaxonomyTemplate) => item.title,
+  updated: (item: TaxonomyTemplate) => item.updated_at,
+};
+
 export function TaxonomyTemplatesPage() {
   const { t } = useTranslation();
   const templates = useTemplates();
@@ -51,6 +60,11 @@ export function TaxonomyTemplatesPage() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const table = useClientTable(
+    templates.data,
+    TEMPLATE_COLUMNS,
+    (item) => `${item.name} ${item.title ?? ''} ${item.description ?? ''}`,
+  );
 
   const importFile = (file: File | null) => {
     setImportError(null);
@@ -96,18 +110,25 @@ export function TaxonomyTemplatesPage() {
           {importError}
         </Alert>
       )}
+      <SearchBox value={table.q} onChange={table.setQ} label={t('templates.search')} />
       <Table.ScrollContainer minWidth={640}>
         <Table>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{t('templates.fields.name')}</Table.Th>
-              <Table.Th>{t('templates.fields.title')}</Table.Th>
-              <Table.Th>{t('templates.fields.updated')}</Table.Th>
+              <SortableTh state={table} sortKey="name">
+                {t('templates.fields.name')}
+              </SortableTh>
+              <SortableTh state={table} sortKey="title">
+                {t('templates.fields.title')}
+              </SortableTh>
+              <SortableTh state={table} sortKey="updated">
+                {t('templates.fields.updated')}
+              </SortableTh>
               <Table.Th>{t('common.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {templates.data.map((item) => (
+            {table.pageRows.map((item) => (
               <TemplateRow
                 key={item.name}
                 item={item}
@@ -124,6 +145,7 @@ export function TaxonomyTemplatesPage() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      <PageControls state={table.paging} total={table.total} label={t('paging.label')} />
       {editing && (
         <TemplateEditor
           editing={editing}

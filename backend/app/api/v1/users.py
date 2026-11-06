@@ -11,6 +11,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep, UserManager
+from app.api.v1.listing import OrderQuery, UserSort, listing
 from app.api.v1.schemas import MAX_PAGE_SIZE, UserBrief, UserCreate, UserLookup, UserOut, UserPage, UserUpdate
 from app.db.models import User
 from app.domain.identity import users
@@ -29,12 +30,16 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 def list_users(
     manager: UserManager,
     db: DbSession,
-    q: Annotated[str | None, Query(max_length=64, description="Texto en usuario o nombre")] = None,
+    q: Annotated[str | None, Query(max_length=64, description="Texto en usuario, nombre o rol")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[UserSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> UserPage:
-    """Usuarios del tenant activo ordenados por nombre de usuario."""
-    rows, total = users.list_users(db, tenant_id=manager.scope_tenant_id, q=q, limit=limit, offset=offset)
+    """Usuarios del tenant activo (por nombre de usuario si no se pide otro orden)."""
+    rows, total = users.list_users(
+        db, tenant_id=manager.scope_tenant_id, q=q, limit=limit, offset=offset, listing=listing(q, sort, order)
+    )
     return UserPage(items=[UserOut.model_validate(u) for u in rows], total=total)
 
 

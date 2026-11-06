@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Final, cast
 
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import Settings
 from app.db.models import (
@@ -31,6 +31,7 @@ from app.db.models import (
 )
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import FolderNotFoundError, LocationUnavailableError
 from app.domain.locations.paths import (
     ResolvedPath,
@@ -111,14 +112,29 @@ def visible_project_ids(user: User) -> Select[int]:
 
 
 def list_projects(
-    db: Session, user: User, *, q: str | None, limit: int, offset: int
+    db: Session, user: User, *, q: str | None, limit: int, offset: int, listing: ListQuery | None = None
 ) -> tuple[list[ProjectAccess], int]:
-    """Proyectos activos visibles para ``user`` ordenados por nombre, con su rol."""
-    query = select(Project).where(Project.status == "active", Project.id.in_(visible_project_ids(user)))
-    if q:
-        query = query.where(func.lower(Project.name).contains(q.strip().lower(), autoescape=True))
+    """Proyectos activos visibles para ``user`` (por nombre si no se pide otro orden), con su rol, filtrados por texto
+    en el nombre o en el de sus ubicaciones."""
+    listing = listing or ListQuery()
+    source, destination = aliased(Location), aliased(Location)
+    query = (
+        select(Project)
+        .join(source, source.id == Project.source_location_id)
+        .join(destination, destination.id == Project.destination_location_id)
+        .where(Project.status == "active", Project.id.in_(visible_project_ids(user)))
+    )
+    query = apply_search(query, q or listing.q, [Project.name, source.name, destination.name])
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(func.lower(Project.name)).limit(limit).offset(offset)).unique().all()
+    last_run = select(func.max(Run.created_at)).where(Run.project_id == Project.id).correlate(Project).scalar_subquery()
+    columns = {
+        "name": func.lower(Project.name),
+        "source": func.lower(source.name),
+        "destination": func.lower(destination.name),
+        "last_run": last_run,
+    }
+    query = apply_sort(query, listing, columns, default=[func.lower(Project.name)], tiebreak=Project.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).unique().all()
     every = user.can("projects.all")
     roles: dict[int, str] = {}
     if not every and rows:

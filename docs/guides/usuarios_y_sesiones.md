@@ -64,3 +64,24 @@ Puedes revocar cualquiera; si revocas la actual, vuelves al inicio de sesión.
 - **Administración → Auditoría** (permiso «Consultar la auditoría») muestra los eventos del tenant activo. Registra inicios y cierres de sesión (también los fallidos), bloqueos, cambios de
   contraseña, altas, ediciones, desactivaciones y desbloqueos de usuarios, y sesiones revocadas, con fecha, autor e IP.
   Se puede filtrar por tipo de acción y por usuario que actuó. Nunca se guardan contraseñas.
+- **Eliminar auditoría por fechas** (solo el **administrador de la instancia**): botón «Eliminar por fechas» de
+  Administración → Auditoría. Borra para siempre las entradas del **tenant activo** entre dos fechas (UTC).
+  1. Elige «Desde» (incluido) y «Hasta» (sin incluir). «Hasta» no puede pasar de hoy: las entradas de hoy no se
+     borran nunca, para que no se pueda tapar lo que acaba de pasar.
+  2. «Comprobar» dice cuántas entradas hay en ese rango.
+  3. Para borrar, escribe ese número. Si entretanto ha cambiado, la aplicación lo dice y hay que volver a
+     comprobar.
+
+  El borrado queda registrado en la propia auditoría (`audit.purge`, con el rango y el número de entradas). Las
+  copias de seguridad anteriores siguen teniendo las entradas borradas.
+
+## Listados
+
+Todos los listados de la aplicación funcionan igual (desde la 1.2.0):
+
+- **25 filas por página** como mucho, con la página en la dirección: se puede compartir y «Atrás» vuelve a ella.
+- **Buscar**: el cuadro de búsqueda filtra por el texto de las columnas principales (sin distinguir mayúsculas).
+- **Ordenar**: pulsa el título de una columna; otra vez, para invertir el orden. La flecha indica la columna y el
+  sentido. Los grupos de duplicados, que son tarjetas, tienen un selector «Ordenar por».
+- Los **documentos** del proyecto se ordenan siempre por ruta, por ahora: doc_organize todavía no permite otro
+  orden en su caché (hueco G40).

@@ -11,6 +11,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentUser, DbSession
+from app.api.v1.listing import GroupSort, OrderQuery, SearchQuery, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     DuplicateGroupOut,
@@ -69,10 +70,15 @@ def list_duplicate_groups(
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[GroupSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> DuplicateGroupPage:
     """Grupos de la vista previa ``run_id`` (vacío si el run no es una búsqueda de duplicados)."""
     run, _ = runs.get_run(db, run_id, user)
-    rows, total = duplicates.list_groups(db, run.id, reason=reason, limit=limit, offset=offset)
+    rows, total = duplicates.list_groups(
+        db, run.id, reason=reason, limit=limit, offset=offset, listing=listing(q, sort, order)
+    )
     return DuplicateGroupPage(run=RunBrief.model_validate(run), items=[_group_out(r) for r in rows], total=total)
 
 

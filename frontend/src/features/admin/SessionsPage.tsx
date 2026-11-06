@@ -15,21 +15,30 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { can, useMe } from '../auth/useAuth';
-import { PAGE_SIZE, type SessionInfo, useRevokeSession, useSessions } from './useAdmin';
+import { type SessionInfo, type SessionSort, useRevokeSession, useSessions } from './useAdmin';
+
+const SESSION_SORT: readonly SessionSort[] = [
+  'username',
+  'ip',
+  'user_agent',
+  'created_at',
+  'last_seen_at',
+  'expires_at',
+];
 
 export function SessionsPage() {
   const { t } = useTranslation();
   // Quien gestiona usuarios ve las de su tenant; el resto, solo las suyas (la API filtra igualmente).
   const { data: me } = useMe();
   const scope = can(me, 'users.manage') ? 'all' : 'own';
-  const paging = usePageState(PAGE_SIZE);
-  const { page } = paging;
+  const list = useListState(SESSION_SORT);
   const [revoking, setRevoking] = useState<SessionInfo | null>(null);
-  const { data, isPending, isError, error } = useSessions(page);
+  const { data, isPending, isError, error } = useSessions(list.query);
   const revoke = useRevokeSession();
 
   const close = () => {
@@ -41,6 +50,7 @@ export function SessionsPage() {
     <Stack>
       <Title order={2}>{t(`admin.sessions.title.${scope}`)}</Title>
       <Text c="dimmed">{t(`admin.sessions.intro.${scope}`)}</Text>
+      <SearchBox value={list.q} onChange={list.setQ} label={t('admin.sessions.search')} />
       {isPending && (
         <Center>
           <Loader aria-label={t('common.loading')} />
@@ -53,12 +63,24 @@ export function SessionsPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('auth.username')}</Table.Th>
-                <Table.Th>{t('admin.sessions.ip')}</Table.Th>
-                <Table.Th>{t('admin.sessions.userAgent')}</Table.Th>
-                <Table.Th>{t('admin.sessions.createdAt')}</Table.Th>
-                <Table.Th>{t('admin.sessions.lastSeen')}</Table.Th>
-                <Table.Th>{t('admin.sessions.expiresAt')}</Table.Th>
+                <SortableTh state={list} sortKey="username">
+                  {t('auth.username')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="ip">
+                  {t('admin.sessions.ip')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="user_agent">
+                  {t('admin.sessions.userAgent')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="created_at">
+                  {t('admin.sessions.createdAt')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="last_seen_at">
+                  {t('admin.sessions.lastSeen')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="expires_at">
+                  {t('admin.sessions.expiresAt')}
+                </SortableTh>
                 <Table.Th>
                   <VisuallyHidden>{t('common.actions')}</VisuallyHidden>
                 </Table.Th>
@@ -103,7 +125,7 @@ export function SessionsPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
+      {data && <PageControls state={list.paging} total={data.total} label={t('paging.label')} />}
       <Modal opened={revoking !== null} onClose={close} title={t('admin.sessions.confirmTitle')}>
         {revoking && (
           <Stack>

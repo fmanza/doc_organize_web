@@ -13,6 +13,7 @@ from fastapi import APIRouter, Body, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
 from app.api.v1.fs import FS_ERRORS
+from app.api.v1.listing import OrderQuery, ProjectSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.runs import run_out
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
@@ -85,12 +86,14 @@ def _member_out(member: ProjectMember) -> MemberOut:
 def list_projects(
     user: CurrentUser,
     db: DbSession,
-    q: Annotated[str | None, Query(max_length=128, description="Texto en el nombre")] = None,
+    q: Annotated[str | None, Query(max_length=128, description="Texto en el nombre o en el de sus ubicaciones")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[ProjectSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> ProjectPage:
     """Proyectos de los que el usuario es miembro (un admin ve todos), con su rol y el último run."""
-    rows, total = service.list_projects(db, user, q=q, limit=limit, offset=offset)
+    rows, total = service.list_projects(db, user, q=q, limit=limit, offset=offset, listing=listing(q, sort, order))
     latest = service.last_runs(db, [a.project.id for a in rows])
     return ProjectPage(items=[project_out(a, latest.get(a.project.id)) for a in rows], total=total)
 
@@ -290,13 +293,16 @@ def list_project_scan_errors(
     db: DbSession,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[ScanErrorSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> ScanErrorPage:
     """Documentos que no se pudieron convertir en el último escaneo terminado del proyecto."""
     service.get_access(db, project_id, user)
     run = scan_errors.last_scan(db, project_id)
     if run is None:
         return ScanErrorPage(run=None, items=[], total=0)
-    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset)
+    rows, total = scan_errors.run_errors(db, run.id, limit=limit, offset=offset, listing=listing(q, sort, order))
     return ScanErrorPage(
         run=RunBrief.model_validate(run), items=[ScanErrorOut.model_validate(r) for r in rows], total=total
     )

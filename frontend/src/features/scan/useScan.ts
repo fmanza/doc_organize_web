@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 
@@ -29,8 +30,6 @@ export const DEFAULT_SCAN_OPTIONS: ScanOptions = {
   extract_images: false,
   use_picture_description: false,
 };
-
-export const SCAN_ERRORS_PAGE_SIZE = 50;
 
 /** Cuerpo de un escaneo sin forzar (el cliente generado exige todos los campos con valor por defecto). */
 export function scanRequest(folders: string[], options: ScanOptions): ScanParams {
@@ -86,10 +85,14 @@ export function useRemoveFolder(projectId: number) {
 }
 
 /** Errores de un run (`runId`) o, sin él, del último escaneo terminado del proyecto; paginados en servidor. */
-export function useScanErrors(target: { runId: string } | { projectId: number }, page: number) {
-  const query = { limit: SCAN_ERRORS_PAGE_SIZE, offset: (page - 1) * SCAN_ERRORS_PAGE_SIZE };
+export type ScanErrorSort = SortOf<'/api/v1/runs/{run_id}/scan-errors'>;
+
+export function useScanErrors(
+  target: { runId: string } | { projectId: number },
+  query: ListParams<ScanErrorSort>,
+) {
   return useQuery({
-    queryKey: ['scan-errors', target, page],
+    queryKey: ['scan-errors', target, query],
     queryFn: async () =>
       'runId' in target
         ? unwrap(

@@ -46,7 +46,15 @@ Queda en la auditoría con cuántas membresías perdió.
 
 ## Roles (permiso «Gestionar roles»)
 
-**Administración → Roles** muestra los roles del tenant activo y cuántos usuarios tiene cada uno:
+**Administración → Roles** funciona como la lista de usuarios (desde la 1.2.0):
+
+- un **listado** con el nombre, el tipo, los permisos, cuántos usuarios tiene y cuándo se modificó, con búsqueda,
+  orden por columna y 25 filas por página;
+- el botón **Nuevo rol**, que abre el formulario;
+- en cada fila, **Editar**. Los roles base salen marcados como **Predeterminado** y su botón es **Ver**: se
+  abren en solo lectura.
+
+Los permisos que se pueden dar son:
 
 | Permiso | Qué permite |
 |---|---|

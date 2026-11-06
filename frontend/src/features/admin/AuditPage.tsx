@@ -1,5 +1,6 @@
 import {
   Badge,
+  Button,
   Center,
   Code,
   Loader,
@@ -15,10 +16,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { PAGE_SIZE, useAudit } from './useAdmin';
+import { useMe } from '../auth/useAuth';
+import { AuditPurgeModal } from './AuditPurgeModal';
+import { type AuditSort, useAudit } from './useAdmin';
+
+const AUDIT_SORT: readonly AuditSort[] = ['ts', 'action', 'outcome', 'actor', 'target', 'ip'];
 
 // Filtro por prefijo de acción (`auth.login`, `user.create`…).
 const ACTION_FILTERS = [
@@ -32,13 +38,23 @@ export function AuditPage() {
   const { t } = useTranslation();
   const [action, setAction] = useState('');
   const [actor, setActor] = useState('');
-  const paging = usePageState(PAGE_SIZE);
-  const { page } = paging;
-  const { data, isPending, isError, error } = useAudit(action, actor.trim(), page);
+  const list = useListState(AUDIT_SORT);
+  const { paging } = list;
+  const { data: me } = useMe();
+  const [purging, setPurging] = useState(false);
+  const { data, isPending, isError, error } = useAudit(action, actor.trim(), list.query);
 
   return (
     <Stack>
-      <Title order={2}>{t('admin.audit.title')}</Title>
+      <Group justify="space-between">
+        <Title order={2}>{t('admin.audit.title')}</Title>
+        {/* Solo el admin de instancia borra auditoría (la API lo exige igualmente). */}
+        {me?.is_instance_admin && (
+          <Button color="red" variant="light" onClick={() => setPurging(true)}>
+            {t('admin.audit.purge.open')}
+          </Button>
+        )}
+      </Group>
       <Group align="flex-end">
         <Stack gap={4}>
           <Text size="sm" fw={500} id="audit-filter-label">
@@ -64,6 +80,7 @@ export function AuditPage() {
           }}
           maw={240}
         />
+        <SearchBox value={list.q} onChange={list.setQ} label={t('admin.audit.search')} />
       </Group>
       {isPending && (
         <Center>
@@ -77,12 +94,24 @@ export function AuditPage() {
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('admin.audit.ts')}</Table.Th>
-                <Table.Th>{t('admin.audit.action')}</Table.Th>
-                <Table.Th>{t('admin.audit.outcome')}</Table.Th>
-                <Table.Th>{t('admin.audit.actor')}</Table.Th>
-                <Table.Th>{t('admin.audit.target')}</Table.Th>
-                <Table.Th>{t('admin.sessions.ip')}</Table.Th>
+                <SortableTh state={list} sortKey="ts">
+                  {t('admin.audit.ts')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="action">
+                  {t('admin.audit.action')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="outcome">
+                  {t('admin.audit.outcome')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="actor">
+                  {t('admin.audit.actor')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="target">
+                  {t('admin.audit.target')}
+                </SortableTh>
+                <SortableTh state={list} sortKey="ip">
+                  {t('admin.sessions.ip')}
+                </SortableTh>
                 <Table.Th>{t('admin.audit.details')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -110,7 +139,8 @@ export function AuditPage() {
           </Table>
         </Table.ScrollContainer>
       )}
-      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} fixedSize />}
+      {data && <PageControls state={paging} total={data.total} label={t('paging.label')} />}
+      {purging && <AuditPurgeModal onClose={() => setPurging(false)} />}
     </Stack>
   );
 }

@@ -242,3 +242,92 @@ describe('AuditPage', () => {
     });
   });
 });
+
+describe('Listados con orden y búsqueda (1.2.0)', () => {
+  it('Usuarios manda la búsqueda y el orden a la API y vuelve a la página 1', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/users': { body: { items: [ANA], total: 60 } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users?page=2');
+
+    expect(await screen.findByText('26–50 de 60')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Elementos por página' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Alta/ }));
+    await user.click(screen.getByRole('button', { name: /^Alta/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Buscar por usuario o nombre' }), 'an');
+
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/users').some((request) => {
+          const params = new URL(request.url).searchParams;
+          return (
+            params.get('q') === 'an' &&
+            params.get('sort') === 'created_at' &&
+            params.get('order') === 'desc' &&
+            params.get('offset') === '0' &&
+            params.get('limit') === '25'
+          );
+        }),
+      ).toBe(true),
+    );
+    expect(screen.getByRole('columnheader', { name: /^Alta/ })).toHaveAttribute('aria-sort', 'descending');
+  });
+});
+
+describe('Eliminar auditoría por fechas (1.2.0)', () => {
+  const AUDIT = { items: [], total: 0 };
+
+  it('solo el admin de instancia ve el botón', async () => {
+    const auditor = { ...USER, permissions: ['audit.read'] };
+    stubApi({ ...session(auditor as never), 'GET /api/v1/audit': { body: AUDIT } });
+
+    renderRoute('/admin/audit');
+
+    expect(await screen.findByRole('heading', { name: 'Auditoría' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Eliminar por fechas' })).not.toBeInTheDocument();
+  });
+
+  it('comprueba, pide teclear el número y borra', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/audit': { body: AUDIT },
+      'POST /api/v1/audit/purge': async (request) => {
+        const body = (await request.clone().json()) as { dry_run: boolean };
+        return { body: body.dry_run ? { matched: 3, deleted: 0 } : { matched: 3, deleted: 3 } };
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/audit');
+
+    await user.click(await screen.findByRole('button', { name: 'Eliminar por fechas' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Desde (incluido)'), '2026-01-01');
+    await user.type(within(dialog).getByLabelText(/Hasta \(sin incluir\)/), '2026-02-01');
+    await user.click(within(dialog).getByRole('button', { name: 'Comprobar' }));
+
+    expect(await within(dialog).findByText('Se eliminarán 3 entradas de auditoría.')).toBeInTheDocument();
+    const remove = within(dialog).getByRole('button', { name: 'Eliminar 3 entradas' });
+    expect(remove).toBeDisabled();
+    await user.type(within(dialog).getByRole('textbox', { name: /escribe el número de entradas/ }), '3');
+    expect(remove).toBeEnabled();
+    await user.click(remove);
+
+    expect(await within(dialog).findByText('Se han eliminado 3 entradas.')).toBeInTheDocument();
+    const [preview, real] = callsTo(fetchMock, 'POST', '/api/v1/audit/purge');
+    expect(await preview?.json()).toEqual({
+      since: '2026-01-01T00:00:00Z',
+      until: '2026-02-01T00:00:00Z',
+      dry_run: true,
+    });
+    expect(await real?.json()).toEqual({
+      since: '2026-01-01T00:00:00Z',
+      until: '2026-02-01T00:00:00Z',
+      dry_run: false,
+      confirm_count: 3,
+    });
+  });
+});

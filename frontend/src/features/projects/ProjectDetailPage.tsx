@@ -79,7 +79,7 @@ export function ProjectDetailPage() {
   const id = Number(useParams().projectId);
   const { data: project, isPending, isError, error } = useProject(id);
   const { data: me } = useMe();
-  const runs = useRuns({ project_id: id }, 1, RECENT_RUNS);
+  const runs = useRuns({ project_id: id }, { limit: RECENT_RUNS, offset: 0 });
   const enqueue = useEnqueueRun(id);
   const [editing, setEditing] = useState(false);
   const [danger, setDanger] = useState<DangerousOperation | null>(null);

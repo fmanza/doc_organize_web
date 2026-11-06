@@ -513,6 +513,67 @@
         "title": "AuditPage",
         "type": "object"
       },
+      "AuditPurgeIn": {
+        "additionalProperties": false,
+        "description": "Borrar la auditoría del tenant activo en ``[since, until)`` (web 1.2.0, solo el admin de instancia).\n\nPrimero con ``dry_run`` (cuenta las entradas); después sin él y con ``confirm_count`` igual a esa cuenta.",
+        "properties": {
+          "confirm_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Entradas que mostró la vista previa",
+            "title": "Confirm Count"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "since": {
+            "description": "Desde (incluido), ISO 8601 con zona",
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "description": "Hasta (excluido), como tarde hoy a las 00:00 UTC",
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until"
+        ],
+        "title": "AuditPurgeIn",
+        "type": "object"
+      },
+      "AuditPurgeOut": {
+        "description": "Entradas del rango (``matched``) y las borradas (``deleted``: 0 en la vista previa).",
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "matched",
+          "deleted"
+        ],
+        "title": "AuditPurgeOut",
+        "type": "object"
+      },
       "CapabilitiesOut": {
         "description": "Capacidades de la instancia para convertir documentos.",
         "properties": {
@@ -4778,7 +4839,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5309,6 +5370,67 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ts",
+                    "action",
+                    "outcome",
+                    "actor",
+                    "target",
+                    "ip"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5340,6 +5462,50 @@
           }
         },
         "summary": "Consultar auditoría",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/v1/audit/purge": {
+      "post": {
+        "description": "Cuenta (``dry_run``) o borra las entradas del tenant activo en ``[since, until)``; el borrado se audita.",
+        "operationId": "purge_audit_api_v1_audit_purge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditPurgeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPurgeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "No es administrador de la instancia o token CSRF no válido"
+          },
+          "409": {
+            "description": "Las entradas del rango cambiaron desde la vista previa (`purge_changed`)"
+          },
+          "422": {
+            "description": "Rango vacío o con entradas de hoy (`purge_range`)"
+          }
+        },
+        "summary": "Borrar auditoría por fechas",
         "tags": [
           "audit"
         ]
@@ -5675,7 +5841,7 @@
     },
     "/api/v1/locations": {
       "get": {
-        "description": "Ubicaciones ordenadas por nombre, con su último estado.",
+        "description": "Ubicaciones (por nombre si no se pide otro orden), con su último estado.",
         "operationId": "list_locations_api_v1_locations_get",
         "parameters": [
           {
@@ -5699,6 +5865,66 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "name",
+                    "usage",
+                    "access",
+                    "status",
+                    "probed_at"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -6042,7 +6268,7 @@
         "operationId": "list_projects_api_v1_projects_get",
         "parameters": [
           {
-            "description": "Texto en el nombre",
+            "description": "Texto en el nombre o en el de sus ubicaciones",
             "in": "query",
             "name": "q",
             "required": false,
@@ -6056,7 +6282,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Texto en el nombre",
+              "description": "Texto en el nombre o en el de sus ubicaciones",
               "title": "Q"
             }
           },
@@ -6081,6 +6307,46 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "name",
+                    "source",
+                    "destination",
+                    "last_run"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -6415,6 +6681,65 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "title",
+                    "path",
+                    "document_type",
+                    "organized_path"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -7240,6 +7565,64 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "path",
+                    "message",
+                    "retry_count"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7786,7 +8169,7 @@
     },
     "/api/v1/runs": {
       "get": {
-        "description": "Runs de los proyectos visibles, más recientes primero (agrupados por ejecución).",
+        "description": "Runs de los proyectos visibles (más recientes primero si no se pide otro orden).",
         "operationId": "list_runs_api_v1_runs_get",
         "parameters": [
           {
@@ -7881,6 +8264,67 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "operation",
+                    "project",
+                    "status",
+                    "created_at",
+                    "duration",
+                    "created_by"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -8132,6 +8576,64 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "position",
+                    "reason",
+                    "member_count"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8287,6 +8789,64 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "path",
+                    "message",
+                    "retry_count"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8368,6 +8928,67 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "username",
+                    "ip",
+                    "user_agent",
+                    "created_at",
+                    "last_seen_at",
+                    "expires_at"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -8664,7 +9285,7 @@
     },
     "/api/v1/tenants": {
       "get": {
-        "description": "Tenants por nombre con sus usuarios, proyectos y ubicaciones.",
+        "description": "Tenants (por nombre si no se pide otro orden) con sus usuarios, proyectos y ubicaciones.",
         "operationId": "list_tenants_api_v1_tenants_get",
         "parameters": [
           {
@@ -8688,6 +9309,66 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto a buscar: contiene, sin distinguir mayúsculas",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "name",
+                    "slug",
+                    "users",
+                    "projects",
+                    "locations"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -8933,6 +9614,47 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "username",
+                    "display_name",
+                    "role",
+                    "status",
+                    "created_at"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8974,11 +9696,11 @@
     },
     "/api/v1/users": {
       "get": {
-        "description": "Usuarios del tenant activo ordenados por nombre de usuario.",
+        "description": "Usuarios del tenant activo (por nombre de usuario si no se pide otro orden).",
         "operationId": "list_users_api_v1_users_get",
         "parameters": [
           {
-            "description": "Texto en usuario o nombre",
+            "description": "Texto en usuario, nombre o rol",
             "in": "query",
             "name": "q",
             "required": false,
@@ -8992,7 +9714,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Texto en usuario o nombre",
+              "description": "Texto en usuario, nombre o rol",
               "title": "Q"
             }
           },
@@ -9017,6 +9739,47 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Columna por la que ordenar",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "username",
+                    "display_name",
+                    "role",
+                    "status",
+                    "created_at"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Columna por la que ordenar",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Sentido del orden",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sentido del orden",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],

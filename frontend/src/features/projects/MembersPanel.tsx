@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useClientTable } from '../../components/useListState';
 import {
   type MemberRole,
   type ProjectOut,
@@ -17,6 +20,14 @@ import {
 const ROLES: MemberRole[] = ['owner', 'editor', 'viewer'];
 
 /** Miembros del proyecto; el propietario invita, cambia roles y quita miembros (siempre queda un propietario). */
+type Member = NonNullable<ReturnType<typeof useMembers>['data']>['items'][number];
+
+const ORDER_OF_ROLES = { owner: 0, editor: 1, viewer: 2 } as const;
+const MEMBER_COLUMNS = {
+  user: (member: Member) => member.display_name,
+  role: (member: Member) => ORDER_OF_ROLES[member.role],
+};
+
 export function MembersPanel({ project }: { project: ProjectOut }) {
   const { t } = useTranslation();
   const isOwner = project.role === 'owner';
@@ -28,6 +39,12 @@ export function MembersPanel({ project }: { project: ProjectOut }) {
   const [chosen, setChosen] = useState<UserBrief | null>(null);
   const [role, setRole] = useState<MemberRole>('viewer');
   const lookup = useUserLookup(chosen ? '' : search);
+  const table = useClientTable(
+    members.data?.items,
+    MEMBER_COLUMNS,
+    (member) => `${member.display_name} ${member.username} ${t(`projects.roles.${member.role}`)}`,
+    'm',
+  );
   const candidates = (lookup.data?.items ?? []).filter(
     (u) => !members.data?.items.some((m) => m.user_id === u.id),
   );
@@ -48,13 +65,20 @@ export function MembersPanel({ project }: { project: ProjectOut }) {
       </Title>
       {members.isError && <ErrorAlert error={members.error} />}
       {mutationError && <ErrorAlert error={mutationError} />}
+      {members.data && members.data.items.length > 0 && (
+        <SearchBox value={table.q} onChange={table.setQ} label={t('projects.members.search')} />
+      )}
       {members.data && (
         <Table.ScrollContainer minWidth={520}>
           <Table>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('projects.members.user')}</Table.Th>
-                <Table.Th>{t('projects.fields.role')}</Table.Th>
+                <SortableTh state={table} sortKey="user">
+                  {t('projects.members.user')}
+                </SortableTh>
+                <SortableTh state={table} sortKey="role">
+                  {t('projects.fields.role')}
+                </SortableTh>
                 {isOwner && (
                   <Table.Th>
                     <VisuallyHidden>{t('common.actions')}</VisuallyHidden>
@@ -63,7 +87,7 @@ export function MembersPanel({ project }: { project: ProjectOut }) {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {members.data.items.map((member) => (
+              {table.pageRows.map((member) => (
                 <Table.Tr key={member.user_id}>
                   <Table.Td>
                     {member.display_name}{' '}
@@ -106,6 +130,7 @@ export function MembersPanel({ project }: { project: ProjectOut }) {
           </Table>
         </Table.ScrollContainer>
       )}
+      {members.data && <PageControls state={table.paging} total={table.total} label={t('paging.label')} />}
       {isOwner && (
         <Group align="flex-end">
           <Select

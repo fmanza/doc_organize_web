@@ -1,10 +1,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
+import type { ListParams, SortOf } from '../../api/listing';
+
 import { api, ensureOk, isApiError, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 import { useEnqueueRun } from '../projects/useProjects';
 import { useRun } from '../runs/useRuns';
+
+export type ContextDocumentSort = SortOf<'/api/v1/projects/{project_id}/context/documents'>;
 
 export type ContextOut = components['schemas']['ContextOut'];
 export type ContextDocument = components['schemas']['ContextDocumentOut'];
@@ -14,7 +18,6 @@ export type TaxonomyTemplate = components['schemas']['TaxonomyTemplateOut'];
 export type TaxonomyTemplateDetail = components['schemas']['TaxonomyTemplateDetail'];
 export type DocumentFilter = 'failed' | 'collision';
 
-export const DOCUMENTS_PAGE_SIZE = 50;
 /** Tamaño máximo de una plantilla o manifiesto (`MAX_TEMPLATE_BYTES` de la API). */
 export const MAX_TEMPLATE_BYTES = 256 * 1024;
 /** Nombre de una plantilla personalizada: minúsculas, dígitos y guiones. */
@@ -119,18 +122,18 @@ export function useContextDocuments(
   projectId: number,
   domain: string | null,
   only: DocumentFilter | null,
-  page: number,
+  list: ListParams<ContextDocumentSort>,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, page }],
+    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, ...list }],
     enabled,
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/documents', {
           params: {
             path: { project_id: projectId },
-            query: { domain, only, limit: DOCUMENTS_PAGE_SIZE, offset: (page - 1) * DOCUMENTS_PAGE_SIZE },
+            query: { domain, only, ...list },
           },
         }),
       ),

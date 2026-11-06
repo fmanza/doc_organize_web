@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, SecretStr
 
 from app.domain.identity.passwords import MAX_PASSWORD_LENGTH
 
@@ -174,6 +174,27 @@ class AuditPage(BaseModel):
 
     items: list[AuditEntryOut]
     total: int
+
+
+class AuditPurgeIn(BaseModel):
+    """Borrar la auditoría del tenant activo en ``[since, until)`` (web 1.2.0, solo el admin de instancia).
+
+    Primero con ``dry_run`` (cuenta las entradas); después sin él y con ``confirm_count`` igual a esa cuenta.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    since: AwareDatetime = Field(description="Desde (incluido), ISO 8601 con zona")
+    until: AwareDatetime = Field(description="Hasta (excluido), como tarde hoy a las 00:00 UTC")
+    dry_run: bool = True
+    confirm_count: int | None = Field(default=None, ge=0, description="Entradas que mostró la vista previa")
+
+
+class AuditPurgeOut(BaseModel):
+    """Entradas del rango (``matched``) y las borradas (``deleted``: 0 en la vista previa)."""
+
+    matched: int
+    deleted: int
 
 
 # --- locations --------------------------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from typing import Final
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import Settings
 from app.db.models import ACTIVE_RUN_STATUSES, FINISHED_RUN_STATUSES, Artifact, MemberRole, Project, Run, User, utcnow
@@ -21,6 +21,7 @@ from app.domain.context import service as context
 from app.domain.duplicates import service as duplicates
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.paths import join_relative, normalize_relative, resolve_within
 from app.domain.projects import service as projects
 from app.domain.projects.errors import InvalidProjectError, ProjectForbiddenError, ProjectNotFoundError
@@ -256,10 +257,20 @@ def list_runs(
     operation: str | None,
     limit: int,
     offset: int,
+    listing: ListQuery | None = None,
 ) -> tuple[list[Run], int]:
-    """Runs visibles del tenant activo, más recientes primero (los de sistema, solo para el admin de instancia)."""
+    """Runs visibles del tenant activo (más recientes primero si no se pide otro orden; los de sistema, solo para el
+    admin de instancia), filtrados por texto en la operación, el proyecto o quien la lanzó."""
+    listing = listing or ListQuery()
     visible = Run.project_id.in_(projects.visible_project_ids(user))
-    query = select(Run).where(or_(visible, Run.project_id.is_(None)) if user.is_instance_admin else visible)
+    creator = aliased(User)
+    query = (
+        select(Run)
+        .outerjoin(Project, Project.id == Run.project_id)
+        .outerjoin(creator, creator.id == Run.created_by)
+        .where(or_(visible, Run.project_id.is_(None)) if user.is_instance_admin else visible)
+    )
+    query = apply_search(query, listing.q, [Run.operation, Project.name, creator.username])
     if project_id is not None:
         query = query.where(Run.project_id == project_id)
     if status:
@@ -267,7 +278,17 @@ def list_runs(
     if operation:
         query = query.where(Run.operation == operation)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(Run.created_at.desc(), Run.id).limit(limit).offset(offset)).unique().all()
+    duration = func.julianday(func.coalesce(Run.finished_at, func.current_timestamp())) - func.julianday(Run.started_at)
+    columns = {
+        "operation": Run.operation,
+        "project": func.lower(Project.name),
+        "status": Run.status,
+        "created_at": Run.created_at,
+        "duration": duration,
+        "created_by": func.lower(creator.username),
+    }
+    query = apply_sort(query, listing, columns, default=[Run.created_at.desc()], tiebreak=Run.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).unique().all()
     return list(rows), total
 
 

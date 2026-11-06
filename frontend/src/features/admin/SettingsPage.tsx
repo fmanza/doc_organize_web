@@ -17,6 +17,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { PageControls } from '../../components/Paging';
+import { SearchBox, SortableTh } from '../../components/listing';
+import { useClientTable } from '../../components/useListState';
 import { formatBytes, formatDateTime, formatDuration, formatSeconds } from '../../components/format';
 import {
   type InstanceCapabilities,
@@ -272,9 +275,23 @@ function WorkerScan({ resources }: { resources: Resources | null }) {
   );
 }
 
+const WORKER_COLUMNS = {
+  id: (w: WorkerItem) => w.id,
+  queues: (w: WorkerItem) => w.queues.join(', '),
+  // Trabajando, libre y sin latido, en ese orden.
+  state: (w: WorkerItem) => (!w.alive ? 2 : w.running > 0 ? 0 : 1),
+  heartbeat: (w: WorkerItem) => w.heartbeat_at,
+};
+
 function WorkersCard() {
   const { t } = useTranslation();
   const workers = useWorkers();
+  const table = useClientTable(
+    workers.data?.items,
+    WORKER_COLUMNS,
+    (w) => `${w.id} ${w.queues.join(' ')}`,
+    'w',
+  );
   return (
     <Card withBorder maw={1100}>
       <Title order={3} size="h4" mb={4}>
@@ -291,21 +308,32 @@ function WorkersCard() {
         </Text>
       )}
       {workers.data && workers.data.items.length > 0 && (
+        <SearchBox value={table.q} onChange={table.setQ} label={t('workers.search')} />
+      )}
+      {workers.data && workers.data.items.length > 0 && (
         <Table.ScrollContainer minWidth={900}>
           <Table verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{t('workers.id')}</Table.Th>
-                <Table.Th>{t('workers.queues')}</Table.Th>
-                <Table.Th>{t('workers.state')}</Table.Th>
-                <Table.Th>{t('workers.heartbeat')}</Table.Th>
+                <SortableTh state={table} sortKey="id">
+                  {t('workers.id')}
+                </SortableTh>
+                <SortableTh state={table} sortKey="queues">
+                  {t('workers.queues')}
+                </SortableTh>
+                <SortableTh state={table} sortKey="state">
+                  {t('workers.state')}
+                </SortableTh>
+                <SortableTh state={table} sortKey="heartbeat">
+                  {t('workers.heartbeat')}
+                </SortableTh>
                 <Table.Th>{t('workers.gpu')}</Table.Th>
                 <Table.Th>{t('workers.memory')}</Table.Th>
                 <Table.Th>{t('workers.scan')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {workers.data.items.map((worker) => (
+              {table.pageRows.map((worker) => (
                 <Table.Tr key={worker.id}>
                   <Table.Td>
                     <Tooltip label={t('workers.idHelp')} multiline w={260}>
@@ -346,6 +374,7 @@ function WorkersCard() {
           </Table>
         </Table.ScrollContainer>
       )}
+      {workers.data && <PageControls state={table.paging} total={table.total} label={t('paging.label')} />}
     </Card>
   );
 }

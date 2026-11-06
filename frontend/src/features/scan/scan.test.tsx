@@ -204,12 +204,22 @@ describe('ScanErrorsPage', () => {
     expect(await screen.findByText('120 documentos no se pudieron convertir.')).toBeInTheDocument();
     expect(screen.getByText('2024/doc000.pdf')).toBeInTheDocument();
     expect(screen.getByText('no se reintenta')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '3' }));
+    // 1.2.0: 25 filas por página (la 3 empieza en 50) y orden por columna.
+    await user.click(screen.getByRole('button', { name: 'Página 3' }));
     await waitFor(() =>
       expect(
         callsTo(fetchMock, 'GET', '/api/v1/projects/7/scan-errors').some(
-          (r) => new URL(r.url).searchParams.get('offset') === '100',
+          (r) => new URL(r.url).searchParams.get('offset') === '50',
         ),
+      ).toBe(true),
+    );
+    await user.click(screen.getByRole('button', { name: /Fallos seguidos/ }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/projects/7/scan-errors').some((r) => {
+          const params = new URL(r.url).searchParams;
+          return params.get('sort') === 'retry_count' && params.get('offset') === '0';
+        }),
       ).toBe(true),
     );
   });

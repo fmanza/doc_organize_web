@@ -208,6 +208,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Borrar auditoría por fechas
+         * @description Cuenta (``dry_run``) o borra las entradas del tenant activo en ``[since, until)``; el borrado se audita.
+         */
+        post: operations["purge_audit_api_v1_audit_purge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf": {
         parameters: {
             query?: never;
@@ -380,7 +400,7 @@ export interface paths {
         };
         /**
          * Listar ubicaciones
-         * @description Ubicaciones ordenadas por nombre, con su último estado.
+         * @description Ubicaciones (por nombre si no se pide otro orden), con su último estado.
          */
         get: operations["list_locations_api_v1_locations_get"];
         put?: never;
@@ -838,7 +858,7 @@ export interface paths {
         };
         /**
          * Historial de ejecuciones
-         * @description Runs de los proyectos visibles, más recientes primero (agrupados por ejecución).
+         * @description Runs de los proyectos visibles (más recientes primero si no se pide otro orden).
          */
         get: operations["list_runs_api_v1_runs_get"];
         put?: never;
@@ -1081,7 +1101,7 @@ export interface paths {
         };
         /**
          * Listar tenants
-         * @description Tenants por nombre con sus usuarios, proyectos y ubicaciones.
+         * @description Tenants (por nombre si no se pide otro orden) con sus usuarios, proyectos y ubicaciones.
          */
         get: operations["list_tenants_api_v1_tenants_get"];
         put?: never;
@@ -1143,7 +1163,7 @@ export interface paths {
         };
         /**
          * Listar usuarios
-         * @description Usuarios del tenant activo ordenados por nombre de usuario.
+         * @description Usuarios del tenant activo (por nombre de usuario si no se pide otro orden).
          */
         get: operations["list_users_api_v1_users_get"];
         put?: never;
@@ -1391,6 +1411,46 @@ export interface components {
             items: components["schemas"]["AuditEntryOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * AuditPurgeIn
+         * @description Borrar la auditoría del tenant activo en ``[since, until)`` (web 1.2.0, solo el admin de instancia).
+         *
+         *     Primero con ``dry_run`` (cuenta las entradas); después sin él y con ``confirm_count`` igual a esa cuenta.
+         */
+        AuditPurgeIn: {
+            /**
+             * Confirm Count
+             * @description Entradas que mostró la vista previa
+             */
+            confirm_count?: number | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Since
+             * Format: date-time
+             * @description Desde (incluido), ISO 8601 con zona
+             */
+            since: string;
+            /**
+             * Until
+             * Format: date-time
+             * @description Hasta (excluido), como tarde hoy a las 00:00 UTC
+             */
+            until: string;
+        };
+        /**
+         * AuditPurgeOut
+         * @description Entradas del rango (``matched``) y las borradas (``deleted``: 0 en la vista previa).
+         */
+        AuditPurgeOut: {
+            /** Deleted */
+            deleted: number;
+            /** Matched */
+            matched: number;
         };
         /**
          * CapabilitiesOut
@@ -3640,6 +3700,12 @@ export interface operations {
                 until?: string | null;
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("ts" | "action" | "outcome" | "actor" | "target" | "ip") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -3678,6 +3744,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    purge_audit_api_v1_audit_purge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditPurgeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPurgeOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No es administrador de la instancia o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Las entradas del rango cambiaron desde la vista previa (`purge_changed`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rango vacío o con entradas de hoy (`purge_range`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4008,6 +4126,12 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("name" | "usage" | "access" | "status" | "probed_at") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -4371,10 +4495,14 @@ export interface operations {
     list_projects_api_v1_projects_get: {
         parameters: {
             query?: {
-                /** @description Texto en el nombre */
+                /** @description Texto en el nombre o en el de sus ubicaciones */
                 q?: string | null;
                 limit?: number;
                 offset?: number;
+                /** @description Columna por la que ordenar */
+                sort?: ("name" | "source" | "destination" | "last_run") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -4660,6 +4788,12 @@ export interface operations {
                 only?: ("failed" | "collision") | null;
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("title" | "path" | "document_type" | "organized_path") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {
@@ -5356,6 +5490,12 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("path" | "message" | "retry_count") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {
@@ -5911,6 +6051,12 @@ export interface operations {
                 operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft") | null;
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("operation" | "project" | "status" | "created_at" | "duration" | "created_by") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -6107,6 +6253,12 @@ export interface operations {
                 reason?: ("exact_duplicate" | "version_conflict" | "fuzzy_name_match") | null;
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("position" | "reason" | "member_count") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {
@@ -6212,6 +6364,12 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("path" | "message" | "retry_count") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {
@@ -6262,6 +6420,12 @@ export interface operations {
                 user_id?: number | null;
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("username" | "ip" | "user_agent" | "created_at" | "last_seen_at" | "expires_at") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -6591,6 +6755,12 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
+                q?: string | null;
+                /** @description Columna por la que ordenar */
+                sort?: ("name" | "slug" | "users" | "projects" | "locations") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -6805,6 +6975,10 @@ export interface operations {
                 q?: string | null;
                 limit?: number;
                 offset?: number;
+                /** @description Columna por la que ordenar */
+                sort?: ("username" | "display_name" | "role" | "status" | "created_at") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {
@@ -6858,10 +7032,14 @@ export interface operations {
     list_users_api_v1_users_get: {
         parameters: {
             query?: {
-                /** @description Texto en usuario o nombre */
+                /** @description Texto en usuario, nombre o rol */
                 q?: string | null;
                 limit?: number;
                 offset?: number;
+                /** @description Columna por la que ordenar */
+                sort?: ("username" | "display_name" | "role" | "status" | "created_at") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;

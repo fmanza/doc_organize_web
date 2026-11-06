@@ -15,7 +15,9 @@
     "yes": "Sí",
     "no": "No",
     "back": "Volver",
-    "delete": "Borrar"
+    "delete": "Borrar",
+    "view": "Ver",
+    "close": "Cerrar"
   },
   "roles": {
     "admin": "Administrador",
@@ -25,7 +27,7 @@
       "admin": "Administrador",
       "user": "Usuario"
     },
-    "builtinBadge": "Rol base",
+    "builtinBadge": "Predeterminado",
     "title": "Roles de {{tenant}}",
     "intro": "Cada usuario tiene un rol de su tenant con permisos de administración. El acceso a cada proyecto sigue siendo por miembros (propietario, editor o lector). Solo puedes dar permisos que tienes.",
     "new": "Nuevo rol",
@@ -36,7 +38,20 @@
     "users_other": "{{count}} usuarios",
     "deleteLabel": "Borrar el rol {{name}}",
     "saveLabel": "Guardar el rol {{name}}",
-    "inUse": "Tiene usuarios: asígnales otro rol antes de borrarlo."
+    "inUse": "Tiene usuarios: asígnales otro rol antes de borrarlo.",
+    "search": "Buscar roles",
+    "type": "Tipo",
+    "usersColumn": "Usuarios",
+    "updatedAt": "Modificado",
+    "custom": "Personalizado",
+    "noPermissions": "Sin permisos de administración",
+    "permissionCount_one": "{{count}} permiso",
+    "permissionCount_other": "{{count}} permisos",
+    "viewLabel": "Ver el rol {{name}}",
+    "editLabel": "Editar el rol {{name}}",
+    "editTitle": "Editar el rol «{{name}}»",
+    "builtinReadOnly": "Los roles predeterminados no se pueden cambiar ni borrar.",
+    "confirmDelete": "¿Borrar el rol «{{name}}»? No se puede deshacer."
   },
   "nav": {
     "label": "Navegación principal",
@@ -156,7 +171,8 @@
     "notEmpty": "Solo se borra si no tiene usuarios, proyectos, ubicaciones ni plantillas.",
     "switch": "Tenant activo",
     "current": "Tenant: {{name}}",
-    "pages": "Páginas de tenants"
+    "pages": "Páginas de tenants",
+    "search": "Buscar tenants"
   },
   "paging": {
     "range": "{{first}}–{{last}} de {{total}}",
@@ -168,5 +184,14 @@
     "next": "Página siguiente",
     "last": "Última página",
     "label": "Páginas"
+  },
+  "listing": {
+    "search": "Buscar…",
+    "clear": "Limpiar la búsqueda",
+    "sortBy": "Ordenar por esta columna",
+    "empty": "Ningún resultado con esa búsqueda.",
+    "sortLabel": "Ordenar por",
+    "ascending": "Orden ascendente (cambiar a descendente)",
+    "descending": "Orden descendente (cambiar a ascendente)"
   }
 }

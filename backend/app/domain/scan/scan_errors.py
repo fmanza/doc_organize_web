@@ -6,13 +6,21 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import FINISHED_RUN_STATUSES, Run, ScanError
+from app.domain.listing import ListQuery, apply_search, apply_sort
 
 
-def run_errors(db: Session, run_id: str, *, limit: int, offset: int) -> tuple[list[ScanError], int]:
-    """Errores de un run, por ruta."""
-    query = select(ScanError).where(ScanError.run_id == run_id)
+def run_errors(
+    db: Session, run_id: str, *, limit: int, offset: int, listing: ListQuery | None = None
+) -> tuple[list[ScanError], int]:
+    """Errores de un run (por ruta si no se pide otro orden), filtrados por texto en la ruta o el mensaje."""
+    listing = listing or ListQuery()
+    query = apply_search(
+        select(ScanError).where(ScanError.run_id == run_id), listing.q, [ScanError.path, ScanError.message]
+    )
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(ScanError.path, ScanError.id).limit(limit).offset(offset)).all()
+    columns = {"path": ScanError.path, "message": func.lower(ScanError.message), "retry_count": ScanError.retry_count}
+    query = apply_sort(query, listing, columns, default=[ScanError.path], tiebreak=ScanError.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     return list(rows), total
 
 

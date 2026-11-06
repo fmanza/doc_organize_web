@@ -24,6 +24,7 @@ from app.domain.identity.errors import (
 )
 from app.domain.identity.passwords import check_policy, hash_password
 from app.domain.identity.sessions import revoke_user_sessions
+from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.tenancy import roles as tenant_roles
 from app.domain.tenancy.errors import LastTenantManagerError, PermissionEscalationError
 from app.domain.tenancy.tenants import get_tenant
@@ -66,14 +67,24 @@ def get_by_username(db: Session, username: str) -> User | None:
     return db.scalar(select(User).where(User.username == normalize_username(username)))
 
 
-def list_users(db: Session, *, tenant_id: int, q: str | None, limit: int, offset: int) -> tuple[list[User], int]:
-    """Usuarios del tenant ordenados por nombre, filtrados por texto en usuario o nombre visible."""
-    query = select(User).where(User.tenant_id == tenant_id)
-    if q:
-        pattern = f"%{q.strip().lower()}%"
-        query = query.where(or_(User.username.like(pattern), func.lower(User.display_name).like(pattern)))
+def list_users(
+    db: Session, *, tenant_id: int, q: str | None, limit: int, offset: int, listing: ListQuery | None = None
+) -> tuple[list[User], int]:
+    """Usuarios del tenant (por nombre de usuario si no se pide otro orden), filtrados por texto en usuario, nombre
+    visible o rol."""
+    listing = listing or ListQuery()
+    query = select(User).join(TenantRole, TenantRole.id == User.role_id).where(User.tenant_id == tenant_id)
+    query = apply_search(query, q or listing.q, [User.username, User.display_name, TenantRole.name])
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = db.scalars(query.order_by(User.username).limit(limit).offset(offset)).all()
+    columns = {
+        "username": User.username,
+        "display_name": func.lower(User.display_name),
+        "role": func.lower(TenantRole.name),
+        "status": User.is_active,
+        "created_at": User.created_at,
+    }
+    query = apply_sort(query, listing, columns, default=[User.username], tiebreak=User.id)
+    rows = db.scalars(query.limit(limit).offset(offset)).all()
     return list(rows), total
 
 

@@ -12,6 +12,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
+from app.api.v1.listing import ContextDocumentSort, OrderQuery, SearchQuery, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     CatalogEntryOut,
@@ -192,9 +193,14 @@ def list_context_documents(
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: SearchQuery = None,
+    sort: Annotated[ContextDocumentSort | None, Query(description="Columna por la que ordenar")] = None,
+    order: OrderQuery = "asc",
 ) -> ContextDocumentPage:
     access = projects.get_access(db, project_id, user)
-    rows, total = context.list_documents(db, access.project, domain=domain, only=only, limit=limit, offset=offset)
+    rows, total = context.list_documents(
+        db, access.project, domain=domain, only=only, limit=limit, offset=offset, listing=listing(q, sort, order)
+    )
     return ContextDocumentPage(items=[_document_out(r) for r in rows], total=total)
 
 
