@@ -157,7 +157,7 @@ export interface paths {
         };
         /**
          * Ver workers
-         * @description Workers registrados con sus colas, latido y si siguen vivos.
+         * @description Workers registrados con sus colas, latido, si siguen vivos y cuántas ejecuciones tienen en marcha.
          */
         get: operations["list_workers_api_v1_admin_workers_get"];
         put?: never;
@@ -3145,6 +3145,12 @@ export interface components {
             queues: string[];
             resources?: components["schemas"]["WorkerResources"] | null;
             /**
+             * Running
+             * @description Ejecuciones que este worker tiene en marcha ahora
+             * @default 0
+             */
+            running: number;
+            /**
              * Started At
              * Format: date-time
              */
@@ -3154,8 +3160,9 @@ export interface components {
         };
         /**
          * WorkerResources
-         * @description Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o
-         *     sin límite.
+         * @description Memoria del contenedor del worker (cgroup), huecos de jobs y ajustes del escaneo, del último latido; ``None`` =
+         *     desconocido (un worker anterior a la 1.1.0) o sin límite. ``memory_peak_bytes`` cuenta desde que arrancó el
+         *     contenedor.
          */
         WorkerResources: {
             /** Memory Current Bytes */
@@ -3166,8 +3173,22 @@ export interface components {
             memory_peak_bytes?: number | null;
             /** Oom Kills */
             oom_kills?: number | null;
+            /**
+             * Scan Document Timeout Seconds
+             * @description 0 = sin límite
+             */
+            scan_document_timeout_seconds?: number | null;
+            /** Scan Io Retries */
+            scan_io_retries?: number | null;
             /** Scan Recycle Documents */
             scan_recycle_documents?: number | null;
+            /** Scan Reuse Hashes */
+            scan_reuse_hashes?: boolean | null;
+            /**
+             * Slots
+             * @description Jobs simultáneos del worker (DOW_WORKER_CONCURRENCY)
+             */
+            slots?: number | null;
         };
     };
     responses: never;

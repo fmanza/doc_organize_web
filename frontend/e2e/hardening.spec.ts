@@ -18,13 +18,18 @@ test('el proyecto abierto pone Duplicados el primero', async ({ page }) => {
   expect(links.slice(start, start + 4)).toEqual(['Duplicados', 'Escaneo', 'Documentos', 'Contexto']);
 });
 
-test('Ajustes enseña la memoria de cada worker', async ({ page }) => {
+test('Ajustes enseña el estado, la memoria y el escaneo de cada worker', async ({ page }) => {
   await login(page);
   await page.goto('/admin/settings');
 
   await expect(page.getByRole('columnheader', { name: 'Memoria' })).toBeVisible();
-  await expect(page.getByText(/^Pico .+ de .+$/).first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/^Escaneo en tramos de \d+ documentos?$/).first()).toBeVisible();
+  // 1.1.0: «Libre» o «Trabajando», no «En marcha»; uso actual y pico desde el arranque; ajustes del escaneo.
+  await expect(page.getByText(/^(Libre|Trabajando \(.+\))$/).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('En marcha')).toHaveCount(0);
+  await expect(page.getByText(/^Ahora .+$/).first()).toBeVisible();
+  await expect(page.getByText(/^Pico .+ · límite .+$/).first()).toBeVisible();
+  await expect(page.getByText(/^Tramos de \d+ documentos?$/).first()).toBeVisible();
+  await expect(page.getByText(/^\d+ reintentos? de lectura$/).first()).toBeVisible();
 });
 
 test('la API no se guarda en cachés y no acepta cuerpos gigantes', async ({ request }) => {

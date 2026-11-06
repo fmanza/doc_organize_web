@@ -12,7 +12,7 @@ Cada carpeta de origen es un **ámbito propio de doc_organize** (decisión del m
   documentos ya no existen y el tamaño de las salidas, sin hashear el origen.
 
 Un escaneo largo se parte en **tramos** (G38, Fase 10): tras ``DOW_SCAN_RECYCLE_DOCUMENTS`` documentos convertidos la
-llamada para de forma ordenada, el subproceso sale con ``JobRecycle`` y el worker lanza otro para el mismo run. El
+llamada para de forma ordenada (desde la 1.1.0 lo hace doc_organize con ``ScanOptions.max_documents``), el subproceso sale con ``JobRecycle`` y el worker lanza otro para el mismo run. El
 nuevo tramo lee de ``runs.result`` lo ya sumado y las carpetas terminadas (``resume``), salta esas carpetas y retoma la
 que estaba a medias: la caché hace que solo se convierta lo que falta.
 
@@ -59,10 +59,11 @@ SUMMARY_COUNTS: Final = (
     "ocr_processed",
     "error_retries",
     "error_retries_capped",
+    "io_errors",
 )
 SUMMARY_SECONDS: Final = ("duration_seconds", "discovery_duration_seconds", "total_conversion_seconds")
 #: Recuentos del descubrimiento: al retomar una carpeta a medias se cuentan solo en su primer tramo.
-DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged"})
+DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged", "io_errors"})
 #: Clave de ``runs.result`` con lo necesario para retomar en otro tramo (se quita al terminar).
 RESUME: Final = "resume"
 #: Fase de doc_organize → fase que ve el usuario.
@@ -340,6 +341,9 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
             extract_images=params.extract_images,
             use_picture_description=params.use_picture_description,
             max_conversions=ctx.settings.scan_recycle_documents,
+            document_timeout_seconds=ctx.settings.scan_document_timeout_seconds,
+            io_retries=ctx.settings.scan_io_retries,
+            reuse_hashes=ctx.settings.scan_reuse_hashes,
         )
         try:
             outcome = library.run_scan(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)
@@ -357,7 +361,11 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
             ctx.log(masker.text(warning), level="warning")
         warned += len(outcome.warnings)
         if outcome.recycled and not ctx.cancelled:
-            ctx.log(f"Tramo {result.get('segments', 1)} terminado: el escaneo sigue en un proceso nuevo.")
+            pending = int(outcome.summary.get("remaining") or 0)
+            ctx.log(
+                f"Tramo {result.get('segments', 1)} terminado: quedan {pending} conversiones en esta carpeta; "
+                "el escaneo sigue en un proceso nuevo."
+            )
             raise JobRecycle({**result, RESUME: Resume(resume.done, folder.subpath, failed).dump()})
         if outcome.cancelled:
             raise JobCancelled(result)

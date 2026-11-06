@@ -27,8 +27,8 @@ from app.integrations.doc_organize.models import artifacts_path
 from app.integrations.doc_organize.projects import DocOrganizeOperationError
 
 CANCEL_POLL_SECONDS: Final = 1.0
-#: Fases de ``ProgressEvent`` cuyo ``processed`` cuenta documentos convertidos (para ``max_conversions``).
-RECYCLE_PHASES: Final = frozenset({"conversion", "ocr"})
+#: ``ScanSummary.stopped_reason`` cuando la llamada paró por ``ScanOptions.max_documents`` (G38, doc_organize 1.1.0).
+STOPPED_MAX_DOCUMENTS: Final = "max_documents"
 
 
 @dataclass(frozen=True)
@@ -42,8 +42,11 @@ class ScanRequest:
             la carpeta escaneada sin su nombre, así que cada carpeta necesita la suya (G18).
         state_root: Estado del proyecto (caché, historiales) en el volumen local (G5).
         models_dir: Carpeta de modelos (ADR-011).
-        max_conversions: Documentos convertidos tras los que la llamada para de forma ordenada (``CancelToken``) para
-            seguir en un proceso nuevo (G38); 0 = sin límite.
+        max_conversions: Conversiones de Docling tras las que la llamada para de forma ordenada para seguir en un
+            proceso nuevo (G38, ``ScanOptions.max_documents``); 0 = sin límite.
+        document_timeout_seconds: Segundos máximos por documento y pasada (G11, ``document_timeout_s``); 0 = sin límite.
+        io_retries: Reintentos ante errores de E/S transitorios (G11).
+        reuse_hashes: No rehashear lo que no cambió de tamaño ni fecha (G11, ``reuse_unchanged_hashes``).
     """
 
     folders: list[Path]
@@ -58,6 +61,9 @@ class ScanRequest:
     extract_images: bool = False
     use_picture_description: bool = False
     max_conversions: int = 0
+    document_timeout_seconds: int = 0
+    io_retries: int = 0
+    reuse_hashes: bool = False
 
 
 @dataclass(frozen=True)
@@ -86,7 +92,7 @@ class ScanOutcome:
 
     Attributes:
         cancelled: Paró por el ``CancelToken``; lo convertido quedó guardado en la caché.
-        recycled: La parada la pidió ``max_conversions`` (no el usuario ni el timeout): queda trabajo por hacer.
+        recycled: La llamada paró por ``max_conversions`` (no por el usuario ni el timeout): queda trabajo por hacer.
         summary: Recuentos del ``ScanSummary`` (evento final ``completed`` o ``cancelled``).
         warnings: Avisos del descubrimiento (carpetas que ya no existen…); pueden llevar rutas absolutas.
         failures: Errores de conversión de esta llamada.
@@ -101,36 +107,6 @@ class ScanOutcome:
     failures: list[ScanFailure] = field(default_factory=list)
     reports: list[dict[str, Any]] = field(default_factory=list)
     event_schema_version: int | None = None
-
-
-@dataclass
-class ConversionCounter:
-    """Cuenta los documentos convertidos de una llamada a partir de los ``ProgressEvent`` (G38).
-
-    ``processed`` sube con cada documento convertido (``file_converted``) y con cada OCR terminado
-    (``ocr_processed``), y vuelve a 0 al cambiar de fase.
-
-    Attributes:
-        limit: Documentos tras los que hay que parar; 0 = nunca.
-    """
-
-    limit: int
-    converted: int = 0
-    _last: dict[str, int] = field(default_factory=dict)
-
-    def feed(self, phase: str, processed: int, total: int | None = None) -> bool:
-        """Suma el avance de ``phase``; ``True`` cuando se alcanza ``limit`` y aún quedan documentos en la fase.
-
-        Solo se para al terminar un documento (sube ``processed``): el inicio de la fase OCR, con el límite ya pasado,
-        pararía un tramo sin hacer nada. Si el límite cae en el último documento de la fase (``processed == total``)
-        tampoco: un tramo nuevo no tendría nada que convertir.
-        """
-        if phase not in RECYCLE_PHASES or processed <= self._last.get(phase, 0):
-            return False  # solo al terminar un documento: al empezar una fase aún no hay nada que guardar
-        self.converted += processed - self._last.get(phase, 0)
-        self._last[phase] = processed
-        pending = total is None or processed < total
-        return bool(self.limit) and self.converted >= self.limit and pending
 
 
 def _size(path: Path) -> int:
@@ -187,6 +163,11 @@ def run_scan(
         # G17: con modelos descargados, Docling los toma de ahí y nunca descarga (falta uno → ModelsNotAvailableError).
         artifacts_path=models,
         allow_model_downloads=models is None,
+        # G38/G11 (doc_organize 1.1.0): tramos, timeout por documento, reintentos de E/S y hashes reutilizados.
+        max_documents=request.max_conversions or None,
+        document_timeout_s=float(request.document_timeout_seconds) if request.document_timeout_seconds else None,
+        io_retries=request.io_retries,
+        reuse_unchanged_hashes=request.reuse_hashes,
     )
     errors_log, history_log = layout.scan_errors_log, layout.scan_history_log
     errors_offset, history_offset = _size(errors_log), _size(history_log)
@@ -200,14 +181,10 @@ def run_scan(
                 return
 
     outcome = ScanOutcome()
-    counter = ConversionCounter(request.max_conversions)
 
     def _progress(event: ProgressEvent) -> None:
         on_progress(ScanProgress(event.phase, event.processed, event.total, event.current))
         if is_cancelled():  # cada documento: la parada llega antes del siguiente sin esperar al sondeo
-            token.cancel()
-        if counter.feed(event.phase, event.processed, event.total) and not token.cancelled:
-            outcome.recycled = True
             token.cancel()
 
     async def _consume() -> None:
@@ -242,8 +219,10 @@ def run_scan(
     finally:
         stop.set()
         watcher.join()
-    # Si la llamada terminó igualmente (el último documento), no queda nada que seguir en otro proceso.
-    outcome.recycled = outcome.recycled and outcome.cancelled and not is_cancelled()
+    # doc_organize solo dice «max_documents» si quedan conversiones (``remaining``): sin ellas no hay otro tramo.
+    outcome.recycled = (
+        not outcome.cancelled and outcome.summary.get("stopped_reason") == STOPPED_MAX_DOCUMENTS and not is_cancelled()
+    )
 
     for line in _new_lines(errors_log, errors_offset):
         try:

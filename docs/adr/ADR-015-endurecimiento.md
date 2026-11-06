@@ -45,6 +45,10 @@ mató tras 2 h 13 min (`exitcode -9`, `OOMKilled`, hueco G38).
 5. **Escaneos en tramos** (rodeo de G38, petición L-16 a doc_organize).
    - La capa anticorrupción cuenta los documentos convertidos con los `ProgressEvent`. Al llegar a
      `DOW_SCAN_RECYCLE_DOCUMENTS` (200) para con el `CancelToken`, y la caché se guarda (G16).
+     **Enmienda (web 1.1.0)**: lo hace doc_organize 1.1.0 con `ScanOptions.max_documents`. La capa anticorrupción
+     ya no cuenta eventos ni cancela: hay otro tramo si `ScanSummary.stopped_reason` es `max_documents` (solo
+     lo es si quedan conversiones, `remaining`). El `CancelToken` queda para cancelar, y cancelar durante el
+     OCR conserva lo procesado.
    - El job lanza `JobRecycle` y el subproceso sale con 75 (`EX_TEMPFAIL`).
    - El worker relanza **el mismo run**, que sigue `running`. El timeout y la cancelación cuentan desde el primer tramo.
    - El tramo nuevo lee de `runs.result["resume"]` las carpetas terminadas y la que quedó a medias. Esa carpeta se

@@ -140,6 +140,9 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_WORKER_MEM_LIMIT` | `6g` | Límite de memoria del worker (Docling consume mucha por documento). Si un escaneo largo termina con «El worker se quedó sin memoria», súbelo (p. ej. `8g`) |
 | `DOW_WORKER_GPU_MEM_LIMIT` | `8g` | Límite de memoria de `worker-gpu` |
 | `DOW_SCAN_RECYCLE_DOCUMENTS` | `200` | Documentos convertidos tras los que un escaneo sigue en un proceso nuevo (tramos, [Ejecuciones](ejecuciones.md#escaneos-largos-tramos)); 0 = nunca. Bájalo si aún se queda sin memoria |
+| `DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS` | `0` | Tiempo máximo por documento y pasada de conversión; el que lo supera queda como error y el escaneo sigue. 0 = sin límite. Docling no se puede interrumpir: el documento acaba en segundo plano y deja un pico de memoria, así que úsalo junto con los tramos |
+| `DOW_SCAN_IO_RETRIES` | `2` | Reintentos ante errores de lectura transitorios (cortes breves de una carpeta de red) al listar, leer, hashear y copiar, con espera de 1 s que se duplica en cada intento. Un fichero que los agota sale en «Ficheros que no se pudieron leer» |
+| `DOW_SCAN_REUSE_HASHES` | `true` | No rehashear un fichero cuyo tamaño y fecha coinciden con la caché: ahorra horas en carpetas grandes de red. No detecta un cambio que conserve tamaño y fecha; «Forzar reconversión» rehashea todo |
 | `DOW_WITH_LIBREOFFICE`, `DOW_WITH_AV` | `false` | Al construir: imagen con LibreOffice o con audio y vídeo |
 
 Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`). Los administradores pueden

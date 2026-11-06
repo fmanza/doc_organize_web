@@ -11,12 +11,13 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { formatBytes, formatDateTime } from '../../components/format';
+import { formatBytes, formatDateTime, formatDuration, formatSeconds } from '../../components/format';
 import {
   type InstanceCapabilities,
   type SettingOut,
@@ -169,36 +170,104 @@ function CapabilitiesCard({ data }: { data: InstanceCapabilities }) {
   );
 }
 
-type Resources = NonNullable<
-  NonNullable<ReturnType<typeof useWorkers>['data']>['items'][number]['resources']
->;
+type WorkerItem = NonNullable<ReturnType<typeof useWorkers>['data']>['items'][number];
+type Resources = NonNullable<WorkerItem['resources']>;
 
-/** Pico y límite de memoria del contenedor y OOM (M3, Fase 10): si el pico roza el límite, sube DOW_WORKER_MEM_LIMIT. */
+/** Libre, trabajando (N de M huecos) o sin latido (1.1.0): «En marcha» no decía si el worker hacía algo. */
+function WorkerState({ worker }: { worker: WorkerItem }) {
+  const { t } = useTranslation();
+  if (!worker.alive) {
+    return (
+      <Tooltip label={t('workers.staleHelp')} multiline w={260}>
+        <Badge color="gray" variant="light">
+          {t('workers.stale')}
+        </Badge>
+      </Tooltip>
+    );
+  }
+  const slots = worker.resources?.slots ?? null;
+  if (worker.running > 0) {
+    return (
+      <Badge color="blue" variant="light">
+        {slots === null
+          ? t('workers.busy', { count: worker.running })
+          : t('workers.busyOf', { running: worker.running, slots })}
+      </Badge>
+    );
+  }
+  return (
+    <Tooltip label={t('workers.idleHelp')} multiline w={260}>
+      <Badge color="green" variant="light">
+        {t('workers.idle')}
+      </Badge>
+    </Tooltip>
+  );
+}
+
+/** Uso, pico y límite de memoria del contenedor, y OOM (M3, Fase 10); el pico cuenta desde que arrancó. */
 function WorkerMemory({ resources }: { resources: Resources | null }) {
   const { t } = useTranslation();
   if (!resources) {
     return <>—</>;
   }
-  const peak = resources.memory_peak_bytes ?? resources.memory_current_bytes ?? null;
   const limit = resources.memory_limit_bytes ?? null;
   return (
     <Stack gap={2}>
       <Text size="sm">
-        {t('workers.memoryUse', {
-          peak: peak === null ? '—' : formatBytes(peak),
-          limit: limit === null ? t('workers.noLimit') : formatBytes(limit),
-        })}
+        {t('workers.memoryNow', { current: formatBytes(resources.memory_current_bytes ?? null) })}
       </Text>
+      <Tooltip label={t('workers.memoryPeakHelp')} multiline w={280}>
+        <Text size="xs" c="dimmed">
+          {t('workers.memoryPeak', {
+            peak: formatBytes(resources.memory_peak_bytes ?? null),
+            limit: limit === null ? t('workers.noLimit') : formatBytes(limit),
+          })}
+        </Text>
+      </Tooltip>
       {(resources.oom_kills ?? 0) > 0 && (
         <Badge color="red" variant="light">
           {t('workers.oom', { count: resources.oom_kills ?? 0 })}
         </Badge>
       )}
-      {resources.scan_recycle_documents ? (
-        <Text size="xs" c="dimmed">
-          {t('workers.recycle', { count: resources.scan_recycle_documents })}
+    </Stack>
+  );
+}
+
+/** Ajustes del escaneo de este worker (variables DOW_SCAN_*): tramos, timeout, reintentos y hashes (1.1.0). */
+function WorkerScan({ resources }: { resources: Resources | null }) {
+  const { t } = useTranslation();
+  if (!resources) {
+    return <>—</>;
+  }
+  const recycle = resources.scan_recycle_documents ?? null;
+  const timeout = resources.scan_document_timeout_seconds ?? null;
+  const retries = resources.scan_io_retries ?? null;
+  const reuse = resources.scan_reuse_hashes ?? null;
+  const lines: string[] = [];
+  if (recycle !== null) {
+    lines.push(recycle > 0 ? t('workers.recycle', { count: recycle }) : t('workers.noRecycle'));
+  }
+  if (timeout !== null) {
+    lines.push(
+      timeout > 0 ? t('workers.timeout', { duration: formatSeconds(timeout) }) : t('workers.noTimeout'),
+    );
+  }
+  if (retries !== null) {
+    lines.push(t('workers.ioRetries', { count: retries }));
+  }
+  if (reuse !== null) {
+    lines.push(t(reuse ? 'workers.reuseHashes' : 'workers.rehashAll'));
+  }
+  if (lines.length === 0) {
+    return <>—</>;
+  }
+  return (
+    <Stack gap={0}>
+      {lines.map((line) => (
+        <Text key={line} size="xs">
+          {line}
         </Text>
-      ) : null}
+      ))}
     </Stack>
   );
 }
@@ -207,10 +276,13 @@ function WorkersCard() {
   const { t } = useTranslation();
   const workers = useWorkers();
   return (
-    <Card withBorder maw={960}>
-      <Title order={3} size="h4" mb="sm">
+    <Card withBorder maw={1100}>
+      <Title order={3} size="h4" mb={4}>
         {t('workers.title')}
       </Title>
+      <Text size="sm" c="dimmed" mb="sm">
+        {t('workers.intro')}
+      </Text>
       {workers.isPending && <Loader size="sm" aria-label={t('common.loading')} />}
       {workers.isError && <ErrorAlert error={workers.error} />}
       {workers.data?.items.length === 0 && (
@@ -219,8 +291,8 @@ function WorkersCard() {
         </Text>
       )}
       {workers.data && workers.data.items.length > 0 && (
-        <Table.ScrollContainer minWidth={760}>
-          <Table>
+        <Table.ScrollContainer minWidth={900}>
+          <Table verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>{t('workers.id')}</Table.Th>
@@ -229,23 +301,34 @@ function WorkersCard() {
                 <Table.Th>{t('workers.heartbeat')}</Table.Th>
                 <Table.Th>{t('workers.gpu')}</Table.Th>
                 <Table.Th>{t('workers.memory')}</Table.Th>
+                <Table.Th>{t('workers.scan')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {workers.data.items.map((worker) => (
                 <Table.Tr key={worker.id}>
                   <Table.Td>
-                    <Text size="sm" ff="monospace">
-                      {worker.id}
+                    <Tooltip label={t('workers.idHelp')} multiline w={260}>
+                      <Text size="sm" ff="monospace">
+                        {worker.id}
+                      </Text>
+                    </Tooltip>
+                    <Text size="xs" c="dimmed">
+                      {t('workers.versions', {
+                        web: worker.version,
+                        library: worker.doc_organize_version ?? '—',
+                      })}
                     </Text>
                   </Table.Td>
                   <Table.Td>{worker.queues.join(', ')}</Table.Td>
                   <Table.Td>
-                    <Badge color={worker.alive ? 'green' : 'gray'} variant="light">
-                      {t(worker.alive ? 'workers.alive' : 'workers.stale')}
-                    </Badge>
+                    <WorkerState worker={worker} />
                   </Table.Td>
-                  <Table.Td>{formatDateTime(worker.heartbeat_at)}</Table.Td>
+                  <Table.Td>
+                    <Text size="sm" title={formatDateTime(worker.heartbeat_at)}>
+                      {t('workers.ago', { duration: formatDuration(worker.heartbeat_at) })}
+                    </Text>
+                  </Table.Td>
                   <Table.Td>
                     {worker.gpu_ready === null || worker.gpu_ready === undefined
                       ? '—'
@@ -253,6 +336,9 @@ function WorkersCard() {
                   </Table.Td>
                   <Table.Td>
                     <WorkerMemory resources={worker.resources ?? null} />
+                  </Table.Td>
+                  <Table.Td>
+                    <WorkerScan resources={worker.resources ?? null} />
                   </Table.Td>
                 </Table.Tr>
               ))}

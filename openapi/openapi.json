@@ -4637,6 +4637,12 @@
               }
             ]
           },
+          "running": {
+            "default": 0,
+            "description": "Ejecuciones que este worker tiene en marcha ahora",
+            "title": "Running",
+            "type": "integer"
+          },
           "started_at": {
             "format": "date-time",
             "title": "Started At",
@@ -4661,7 +4667,7 @@
         "type": "object"
       },
       "WorkerResources": {
-        "description": "Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o\nsin límite.",
+        "description": "Memoria del contenedor del worker (cgroup), huecos de jobs y ajustes del escaneo, del último latido; ``None`` =\ndesconocido (un worker anterior a la 1.1.0) o sin límite. ``memory_peak_bytes`` cuenta desde que arrancó el\ncontenedor.",
         "properties": {
           "memory_current_bytes": {
             "anyOf": [
@@ -4707,6 +4713,29 @@
             ],
             "title": "Oom Kills"
           },
+          "scan_document_timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0 = sin límite",
+            "title": "Scan Document Timeout Seconds"
+          },
+          "scan_io_retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Io Retries"
+          },
           "scan_recycle_documents": {
             "anyOf": [
               {
@@ -4717,6 +4746,29 @@
               }
             ],
             "title": "Scan Recycle Documents"
+          },
+          "scan_reuse_hashes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Reuse Hashes"
+          },
+          "slots": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Jobs simultáneos del worker (DOW_WORKER_CONCURRENCY)",
+            "title": "Slots"
           }
         },
         "title": "WorkerResources",
@@ -4726,7 +4778,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.0.1"
+    "version": "1.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5083,7 +5135,7 @@
     },
     "/api/v1/admin/workers": {
       "get": {
-        "description": "Workers registrados con sus colas, latido y si siguen vivos.",
+        "description": "Workers registrados con sus colas, latido, si siguen vivos y cuántas ejecuciones tienen en marcha.",
         "operationId": "list_workers_api_v1_admin_workers_get",
         "responses": {
           "200": {

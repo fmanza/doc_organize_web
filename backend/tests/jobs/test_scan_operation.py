@@ -298,15 +298,25 @@ def _save_segment(db: Session, run_id: str, result: dict[str, Any]) -> None:
 def test_a_long_scan_continues_in_a_new_segment(
     ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    ctx.settings = ctx.settings.model_copy(update={"scan_recycle_documents": 3})
+    ctx.settings = ctx.settings.model_copy(
+        update={
+            "scan_recycle_documents": 3,
+            "scan_document_timeout_seconds": 600,
+            "scan_io_retries": 4,
+            "scan_reuse_hashes": False,
+        }
+    )
     calls: list[ScanRequest] = []
     outcomes = iter(
         [
-            # Tramo 1: «2024» llega al límite a mitad.
-            ScanOutcome(cancelled=True, recycled=True, summary={"scanned": 10, "new": 10, "converted": 3}),
-            # Tramo 2: retoma «2024» (el descubrimiento ya contado) y escanea «2025».
-            ScanOutcome(summary={"scanned": 10, "new": 7, "unchanged": 3, "converted": 7}),
-            ScanOutcome(summary={"scanned": 1, "new": 1, "converted": 1}),
+            # Tramo 1: «2024» llega al límite a mitad (doc_organize 1.1.0: stopped_reason y remaining).
+            ScanOutcome(
+                recycled=True,
+                summary={"scanned": 10, "new": 10, "converted": 3, "io_errors": 1, "remaining": 7},
+            ),
+            # Tramo 2: retoma «2024» (el descubrimiento ya contado, también sus io_errors) y escanea «2025».
+            ScanOutcome(summary={"scanned": 10, "new": 7, "unchanged": 3, "converted": 7, "io_errors": 1}),
+            ScanOutcome(summary={"scanned": 1, "new": 1, "converted": 1, "io_errors": 2}),
         ]
     )
 
@@ -326,10 +336,13 @@ def test_a_long_scan_continues_in_a_new_segment(
 
     assert [c.output_subdir for c in calls] == ["2024", "2024", "2025"]
     assert all(c.max_conversions == 3 for c in calls)
+    assert {(c.document_timeout_seconds, c.io_retries, c.reuse_hashes) for c in calls} == {(600, 4, False)}
     assert result["segments"] == 2 and scan_op.RESUME not in result
     assert result["converted"] == 11 and result["scanned"] == 11 and result["new"] == 11
+    assert result["io_errors"] == 3
     logs = [e.data["message"] for e in db.scalars(select(RunEvent).where(RunEvent.type == "log"))]
     assert any(m.startswith("Tramo 2:") for m in logs)
+    assert any("quedan 7 conversiones" in m for m in logs)
 
 
 def test_a_forced_scan_does_not_empty_the_cache_again_when_resuming(
@@ -338,7 +351,7 @@ def test_a_forced_scan_does_not_empty_the_cache_again_when_resuming(
     calls: list[ScanRequest] = []
     outcomes = iter(
         [
-            ScanOutcome(cancelled=True, recycled=True, summary={"converted": 200}),
+            ScanOutcome(recycled=True, summary={"converted": 200, "remaining": 5}),
             ScanOutcome(summary={"converted": 5}),
             ScanOutcome(summary={"converted": 1}),
         ]

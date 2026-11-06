@@ -53,7 +53,14 @@ class Settings(BaseSettings):
         ai_retries: Reintentos de un timeout o error de conexión de cada petición a un servicio de IA (Fase 8, L-3b).
         ai_max_documents_per_run: Documentos que un run puede enviar a la IA como mucho (presupuesto, Fase 8).
         scan_recycle_documents: Documentos convertidos tras los que el escaneo sigue en un subproceso nuevo del mismo
-            run (la memoria de Docling crece durante un escaneo largo, G38; 0 = nunca; Fase 10).
+            run (la memoria de Docling crece durante un escaneo largo, G38; 0 = nunca; Fase 10). Desde la 1.1.0 lo
+            aplica doc_organize (``ScanOptions.max_documents``).
+        scan_document_timeout_seconds: Segundos máximos por documento y pasada de conversión; el que los supera queda
+            como error y el escaneo sigue (G11, 1.1.0). 0 = sin límite. El hilo de Docling no se interrumpe: termina en
+            segundo plano y deja un pico de memoria.
+        scan_io_retries: Reintentos ante errores de E/S transitorios al listar, leer, hashear y copiar (G11, 1.1.0).
+        scan_reuse_hashes: No rehashear un fichero cuyo tamaño y fecha coinciden con la caché (G11, 1.1.0); «forzar»
+            rehashea todo. No detecta un cambio que conserve tamaño y fecha.
         rate_limit_login: Intentos de inicio de sesión por minuto e IP (Fase 10).
         rate_limit_write: Peticiones de escritura a ``/api/v1`` por minuto e IP (Fase 10).
         max_request_mb: Tamaño máximo del cuerpo de una petición (413 si se pasa; Fase 10).
@@ -97,6 +104,9 @@ class Settings(BaseSettings):
     ai_retries: int = Field(default=2, ge=0, le=5)
     ai_max_documents_per_run: int = Field(default=500, ge=1, le=100_000)
     scan_recycle_documents: int = Field(default=200, ge=0, le=1_000_000)
+    scan_document_timeout_seconds: int = Field(default=0, ge=0, le=7 * 24 * 3600)
+    scan_io_retries: int = Field(default=2, ge=0, le=10)
+    scan_reuse_hashes: bool = True
     rate_limit_login: int = Field(default=10, ge=1, le=10_000)
     rate_limit_write: int = Field(default=120, ge=1, le=100_000)
     max_request_mb: int = Field(default=16, ge=1, le=1024)

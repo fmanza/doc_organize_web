@@ -11,11 +11,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import User, Worker, utcnow
+from app.db.models import Run, User, Worker, utcnow
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 
@@ -29,6 +29,16 @@ def _alive_since(settings: Settings) -> datetime:
 def list_workers(db: Session) -> list[Worker]:
     """Workers registrados, el latido más reciente primero."""
     return list(db.scalars(select(Worker).order_by(Worker.heartbeat_at.desc())))
+
+
+def running_by_worker(db: Session) -> dict[str, int]:
+    """Ejecuciones ``running`` por ``worker_id`` (las que cada worker tiene en marcha ahora)."""
+    rows = db.execute(
+        select(Run.worker_id, func.count())
+        .where(Run.status == "running", Run.worker_id.is_not(None))
+        .group_by(Run.worker_id)
+    )
+    return {str(worker_id): int(count) for worker_id, count in rows}
 
 
 def is_alive(worker: Worker, settings: Settings) -> bool:
