@@ -330,6 +330,42 @@ def test_workers_show_gpu_and_memory(admin_client: TestClient, db: Session) -> N
 
     assert worker["gpu_ready"] is True
     assert worker["resources"]["memory_limit_bytes"] == 6 << 30 and worker["resources"]["oom_kills"] == 1
+    assert worker["running"] == 0 and worker["resources"]["slots"] is None  # worker anterior a la 1.1.0
+
+
+def test_workers_show_what_they_are_running(user_client: TestClient, project_id: int, admin: User, db: Session) -> None:
+    """1.1.0: «En marcha» no decía si el worker trabajaba; ``running`` cuenta sus ejecuciones en marcha."""
+    import uuid
+
+    db.add_all(
+        [
+            Worker(id="w:ocupado", queues=["cpu"], version="t", resources={"slots": 1}),
+            Worker(id="w:libre", queues=["gpu"], version="t", resources={"slots": 1}),
+            Run(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                operation="noop",
+                params={},
+                status="running",
+                worker_id="w:ocupado",
+            ),
+            Run(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                operation="noop",
+                params={},
+                status="succeeded",
+                worker_id="w:libre",
+            ),
+        ]
+    )
+    db.commit()
+
+    admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)  # el proyecto lo creó un usuario
+    items = {w["id"]: w for w in admin_client.get("/api/v1/admin/workers").json()["items"]}
+
+    assert (items["w:ocupado"]["running"], items["w:libre"]["running"]) == (1, 0)
+    assert items["w:ocupado"]["resources"]["slots"] == 1
 
 
 def test_active_runs_per_user_are_capped(user_client: TestClient, project_id: int) -> None:

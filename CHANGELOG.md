@@ -5,6 +5,39 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-06
+
+La web usa la API nueva de doc_organize 1.1.0 (G38, G11) y la ficha de workers dice lo que hace cada uno. No quedan
+huecos abiertos en doc_organize.
+
+### Added
+
+- **backend**: escaneos más robustos en carpetas de red (G11), con variables del worker:
+  - `DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS` (0 = sin límite): el documento que tarda más queda como error y el escaneo
+    sigue;
+  - `DOW_SCAN_IO_RETRIES` (2): reintentos ante errores de lectura transitorios al listar, leer, hashear y copiar;
+  - `DOW_SCAN_REUSE_HASHES` (sí): no rehashear lo que no cambió de tamaño ni fecha («Forzar» rehashea todo).
+- **backend**, **frontend**: el resultado de un escaneo cuenta los «Ficheros que no se pudieron leer» (`io_errors`).
+- **backend**: `GET /api/v1/admin/workers` añade `running` (ejecuciones en marcha de cada worker) y, en `resources`,
+  `slots` y los ajustes del escaneo del worker.
+
+### Changed
+
+- **backend**: los tramos de un escaneo largo (G38) los aplica doc_organize con `ScanOptions.max_documents`: la web ya
+  no cuenta eventos ni cancela para partir. Cancelar durante el OCR conserva lo ya procesado
+  ([ADR-015](docs/adr/ADR-015-endurecimiento.md), enmienda).
+- **frontend**: Administración → Ajustes → Workers se entiende mejor:
+  - el estado dice **Libre**, **Trabajando (1 de 1)** o **Sin latido**, en vez de «En marcha», que solo indicaba que
+    el proceso tenía latido;
+  - la memoria muestra el uso actual, el pico desde que arrancó el contenedor y el límite;
+  - columna **Escaneo** con los tramos, el tiempo máximo por documento, los reintentos y los hashes;
+  - el último latido en relativo («hace 10 s»), las versiones de cada worker y una introducción a la tabla.
+
+### Docs
+
+- **docs**: G38, G11 y G25 pasan a resueltos. G25 (`DocumentMetadata.from_cache_entry`) no se adopta: la vista previa
+  de duplicados ya no rehashea, y su `lstat` detecta los ficheros que ya no están y da el tamaño y la fecha actuales.
+
 ## [1.0.1] - 2026-11-06
 
 doc_organize 1.1.0, que incluye su hotfix 1.0.1 (G39). La web todavía no usa la API nueva de la 1.1.0

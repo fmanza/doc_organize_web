@@ -57,8 +57,14 @@ def test_resources_reads_the_container_memory(tmp_path: Path) -> None:
         "other": (str(tmp_path / "v1"),),
     }
 
-    found = worker.resources(Settings(environment="test", scan_recycle_documents=50), memory)
+    settings = Settings(
+        environment="test", scan_recycle_documents=50, worker_concurrency=2, scan_io_retries=3, scan_reuse_hashes=False
+    )
+    found = worker.resources(settings, memory)
 
     assert found["memory_limit_bytes"] == 6442450944 and found["memory_peak_bytes"] == 6000000000
     assert found["memory_current_bytes"] is None and found["other"] is None
     assert found["scan_recycle_documents"] == 50
+    # 1.1.0: huecos y ajustes del escaneo de este worker, para la ficha de workers.
+    assert (found["slots"], found["scan_io_retries"], found["scan_reuse_hashes"]) == (2, 3, False)
+    assert found["scan_document_timeout_seconds"] == 0

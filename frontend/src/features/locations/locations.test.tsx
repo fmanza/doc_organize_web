@@ -260,6 +260,7 @@ describe('SettingsPage', () => {
               heartbeat_at: '2026-10-31T08:00:00Z',
               alive: true,
               capabilities_at: '2026-10-31T08:00:00Z',
+              running: 0,
             },
             {
               id: 'worker-gpu:9',
@@ -271,11 +272,17 @@ describe('SettingsPage', () => {
               alive: true,
               capabilities_at: '2026-10-31T08:00:00Z',
               gpu_ready: true,
+              running: 1,
               resources: {
                 memory_limit_bytes: 8 * 1024 ** 3,
                 memory_peak_bytes: 6 * 1024 ** 3,
+                memory_current_bytes: 2 * 1024 ** 3,
                 oom_kills: 2,
+                slots: 1,
                 scan_recycle_documents: 200,
+                scan_document_timeout_seconds: 1800,
+                scan_io_retries: 2,
+                scan_reuse_hashes: true,
               },
             },
           ],
@@ -293,14 +300,22 @@ describe('SettingsPage', () => {
     expect(within(ffmpeg).queryByText(/^colas? /)).not.toBeInTheDocument(); // la tienen todas las colas
     const libreoffice = screen.getByText('LibreOffice (.xls antiguos)').parentElement as HTMLElement;
     expect(within(libreoffice).getByText('No')).toBeInTheDocument();
-    expect(screen.getByText(/doc_organize 0\.10\.0/)).toBeInTheDocument();
+    expect(screen.getByText(/^Comprobado .* · doc_organize 0.10.0$/)).toBeInTheDocument();
     expect(screen.getByText('Colas atendidas: cpu, gpu')).toBeInTheDocument();
-    expect(await screen.findByText('worker-1:7')).toBeInTheDocument();
-    expect(screen.getAllByText('En marcha')).toHaveLength(2);
-    // M3 (Fase 10): GPU, memoria y OOM de cada worker.
+    // 1.1.0: «Libre» o «Trabajando», no «En marcha» (que solo decía que el proceso tenía latido).
+    const cpuRow = (await screen.findByText('worker-1:7')).closest('tr') as HTMLElement;
+    expect(within(cpuRow).getByText('Libre')).toBeInTheDocument();
+    expect(within(cpuRow).getByText('web 0.4.0 · doc_organize 0.10.0')).toBeInTheDocument();
     const gpuRow = screen.getByText('worker-gpu:9').closest('tr') as HTMLElement;
-    expect(within(gpuRow).getByText('Pico 6 GB de 8 GB')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Trabajando (1 de 1)')).toBeInTheDocument();
+    expect(screen.queryByText('En marcha')).not.toBeInTheDocument();
+    // M3 (Fase 10) y 1.1.0: uso actual, pico desde el arranque, OOM y los ajustes del escaneo.
+    expect(within(gpuRow).getByText('Ahora 2 GB')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Pico 6 GB · límite 8 GB')).toBeInTheDocument();
     expect(within(gpuRow).getByText('2 veces sin memoria')).toBeInTheDocument();
-    expect(within(gpuRow).getByText('Escaneo en tramos de 200 documentos')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Tramos de 200 documentos')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Máximo 30 min 0 s por documento')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('2 reintentos de lectura')).toBeInTheDocument();
+    expect(within(gpuRow).getByText('Reutiliza los hashes sin cambios')).toBeInTheDocument();
   });
 });

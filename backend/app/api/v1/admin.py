@@ -83,7 +83,8 @@ def refresh_capabilities(admin: InstanceAdmin, db: DbSession, ctx: Context) -> N
 
 @router.get("/workers", response_model=WorkerList, summary="Ver workers", responses=_ERRORS)
 def list_workers(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> WorkerList:
-    """Workers registrados con sus colas, latido y si siguen vivos."""
+    """Workers registrados con sus colas, latido, si siguen vivos y cuántas ejecuciones tienen en marcha."""
+    running = workers.running_by_worker(db)
     return WorkerList(
         items=[
             WorkerOut(
@@ -97,6 +98,7 @@ def list_workers(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> Work
                 capabilities_at=w.capabilities_at,
                 gpu_ready=bool(w.capabilities.get("gpu_ready")) if w.capabilities else None,
                 resources=WorkerResources.model_validate(w.resources) if w.resources else None,
+                running=running.get(w.id, 0),
             )
             for w in workers.list_workers(db)
         ]

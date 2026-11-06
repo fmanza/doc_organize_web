@@ -327,14 +327,19 @@ class InstanceCapabilities(BaseModel):
 
 
 class WorkerResources(BaseModel):
-    """Memoria del contenedor del worker (cgroup) y tramos del escaneo, del último latido; ``None`` = desconocido o
-    sin límite."""
+    """Memoria del contenedor del worker (cgroup), huecos de jobs y ajustes del escaneo, del último latido; ``None`` =
+    desconocido (un worker anterior a la 1.1.0) o sin límite. ``memory_peak_bytes`` cuenta desde que arrancó el
+    contenedor."""
 
     memory_limit_bytes: int | None = None
     memory_peak_bytes: int | None = None
     memory_current_bytes: int | None = None
     oom_kills: int | None = None
+    slots: int | None = Field(default=None, description="Jobs simultáneos del worker (DOW_WORKER_CONCURRENCY)")
     scan_recycle_documents: int | None = None
+    scan_document_timeout_seconds: int | None = Field(default=None, description="0 = sin límite")
+    scan_io_retries: int | None = None
+    scan_reuse_hashes: bool | None = None
 
 
 class WorkerOut(_Out):
@@ -350,6 +355,7 @@ class WorkerOut(_Out):
     capabilities_at: datetime | None
     gpu_ready: bool | None = None
     resources: WorkerResources | None = None
+    running: int = Field(default=0, description="Ejecuciones que este worker tiene en marcha ahora")
 
 
 class WorkerList(BaseModel):

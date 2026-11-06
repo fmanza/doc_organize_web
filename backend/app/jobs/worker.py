@@ -120,11 +120,18 @@ def _read_number(paths: tuple[str, ...]) -> int | None:
     return None
 
 
-def resources(settings: Settings, memory: Mapping[str, tuple[str, ...]] = CGROUP_MEMORY) -> dict[str, int | None]:
-    """Memoria del contenedor, OOM y tramos del escaneo (M3, Fase 10), para la ficha de workers del admin."""
-    found: dict[str, int | None] = {key: _read_number(paths) for key, paths in memory.items()}
+def resources(
+    settings: Settings, memory: Mapping[str, tuple[str, ...]] = CGROUP_MEMORY
+) -> dict[str, int | bool | None]:
+    """Memoria del contenedor, OOM y tramos del escaneo (M3, Fase 10), para la ficha de workers del admin; desde la
+    1.1.0 también los huecos de jobs (``slots``) y los ajustes del escaneo de este worker (G11)."""
+    found: dict[str, int | bool | None] = {key: _read_number(paths) for key, paths in memory.items()}
     found["oom_kills"] = oom_kills()
+    found["slots"] = settings.worker_concurrency
     found["scan_recycle_documents"] = settings.scan_recycle_documents
+    found["scan_document_timeout_seconds"] = settings.scan_document_timeout_seconds
+    found["scan_io_retries"] = settings.scan_io_retries
+    found["scan_reuse_hashes"] = settings.scan_reuse_hashes
     return found
 
 

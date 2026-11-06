@@ -51,8 +51,14 @@ services:
     environment:
       DOW_LOG_LEVEL: ${DOW_LOG_LEVEL:-INFO}
       DOW_WORKER_QUEUES: cpu
-      # Tramos de un escaneo largo (G38, Fase 10): un proceso nuevo cada N documentos convertidos; 0 = nunca.
+      # Tramos de un escaneo largo (G38, Fase 10; desde la 1.1.0 los aplica doc_organize con max_documents):
+      # un proceso nuevo cada N documentos convertidos; 0 = nunca.
       DOW_SCAN_RECYCLE_DOCUMENTS: ${DOW_SCAN_RECYCLE_DOCUMENTS:-200}
+      # Escaneo en carpetas de red (G11, 1.1.0): tiempo máximo por documento (0 = sin límite), reintentos de E/S y
+      # reutilizar el hash de lo que no cambió de tamaño ni fecha.
+      DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS: ${DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS:-0}
+      DOW_SCAN_IO_RETRIES: ${DOW_SCAN_IO_RETRIES:-2}
+      DOW_SCAN_REUSE_HASHES: ${DOW_SCAN_REUSE_HASHES:-true}
     # El worker cierra sus subprocesos al recibir SIGTERM; tiempo para que los runs queden marcados.
     stop_grace_period: 30s
     # Docling consume mucha memoria por documento (R3): límite explícito, ajustable por instancia.
@@ -80,6 +86,11 @@ services:
       DOW_WORKER_QUEUES: gpu
       DOW_WORKER_CONCURRENCY: "1"
       DOW_SCAN_RECYCLE_DOCUMENTS: ${DOW_SCAN_RECYCLE_DOCUMENTS:-200}
+      # Escaneo en carpetas de red (G11, 1.1.0): tiempo máximo por documento (0 = sin límite), reintentos de E/S y
+      # reutilizar el hash de lo que no cambió de tamaño ni fecha.
+      DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS: ${DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS:-0}
+      DOW_SCAN_IO_RETRIES: ${DOW_SCAN_IO_RETRIES:-2}
+      DOW_SCAN_REUSE_HASHES: ${DOW_SCAN_REUSE_HASHES:-true}
     stop_grace_period: 30s
     mem_limit: ${DOW_WORKER_GPU_MEM_LIMIT:-8g}
     healthcheck:

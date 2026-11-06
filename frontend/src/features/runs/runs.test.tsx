@@ -168,7 +168,7 @@ describe('Fase 10', () => {
     params: { operation: 'scan', force: true, use_ocr: true, folders: ['2024'] },
     error_code: 'out_of_memory',
     error_message: 'El worker se quedó sin memoria.',
-    result: { converted: 200, segments: 3 },
+    result: { converted: 200, segments: 3, io_errors: 2 },
     can_cancel: false,
   });
 
@@ -187,6 +187,7 @@ describe('Fase 10', () => {
     renderRoute(`/runs/${RUN_ID}`);
 
     expect(await screen.findByText(/3 tramos/)).toBeInTheDocument();
+    expect(screen.getByText('Ficheros que no se pudieron leer')).toBeInTheDocument(); // io_errors (1.1.0)
     await user.click(await screen.findByRole('button', { name: 'Continuar el escaneo' }));
 
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));

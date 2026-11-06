@@ -29,6 +29,7 @@ const COUNTS = new Set([
   'ocr_processed',
   'error_retries',
   'error_retries_capped',
+  'io_errors',
   'errors',
   'warnings',
   'cached',

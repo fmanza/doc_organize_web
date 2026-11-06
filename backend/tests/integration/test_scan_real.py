@@ -116,11 +116,15 @@ def test_same_relative_name_in_two_folders_does_not_collide(tmp_path: Path, mode
     assert {p.read_text(encoding="utf-8").strip().splitlines()[-1] for p in outputs} == {"Factura 2024", "Factura 2025"}
 
 
-def test_max_conversions_splits_a_long_scan_into_segments(tmp_path: Path, models_dir: Path) -> None:
-    """Fase 10 (G38): con ``max_conversions`` la llamada para limpia tras N documentos y la siguiente sigue."""
+@pytest.mark.parametrize(("documents", "expected"), [(12, [True, True, False]), (10, [True, False])])
+def test_max_conversions_splits_a_long_scan_into_segments(
+    tmp_path: Path, models_dir: Path, documents: int, expected: list[bool]
+) -> None:
+    """Fase 10 (G38): con ``max_conversions`` la llamada para limpia tras N documentos y la siguiente sigue. Desde la
+    1.1.0 lo hace doc_organize (``max_documents``): con 10 documentos y tramos de 5 no queda un tercer tramo vacío."""
     source = tmp_path / "origen"
     source.mkdir()
-    for i in range(12):  # 5 + 5 + 2: el último tramo acaba sin pasar el límite
+    for i in range(documents):  # 12 = 5 + 5 + 2; 10 = 5 + 5 (el segundo ya no deja nada pendiente)
         (source / f"nota{i:02d}.html").write_text(f"<html><body><p>Nota {i}</p></body></html>", encoding="utf-8")
     (tmp_path / "salidas").mkdir()
     request = ScanRequest(
@@ -139,7 +143,8 @@ def test_max_conversions_splits_a_long_scan_into_segments(tmp_path: Path, models
         if not outcome.recycled:
             break
 
-    assert [s.recycled for s in segments] == [True, True, False]
-    assert sum(s.summary["converted"] for s in segments) == 12
-    assert all(s.summary["converted"] >= 5 for s in segments[:2])
-    assert len(list((tmp_path / "salidas").rglob("nota*.md"))) == 12
+    assert [s.recycled for s in segments] == expected
+    assert sum(s.summary["converted"] for s in segments) == documents
+    assert all(s.summary["converted"] == 5 and s.summary["remaining"] > 0 for s in segments[:-1])
+    assert segments[-1].summary["stopped_reason"] is None
+    assert len(list((tmp_path / "salidas").rglob("nota*.md"))) == documents

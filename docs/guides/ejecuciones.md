@@ -49,6 +49,10 @@ Docling usa cada vez más memoria durante un escaneo largo con OCR. Para que no 
 proceso nuevo, que empieza con la memoria limpia. Es la misma ejecución: el progreso, los avisos («Tramo 2: el escaneo
 sigue…») y el resultado continúan, y al terminar el detalle dice en cuántos tramos se hizo. No tienes que hacer nada.
 
+En **Administración → Ajustes → Workers** se ve cada worker: si está **libre** o **trabajando** (y en cuántas ejecuciones de cuántas posibles), su memoria ahora y el pico desde que arrancó, y sus ajustes de escaneo (tramos, tiempo máximo por documento, reintentos de lectura y si reutiliza los hashes). «Sin latido» quiere decir que el worker está parado o caído.
+
+Si una carpeta de red tiene ficheros que no se pueden leer, el resultado lo cuenta en «Ficheros que no se pudieron leer» y cada uno aparece entre los errores del escaneo; el resto se escanea igual.
+
 ## Cancelar
 
 «Cancelar ejecución» (quien la lanzó, un propietario del proyecto o un administrador). Si estaba en cola, se cancela
