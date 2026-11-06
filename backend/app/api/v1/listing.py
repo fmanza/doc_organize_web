@@ -27,6 +27,8 @@ AuditSort = Literal["ts", "action", "outcome", "actor", "target", "ip"]
 ScanErrorSort = Literal["path", "message", "retry_count"]
 GroupSort = Literal["position", "reason", "member_count"]
 ContextDocumentSort = Literal["title", "path", "document_type", "organized_path"]
+#: Documentos de la caché (web 1.3.0): los ordena doc_organize 1.2.0 (G40).
+DocumentSort = Literal["path", "updated_at", "conversion_status", "status", "error_retry_count"]
 
 
 def listing(q: str | None, sort: str | None, order: Order) -> ListQuery:

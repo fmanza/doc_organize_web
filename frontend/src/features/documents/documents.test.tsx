@@ -100,7 +100,7 @@ describe('DocumentsPage', () => {
 
     renderRoute('/projects/7/documents');
 
-    expect(await screen.findByText('1 documento. · ordenados por ruta')).toBeInTheDocument();
+    expect(await screen.findByText('1 documento.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Excel de errores' }));
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
     const body: unknown = await callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')[0]?.json();
@@ -222,6 +222,19 @@ describe('Fase 10: documentos por páginas', () => {
         callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').some((request) => {
           const params = new URL(request.url).searchParams;
           return params.get('search') === 'x' && params.get('offset') === '0';
+        }),
+      ).toBe(true),
+    );
+
+    // web 1.3.0 (G40): «Ordenar por» manda el orden a la API; el botón cambia el sentido.
+    await user.click(screen.getByRole('combobox', { name: 'Ordenar por' }));
+    await user.click(await screen.findByRole('option', { name: 'Fallos seguidos', hidden: true }));
+    await user.click(screen.getByRole('button', { name: /Orden ascendente/ }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').some((request) => {
+          const params = new URL(request.url).searchParams;
+          return params.get('sort') === 'error_retry_count' && params.get('order') === 'desc';
         }),
       ).toBe(true),
     );

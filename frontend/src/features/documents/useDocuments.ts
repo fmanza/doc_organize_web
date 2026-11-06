@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
+import type { ListParams, SortOf } from '../../api/listing';
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 
@@ -30,14 +31,12 @@ export interface DocumentFilters {
   conversionStatus: ConversionStatus | null;
 }
 
-/** Una página de los documentos de la caché (paginados en servidor: 100 000 documentos por proyecto). */
-export function useDocuments(
-  projectId: number,
-  filters: DocumentFilters,
-  page: { offset: number; limit: number },
-) {
+export type DocumentSort = SortOf<'/api/v1/projects/{project_id}/documents'>;
+
+/** Una página de los documentos de la caché (paginados en servidor: 100 000 documentos por proyecto), con su orden. */
+export function useDocuments(projectId: number, filters: DocumentFilters, page: ListParams<DocumentSort>) {
   return useQuery({
-    queryKey: ['projects', projectId, 'documents', filters, page.offset, page.limit],
+    queryKey: ['projects', projectId, 'documents', filters, page],
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/documents', {
@@ -46,6 +45,7 @@ export function useDocuments(
             query: {
               limit: page.limit,
               offset: page.offset,
+              ...(page.sort ? { sort: page.sort, order: page.order } : {}),
               search: filters.search || null,
               folder: filters.folder,
               conversion_status: filters.conversionStatus,

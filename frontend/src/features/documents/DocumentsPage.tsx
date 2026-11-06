@@ -20,16 +20,25 @@ import { Link, useParams } from 'react-router';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
 import { PageControls } from '../../components/Paging';
-import { usePageState } from '../../components/usePageState';
+import { SortSelect } from '../../components/listing';
+import { useListState } from '../../components/useListState';
 import { useProject } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
 import {
   CONVERSION_STATUSES,
   type ConversionStatus,
   type DocumentOut,
+  type DocumentSort,
   ROOT_FOLDER,
   useDocuments,
 } from './useDocuments';
+
+const DOCUMENT_SORT: readonly DocumentSort[] = [
+  'path',
+  'updated_at',
+  'conversion_status',
+  'error_retry_count',
+];
 
 const STATUS_COLOR: Record<string, string> = { success: 'green', error: 'red' };
 
@@ -49,12 +58,10 @@ export function DocumentsPage() {
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [folder, setFolder] = useState<string | null>(null);
   const [conversionStatus, setConversionStatus] = useState<ConversionStatus | null>(null);
-  const paging = usePageState();
-  const documents = useDocuments(
-    projectId,
-    { search: debounced, folder, conversionStatus },
-    { offset: paging.offset, limit: paging.pageSize },
-  );
+  // web 1.3.0: orden por columna (doc_organize 1.2.0, G40); la búsqueda sigue siendo la del nombre o subcarpeta.
+  const list = useListState(DOCUMENT_SORT);
+  const { paging } = list;
+  const documents = useDocuments(projectId, { search: debounced, folder, conversionStatus }, list.query);
 
   if (project.isPending) {
     return (
@@ -122,6 +129,11 @@ export function DocumentsPage() {
             label: t(`documents.conversion.${status}`),
           }))}
         />
+        <SortSelect
+          state={list}
+          label={t('listing.sortLabel')}
+          options={DOCUMENT_SORT.map((value) => ({ value, label: t(`documents.sort.${value}`) }))}
+        />
       </Group>
       {documents.isError ? (
         <ErrorAlert error={documents.error} />
@@ -136,8 +148,7 @@ export function DocumentsPage() {
       ) : (
         <>
           <Text size="sm" role="status">
-            {t('documents.total', { count: total, formatted: formatCount(total) })} ·{' '}
-            {t('documents.sortedByPath')}
+            {t('documents.total', { count: total, formatted: formatCount(total) })}
           </Text>
           <DocumentList projectId={projectId} rows={rows} root={root} />
           <PageControls state={paging} total={total} label={t('documents.pages')} />

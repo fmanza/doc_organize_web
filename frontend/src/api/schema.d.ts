@@ -615,8 +615,8 @@ export interface paths {
         };
         /**
          * Documentos del proyecto
-         * @description Documentos de la caché de doc_organize, por carpeta de origen y ruta, con su estado de conversión. La búsqueda
-         *     mira la ruta relativa a la carpeta, nunca la del servidor.
+         * @description Documentos de la caché de doc_organize (por carpeta de origen y ruta si no se pide otro orden), con su estado
+         *     de conversión. La búsqueda mira la ruta relativa a la carpeta, nunca la del servidor.
          */
         get: operations["list_documents_api_v1_projects__project_id__documents_get"];
         put?: never;
@@ -5013,6 +5013,10 @@ export interface operations {
                 conversion_status?: ("pending" | "in_progress" | "success" | "error" | "ocr_pending" | "ocr_in_progress") | null;
                 limit?: number;
                 offset?: number;
+                /** @description Columna por la que ordenar (sin ella, carpeta y ruta) */
+                sort?: ("path" | "updated_at" | "conversion_status" | "status" | "error_retry_count") | null;
+                /** @description Sentido del orden */
+                order?: "asc" | "desc";
             };
             header?: never;
             path: {

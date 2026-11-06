@@ -5,8 +5,11 @@ importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas ve
 
     async with CacheManager(db_path, read_only=True) as cache:
         await cache.count_entries(search=None, *, relative_to=None, conversion_status=None) -> int
-        await cache.load_cache_page(limit, offset, search=None, *, relative_to=None, conversion_status=None)
-            -> list[CacheEntry]
+        await cache.load_cache_page(limit, offset, search=None, *, relative_to=None, conversion_status=None,
+                                    order_by="file_path", descending=False) -> list[CacheEntry]
+
+``order_by`` y ``descending`` llegan con doc_organize 1.2.0 (G40/L-18, verificados en el wheel): empates por
+``file_path`` ascendente y los ``NULL`` al final en los dos sentidos.
 
 Con ``read_only=True`` (G21) la API no escribe en la caché (URI ``mode=ro``, sin WAL, ``CREATE`` ni ``ALTER``) y una
 caché que aún no existe da ``CacheNotFoundError``. ``relative_to`` (G22) limita a las entradas bajo la carpeta y hace
@@ -18,6 +21,18 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final, Literal
+
+#: Columnas por las que ``documents_page`` ordena (``doc_organize.cache.CacheOrderBy``, doc_organize 1.2.0).
+CacheOrder = Literal["file_path", "timestamp", "conversion_status", "status", "error_retry_count"]
+#: Atributo de ``CachedDocument`` con el valor de cada orden, para mezclar páginas de varias cachés igual que la librería.
+ORDER_ATTRIBUTE: Final[dict[CacheOrder, str]] = {
+    "file_path": "path",
+    "timestamp": "updated_at",
+    "conversion_status": "conversion_status",
+    "status": "status",
+    "error_retry_count": "error_retry_count",
+}
 
 
 @dataclass(frozen=True)
@@ -67,8 +82,11 @@ def documents_page(
     offset: int,
     search: str | None = None,
     conversion_status: str | None = None,
+    order_by: CacheOrder = "file_path",
+    descending: bool = False,
 ) -> list[CachedDocument]:
-    """Página de ``cache_db`` ordenada por ruta (vacía si la caché aún no existe), con los mismos filtros."""
+    """Página de ``cache_db`` (vacía si la caché aún no existe), con los mismos filtros, ordenada por ``order_by``
+    (por ruta si no se dice otra cosa; empates por ruta y los vacíos al final)."""
     if limit <= 0:
         return []
     from doc_organize import CacheNotFoundError
@@ -77,7 +95,13 @@ def documents_page(
     async def _page() -> list[CachedDocument]:
         async with CacheManager(cache_db, read_only=True) as cache:
             entries = await cache.load_cache_page(
-                limit, offset, search or None, relative_to=root, conversion_status=conversion_status
+                limit,
+                offset,
+                search or None,
+                relative_to=root,
+                conversion_status=conversion_status,
+                order_by=order_by,
+                descending=descending,
             )
         return [
             CachedDocument(

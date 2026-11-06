@@ -839,7 +839,12 @@
     "status": "Estado",
     "allStatuses": "Todos los estados",
     "pages": "Páginas de documentos",
-    "sortedByPath": "ordenados por ruta"
+    "sort": {
+      "path": "Ruta",
+      "updated_at": "Última actualización",
+      "conversion_status": "Estado de conversión",
+      "error_retry_count": "Fallos seguidos"
+    }
   },
   "duplicates": {
     "title": "Duplicados",
