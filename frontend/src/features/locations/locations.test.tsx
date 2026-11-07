@@ -84,7 +84,78 @@ describe('LocationsPage', () => {
       kind: 'local',
       usage: 'source',
       access: 'rw',
+      ignore_patterns: [],
     });
+  });
+
+  it('el admin pone los patrones de nombre al registrar una ubicación de origen (1.4.1)', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [], total: 0 } },
+      'GET /api/v1/admin/mounts': { body: { ...folders('', ['expedientes']).body, location_id: null } },
+      'POST /api/v1/locations': { status: 201, body: ADMIN_VIEW },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Nueva ubicación' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox', { name: /^Nombre/ }), 'Expedientes');
+    await user.click(await within(dialog).findByRole('button', { name: /expedientes/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Elegir esta carpeta' }));
+    const patterns = within(dialog).getByRole('textbox', { name: /Patrones \(uno por línea\)/ });
+    expect(within(dialog).getByText(/Afecta a todos los proyectos de la ubicación/)).toBeInTheDocument();
+    await user.type(patterns, '~$*{Enter}  @eaDir {Enter}');
+    await user.click(within(dialog).getByRole('button', { name: 'Registrar ubicación' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/locations')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/locations');
+    expect(await request?.json()).toMatchObject({ usage: 'source', ignore_patterns: ['~$*', '@eaDir'] });
+  });
+
+  it('en una ubicación de destino no se piden ni se envían patrones', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [], total: 0 } },
+      'GET /api/v1/admin/mounts': { body: { ...folders('', ['salidas']).body, location_id: null } },
+      'POST /api/v1/locations': { status: 201, body: { ...ADMIN_VIEW, usage: 'destination' } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Nueva ubicación' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox', { name: /^Nombre/ }), 'Salidas');
+    await user.click(await within(dialog).findByRole('button', { name: /salidas/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Elegir esta carpeta' }));
+    await user.click(within(dialog).getByRole('radio', { name: 'Destino' }));
+    expect(within(dialog).queryByRole('textbox', { name: /Patrones/ })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Registrar ubicación' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/locations')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/locations');
+    expect(await request?.json()).not.toHaveProperty('ignore_patterns');
+  });
+
+  it('al editar se ven y se cambian los patrones guardados', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [{ ...ADMIN_VIEW, ignore_patterns: ['~$*'] }], total: 1 } },
+      'PATCH /api/v1/locations/1': { body: { ...ADMIN_VIEW, ignore_patterns: [] } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Editar Expedientes' }));
+    const dialog = await screen.findByRole('dialog');
+    const patterns = within(dialog).getByRole('textbox', { name: /Patrones/ });
+    expect(patterns).toHaveValue('~$*');
+    await user.clear(patterns);
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PATCH', '/api/v1/locations/1')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PATCH', '/api/v1/locations/1');
+    expect(await request?.json()).toMatchObject({ ignore_patterns: [] });
   });
 
   it('no deja registrar sin elegir carpeta', async () => {
