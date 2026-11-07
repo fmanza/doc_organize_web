@@ -47,6 +47,9 @@ class ScanRequest:
         document_timeout_seconds: Segundos máximos por documento y pasada (G11, ``document_timeout_s``); 0 = sin límite.
         io_retries: Reintentos ante errores de E/S transitorios (G11).
         reuse_hashes: No rehashear lo que no cambió de tamaño ni fecha (G11, ``reuse_unchanged_hashes``).
+        exclude_paths: Subcarpetas absolutas (resueltas) que no se recorren (G41, ``ScanOptions.exclude_paths``).
+        ignore_patterns: Patrones ``fnmatch`` de nombre que no se recorren (G41, ``ScanOptions.ignore_patterns``).
+            Sin ``force``, lo ya convertido que cubren se conserva; con ``force``, se borra como si no existiera.
     """
 
     folders: list[Path]
@@ -64,6 +67,8 @@ class ScanRequest:
     document_timeout_seconds: int = 0
     io_retries: int = 0
     reuse_hashes: bool = False
+    exclude_paths: list[Path] = field(default_factory=list)
+    ignore_patterns: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -153,7 +158,14 @@ def run_scan(
     )
 
     layout = ProjectLayout(request.output_root, state_root=request.state_root)
+    # G41 (doc_organize 1.3.0): solo si hay algo que excluir; sin ello, las opciones son las de la web 1.3.0.
+    exclusions: dict[str, Any] = {}
+    if request.exclude_paths:
+        exclusions["exclude_paths"] = [str(path) for path in request.exclude_paths]
+    if request.ignore_patterns:
+        exclusions["ignore_patterns"] = list(request.ignore_patterns)
     options = ScanOptions(
+        **exclusions,
         use_ocr=request.use_ocr,
         use_gpu=request.use_gpu,
         force=request.force,

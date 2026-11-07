@@ -5,6 +5,46 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-07
+
+Exclusiones en el escaneo con doc_organize 1.3.0 (G41): subcarpetas por proyecto y patrones de nombre por ubicación.
+
+### Added
+
+- **backend**, **frontend**: «Excluir subcarpetas» en cada carpeta guardada de «Escanear» (owner del proyecto): el
+  explorador se abre limitado a esa carpeta, con casillas; lo excluido sale tachado con la etiqueta «Excluida» y se
+  puede quitar, con el aviso de que lo borrado por un «forzar» se volverá a convertir.
+  - `PUT /api/v1/projects/{id}/scanned-folders/exclusions?subpath=…` con `{"excluded": [...]}` (rutas relativas a la
+    ubicación de origen). 400 si una es la propia carpeta, sale de ella, es un enlace o no se puede resolver, o hay
+    más de 50; las redundantes se colapsan y las que ya no existen se conservan (`exists: false`).
+  - `GET …/scanned-folders` devuelve `excluded: [{subpath, exists}]` en cada carpeta. Auditoría
+    `project.scan_folder_exclusions` con la lista anterior y la nueva.
+- **backend**, **frontend**: patrones de nombre que no se escanean en una ubicación de origen (`~$*`, `@eaDir`,
+  `#recycle`, `$RECYCLE.BIN`, `System Volume Information`…), editables por un administrador en su ficha con el aviso
+  de que afectan a todos los proyectos de la ubicación.
+  - `PATCH /api/v1/locations/{id}` con `ignore_patterns`: hasta 30, de hasta 64 caracteres, sin vacíos ni `/` ni `\`
+    (400 si no); solo en ubicaciones de origen. `GET` los devuelve (`[]` por defecto) y el cambio queda en la auditoría
+    de la ubicación con la lista anterior y la nueva.
+- **backend**: el run de escaneo copia al encolarse las exclusiones de cada carpeta y los patrones de la ubicación
+  (`ScanParams.exclusions` e `ignore_patterns`; lo que mande el cliente se descarta) y todos sus tramos usan esa copia:
+  se pueden cambiar con un escaneo en marcha. El job registra «N subcarpetas excluidas» por carpeta.
+- **backend**, **frontend**: la vista previa de «Forzar reconversión» cuenta `excluded` (documentos de la caché bajo
+  una exclusión o que encajan con un patrón, que se borrarán) y la confirmación lo avisa antes de escribir el nombre.
+  Cambiar las exclusiones o los patrones invalida una vista previa anterior.
+
+### Changed
+
+- **backend**: doc_organize 1.3.0, wheel de su release en GitHub con su hash en `uv.lock`
+  (`sha256:4653d93195f7ca9036f8192881221fa085c784280760c203c12fc09216b3984f`). Sin exclusiones ni patrones, el
+  escaneo y su resultado son los de la 1.3.0.
+- **backend**: migración `0011` (aditiva y reversible): `scanned_folders.excluded_subpaths` y
+  `locations.ignore_patterns`, JSON con `[]` por defecto.
+
+### Docs
+
+- **docs**: G41 pasa a resueltos (L-19 ✅) y las mejoras P2 y P3 de exclusiones quedan hechas. No quedan huecos
+  abiertos en doc_organize.
+
 ## [1.3.0] - 2026-11-07
 
 Documentos ordenables por columna con doc_organize 1.2.0 (G40).

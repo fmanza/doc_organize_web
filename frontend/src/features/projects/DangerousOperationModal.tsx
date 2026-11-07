@@ -113,6 +113,11 @@ export function DangerousOperationModal({
 
   const locked = previewId !== null;
   const previewDone = preview.data?.status === 'succeeded';
+  // «Forzar» borra también lo ya convertido que ahora queda fuera por una exclusión o un patrón (1.4.0).
+  const excludedCount =
+    operation === 'scan_force' && typeof preview.data?.result?.excluded === 'number'
+      ? preview.data.result.excluded
+      : 0;
 
   return (
     <Modal
@@ -204,6 +209,14 @@ export function DangerousOperationModal({
           <Stack>
             <Text fw={500}>{t('projects.danger.previewResult')}</Text>
             <RunResult result={preview.data.result} />
+            {excludedCount > 0 && (
+              <Alert
+                color="red"
+                title={t('projects.danger.scan_force.excludedTitle', { count: excludedCount })}
+              >
+                {t('projects.danger.scan_force.excludedBody')}
+              </Alert>
+            )}
             <TextInput
               label={t('projects.danger.confirmName', { name: project.name })}
               value={confirmName}

@@ -42,3 +42,11 @@ class LastFolderError(AppError):
     status = 409
     title = "Es la única carpeta de origen"
     code = "last_folder"
+
+
+class InvalidExclusionError(AppError):
+    """Una exclusión no es una subcarpeta de la carpeta guardada (la propia carpeta, fuera de ella, un enlace o una
+    ruta que no se puede resolver), o hay demasiadas."""
+
+    title = "Exclusión no válida"
+    code = "invalid_exclusion"

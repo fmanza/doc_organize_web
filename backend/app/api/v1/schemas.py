@@ -221,6 +221,9 @@ class LocationPublic(_Out):
     status: LocationStatus
     status_reasons: list[str] | None
     probed_at: datetime | None
+    ignore_patterns: list[str] = Field(
+        default_factory=list, description="Patrones de nombre que no escanea ningún proyecto (ubicaciones de origen)"
+    )
 
 
 class LocationOut(LocationPublic):
@@ -256,6 +259,12 @@ class LocationUpdate(BaseModel):
     usage: LocationUsage | None = None
     access: LocationAccess | None = None
     tenant_id: int | None = Field(default=None, description="Pasarla a otro tenant (si ningún proyecto la usa)")
+    # Límites amplios aquí (422); los del dominio (30 patrones de hasta 64 caracteres, sin separadores) dan 400.
+    ignore_patterns: list[Annotated[str, Field(max_length=1024)]] | None = Field(
+        default=None,
+        max_length=200,
+        description="Patrones fnmatch de nombre (sin «/» ni «\\», sin mayúsculas) que no se escanean; solo origen",
+    )
 
 
 class LocationPage(BaseModel):
@@ -576,6 +585,13 @@ class RunPage(BaseModel):
 # --- escaneo (Fase 4) --------------------------------------------------------------------------------------------
 
 
+class ScanExclusionOut(BaseModel):
+    """Subcarpeta excluida del escaneo (relativa a la ubicación de origen) y si existe ahora (``None``: no se sabe)."""
+
+    subpath: str
+    exists: bool | None
+
+
 class ScannedFolderOut(_Out):
     """Carpeta de origen del proyecto con su estado en los escaneos (ruta relativa a la ubicación de origen)."""
 
@@ -585,6 +601,18 @@ class ScannedFolderOut(_Out):
     last_scanned_at: datetime | None
     last_run_id: str | None
     available: bool
+    excluded: list[ScanExclusionOut] = Field(default_factory=list)
+
+
+class ScanExclusionsUpdate(BaseModel):
+    """Subcarpetas excluidas de una carpeta guardada (sustituye a las anteriores), relativas a la ubicación de origen.
+
+    Hasta 50 (más da 400); las redundantes se colapsan y las que ya no existen se conservan.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    excluded: list[Annotated[str, Field(max_length=4096)]] = Field(max_length=500)
 
 
 class ScannedFolderList(BaseModel):

@@ -17,13 +17,19 @@ nuevo tramo lee de ``runs.result`` lo ya sumado y las carpetas terminadas (``res
 que estaba a medias: la caché hace que solo se convierta lo que falta.
 
 Las rutas absolutas de doc_organize se convierten en relativas a la ubicación antes de guardarse o mostrarse.
+
+Exclusiones (1.4.0, G41): las subcarpetas excluidas de cada carpeta y los patrones de la ubicación vienen en
+``ScanParams`` (copiados al encolar), nunca de la BD, así que todos los tramos usan los mismos. Sin ``force``, lo ya
+convertido que cubren se conserva; con ``force`` se borra, y la vista previa lo cuenta en ``excluded``.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from fnmatch import translate
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
@@ -60,10 +66,11 @@ SUMMARY_COUNTS: Final = (
     "error_retries",
     "error_retries_capped",
     "io_errors",
+    "excluded_cached",
 )
 SUMMARY_SECONDS: Final = ("duration_seconds", "discovery_duration_seconds", "total_conversion_seconds")
 #: Recuentos del descubrimiento: al retomar una carpeta a medias se cuentan solo en su primer tramo.
-DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged", "io_errors"})
+DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged", "io_errors", "excluded_cached"})
 #: Clave de ``runs.result`` con lo necesario para retomar en otro tramo (se quita al terminar).
 RESUME: Final = "resume"
 #: Fase de doc_organize → fase que ve el usuario.
@@ -78,11 +85,13 @@ class Folder:
         subpath: Relativa a la ubicación de origen (``""`` = la raíz).
         absolute: Ruta resuelta en el contenedor.
         state: Caché e historiales de esta carpeta.
+        excluded: Subcarpetas excluidas, absolutas (bajo ``absolute``, ya resuelta), copiadas del run.
     """
 
     subpath: str
     absolute: Path
     state: Path
+    excluded: list[Path] = field(default_factory=list)
 
     @property
     def label(self) -> str:
@@ -136,7 +145,9 @@ def _folders(ctx: JobContext, project: Project, params: ScanParams, state: Path)
                 raise
             ctx.log(exc.message, level="warning")
             continue
-        result.append(Folder(subpath, absolute, folder_state(state, subpath)))
+        # Relativas a la carpeta y ya validadas al guardarlas (sin «..»): la librería las vuelve a resolver.
+        excluded = [absolute / rel for rel in params.exclusions.get(subpath, [])]
+        result.append(Folder(subpath, absolute, folder_state(state, subpath), excluded))
     if not result:
         raise JobFailed("folder_missing", "Ninguna de las carpetas elegidas existe ya en el origen.")
     return result
@@ -175,23 +186,52 @@ def _check_force(folders: list[Folder], output: Path) -> dict[str, list[str]]:
     return cached
 
 
-def _preview(ctx: JobContext, folders: list[Folder], output: Path) -> dict[str, Any]:
-    """Vista previa de «forzar reconversión»: documentos en caché, cuántos ya no existen y tamaño de las salidas."""
+class ExclusionMatcher:
+    """Si un documento de la caché queda fuera del escaneo por una exclusión o un patrón (vista previa de «forzar»).
+
+    Replica ``EntryFilter.covers_cached`` de doc_organize 1.3.0 sin importarla: rutas comparadas con ``normcase``;
+    patrones ``fnmatch`` sobre el nombre en minúsculas de cada tramo bajo la carpeta escaneada (nunca la propia).
+    """
+
+    def __init__(self, folder: Folder, patterns: list[str]) -> None:
+        self._root = folder.absolute
+        self._excluded = [os.path.normcase(str(path)) for path in folder.excluded]
+        self._regex = re.compile("|".join(translate(p.lower()) for p in patterns)) if patterns else None
+
+    def covers(self, path: str) -> bool:
+        key = os.path.normcase(path)
+        if any(key == ex or key.startswith(ex.rstrip(os.sep) + os.sep) for ex in self._excluded):
+            return True
+        if self._regex is None or not _inside(path, self._root):
+            return False
+        return any(self._regex.match(part.lower()) for part in Path(path).parts[len(self._root.parts) :])
+
+
+def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: list[str]) -> dict[str, Any]:
+    """Vista previa de «forzar reconversión»: documentos en caché, cuántos ya no existen, cuántos quedan fuera por una
+    exclusión o un patrón (``excluded``, también se borran; no se cuentan además como ``orphaned``) y tamaño de las
+    salidas."""
     ctx.progress("preview", 0, None)
-    cached = [path for paths in _check_force(folders, output).values() for path in paths]
-    missing = 0
-    for index, path in enumerate(cached, start=1):
-        if index % 200 == 0:
-            ctx.check_cancelled()
-            ctx.progress("preview", index, len(cached))
-        if not os.path.lexists(path):
-            missing += 1
+    caches = _check_force(folders, output)
+    total = sum(len(paths) for paths in caches.values())
+    index = missing = excluded = 0
+    for folder in folders:
+        matcher = ExclusionMatcher(folder, patterns)
+        for path in caches[folder.subpath]:
+            index += 1
+            if index % 200 == 0:
+                ctx.check_cancelled()
+                ctx.progress("preview", index, total)
+            if matcher.covers(path):
+                excluded += 1
+            elif not os.path.lexists(path):
+                missing += 1
     files = size = 0
     for folder in folders:
         tree = measure(library.conversion_dir(output, folder.state, folder.subpath), ctx, "measure_outputs")
         files, size = files + tree.files, size + tree.bytes
-    ctx.progress("preview", len(cached), len(cached))
-    return {"cached": len(cached), "orphaned": missing, "output_files": files, "output_bytes": size}
+    ctx.progress("preview", total, total)
+    return {"cached": total, "orphaned": missing, "excluded": excluded, "output_files": files, "output_bytes": size}
 
 
 def _save_failures(ctx: JobContext, project: Project, failures: list[ScanFailure], masker: PathMasker) -> None:
@@ -288,7 +328,7 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
     output = paths.output.absolute
     folders = _folders(ctx, project, params, paths.state)
     if params.dry_run:
-        return _preview(ctx, folders, output)
+        return _preview(ctx, folders, output, params.ignore_patterns)
     require_rw(project.destination_location)
     _check_worker_options(ctx, params)
     if params.force:
@@ -326,6 +366,9 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
         resumed = folder.subpath == resume.partial
         if len(folders) > 1:
             ctx.log(f"Carpeta {index} de {len(folders)}: «{folder.label}».")
+        if folder.excluded and not resumed:  # una vez por carpeta, no en cada tramo
+            count = len(folder.excluded)
+            ctx.log(f"«{folder.label}»: {count} {'subcarpeta excluida' if count == 1 else 'subcarpetas excluidas'}.")
         folder.state.mkdir(parents=True, exist_ok=True)
         request = ScanRequest(
             folders=[folder.absolute],
@@ -344,6 +387,8 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
             document_timeout_seconds=ctx.settings.scan_document_timeout_seconds,
             io_retries=ctx.settings.scan_io_retries,
             reuse_hashes=ctx.settings.scan_reuse_hashes,
+            exclude_paths=folder.excluded,
+            ignore_patterns=params.ignore_patterns,
         )
         try:
             outcome = library.run_scan(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)
@@ -383,6 +428,8 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
                 details={"run_id": ctx.run_id, "converted": result.get("converted", 0), "failed": len(failed)},
             )
             db.commit()
+    if not result.get("excluded_cached"):  # doc_organize 1.3.0 siempre lo da: sin exclusiones, el resultado de 1.3.0
+        result.pop("excluded_cached", None)
     _index(ctx, paths, result)
     if failed:
         result["failed_folders"] = len(failed)

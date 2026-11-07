@@ -117,7 +117,7 @@ Publicadas en **0.14.0** (2026-11-03), junto con L-8d…L-8f y L-10; la web las 
 
 | ID | Tarea | Detalle | Hueco |
 |---|---|---|---|
-| L-19 | Excluir subcarpetas y patrones del escaneo | `ScanOptions.exclude_paths` (rutas absolutas, sin recorrer su subárbol) e `ignore_patterns` (`fnmatch` sobre el nombre, sin mayúsculas, sumados a `IGNORED_NAMES`); `DocumentScanner.scan_folders(..., exclude_paths=, ignore_patterns=)`; lo excluido no es error (ni `unreadable_*` ni avisos). Sin `force` lo ya convertido se conserva; con `force` cuenta como huérfano (se borran salida y caché), salvo lo ilegible. `ScanSummary.excluded_cached` desde la caché. Valores por defecto = 1.2.0. Release 1.3.0 con wheel y SHA-256. Plan: [2026-11-07-exclusiones](../../.ai/sessions/2026-11-07-exclusiones/PLAN.md) | G41 |
+| L-19 ✅ (1.3.0, 2026-11-07) | Excluir subcarpetas y patrones del escaneo | `ScanOptions.exclude_paths` (rutas absolutas, sin recorrer su subárbol) e `ignore_patterns` (`fnmatch` sobre el nombre, sin mayúsculas, sumados a `IGNORED_NAMES`); `DocumentScanner.scan_folders(..., exclude_paths=, ignore_patterns=)`; lo excluido no es error (ni `unreadable_*` ni avisos). Sin `force` lo ya convertido se conserva; con `force` cuenta como huérfano (se borran salida y caché), salvo lo ilegible. `ScanSummary.excluded_cached` desde la caché. Valores por defecto = 1.2.0. Release 1.3.0 con wheel y SHA-256. Plan: `.ai/sessions/2026-11-07-exclusiones/PLAN.md` | G41 |
 
 ## Lo que se queda en la librería y lo que se va
 

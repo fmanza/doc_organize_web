@@ -1,8 +1,10 @@
 import {
   Anchor,
+  Badge,
   Breadcrumbs,
   Button,
   Center,
+  Checkbox,
   Group,
   Loader,
   NavLink,
@@ -29,6 +31,23 @@ interface FolderBrowserProps {
   rootSelectable?: boolean;
   /** Por qué no se puede elegir la raíz (solo con ``rootSelectable={false}``). */
   rootHint?: string;
+  /** Carpeta de partida y tope (relativa a la ubicación): no se sube por encima y la primera miga es ella. */
+  basePath?: string;
+  /** Casilla en cada subcarpeta (rutas relativas a la ubicación); lo marcado sale tachado con `checkedTag`. */
+  checkable?: FolderCheckable;
+}
+
+export interface FolderCheckable {
+  checked: ReadonlySet<string>;
+  onChange: (path: string, checked: boolean) => void;
+  /** Nombre accesible de la casilla de una subcarpeta. */
+  label: (name: string) => string;
+  /** Etiqueta de lo marcado (o de lo que está dentro de algo marcado). */
+  checkedTag: string;
+}
+
+function within(path: string, parent: string): boolean {
+  return path.startsWith(`${parent}/`);
 }
 
 /**
@@ -42,31 +61,37 @@ export function FolderBrowser({
   selected,
   rootSelectable = true,
   rootHint,
+  basePath = '',
+  checkable,
 }: FolderBrowserProps) {
   const { t } = useTranslation();
-  const [path, setPath] = useState('');
+  const [path, setPath] = useState(basePath);
   const [page, setPage] = useState(1);
   const { data, isPending, isError, error, isFetching } = useFolders(locationId, path, page);
 
   const go = (next: string) => {
-    setPath(next);
+    setPath(basePath && next !== basePath && !within(next, basePath) ? basePath : next);
     setPage(1);
   };
-  const crumbs = path ? path.split('/') : [];
+  const relative = basePath ? path.slice(basePath.length).replace(/^\//, '') : path;
+  const crumbs = relative ? relative.split('/') : [];
+  const crumbPath = (index: number) =>
+    [basePath, ...crumbs.slice(0, index + 1)].filter((part) => part !== '').join('/');
   const blocked = !rootSelectable && path === '';
+  const covered = (item: string) => [...(checkable?.checked ?? [])].some((c) => within(item, c));
 
   return (
     <Stack gap="sm">
       <Breadcrumbs aria-label={t('folders.breadcrumbs')}>
-        <Anchor component="button" type="button" onClick={() => go('')}>
+        <Anchor component="button" type="button" onClick={() => go(basePath)}>
           {rootLabel}
         </Anchor>
         {crumbs.map((name, index) => (
           <Anchor
-            key={crumbs.slice(0, index + 1).join('/')}
+            key={crumbPath(index)}
             component="button"
             type="button"
-            onClick={() => go(crumbs.slice(0, index + 1).join('/'))}
+            onClick={() => go(crumbPath(index))}
             aria-current={index === crumbs.length - 1 ? 'location' : undefined}
           >
             {name}
@@ -107,7 +132,7 @@ export function FolderBrowser({
       {isError && <ErrorAlert error={error} />}
       {data && (
         <Stack gap={2} role="group" aria-busy={isFetching} aria-label={t('folders.list')}>
-          {data.parent !== null && (
+          {data.parent !== null && path !== basePath && (
             <NavLink
               component="button"
               type="button"
@@ -121,16 +146,51 @@ export function FolderBrowser({
               {locationId === null && path === '' ? t('folders.emptyMounts') : t('folders.empty')}
             </Text>
           )}
-          {data.items.map((item) => (
-            <NavLink
-              key={item.path}
-              component="button"
-              type="button"
-              label={item.name}
-              leftSection={<span aria-hidden="true">📁</span>}
-              onClick={() => go(item.path)}
-            />
-          ))}
+          {data.items.map((item) => {
+            const link = (
+              <NavLink
+                key={item.path}
+                component="button"
+                type="button"
+                label={item.name}
+                leftSection={<span aria-hidden="true">📁</span>}
+                onClick={() => go(item.path)}
+              />
+            );
+            if (!checkable) {
+              return link;
+            }
+            const inherited = covered(item.path);
+            const marked = inherited || checkable.checked.has(item.path);
+            return (
+              <Group key={item.path} gap="xs" wrap="nowrap">
+                <Checkbox
+                  aria-label={checkable.label(item.name)}
+                  checked={marked}
+                  disabled={inherited}
+                  onChange={(event) => checkable.onChange(item.path, event.currentTarget.checked)}
+                />
+                <NavLink
+                  component="button"
+                  type="button"
+                  label={
+                    <Group gap="xs" wrap="nowrap">
+                      <Text span size="sm" td={marked ? 'line-through' : undefined}>
+                        {item.name}
+                      </Text>
+                      {marked && (
+                        <Badge size="sm" color="gray" variant="light">
+                          {checkable.checkedTag}
+                        </Badge>
+                      )}
+                    </Group>
+                  }
+                  leftSection={<span aria-hidden="true">📁</span>}
+                  onClick={() => go(item.path)}
+                />
+              </Group>
+            );
+          })}
           {data.total > FOLDER_PAGE_SIZE && (
             <Pagination
               mt="xs"

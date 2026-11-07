@@ -66,10 +66,21 @@ class ScanParams(_Params):
     ``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que
     ya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa
     (``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.
+
+    ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
+    ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
+    run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
     """
 
     operation: Literal["scan"] = "scan"
     folders: list[Annotated[str, Field(max_length=4096)]] = Field(default_factory=list, max_length=20)
+    exclusions: dict[
+        Annotated[str, Field(max_length=4096)],
+        Annotated[list[Annotated[str, Field(min_length=1, max_length=4096)]], Field(max_length=50)],
+    ] = Field(default_factory=dict, max_length=20)
+    ignore_patterns: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(
+        default_factory=list, max_length=30
+    )
     use_ocr: bool = True
     use_gpu: bool = False
     force: bool = False
@@ -231,7 +242,8 @@ _PREVIEW_KEYS: Final[dict[str, tuple[str, ...]]] = {
     "history_clear": (),
     "project_move": ("destination_location_id", "destination_parent", "new_folder"),
     "project_delete": ("delete_outputs",),
-    "scan": ("force",),
+    # Exclusiones y patrones: si cambiaron desde la vista previa, su recuento de «excluidos» ya no vale.
+    "scan": ("force", "exclusions", "ignore_patterns"),
     "dedup_apply": ("groups_run_id", "mode", "groups"),
     "context_delete": (),
 }
