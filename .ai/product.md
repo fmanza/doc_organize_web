@@ -2,7 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 1.4.1 (patrones de nombre también al registrar y editar una ubicación), sobre la 1.4.0
+- **Versión actual**: 1.4.2 (hotfix: el error de falta de memoria del worker GPU nombra su límite), sobre la
+  1.4.1 (patrones de nombre también al registrar y editar una ubicación) y la 1.4.0
   (subcarpetas excluidas del escaneo por proyecto y patrones de nombre por ubicación de origen con doc_organize
   1.3.0, G41), sobre la 1.3.0 (Documentos ordenables por columna, G40). Sin huecos abiertos
   en doc_organize. Siguiente: lo que quede en `docs/plan/MEJORAS.md`.

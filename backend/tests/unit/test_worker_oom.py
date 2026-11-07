@@ -40,7 +40,23 @@ def test_crash_reason(exitcode: int, before: int | None, now: int | None, code: 
 
     assert status == "failed" and reason == code
     if code == "out_of_memory":
-        assert "DOW_WORKER_MEM_LIMIT" in message and "relanzarlo" in message
+        assert "(límite: DOW_WORKER_MEM_LIMIT)" in message and "relanzarlo" in message
+
+
+@pytest.mark.parametrize(
+    ("queues", "variable"),
+    [
+        (["gpu"], "DOW_WORKER_GPU_MEM_LIMIT"),  # worker-gpu de docker-compose
+        (["cpu", "gpu"], "DOW_WORKER_GPU_MEM_LIMIT"),
+        (["cpu"], "DOW_WORKER_MEM_LIMIT"),
+    ],
+)
+def test_the_out_of_memory_message_names_the_limit_of_this_worker(queues: list[str], variable: str) -> None:
+    """Hotfix 1.4.2: un OOM del worker-gpu decía «DOW_WORKER_MEM_LIMIT», que no es su límite."""
+    _, reason, message = worker.crash_reason(-9, 1, 2, queues=queues)
+
+    assert reason == "out_of_memory"
+    assert f"(límite: {variable})" in message
 
 
 def test_resources_reads_the_container_memory(tmp_path: Path) -> None:

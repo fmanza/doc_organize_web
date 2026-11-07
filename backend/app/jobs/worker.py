@@ -26,7 +26,7 @@ import signal
 import socket
 import threading
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from multiprocessing.process import BaseProcess
@@ -70,9 +70,12 @@ CRASHED: Final = ("failed", "crashed", "La operación terminó de forma inespera
 OUT_OF_MEMORY: Final = (
     "failed",
     "out_of_memory",
-    "El worker se quedó sin memoria y el sistema terminó la operación (límite: DOW_WORKER_MEM_LIMIT). Un escaneo "
+    "El worker se quedó sin memoria y el sistema terminó la operación (límite: {limit}). Un escaneo "
     "continúa donde se quedó al relanzarlo; si se repite, sube el límite o escanea las carpetas por separado.",
 )
+#: Variable de docker-compose que limita la memoria de cada worker: ``worker-gpu`` (cola ``gpu``) tiene la suya.
+MEM_LIMIT_VAR: Final = "DOW_WORKER_MEM_LIMIT"
+GPU_MEM_LIMIT_VAR: Final = "DOW_WORKER_GPU_MEM_LIMIT"
 #: Código de salida de ``multiprocessing`` para un SIGKILL (``-signal.SIGKILL``; fijo: Windows no lo define).
 SIGKILL_EXIT: Final = -9
 #: Contador de procesos matados por falta de memoria en el cgroup del contenedor (v2, y v1 como alternativa).
@@ -135,12 +138,24 @@ def resources(
     return found
 
 
-def crash_reason(exitcode: int | None, oom_before: int | None, oom_now: int | None) -> tuple[str, str, str]:
+def crash_reason(
+    exitcode: int | None,
+    oom_before: int | None,
+    oom_now: int | None,
+    *,
+    queues: Sequence[str] = ("cpu",),
+) -> tuple[str, str, str]:
     """Por qué terminó un subproceso que no paró el worker: sin memoria si lo mató un SIGKILL ajeno y el contador
-    de OOM del cgroup ha subido (o no se puede leer: un SIGKILL que no manda el worker casi siempre es el OOM)."""
+    de OOM del cgroup ha subido (o no se puede leer: un SIGKILL que no manda el worker casi siempre es el OOM).
+
+    El mensaje de falta de memoria nombra la variable que limita a este worker según sus ``queues`` (hotfix 1.4.2).
+    """
     killed = exitcode == SIGKILL_EXIT
     oom = oom_before is None or oom_now is None or oom_now > oom_before
-    return OUT_OF_MEMORY if killed and oom else CRASHED
+    if not (killed and oom):
+        return CRASHED
+    status, code, template = OUT_OF_MEMORY
+    return status, code, template.format(limit=GPU_MEM_LIMIT_VAR if "gpu" in queues else MEM_LIMIT_VAR)
 
 
 @dataclass
@@ -283,7 +298,7 @@ class JobWorker:
                 status, code, message = closing
             else:
                 status, code, message = slot.stop_reason or crash_reason(
-                    slot.process.exitcode, slot.oom_kills_at_start, oom_kills()
+                    slot.process.exitcode, slot.oom_kills_at_start, oom_kills(), queues=self.queues
                 )
             with self.factory() as db:
                 # Si el subproceso cerró el run él mismo, ``finish`` no hace nada.
