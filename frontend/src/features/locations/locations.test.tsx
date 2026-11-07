@@ -319,3 +319,73 @@ describe('SettingsPage', () => {
     expect(within(gpuRow).getByText('Reutiliza los hashes sin cambios')).toBeInTheDocument();
   });
 });
+
+describe('Patrones de nombre de una ubicación de origen (1.4.0)', () => {
+  it('el admin los edita, uno por línea, con el aviso de que afectan a todos los proyectos', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations/1': { body: { ...ADMIN_VIEW, ignore_patterns: ['~$*'] } },
+      'GET /api/v1/fs/browse': folders('', []),
+      'PATCH /api/v1/locations/1': { body: { ...ADMIN_VIEW, ignore_patterns: ['~$*', '@eaDir'] } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations/1');
+    const field = await screen.findByRole('textbox', { name: /Patrones \(uno por línea\)/ });
+    expect(field).toHaveValue('~$*');
+    expect(screen.getByText(/Afecta a todos los proyectos de la ubicación/)).toBeInTheDocument();
+    expect(screen.getByText(/System Volume Information/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar patrones' })).toBeDisabled();
+    await user.type(field, '{Enter}  @eaDir  {Enter}{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Guardar patrones' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PATCH', '/api/v1/locations/1')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PATCH', '/api/v1/locations/1');
+    expect(await request?.json()).toEqual({ ignore_patterns: ['~$*', '@eaDir'] });
+  });
+
+  it('muestra el error de un patrón no válido', async () => {
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations/1': { body: { ...ADMIN_VIEW, ignore_patterns: [] } },
+      'GET /api/v1/fs/browse': folders('', []),
+      'PATCH /api/v1/locations/1': {
+        status: 400,
+        body: { title: 'Patrones no válidos', status: 400, code: 'invalid_ignore_patterns' },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations/1');
+    await user.type(await screen.findByRole('textbox', { name: /Patrones/ }), 'fotos/*.jpg');
+    await user.click(screen.getByRole('button', { name: 'Guardar patrones' }));
+
+    expect(await screen.findByText('Patrones no válidos')).toBeInTheDocument();
+  });
+
+  it('un usuario solo los ve', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/locations/1': { body: { ...PUBLIC, ignore_patterns: ['@eaDir'] } },
+      'GET /api/v1/fs/browse': folders('', []),
+    });
+
+    renderRoute('/locations/1');
+
+    expect(await screen.findByText('@eaDir')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /Patrones/ })).not.toBeInTheDocument();
+  });
+
+  it('en una ubicación de destino no aparecen', async () => {
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations/1': { body: { ...ADMIN_VIEW, usage: 'destination' } },
+      'GET /api/v1/fs/browse': folders('', []),
+    });
+
+    renderRoute('/locations/1');
+
+    expect(await screen.findByRole('heading', { name: 'Expedientes' })).toBeInTheDocument();
+    expect(screen.queryByText('Nombres que no se escanean')).not.toBeInTheDocument();
+  });
+});

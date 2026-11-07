@@ -30,6 +30,8 @@ from app.api.v1.schemas import (
     RunOut,
     ScanErrorOut,
     ScanErrorPage,
+    ScanExclusionOut,
+    ScanExclusionsUpdate,
     ScannedFolderCreate,
     ScannedFolderList,
     ScannedFolderOut,
@@ -215,6 +217,7 @@ def _folder_out(status: FolderStatus) -> ScannedFolderOut:
         last_scanned_at=folder.last_scanned_at,
         last_run_id=folder.last_run_id,
         available=status.available,
+        excluded=[ScanExclusionOut(subpath=e.subpath, exists=e.exists) for e in status.exclusions],
     )
 
 
@@ -279,6 +282,35 @@ def remove_scanned_folder(
     access = service.get_access(db, project_id, user, min_role="owner")
     used = scan_folders.remove_folder(db, access, subpath, actor=user, ctx=ctx)
     return ScannedFolderRemoved(subpath=subpath, used=used)
+
+
+@router.put(
+    "/{project_id}/scanned-folders/exclusions",
+    response_model=ScannedFolderOut,
+    summary="Excluir subcarpetas del escaneo",
+    responses={
+        **_ERRORS,
+        **FS_ERRORS,
+        400: {"description": "Exclusión no válida (invalid_exclusion) o ruta no válida"},
+    },
+)
+def set_scanned_folder_exclusions(
+    project_id: int,
+    body: ScanExclusionsUpdate,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    ctx: Context,
+    subpath: Annotated[str, Query(max_length=4096, description="Carpeta guardada, relativa a la ubicación de origen")],
+) -> ScannedFolderOut:
+    """Sustituye las subcarpetas que el escaneo no recorre en una carpeta guardada (``owner``).
+
+    Se puede cambiar en cualquier momento: un escaneo en marcha sigue con las que había al encolarse. Con «forzar
+    reconversión», lo ya convertido de una subcarpeta excluida se borra; sin forzar, se conserva.
+    """
+    access = service.get_access(db, project_id, user, min_role="owner")
+    folder = scan_folders.set_exclusions(db, access, subpath, body.excluded, settings=settings, actor=user, ctx=ctx)
+    return _folder_out(folder)
 
 
 @router.get(

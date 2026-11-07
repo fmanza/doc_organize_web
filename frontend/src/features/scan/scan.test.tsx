@@ -235,3 +235,131 @@ describe('ScanErrorsPage', () => {
     expect(await screen.findByText('Aún no se ha escaneado este proyecto.')).toBeInTheDocument();
   });
 });
+
+describe('Exclusiones del escaneo (1.4.0)', () => {
+  const EXCLUDED = {
+    ...FOLDERS,
+    items: [
+      {
+        ...FOLDERS.items[0],
+        excluded: [
+          { subpath: '2024/fotos', exists: true },
+          { subpath: '2024/viejo', exists: false },
+        ],
+      },
+      FOLDERS.items[1],
+    ],
+  };
+  const browse = (request: Request) => {
+    const path = new URL(request.url).searchParams.get('path') ?? '';
+    const names = path === '2024' ? ['actas', 'fotos'] : path === '2024/fotos' ? ['2023'] : ['2024', '2025'];
+    return {
+      body: {
+        location_id: PROJECT.source_location.id,
+        path,
+        parent: path.includes('/') ? '2024' : '',
+        items: names.map((name) => ({ name, path: `${path}/${name}` })),
+        total: names.length,
+      },
+    };
+  };
+
+  it('el owner excluye subcarpetas con el explorador limitado a la carpeta y quita las que ya no existen', async () => {
+    const fetchMock = stubApi({
+      ...scanRoutes(),
+      'GET /api/v1/projects/7/scanned-folders': { body: EXCLUDED },
+      'GET /api/v1/fs/browse': browse,
+      'PUT /api/v1/projects/7/scanned-folders/exclusions': { body: EXCLUDED.items[0] },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/scan');
+    expect(await screen.findByText('2 subcarpetas excluidas')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Excluir subcarpetas de /2024' }));
+    const dialog = await screen.findByRole('dialog');
+
+    // Empieza en la carpeta guardada y no deja subir por encima de ella.
+    expect(await within(dialog).findByRole('checkbox', { name: 'Excluir fotos del escaneo' })).toBeChecked();
+    expect(within(dialog).queryByRole('button', { name: /Subir un nivel/ })).not.toBeInTheDocument();
+    expect(within(dialog).getAllByText('Excluida').length).toBeGreaterThan(0);
+    expect(within(dialog).getByText('no existe')).toBeInTheDocument();
+    // Lo que está dentro de una excluida sale marcado y sin poder cambiarse.
+    await user.click(within(dialog).getByRole('button', { name: /^fotos/ }));
+    expect(await within(dialog).findByRole('checkbox', { name: 'Excluir 2023 del escaneo' })).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: '/2024' }));
+
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Excluir actas del escaneo' }));
+    expect(within(dialog).queryByText('Lo que dejes de excluir vuelve al escaneo')).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Dejar de excluir /2024/viejo' }));
+    expect(within(dialog).getByText('Lo que dejes de excluir vuelve al escaneo')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() =>
+      expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/scanned-folders/exclusions')).toHaveLength(1),
+    );
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/scanned-folders/exclusions');
+    expect(new URL(request?.url ?? '').searchParams.get('subpath')).toBe('2024');
+    expect(await request?.json()).toEqual({ excluded: ['2024/actas', '2024/fotos'] });
+  });
+
+  it('muestra el error de una exclusión no válida', async () => {
+    stubApi({
+      ...scanRoutes(),
+      'GET /api/v1/fs/browse': browse,
+      'PUT /api/v1/projects/7/scanned-folders/exclusions': {
+        status: 400,
+        body: {
+          title: 'Exclusión no válida',
+          status: 400,
+          code: 'invalid_exclusion',
+          detail: 'No es una subcarpeta.',
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/scan');
+    await user.click(await screen.findByRole('button', { name: 'Excluir subcarpetas de /2024' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Excluir actas del escaneo' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Exclusión no válida');
+  });
+
+  it('un editor no ve la acción de excluir', async () => {
+    stubApi(scanRoutes({ ...PROJECT, role: 'editor' }));
+
+    renderRoute('/projects/7/scan');
+
+    expect(await screen.findByText('escaneada')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Excluir subcarpetas/ })).not.toBeInTheDocument();
+  });
+
+  it('la vista previa de «forzar» avisa de los excluidos que se borrarán', async () => {
+    const preview = runOut({
+      id: '66666666-6666-4666-8666-666666666666',
+      operation: 'scan',
+      status: 'succeeded',
+      params: { operation: 'scan', force: true, dry_run: true },
+      result: { cached: 10, orphaned: 0, excluded: 3, output_files: 30, output_bytes: 4096 },
+      can_cancel: false,
+    });
+    stubApi({
+      ...scanRoutes(),
+      'POST /api/v1/projects/7/runs': { status: 202, body: preview },
+      [`GET /api/v1/runs/${preview.id}`]: { body: preview },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/scan');
+    await user.click(await screen.findByRole('button', { name: 'Forzar reconversión' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Ver vista previa' }));
+
+    expect(await within(dialog).findByText('3 documentos excluidos se borrarán')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('Excluidos que se borrarán (subcarpeta excluida o patrón)'),
+    ).toBeInTheDocument();
+  });
+});

@@ -8,7 +8,7 @@ Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resu
 (antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
 (antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos); desde el 2026-11-06: **1.0.0** (L-15), la misma API. La Fase 10 abre G38 (L-16, después de la
 1.0) y la prueba local de la 1.0.0 abre G39 (L-17, hotfix 1.0.1). Desde el 2026-11-06 (web 1.0.1): **1.1.0**, que resuelve
-G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0: no quedan huecos abiertos.
+G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0. El 2026-11-07 se abrió G41 (L-19), que la web 1.4.0 cierra con doc_organize 1.3.0: no quedan huecos abiertos.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
@@ -17,6 +17,7 @@ G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La we
 
 | # | Resuelto en | Cómo | Rodeo retirado |
 |---|---|---|---|
+| G41 | doc_organize 1.3.0 (L-19); web 1.4.0 (2026-11-07) | `ScanOptions.exclude_paths` e `ignore_patterns`; `ScanSummary.excluded_cached`. Sin `force` lo excluido que ya estaba en la caché se conserva; con `force` se borra como un fichero que ya no está | Subcarpetas excluidas por carpeta guardada (owner del proyecto) y patrones de nombre por ubicación de origen (admin). El run copia unas y otros al encolarse; la vista previa de «Forzar reconversión» cuenta lo excluido que se borrará (`excluded`) |
 | G40 | doc_organize 1.2.0 (L-18); web 1.3.0 (2026-11-07) | `CacheManager.load_cache_page(order_by=…, descending=…)` con empates por `file_path` y `NULL` al final | Documentos se ordena por ruta, última actualización, estado de conversión y fallos seguidos. Con varias carpetas, la web mezcla las páginas de cada caché con el mismo criterio |
 | G38 | doc_organize 1.1.0 (L-16); web 1.1.0 (2026-11-06) | `ScanOptions.max_documents` para tras N conversiones con `ScanSummary.remaining` y `stopped_reason`; el `CancelToken` se atiende en el OCR y conserva lo procesado; libera memoria cada 10 documentos | `ConversionCounter`: la web ya no cuenta `ProgressEvent` ni cancela para partir; los tramos y su reanudación (`resume`) se mantienen ([ADR-015](../adr/ADR-015-endurecimiento.md), enmienda) |
 | G11 | doc_organize 1.1.0 (L-9); web 1.1.0 (2026-11-06) | `ScanOptions.document_timeout_s`, `io_retries`/`io_retry_backoff_s`, `reuse_unchanged_hashes` y `ScanSummary.io_errors` | Variables del worker `DOW_SCAN_DOCUMENT_TIMEOUT_SECONDS` (0), `DOW_SCAN_IO_RETRIES` (2) y `DOW_SCAN_REUSE_HASHES` (sí), visibles en Workers. Reintentar el run entero sigue siendo posible, pero ya no es la única defensa |

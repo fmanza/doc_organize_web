@@ -234,7 +234,13 @@ def test_force_preview_counts_cache_and_orphans(
 
     result = scan_op.run(ctx, ScanParams(force=True, dry_run=True), project)
 
-    assert result == {"cached": 2, "orphaned": 1, "output_files": 1, "output_bytes": len("# Factura")}
+    assert result == {
+        "cached": 2,
+        "orphaned": 1,
+        "excluded": 0,
+        "output_files": 1,
+        "output_bytes": len("# Factura"),
+    }
 
 
 def test_force_refuses_a_cache_with_documents_outside_its_folder(
@@ -389,3 +395,118 @@ def test_a_finished_folder_is_not_scanned_again(
 
     assert [c.output_subdir for c in calls] == ["2025"]
     assert result["converted"] == 5 and result["segments"] == 2
+
+
+# --- web 1.4.0: exclusiones y patrones (G41) -----------------------------------------------------------------------
+
+
+def test_exclusions_and_patterns_reach_each_folder(
+    ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[ScanRequest] = []
+    monkeypatch.setattr(library, "run_scan", lambda request, **_: calls.append(request) or _outcome(request))
+    source = Path(project.source_location.container_path).resolve()
+
+    scan_op.run(ctx, ScanParams(exclusions={"2024": ["fotos", "a/b"]}, ignore_patterns=["~$*", "@eaDir"]), project)
+
+    assert calls[0].exclude_paths == [source / "2024" / "fotos", source / "2024" / "a" / "b"]
+    assert calls[1].exclude_paths == []
+    assert all(c.ignore_patterns == ["~$*", "@eaDir"] for c in calls)
+    logs = [e.data["message"] for e in db.scalars(select(RunEvent).where(RunEvent.type == "log"))]
+    assert "«2024»: 2 subcarpetas excluidas." in logs
+
+
+def test_without_exclusions_the_request_is_the_one_of_1_3_0(
+    ctx: JobContext, project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[ScanRequest] = []
+
+    def fake(request: ScanRequest, **_: Any) -> ScanOutcome:
+        calls.append(request)
+        return _outcome(request, excluded_cached=0)  # doc_organize 1.3.0 siempre lo da
+
+    monkeypatch.setattr(library, "run_scan", fake)
+
+    result = scan_op.run(ctx, ScanParams(), project)
+
+    assert all(c.exclude_paths == [] and c.ignore_patterns == [] for c in calls)
+    assert "excluded_cached" not in result
+
+
+def test_every_segment_uses_the_copy_made_when_enqueued(
+    ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cambiar las exclusiones con el escaneo en marcha no afecta a sus tramos: no las releen de la BD."""
+    calls: list[ScanRequest] = []
+    outcomes = iter(
+        [
+            ScanOutcome(recycled=True, summary={"converted": 3, "remaining": 2, "excluded_cached": 4}),
+            ScanOutcome(summary={"converted": 2, "excluded_cached": 4}),
+            ScanOutcome(summary={"converted": 1, "excluded_cached": 1}),
+        ]
+    )
+
+    def fake(request: ScanRequest, **_: Any) -> ScanOutcome:
+        calls.append(request)
+        return next(outcomes)
+
+    monkeypatch.setattr(library, "run_scan", fake)
+    params = ScanParams(exclusions={"2024": ["fotos"]}, ignore_patterns=["~$*"])
+
+    with pytest.raises(JobRecycle) as first:
+        scan_op.run(ctx, params, project)
+    _save_segment(db, ctx.run_id, first.value.result)
+    db.execute(
+        update(ScannedFolder)
+        .where(ScannedFolder.project_id == project.id, ScannedFolder.subpath == "2024")
+        .values(excluded_subpaths=["otra"])
+    )
+    db.execute(update(Location).where(Location.id == project.source_location_id).values(ignore_patterns=["*.pdf"]))
+    db.commit()
+    result = scan_op.run(ctx, params, project)
+
+    assert [[p.name for p in c.exclude_paths] for c in calls] == [["fotos"], ["fotos"], []]
+    assert all(c.ignore_patterns == ["~$*"] for c in calls)
+    # Del descubrimiento: la carpeta retomada no se cuenta dos veces (ni se vuelve a avisar de sus exclusiones).
+    assert result["excluded_cached"] == 5
+    logs = [e.data["message"] for e in db.scalars(select(RunEvent).where(RunEvent.type == "log"))]
+    assert logs.count("«2024»: 1 subcarpeta excluida.") == 1
+
+
+def test_force_preview_counts_what_exclusions_and_patterns_will_delete(
+    ctx: JobContext, project: Project, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = Path(project.source_location.container_path).resolve()
+    (source / "2024" / "fotos").mkdir()
+    for name in ("fotos/a.jpg", "~$borrador.docx", "notas.txt"):
+        (source / "2024" / name).write_text("x", encoding="utf-8")
+    cached = {
+        "2024": [
+            str(source / "2024" / "fotos" / "a.jpg"),  # bajo una exclusión
+            str(source / "2024" / "~$borrador.docx"),  # encaja con un patrón
+            str(source / "2024" / "notas.txt"),
+            str(source / "2024" / "borrado.txt"),  # ya no existe
+        ],
+        "2025": [str(source / "2025" / "@EADIR" / "miniatura.jpg")],  # carpeta que encaja, sin mayúsculas
+    }
+    monkeypatch.setattr(library, "cached_paths", _caches(project, ctx, cached))
+    monkeypatch.setattr(library, "conversion_dir", lambda output, state, subdir: tmp_path / "nada" / subdir)
+    params = ScanParams(force=True, dry_run=True, exclusions={"2024": ["fotos"]}, ignore_patterns=["~$*", "@eaDir"])
+
+    result = scan_op.run(ctx, params, project)
+
+    # Lo excluido se cuenta aparte (también se borra); «orphaned» es solo lo que ya no existe.
+    assert (result["cached"], result["excluded"], result["orphaned"]) == (5, 3, 1)
+
+
+def test_patterns_never_apply_to_the_scanned_folder_itself(
+    ctx: JobContext, project: Project, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = Path(project.source_location.container_path).resolve()
+    cached = {"2024": [str(source / "2024" / "factura.txt")]}
+    monkeypatch.setattr(library, "cached_paths", _caches(project, ctx, cached))
+    monkeypatch.setattr(library, "conversion_dir", lambda output, state, subdir: tmp_path / "nada" / subdir)
+
+    result = scan_op.run(ctx, ScanParams(force=True, dry_run=True, ignore_patterns=["2024"]), project)
+
+    assert result["excluded"] == 0

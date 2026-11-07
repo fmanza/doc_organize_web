@@ -228,6 +228,8 @@ class Location(Base):
     free_bytes: Mapped[int | None] = mapped_column(BigInteger, default=None)
     writable: Mapped[bool | None] = mapped_column(default=None)
     probed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    #: Patrones ``fnmatch`` de nombres que no escanea ningún proyecto de esta ubicación de origen (1.4.0).
+    ignore_patterns: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
@@ -459,6 +461,8 @@ class ScannedFolder(Base):
     added_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     last_scanned_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     last_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+    #: Subcarpetas que el escaneo no recorre (1.4.0), relativas a esta carpeta y tal como las da el resolvedor.
+    excluded_subpaths: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
 
 
 class ScanError(Base):

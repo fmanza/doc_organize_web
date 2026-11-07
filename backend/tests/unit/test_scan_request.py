@@ -79,3 +79,27 @@ def test_cancelled_or_requested_stop_never_recycles(monkeypatch: pytest.MonkeyPa
     _fake(monkeypatch, ScanEventType.COMPLETED, {"remaining": 2, "stopped_reason": "max_documents"})
     outcome = run_scan(_request(tmp_path, max_conversions=1), on_progress=lambda _: None, is_cancelled=lambda: True)
     assert not outcome.recycled  # el usuario pidió cancelar: el worker cierra el run, no lo relanza
+
+
+def test_exclusions_reach_scan_options(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """web 1.4.0 (doc_organize 1.3.0, G41): subcarpetas absolutas y patrones de nombre."""
+    seen = _fake(monkeypatch, ScanEventType.COMPLETED, {"excluded_cached": 2})
+    excluded = tmp_path / "origen" / "fotos"
+    request = _request(tmp_path, exclude_paths=[excluded], ignore_patterns=["~$*", "@eaDir"])
+
+    outcome = run_scan(request, on_progress=lambda _: None, is_cancelled=lambda: False)
+
+    (options,) = seen
+    assert options.exclude_paths == [str(excluded)]
+    assert options.ignore_patterns == ["~$*", "@eaDir"]
+    assert outcome.summary["excluded_cached"] == 2
+
+
+def test_without_exclusions_scan_options_keep_their_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen = _fake(monkeypatch, ScanEventType.COMPLETED, {})
+
+    run_scan(_request(tmp_path), on_progress=lambda _: None, is_cancelled=lambda: False)
+
+    (options,) = seen
+    assert options.exclude_paths == [] and options.ignore_patterns == []
+    assert "exclude_paths" not in options.model_fields_set and "ignore_patterns" not in options.model_fields_set

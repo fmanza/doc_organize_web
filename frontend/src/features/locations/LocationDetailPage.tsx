@@ -1,4 +1,19 @@
-import { Anchor, Card, Center, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import {
+  Alert,
+  Anchor,
+  Badge,
+  Button,
+  Card,
+  Center,
+  Group,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Text,
+  Textarea,
+  Title,
+} from '@mantine/core';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
@@ -6,9 +21,80 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
 import { StatusLight } from '../../components/StatusLight';
-import { isAdminView, useLocation } from './useLocations';
+import { type AnyLocation, isAdminView, useLocation, useUpdateLocation } from './useLocations';
 
 const GB = 1024 ** 3;
+
+/** Un patrón por línea; las líneas en blanco no cuentan. */
+function parsePatterns(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+}
+
+/**
+ * Patrones de nombre que no escanea ningún proyecto de una ubicación de origen (1.4.0). Los edita un administrador;
+ * el resto solo los ve.
+ */
+function IgnorePatternsCard({ location }: { location: AnyLocation }) {
+  const { t } = useTranslation();
+  const update = useUpdateLocation();
+  const current = location.ignore_patterns ?? [];
+  const [text, setText] = useState(current.join('\n'));
+  const admin = isAdminView(location);
+  const changed = parsePatterns(text).join('\n') !== current.join('\n');
+  return (
+    <Card withBorder>
+      <Title order={3} size="h4" mb="xs">
+        {t('locations.patterns.title')}
+      </Title>
+      <Text size="sm" c="dimmed" mb="sm">
+        {t('locations.patterns.intro')}
+      </Text>
+      {admin ? (
+        <Stack gap="sm">
+          <Alert color="yellow">{t('locations.patterns.warning')}</Alert>
+          <Textarea
+            label={t('locations.patterns.label')}
+            description={t('locations.patterns.examples')}
+            rows={6}
+            value={text}
+            onChange={(event) => setText(event.currentTarget.value)}
+            styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
+          />
+          {update.isError && <ErrorAlert error={update.error} />}
+          <Group justify="flex-end">
+            <Button
+              disabled={!changed}
+              loading={update.isPending}
+              onClick={() =>
+                update.mutate(
+                  { id: location.id, body: { ignore_patterns: parsePatterns(text) } },
+                  { onSuccess: (saved) => setText((saved.ignore_patterns ?? []).join('\n')) },
+                )
+              }
+            >
+              {t('locations.patterns.save')}
+            </Button>
+          </Group>
+        </Stack>
+      ) : current.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          {t('locations.patterns.none')}
+        </Text>
+      ) : (
+        <Group gap="xs">
+          {current.map((pattern) => (
+            <Badge key={pattern} variant="light" color="gray" tt="none" ff="monospace">
+              {pattern}
+            </Badge>
+          ))}
+        </Group>
+      )}
+    </Card>
+  );
+}
 
 /** Detalle de una ubicación con su explorador de carpetas. */
 export function LocationDetailPage() {
@@ -64,6 +150,7 @@ export function LocationDetailPage() {
           </div>
         ))}
       </SimpleGrid>
+      {location.usage !== 'destination' && <IgnorePatternsCard location={location} />}
       <Card withBorder>
         <Title order={3} size="h4" mb="sm">
           {t('locations.browse')}

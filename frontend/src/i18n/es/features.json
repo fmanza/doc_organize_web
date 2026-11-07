@@ -212,7 +212,16 @@
       "displayPathHint": "Opcional, solo informativo (por ejemplo \\\\nas.example.internal\\expedientes)."
     },
     "pages": "Páginas de ubicaciones",
-    "search": "Buscar ubicaciones"
+    "search": "Buscar ubicaciones",
+    "patterns": {
+      "title": "Nombres que no se escanean",
+      "intro": "Ficheros y carpetas con estos nombres no se escanean en ningún proyecto que lea de esta ubicación.",
+      "warning": "Afecta a todos los proyectos de la ubicación. Lo ya convertido que encaje se conserva, pero «Forzar reconversión» lo borra.",
+      "label": "Patrones (uno por línea)",
+      "examples": "Comodines * y ?, sin distinguir mayúsculas, sin «/» ni «\\», hasta 30 de 64 caracteres. Ejemplos: ~$*, @eaDir, #recycle, $RECYCLE.BIN, System Volume Information.",
+      "save": "Guardar patrones",
+      "none": "Ninguno."
+    }
   },
   "settings": {
     "title": "Ajustes",
@@ -449,7 +458,10 @@
         "button": "Forzar reconversión",
         "title": "Forzar la reconversión de «{{name}}»",
         "body": "Se vacía la caché y se vuelven a convertir todos los documentos de todas las carpetas. Las salidas de documentos que ya no están en el origen se borran.",
-        "confirm": "Forzar reconversión"
+        "confirm": "Forzar reconversión",
+        "excludedTitle_one": "{{count}} documento excluido se borrará",
+        "excludedTitle_other": "{{count}} documentos excluidos se borrarán",
+        "excludedBody": "Ya estaban convertidos pero ahora quedan fuera del escaneo por una subcarpeta excluida o por un patrón de la ubicación de origen. Al forzar se borran su salida y su entrada de la caché. Si no es lo que quieres, cancela y quita la exclusión o el patrón."
       },
       "context_delete": {
         "button": "Borrar contexto",
@@ -649,7 +661,9 @@
       "sample_documents": "Documentos de muestra",
       "total_documents": "Documentos convertidos",
       "material_types": "Tipos de material",
-      "segments": "Tramos"
+      "segments": "Tramos",
+      "excluded": "Excluidos que se borrarán (subcarpeta excluida o patrón)",
+      "excluded_cached": "Documentos de la caché excluidos del escaneo"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -766,7 +780,24 @@
       "intro": "Vacía la caché y vuelve a convertir todos los documentos de todas las carpetas con las opciones elegidas arriba. Borra las salidas de documentos que ya no están en el origen. Primero verás una vista previa."
     },
     "capabilitiesError": "No se pudieron comprobar las capacidades de la instancia: las opciones que dependen de ellas quedan desactivadas.",
-    "capabilitiesLoading": "Comprobando qué opciones admite la instancia…"
+    "capabilitiesLoading": "Comprobando qué opciones admite la instancia…",
+    "exclusions": {
+      "open": "Excluir subcarpetas",
+      "openLabel": "Excluir subcarpetas de {{folder}}",
+      "title": "Subcarpetas excluidas de {{folder}}",
+      "hint": "Marca las subcarpetas que el escaneo no debe recorrer. Lo ya convertido de ellas se conserva; con «Forzar reconversión» se borra. Puedes cambiarlo en cualquier momento: un escaneo en marcha sigue con las exclusiones que tenía al empezar.",
+      "browse": "Subcarpetas",
+      "toggle": "Excluir {{name}} del escaneo",
+      "tag": "Excluida",
+      "listTitle": "Excluidas",
+      "none": "Ninguna: se escanea toda la carpeta.",
+      "remove": "Quitar",
+      "removeLabel": "Dejar de excluir {{folder}}",
+      "reconvertTitle": "Lo que dejes de excluir vuelve al escaneo",
+      "reconvertBody": "Si se forzó la reconversión desde que la excluiste, se volverá a convertir (también el OCR); si no, lo ya convertido sale como «sin cambios».",
+      "count_one": "{{count}} subcarpeta excluida",
+      "count_other": "{{count}} subcarpetas excluidas"
+    }
   },
   "scanErrors": {
     "title": "Documentos con errores",

@@ -2,9 +2,9 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 1.3.0 (Documentos ordenables por columna con doc_organize 1.2.0, G40), sobre la 1.2.0 (listados
-  con búsqueda, orden y 25 filas; roles como usuarios; borrar auditoría por fechas). Sin huecos abiertos en
-  doc_organize. Siguiente: lo que quede en `docs/plan/MEJORAS.md`.
+- **Versión actual**: 1.4.0 (subcarpetas excluidas del escaneo por proyecto y patrones de nombre por ubicación de
+  origen con doc_organize 1.3.0, G41), sobre la 1.3.0 (Documentos ordenables por columna, G40). Sin huecos abiertos
+  en doc_organize. Siguiente: lo que quede en `docs/plan/MEJORAS.md`.
   Plan: `docs/plan/ROADMAP.md`.
 - **Usuarios**: equipos que organizan grandes fondos documentales en una red interna, en tenants aislados; admin de
   instancia, roles del tenant con permisos y miembros de proyecto `owner`/`editor`/`viewer` (ADR-013).

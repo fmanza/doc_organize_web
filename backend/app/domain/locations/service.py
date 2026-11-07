@@ -22,6 +22,7 @@ from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import (
     FolderNotFoundError,
+    InvalidIgnorePatternsError,
     InvalidLocationPathError,
     InvalidRelativePathError,
     LocationConflictError,
@@ -71,6 +72,32 @@ class LocationChanges:
     usage: LocationUsage | None = None
     access: LocationAccess | None = None
     tenant_id: int | None = None
+    ignore_patterns: list[str] | None = None
+
+
+#: Patrones de nombre por ubicación de origen (1.4.0, G41): cuántos y de qué longitud como mucho.
+MAX_IGNORE_PATTERNS = 30
+MAX_IGNORE_PATTERN_LENGTH = 64
+
+
+def check_ignore_patterns(patterns: list[str]) -> list[str]:
+    """Valida los patrones ``fnmatch`` de nombre de una ubicación y los devuelve sin repetidos, en su orden.
+
+    Raises:
+        InvalidIgnorePatternsError: Más de ``MAX_IGNORE_PATTERNS``, alguno vacío, con separadores o demasiado largo.
+    """
+    if len(patterns) > MAX_IGNORE_PATTERNS:
+        raise InvalidIgnorePatternsError(f"Se admiten como mucho {MAX_IGNORE_PATTERNS} patrones.")
+    for pattern in patterns:
+        if not pattern.strip():
+            raise InvalidIgnorePatternsError("Hay un patrón vacío.")
+        if "/" in pattern or "\\" in pattern:
+            raise InvalidIgnorePatternsError(f"«{pattern}» lleva «/» o «\\»: los patrones son de nombre, no de ruta.")
+        if len(pattern) > MAX_IGNORE_PATTERN_LENGTH:
+            raise InvalidIgnorePatternsError(
+                f"«{pattern[:MAX_IGNORE_PATTERN_LENGTH]}…» supera los {MAX_IGNORE_PATTERN_LENGTH} caracteres."
+            )
+    return list(dict.fromkeys(patterns))
 
 
 def list_locations(
@@ -240,6 +267,16 @@ def update_location(
         if value is not None and value != getattr(location, field_name):
             setattr(location, field_name, value)
             changed.append(field_name)
+    details: dict[str, object] = {}
+    if changes.ignore_patterns is not None:
+        patterns = check_ignore_patterns(changes.ignore_patterns)
+        if patterns and location.usage == "destination":
+            raise InvalidIgnorePatternsError("Los patrones solo se aplican a ubicaciones de origen.")
+        before = list(location.ignore_patterns or [])
+        if patterns != before:
+            location.ignore_patterns = patterns
+            changed.append("ignore_patterns")
+            details["ignore_patterns"] = {"before": before, "after": patterns}
     if "access" in changed:
         _apply_probe(location, settings)
     if changed:
@@ -250,7 +287,7 @@ def update_location(
             actor_id=actor.id,
             target_type="location",
             target_id=location.id,
-            details={"fields": changed},
+            details={"fields": changed, **details},
         )
     db.commit()
     return location

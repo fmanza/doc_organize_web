@@ -72,3 +72,29 @@ def test_0009_keeps_users_sessions_and_audit(settings: Settings) -> None:
         roles = conn.exec_driver_sql("SELECT username, role FROM users ORDER BY username").all()
         assert [tuple(r) for r in roles] == [("ana", "admin"), ("luis", "user")]
         assert conn.exec_driver_sql("SELECT count(*) FROM sessions").scalar() == 1
+
+
+def test_0011_adds_empty_exclusions_and_drops_them(settings: Settings) -> None:
+    """web 1.4.0: columnas JSON con ``[]`` para las filas existentes; bajar las quita sin tocar el resto."""
+    config = _config()
+    command.upgrade(config, "0010")
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO locations (tenant_id, name, container_path, kind, usage, access, visibility, status,"
+            " created_at, updated_at) VALUES (1, 'Origen', '/mnt/origen', 'local', 'source', 'ro', 'global',"
+            " 'ok', '2026-01-01', '2026-01-01')"
+        )
+
+    command.upgrade(config, "0011")
+
+    with engine.connect() as conn:
+        assert conn.exec_driver_sql("SELECT ignore_patterns FROM locations").scalar() == "[]"
+    assert "excluded_subpaths" in {c["name"] for c in inspect(engine).get_columns("scanned_folders")}
+
+    command.downgrade(config, "0010")
+
+    assert "ignore_patterns" not in {c["name"] for c in inspect(get_engine()).get_columns("locations")}
+    assert "excluded_subpaths" not in {c["name"] for c in inspect(get_engine()).get_columns("scanned_folders")}
+    with get_engine().connect() as conn:
+        assert conn.exec_driver_sql("SELECT name FROM locations").scalar() == "Origen"

@@ -100,12 +100,19 @@ def get_location(location_id: int, user: CurrentUser, db: DbSession) -> Location
     "/{location_id}",
     response_model=LocationOut,
     summary="Editar ubicación",
-    responses={**_ERRORS, **_404, 409: {"description": "Nombre ya registrado"}},
+    responses={
+        **_ERRORS,
+        **_404,
+        400: {"description": "Patrones no válidos (invalid_ignore_patterns)"},
+        409: {"description": "Nombre ya registrado"},
+    },
 )
 def update_location(
     location_id: int, body: LocationUpdate, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> LocationOut:
-    """Cambia nombre, texto visible, tipo, uso o acceso (la carpeta del contenedor no se puede cambiar)."""
+    """Cambia nombre, texto visible, tipo, uso, acceso o patrones de nombre que no se escanean (la carpeta del
+    contenedor no se puede cambiar). Los patrones afectan a todos los proyectos que leen de la ubicación: con «forzar
+    reconversión», lo ya convertido que encaje se borra."""
     location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
     changes = LocationChanges(**body.model_dump(exclude_unset=True))
     return LocationOut.model_validate(

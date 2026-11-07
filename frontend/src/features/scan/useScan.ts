@@ -6,6 +6,7 @@ import type { components } from '../../api/schema';
 
 export type ScanParams = components['schemas']['ScanParams'];
 export type ScannedFolderOut = components['schemas']['ScannedFolderOut'];
+export type ScanExclusionOut = components['schemas']['ScanExclusionOut'];
 export type ScanErrorPage = components['schemas']['ScanErrorPage'];
 export type ScanOptionsAvailability = components['schemas']['ScanOptionsAvailability'];
 
@@ -78,6 +79,24 @@ export function useRemoveFolder(projectId: number) {
       unwrap(
         await api.DELETE('/api/v1/projects/{project_id}/scanned-folders', {
           params: { path: { project_id: projectId }, query: { subpath } },
+        }),
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * Sustituye las subcarpetas excluidas de una carpeta guardada (rutas relativas a la ubicación de origen). Se puede
+ * cambiar con un escaneo en marcha: ese run sigue con las que había al encolarse.
+ */
+export function useSetExclusions(projectId: number) {
+  const invalidate = useInvalidateFolders(projectId);
+  return useMutation({
+    mutationFn: async ({ subpath, excluded }: { subpath: string; excluded: string[] }) =>
+      unwrap(
+        await api.PUT('/api/v1/projects/{project_id}/scanned-folders/exclusions', {
+          params: { path: { project_id: projectId }, query: { subpath } },
+          body: { excluded },
         }),
       ),
     onSuccess: invalidate,

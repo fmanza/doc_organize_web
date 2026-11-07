@@ -15,7 +15,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import Settings
-from app.db.models import ACTIVE_RUN_STATUSES, FINISHED_RUN_STATUSES, Artifact, MemberRole, Project, Run, User, utcnow
+from app.db.models import (
+    ACTIVE_RUN_STATUSES,
+    FINISHED_RUN_STATUSES,
+    Artifact,
+    MemberRole,
+    Project,
+    Run,
+    ScannedFolder,
+    User,
+    utcnow,
+)
 from app.domain.ai import settings as ai_settings
 from app.domain.context import service as context
 from app.domain.duplicates import service as duplicates
@@ -148,7 +158,14 @@ def _validate_scan(db: Session, project: Project, params: ScanParams, settings: 
         raise ForceRequiresAllFoldersError(
             "«Forzar reconversión» vacía toda la caché: escanea todas las carpetas del proyecto."
         )
-    params = params.model_copy(update={"folders": folders})
+    # Copia de las exclusiones y los patrones vigentes (1.4.0): el run no las relee aunque cambien después.
+    scanned = folders or project.source_subpaths
+    rows = db.scalars(
+        select(ScannedFolder).where(ScannedFolder.project_id == project.id, ScannedFolder.subpath.in_(scanned))
+    )
+    exclusions = {row.subpath: list(row.excluded_subpaths) for row in rows if row.excluded_subpaths}
+    patterns = list(project.source_location.ignore_patterns or [])
+    params = params.model_copy(update={"folders": folders, "exclusions": exclusions, "ignore_patterns": patterns})
     check_options(db, settings, params)
     return params
 

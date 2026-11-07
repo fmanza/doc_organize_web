@@ -438,7 +438,9 @@ export interface paths {
         head?: never;
         /**
          * Editar ubicación
-         * @description Cambia nombre, texto visible, tipo, uso o acceso (la carpeta del contenedor no se puede cambiar).
+         * @description Cambia nombre, texto visible, tipo, uso, acceso o patrones de nombre que no se escanean (la carpeta del
+         *     contenedor no se puede cambiar). Los patrones afectan a todos los proyectos que leen de la ubicación: con «forzar
+         *     reconversión», lo ya convertido que encaje se borra.
          */
         patch: operations["update_location_api_v1_locations__location_id__patch"];
         trace?: never;
@@ -778,6 +780,29 @@ export interface paths {
          * @description Quita una carpeta de origen (``owner``). No borra ficheros: si ya se escaneó, sus salidas siguen en el destino.
          */
         delete: operations["remove_scanned_folder_api_v1_projects__project_id__scanned_folders_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/scanned-folders/exclusions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Excluir subcarpetas del escaneo
+         * @description Sustituye las subcarpetas que el escaneo no recorre en una carpeta guardada (``owner``).
+         *
+         *     Se puede cambiar en cualquier momento: un escaneo en marcha sigue con las que había al encolarse. Con «forzar
+         *     reconversión», lo ya convertido de una subcarpeta excluida se borra; sin forzar, se conserva.
+         */
+        put: operations["set_scanned_folder_exclusions_api_v1_projects__project_id__scanned_folders_exclusions_put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2050,6 +2075,11 @@ export interface components {
             /** Id */
             id: number;
             /**
+             * Ignore Patterns
+             * @description Patrones de nombre que no escanea ningún proyecto (ubicaciones de origen)
+             */
+            ignore_patterns?: string[];
+            /**
              * Kind
              * @enum {string}
              */
@@ -2105,6 +2135,11 @@ export interface components {
             /** Id */
             id: number;
             /**
+             * Ignore Patterns
+             * @description Patrones de nombre que no escanea ningún proyecto (ubicaciones de origen)
+             */
+            ignore_patterns?: string[];
+            /**
              * Kind
              * @enum {string}
              */
@@ -2155,6 +2190,11 @@ export interface components {
             access?: ("ro" | "rw") | null;
             /** Display Path */
             display_path?: string | null;
+            /**
+             * Ignore Patterns
+             * @description Patrones fnmatch de nombre (sin «/» ni «\», sin mayúsculas) que no se escanean; solo origen
+             */
+            ignore_patterns?: string[] | null;
             /** Kind */
             kind?: ("local" | "network") | null;
             /** Name */
@@ -2634,6 +2674,26 @@ export interface components {
             total: number;
         };
         /**
+         * ScanExclusionOut
+         * @description Subcarpeta excluida del escaneo (relativa a la ubicación de origen) y si existe ahora (``None``: no se sabe).
+         */
+        ScanExclusionOut: {
+            /** Exists */
+            exists: boolean | null;
+            /** Subpath */
+            subpath: string;
+        };
+        /**
+         * ScanExclusionsUpdate
+         * @description Subcarpetas excluidas de una carpeta guardada (sustituye a las anteriores), relativas a la ubicación de origen.
+         *
+         *     Hasta 50 (más da 400); las redundantes se colapsan y las que ya no existen se conservan.
+         */
+        ScanExclusionsUpdate: {
+            /** Excluded */
+            excluded: string[];
+        };
+        /**
          * ScanOptionsAvailability
          * @description Opciones de escaneo que algún worker vivo de su cola puede atender ahora (la API lo vuelve a comprobar).
          */
@@ -2652,6 +2712,10 @@ export interface components {
          *     ``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que
          *     ya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa
          *     (``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.
+         *
+         *     ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
+         *     ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
+         *     run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
          */
         ScanParams: {
             /** Confirm Name */
@@ -2661,6 +2725,10 @@ export interface components {
              * @default false
              */
             dry_run: boolean;
+            /** Exclusions */
+            exclusions?: {
+                [key: string]: string[];
+            };
             /**
              * Extract Images
              * @default false
@@ -2673,6 +2741,8 @@ export interface components {
              * @default false
              */
             force: boolean;
+            /** Ignore Patterns */
+            ignore_patterns?: string[];
             /**
              * Include Audio Video
              * @default false
@@ -2731,6 +2801,8 @@ export interface components {
             added_at: string;
             /** Available */
             available: boolean;
+            /** Excluded */
+            excluded?: components["schemas"]["ScanExclusionOut"][];
             /** Last Run Id */
             last_run_id: string | null;
             /** Last Scanned At */
@@ -4367,6 +4439,13 @@ export interface operations {
                     "application/json": components["schemas"]["LocationOut"];
                 };
             };
+            /** @description Patrones no válidos (invalid_ignore_patterns) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No autenticado */
             401: {
                 headers: {
@@ -5736,6 +5815,79 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    set_scanned_folder_exclusions_api_v1_projects__project_id__scanned_folders_exclusions_put: {
+        parameters: {
+            query: {
+                /** @description Carpeta guardada, relativa a la ubicación de origen */
+                subpath: string;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanExclusionsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScannedFolderOut"];
+                };
+            };
+            /** @description Exclusión no válida (invalid_exclusion) o ruta no válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

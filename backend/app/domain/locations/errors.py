@@ -46,3 +46,10 @@ class LocationConflictError(AppError):
 
     status = 409
     title = "La ubicación ya existe"
+
+
+class InvalidIgnorePatternsError(AppError):
+    """Los patrones de nombre de la ubicación no son válidos (demasiados, vacíos, con separadores o largos)."""
+
+    title = "Patrones no válidos"
+    code = "invalid_ignore_patterns"

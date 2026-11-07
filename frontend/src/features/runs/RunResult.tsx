@@ -34,6 +34,8 @@ const COUNTS = new Set([
   'warnings',
   'cached',
   'orphaned',
+  'excluded',
+  'excluded_cached',
   'file_count',
   'rows',
   'indexed',
