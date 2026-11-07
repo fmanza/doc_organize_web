@@ -14,6 +14,7 @@ Prioridad: **P1** entra en el plan base · **P2** recomendable en su fase · **P
 | P2 | `ScanOptions` en lugar de 12 parámetros posicionales | Evita errores de orden al llamar |
 | P2 | Escaneo incremental por `size+mtime` antes del hash | En red, hashear todo cada vez es lo más caro |
 | P2 | Cola GPU separada | Un escaneo con OCR GPU no bloquea los trabajos ligeros |
+| P2 | Excluir subcarpetas de las carpetas de trabajo al escanear: el usuario marca en el árbol de una carpeta guardada las subcarpetas que no se escanean (borradores, copias, `old/`…); se guardan con la carpeta y la vista previa las muestra como excluidas (anotado el 2026-11-07) | Hoy solo se escanea una carpeta entera; para dejar fuera una subcarpeta hay que moverla o guardar por separado cada hermana. Requiere librería: `DocumentScanner.scan_folders` solo acepta un `exclude_dir` (lo usa `ScanCommand` para la salida del propio proyecto) y `ScanOptions` no tiene exclusiones, así que sería un hueco nuevo (G41, p. ej. `ScanOptions.exclude_paths`). Decidir qué pasa con lo ya convertido de una subcarpeta que se excluye después (se conserva o cuenta como eliminado con `force`) |
 | P3 | Búsqueda de texto completo (FTS5) sobre el Markdown convertido | Valor directo para el usuario; portable a PostgreSQL (`tsvector`) |
 
 ## Seguridad
