@@ -237,6 +237,16 @@ class LocationOut(LocationPublic):
     updated_at: datetime
 
 
+# Límites amplios aquí (422); los del dominio (30 patrones de hasta 64 caracteres, sin separadores) dan 400.
+IgnorePatterns = Annotated[
+    list[Annotated[str, Field(max_length=1024)]] | None,
+    Field(
+        max_length=200,
+        description="Patrones fnmatch de nombre (sin «/» ni «\\», sin mayúsculas) que no se escanean; solo origen",
+    ),
+]
+
+
 class LocationCreate(BaseModel):
     """Alta de ubicación. ``path`` es relativa a ``DOW_LOCATIONS_ROOT`` (``/mnt``) y no se puede cambiar después."""
 
@@ -246,6 +256,7 @@ class LocationCreate(BaseModel):
     kind: LocationKind = "local"
     usage: LocationUsage
     access: LocationAccess = "ro"
+    ignore_patterns: IgnorePatterns = None
 
 
 class LocationUpdate(BaseModel):
@@ -259,12 +270,7 @@ class LocationUpdate(BaseModel):
     usage: LocationUsage | None = None
     access: LocationAccess | None = None
     tenant_id: int | None = Field(default=None, description="Pasarla a otro tenant (si ningún proyecto la usa)")
-    # Límites amplios aquí (422); los del dominio (30 patrones de hasta 64 caracteres, sin separadores) dan 400.
-    ignore_patterns: list[Annotated[str, Field(max_length=1024)]] | None = Field(
-        default=None,
-        max_length=200,
-        description="Patrones fnmatch de nombre (sin «/» ni «\\», sin mayúsculas) que no se escanean; solo origen",
-    )
+    ignore_patterns: IgnorePatterns = None
 
 
 class LocationPage(BaseModel):

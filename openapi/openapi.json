@@ -1772,6 +1772,23 @@
             ],
             "title": "Display Path"
           },
+          "ignore_patterns": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Patrones fnmatch de nombre (sin «/» ni «\\», sin mayúsculas) que no se escanean; solo origen",
+            "title": "Ignore Patterns"
+          },
           "kind": {
             "default": "local",
             "enum": [
@@ -4952,7 +4969,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.4.0"
+    "version": "1.4.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6075,7 +6092,7 @@
         ]
       },
       "post": {
-        "description": "Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea.",
+        "description": "Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea; con ``ignore_patterns``, los nombres\nque no escanea ningún proyecto (solo ubicaciones de origen).",
         "operationId": "create_location_api_v1_locations_post",
         "requestBody": {
           "content": {
@@ -6099,7 +6116,7 @@
             "description": "Successful Response"
           },
           "400": {
-            "description": "Carpeta no válida (fuera de la raíz, inexistente o solapada)"
+            "description": "Carpeta no válida (fuera de la raíz, inexistente o solapada) o patrones no válidos (invalid_ignore_patterns)"
           },
           "401": {
             "description": "No autenticado"

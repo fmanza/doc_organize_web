@@ -406,7 +406,8 @@ export interface paths {
         put?: never;
         /**
          * Registrar ubicación
-         * @description Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea.
+         * @description Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea; con ``ignore_patterns``, los nombres
+         *     que no escanea ningún proyecto (solo ubicaciones de origen).
          */
         post: operations["create_location_api_v1_locations_post"];
         delete?: never;
@@ -2032,6 +2033,11 @@ export interface components {
             access: "ro" | "rw";
             /** Display Path */
             display_path?: string | null;
+            /**
+             * Ignore Patterns
+             * @description Patrones fnmatch de nombre (sin «/» ni «\», sin mayúsculas) que no se escanean; solo origen
+             */
+            ignore_patterns?: string[] | null;
             /**
              * Kind
              * @default local
@@ -4267,7 +4273,7 @@ export interface operations {
                     "application/json": components["schemas"]["LocationOut"];
                 };
             };
-            /** @description Carpeta no válida (fuera de la raíz, inexistente o solapada) */
+            /** @description Carpeta no válida (fuera de la raíz, inexistente o solapada) o patrones no válidos (invalid_ignore_patterns) */
             400: {
                 headers: {
                     [name: string]: unknown;

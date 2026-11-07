@@ -1,12 +1,29 @@
-import { Button, Group, Input, Modal, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
-import { Controller, useForm } from 'react-hook-form';
+import {
+  Alert,
+  Button,
+  Group,
+  Input,
+  Modal,
+  SegmentedControl,
+  Stack,
+  Text,
+  Textarea,
+  TextInput,
+} from '@mantine/core';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { zodResolver } from '../../components/forms';
-import { type LocationOut, type LocationUpdate, useCreateLocation, useUpdateLocation } from './useLocations';
+import {
+  type LocationOut,
+  type LocationUpdate,
+  parsePatterns,
+  useCreateLocation,
+  useUpdateLocation,
+} from './useLocations';
 
 function buildSchema(editing: boolean) {
   return z.object({
@@ -17,6 +34,8 @@ function buildSchema(editing: boolean) {
     kind: z.enum(['local', 'network']),
     usage: z.enum(['source', 'destination', 'both']),
     access: z.enum(['ro', 'rw']),
+    /** Patrones de nombre que no se escanean, uno por línea (1.4.1; el servidor los valida). */
+    patterns: z.string(),
   });
 }
 type LocationForm = z.infer<ReturnType<typeof buildSchema>>;
@@ -48,10 +67,15 @@ export function LocationFormModal({ location, opened, onClose }: LocationFormMod
       kind: location?.kind ?? 'local',
       usage: location?.usage ?? 'source',
       access: location?.access ?? 'ro',
+      patterns: (location?.ignore_patterns ?? []).join('\n'),
     },
   });
+  // Los patrones solo valen en ubicaciones de origen: en una de destino ni se muestran ni se envían (se conservan).
+  const isSource = useWatch({ control, name: 'usage' }) !== 'destination';
 
   const onSubmit = handleSubmit((values) => {
+    const patterns =
+      values.usage === 'destination' ? {} : { ignore_patterns: parsePatterns(values.patterns) };
     if (location) {
       const body: LocationUpdate = {
         name: values.name,
@@ -59,6 +83,7 @@ export function LocationFormModal({ location, opened, onClose }: LocationFormMod
         kind: values.kind,
         usage: values.usage,
         access: values.access,
+        ...patterns,
       };
       update.mutate({ id: location.id, body }, { onSuccess: onClose });
     } else {
@@ -70,6 +95,7 @@ export function LocationFormModal({ location, opened, onClose }: LocationFormMod
           kind: values.kind,
           usage: values.usage,
           access: values.access,
+          ...patterns,
         },
         { onSuccess: onClose },
       );
@@ -151,6 +177,18 @@ export function LocationFormModal({ location, opened, onClose }: LocationFormMod
           {segmented('usage', ['source', 'destination', 'both'])}
           {segmented('access', ['ro', 'rw'])}
           {segmented('kind', ['local', 'network'])}
+          {isSource && (
+            <Stack gap="xs">
+              <Textarea
+                label={t('locations.patterns.label')}
+                description={`${t('locations.patterns.intro')} ${t('locations.patterns.examples')}`}
+                rows={4}
+                styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
+                {...register('patterns')}
+              />
+              <Alert color="yellow">{t('locations.patterns.warning')}</Alert>
+            </Stack>
+          )}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               {t('common.cancel')}

@@ -61,14 +61,18 @@ def list_locations(
     summary="Registrar ubicación",
     responses={
         **_ERRORS,
-        400: {"description": "Carpeta no válida (fuera de la raíz, inexistente o solapada)"},
+        400: {
+            "description": "Carpeta no válida (fuera de la raíz, inexistente o solapada) o patrones no válidos "
+            "(invalid_ignore_patterns)"
+        },
         409: {"description": "Nombre o carpeta ya registrados"},
     },
 )
 def create_location(
     body: LocationCreate, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> LocationOut:
-    """Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea."""
+    """Registra una carpeta de ``DOW_LOCATIONS_ROOT`` como ubicación y la sondea; con ``ignore_patterns``, los nombres
+    que no escanea ningún proyecto (solo ubicaciones de origen)."""
     location = service.create_location(
         db,
         name=body.name,
@@ -81,6 +85,7 @@ def create_location(
         actor=admin,
         ctx=ctx,
         tenant_id=admin.scope_tenant_id,
+        ignore_patterns=body.ignore_patterns,
     )
     return LocationOut.model_validate(location)
 

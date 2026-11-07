@@ -14,6 +14,14 @@ export type LocationStatus = LocationPublic['status'];
 
 export const FOLDER_PAGE_SIZE = 200;
 
+/** Patrones de nombre escritos uno por línea (1.4.0); las líneas en blanco no cuentan. */
+export function parsePatterns(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+}
+
 /** La respuesta trae `container_path` solo para administradores. */
 export function isAdminView(location: AnyLocation): location is LocationOut {
   return 'container_path' in location;

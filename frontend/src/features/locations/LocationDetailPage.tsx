@@ -21,17 +21,9 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
 import { StatusLight } from '../../components/StatusLight';
-import { type AnyLocation, isAdminView, useLocation, useUpdateLocation } from './useLocations';
+import { type AnyLocation, isAdminView, parsePatterns, useLocation, useUpdateLocation } from './useLocations';
 
 const GB = 1024 ** 3;
-
-/** Un patrón por línea; las líneas en blanco no cuentan. */
-function parsePatterns(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '');
-}
 
 /**
  * Patrones de nombre que no escanea ningún proyecto de una ubicación de origen (1.4.0). Los edita un administrador;

@@ -255,3 +255,48 @@ def test_only_admins_change_ignore_patterns(user_client: TestClient, project_loc
     )
 
     assert response.status_code == 403
+
+
+# --- web 1.4.1: patrones al dar de alta la ubicación ----------------------------------------------------------------
+
+
+def _new_location(root: Path, name: str, usage: str, patterns: list[str] | None = None) -> dict[str, object]:
+    (root / name).mkdir(parents=True)
+    body: dict[str, object] = {"name": name, "path": name, "usage": usage, "access": "ro"}
+    if patterns is not None:
+        body["ignore_patterns"] = patterns
+    return body
+
+
+def test_ignore_patterns_are_set_when_the_location_is_created(
+    admin_client: TestClient, migrated: Settings, db: Session
+) -> None:
+    body = _new_location(migrated.locations_root, "nas", "both", ["~$*", "@eaDir", "~$*"])
+
+    response = admin_client.post("/api/v1/locations", json=body)
+
+    assert response.status_code == 201, response.text
+    assert response.json()["ignore_patterns"] == ["~$*", "@eaDir"]
+    entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "location.create")).one()
+    assert entry.details is not None and entry.details["ignore_patterns"] == ["~$*", "@eaDir"]
+
+
+def test_without_ignore_patterns_the_location_has_none(admin_client: TestClient, migrated: Settings) -> None:
+    response = admin_client.post("/api/v1/locations", json=_new_location(migrated.locations_root, "nas", "source"))
+
+    assert response.status_code == 201 and response.json()["ignore_patterns"] == []
+
+
+@pytest.mark.parametrize(
+    ("usage", "patterns"),
+    [("source", ["fotos/*.jpg"]), ("source", [""]), ("source", ["x" * 65]), ("destination", ["~$*"])],
+)
+def test_invalid_ignore_patterns_reject_the_new_location(
+    admin_client: TestClient, migrated: Settings, db: Session, usage: str, patterns: list[str]
+) -> None:
+    response = admin_client.post(
+        "/api/v1/locations", json=_new_location(migrated.locations_root, "nas", usage, patterns)
+    )
+
+    assert response.status_code == 400 and response.json()["code"] == "invalid_ignore_patterns"
+    assert db.scalars(select(Location).where(Location.name == "nas")).first() is None

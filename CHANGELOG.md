@@ -5,6 +5,20 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-07
+
+Patrones de nombre también al registrar y al editar una ubicación.
+
+### Added
+
+- **backend**, **frontend**: el formulario de «Nueva ubicación» y el de «Editar ubicación» tienen el campo «Patrones
+  (uno por línea)», con los ejemplos y el aviso de que afectan a todos los proyectos de la ubicación. Solo aparece
+  si el uso es «Origen» u «Origen y destino»; en una de destino ni se muestra ni se envía (los guardados se
+  conservan). La tarjeta de la ficha de la ubicación sigue igual.
+  - `POST /api/v1/locations` acepta `ignore_patterns` opcional con las mismas reglas que el `PATCH` (400
+    `invalid_ignore_patterns` si no se cumplen, también en una ubicación de destino) y la auditoría del alta los
+    registra.
+
 ## [1.4.0] - 2026-11-07
 
 Exclusiones en el escaneo con doc_organize 1.3.0 (G41): subcarpetas por proyecto y patrones de nombre por ubicación.

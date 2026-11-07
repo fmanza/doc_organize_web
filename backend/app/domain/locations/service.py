@@ -196,15 +196,21 @@ def create_location(
     actor: User,
     ctx: RequestContext,
     tenant_id: int,
+    ignore_patterns: list[str] | None = None,
 ) -> Location:
     """Registra una ubicación del tenant con la carpeta ``path`` (relativa a ``DOW_LOCATIONS_ROOT``) y la sondea.
 
-    Una carpeta pertenece a una sola ubicación, y por tanto a un solo tenant (no se solapan).
+    Una carpeta pertenece a una sola ubicación, y por tanto a un solo tenant (no se solapan). ``ignore_patterns``
+    (1.4.1): patrones de nombre que no se escanean, solo en ubicaciones de origen.
 
     Raises:
         LocationConflictError: Nombre o carpeta ya registrados.
         InvalidLocationPathError: Carpeta no válida.
+        InvalidIgnorePatternsError: Patrones no válidos, o en una ubicación de destino.
     """
+    patterns = check_ignore_patterns(ignore_patterns or [])
+    if patterns and usage == "destination":
+        raise InvalidIgnorePatternsError("Los patrones solo se aplican a ubicaciones de origen.")
     if _name_taken(db, tenant_id, name):
         raise LocationConflictError("Ya hay una ubicación con ese nombre.")
     container_path = _validate_container_path(db, path, settings)
@@ -216,10 +222,14 @@ def create_location(
         kind=kind,
         usage=usage,
         access=access,
+        ignore_patterns=patterns,
     )
     _apply_probe(location, settings)
     db.add(location)
     db.flush()
+    details: dict[str, object] = {"name": location.name, "usage": usage, "access": access, "status": location.status}
+    if patterns:
+        details["ignore_patterns"] = patterns
     audit.record(
         db,
         action=AuditAction.LOCATION_CREATE,
@@ -227,7 +237,7 @@ def create_location(
         actor_id=actor.id,
         target_type="location",
         target_id=location.id,
-        details={"name": location.name, "usage": usage, "access": access, "status": location.status},
+        details=details,
     )
     db.commit()
     return location
