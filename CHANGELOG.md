@@ -5,6 +5,14 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-11-08
+
+### Fixed
+
+- **backend**: cuando el worker GPU se queda sin memoria, el error de la ejecución nombra su límite,
+  `DOW_WORKER_GPU_MEM_LIMIT`, en lugar de `DOW_WORKER_MEM_LIMIT` (el del worker de CPU), que no le afecta. El worker
+  elige la variable según su cola (`gpu` → la del worker GPU).
+
 ## [1.4.1] - 2026-11-07
 
 Patrones de nombre también al registrar y al editar una ubicación.
