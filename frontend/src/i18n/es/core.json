@@ -187,6 +187,7 @@
   },
   "listing": {
     "search": "Buscar…",
+    "searchLabel": "Buscar",
     "clear": "Limpiar la búsqueda",
     "sortBy": "Ordenar por esta columna",
     "empty": "Ningún resultado con esa búsqueda.",

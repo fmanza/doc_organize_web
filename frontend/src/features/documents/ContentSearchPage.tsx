@@ -21,6 +21,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
+import { ClearSection } from '../../components/listing';
 import { canDo, useEnqueueRun, useProject } from '../projects/useProjects';
 import { ROOT_FOLDER, SEARCH_PAGE_SIZE, snippetParts, useContentSearch } from './useDocuments';
 
@@ -86,6 +87,16 @@ export function ContentSearchPage() {
             setPage(1);
           }}
           maxLength={200}
+          rightSectionPointerEvents="auto"
+          rightSection={
+            <ClearSection
+              text={text}
+              onClear={() => {
+                setText('');
+                setPage(1);
+              }}
+            />
+          }
           style={{ flex: 1, minWidth: 200 }}
         />
         <Select
