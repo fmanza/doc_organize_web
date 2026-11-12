@@ -5,6 +5,21 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-11-12
+
+### Changed
+
+- **frontend**: todos los buscadores muestran la etiqueta «Buscar» (el texto concreto queda como ayuda dentro del
+  campo y como nombre accesible) y un aspa para borrar lo escrito. La búsqueda de documentos, la de contenido y el
+  filtro «Usuario que actuó» de la auditoría también tienen el aspa.
+- **frontend**: en Escaneo, el botón «Excluir subcarpetas» de cada carpeta se resalta frente a «Quitar», y el recuento
+  de subcarpetas excluidas se distingue de la insignia «escaneada».
+
+### Fixed
+
+- **frontend**: el aspa de los buscadores de listados no se podía pulsar: Mantine aplica `pointer-events: none` a la
+  sección derecha del campo y el clic llegaba al campo.
+
 ## [1.4.2] - 2026-11-08
 
 ### Fixed

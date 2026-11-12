@@ -35,7 +35,29 @@ export function SortableTh<K extends string>({
   );
 }
 
-/** Buscador de un listado: espera 300 ms tras teclear antes de pedir nada y se limpia con un botón. */
+/**
+ * Aspa que vacía un campo de texto, para `rightSection`. Va con `rightSectionPointerEvents="auto"`: Mantine pone
+ * `pointer-events: none` en esa sección y, sin ello, el clic atraviesa el botón y llega al campo.
+ */
+export function ClearSection({ text, onClear }: { text: string; onClear: () => void }) {
+  const { t } = useTranslation();
+  if (!text) {
+    return null;
+  }
+  return (
+    <CloseButton
+      aria-label={t('listing.clear')}
+      size="sm"
+      onMouseDown={(event) => event.preventDefault()} // el foco se queda en el campo
+      onClick={onClear}
+    />
+  );
+}
+
+/**
+ * Buscador de un listado: etiqueta visible «Buscar», espera 300 ms tras teclear antes de pedir nada y se limpia con
+ * el aspa. `label` es el nombre accesible (empieza por «Buscar», WCAG 2.5.3) y el texto de ayuda del campo.
+ */
 export function SearchBox({
   value,
   onChange,
@@ -64,23 +86,22 @@ export function SearchBox({
   }, [text, value, onChange]);
   return (
     <TextInput
+      label={t('listing.searchLabel')}
       aria-label={label}
-      placeholder={placeholder ?? t('listing.search')}
+      placeholder={placeholder ?? label}
       value={text}
       onChange={(event) => setText(event.currentTarget.value)}
       maxLength={100}
       maw={360}
+      rightSectionPointerEvents="auto"
       rightSection={
-        text ? (
-          <CloseButton
-            aria-label={t('listing.clear')}
-            size="sm"
-            onClick={() => {
-              setText('');
-              onChange('');
-            }}
-          />
-        ) : null
+        <ClearSection
+          text={text}
+          onClear={() => {
+            setText('');
+            onChange('');
+          }}
+        />
       }
     />
   );

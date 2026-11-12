@@ -858,7 +858,7 @@
     "contentSearch": {
       "title": "Buscar en el contenido",
       "back": "← Documentos",
-      "words": "Palabras",
+      "words": "Buscar",
       "hint": "Busca documentos convertidos que contengan todas las palabras (sin distinguir mayúsculas ni tildes).",
       "prompt": "Escribe una o varias palabras.",
       "noIndex": "La búsqueda aún no está preparada: se prepara al terminar un escaneo, o con «Actualizar la búsqueda».",

@@ -402,7 +402,7 @@ export function ScanPage() {
                         </Badge>
                       )}
                       {(folder.excluded?.length ?? 0) > 0 && (
-                        <Badge color="gray" variant="light">
+                        <Badge variant="outline">
                           {t('scan.exclusions.count', { count: folder.excluded?.length ?? 0 })}
                         </Badge>
                       )}
@@ -423,8 +423,9 @@ export function ScanPage() {
                     <Table.Td>
                       <Group gap={4} wrap="nowrap">
                         {/* Las exclusiones se pueden cambiar con un escaneo en marcha (usa la copia del run). */}
+                        {/* Resaltado frente a «Quitar»: es la acción habitual de la columna. */}
                         <Button
-                          variant="subtle"
+                          variant="light"
                           size="xs"
                           disabled={!folder.available}
                           onClick={() => setExcluding(folder)}

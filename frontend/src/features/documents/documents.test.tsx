@@ -176,13 +176,16 @@ describe('ContentSearchPage', () => {
 
     renderRoute('/projects/7/search');
 
-    await user.type(await screen.findByRole('textbox', { name: /Palabras/ }), 'luz');
+    await user.type(await screen.findByRole('textbox', { name: 'Buscar' }), 'luz');
     expect(await screen.findByRole('link', { name: 'Factura' })).toHaveAttribute(
       'href',
       `/projects/7/documents/view?path=${encodeURIComponent('2024/factura.md')}`,
     );
     expect(screen.getByText('luz', { selector: 'mark' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Actualizar la búsqueda' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Limpiar la búsqueda' }));
+    expect(screen.getByRole('textbox', { name: 'Buscar' })).toHaveValue('');
   });
 });
 

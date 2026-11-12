@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { PageControls } from '../../components/Paging';
-import { SearchBox, SortableTh } from '../../components/listing';
+import { ClearSection, SearchBox, SortableTh } from '../../components/listing';
 import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
@@ -79,6 +79,16 @@ export function AuditPage() {
             paging.setPage(1, true);
           }}
           maw={240}
+          rightSectionPointerEvents="auto"
+          rightSection={
+            <ClearSection
+              text={actor}
+              onClear={() => {
+                setActor('');
+                paging.setPage(1, true);
+              }}
+            />
+          }
         />
         <SearchBox value={list.q} onChange={list.setQ} label={t('admin.audit.search')} />
       </Group>

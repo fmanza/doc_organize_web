@@ -20,7 +20,7 @@ import { Link, useParams } from 'react-router';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
 import { PageControls } from '../../components/Paging';
-import { SortSelect } from '../../components/listing';
+import { ClearSection, SortSelect } from '../../components/listing';
 import { useListState } from '../../components/useListState';
 import { useProject } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
@@ -91,7 +91,9 @@ export function DocumentsPage() {
       <ExportPanel projectId={projectId} />
       <Group align="flex-end">
         <TextInput
-          label={t('documents.search')}
+          label={t('listing.searchLabel')}
+          aria-label={t('documents.search')}
+          placeholder={t('documents.search')}
           value={search}
           onChange={(event) => {
             // Otro filtro: la página 7 de la búsqueda anterior no tiene sentido en la nueva.
@@ -99,6 +101,16 @@ export function DocumentsPage() {
             paging.setPage(1, true);
           }}
           maxLength={200}
+          rightSectionPointerEvents="auto"
+          rightSection={
+            <ClearSection
+              text={search}
+              onClear={() => {
+                setSearch('');
+                paging.setPage(1, true);
+              }}
+            />
+          }
           style={{ flex: 1, minWidth: 200 }}
         />
         <Select

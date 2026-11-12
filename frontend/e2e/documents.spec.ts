@@ -32,7 +32,7 @@ test('documentos: lista, visor, búsqueda de texto completo y exportación', asy
 
   // La búsqueda de texto completo se preparó al terminar el escaneo.
   await page.goto(`/projects/${id}/search`);
-  await page.getByRole('textbox', { name: /Palabras/ }).fill('sintetica');
+  await page.getByRole('textbox', { name: 'Buscar', exact: true }).fill('sintetica');
   await expect(page.getByRole('link', { name: 'Nota sintética' })).toBeVisible();
 
   // Exportación como ejecución, con el fichero para descargar.

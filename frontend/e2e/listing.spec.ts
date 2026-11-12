@@ -19,6 +19,12 @@ test('ordenar y buscar usuarios queda en la URL', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`q=${ADMIN_USER ?? ''}`));
   // En la pila E2E el nombre visible del admin es su usuario: dos celdas con el mismo texto en la fila.
   await expect(page.getByRole('cell', { name: ADMIN_USER ?? '', exact: true }).first()).toBeVisible();
+
+  // web 1.4.3: etiqueta visible «Buscar» y aspa pulsable (clic real: jsdom no aplica `pointer-events`).
+  await expect(page.getByText('Buscar', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Limpiar la búsqueda' }).click();
+  await expect(page.getByRole('textbox', { name: 'Buscar por usuario o nombre' })).toHaveValue('');
+  await expect(page).not.toHaveURL(/q=/);
 });
 
 test('Roles: listado con los predeterminados y su vista de solo lectura', async ({ page }) => {
