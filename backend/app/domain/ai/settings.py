@@ -161,11 +161,12 @@ def connection(db: Session, settings: Settings, key: FamilyKey) -> AiConnection:
     missing = [field.name for field in spec.fields if field.required and field.name not in values]
     if missing:
         raise AiNotConfiguredError(f"Falta configurar {key}: {', '.join(missing)}")
+    draft = key == "litellm_taxonomy_manifest_draft"  # una sola petición larga: sus propios plazo y reintentos
     return AiConnection(
         family=key,
         values=values,
-        timeout_s=float(settings.ai_timeout_seconds),
-        retries=settings.ai_retries,
+        timeout_s=float(settings.ai_draft_timeout_seconds if draft else settings.ai_timeout_seconds),
+        retries=settings.ai_draft_retries if draft else settings.ai_retries,
         budget=settings.ai_max_documents_per_run,
     )
 

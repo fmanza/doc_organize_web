@@ -22,7 +22,7 @@ from app.jobs.operations.context import ai_connection, context_folders
 
 AI_ERRORS: Final[dict[str, str]] = {
     "ai_auth": "El servicio de IA rechazó la clave del borrador de manifiesto. Revisa la configuración de IA.",
-    "ai_connection": "No se pudo conectar con el servicio de IA (o no respondió a tiempo).",
+    "ai_connection": "No se pudo conectar con el servicio de IA.",
     "ai_error": "El servicio de IA devolvió un error o una respuesta que no es un borrador de manifiesto válido.",
 }
 
@@ -44,6 +44,12 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
             "no_converted_documents", "El proyecto no tiene documentos convertidos: escanea antes de pedir un borrador."
         ) from None
     except library_ai.AiServiceError as exc:
+        if exc.timed_out:  # conectó pero no respondió: no es un fallo de conexión (el modelo es lento)
+            raise JobFailed(
+                "ai_timeout",
+                f"El servicio de IA no respondió a tiempo ({connection.timeout_s:g} s por intento). Sube «Tiempo"
+                " máximo del borrador de IA» en los ajustes o usa un modelo más rápido.",
+            ) from None
         raise JobFailed(exc.code, AI_ERRORS[exc.code]) from None
     if len(draft.markdown.encode("utf-8")) > MAX_TEMPLATE_BYTES:  # va a runs.result (config.db) y al editor
         raise JobFailed("ai_error", "El borrador de la IA supera el tamaño máximo de un manifiesto (256 KiB).")

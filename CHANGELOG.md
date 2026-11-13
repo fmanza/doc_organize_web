@@ -5,6 +5,16 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-11-13
+
+### Fixed
+
+- **backend**: el borrador de manifiesto con IA fallaba con «No se pudo conectar con el servicio de IA» cuando el
+  modelo solo era lento (un 14B local): usaba el plazo general de 30 s y lo reintentaba 2 veces. Ahora tiene sus
+  propios ajustes, «Tiempo máximo del borrador de IA» (300 s) y «Reintentos del borrador de IA» (0), y un timeout
+  falla con el código `ai_timeout` («no respondió a tiempo») en lugar de `ai_connection`. El log del worker registra
+  la clase de la causa (`ReadTimeout`, `ConnectError`…), el plazo y los reintentos, sin URL ni clave.
+
 ## [1.4.4] - 2026-11-13
 
 ### Changed
