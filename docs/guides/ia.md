@@ -37,13 +37,15 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
   avisa y solo deja guardar URL, modelo y usuario.
 - Cada cambio queda en la [auditoría](usuarios_y_sesiones.md) con los nombres de los campos, nunca con las claves.
 
-En **Administración → Ajustes** hay tres ajustes más:
+En **Administración → Ajustes** hay cinco ajustes más:
 
 | Ajuste | Por defecto | Qué hace |
 |---|---|---|
-| Tiempo máximo por petición de IA | 30 s | Para clasificar y pedir borradores (el panel de uso espera como mucho 10 s) |
+| Tiempo máximo por petición de IA | 30 s | Para clasificar documentos (el panel de uso espera como mucho 10 s) |
 | Reintentos de conexión con la IA | 2 | Solo ante fallos de conexión |
 | Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA |
+| Tiempo máximo del borrador de IA | 300 s | La petición del borrador es una sola y larga; con un modelo local puede tardar minutos (5–900) |
+| Reintentos del borrador de IA | 0 | Ante un fallo de conexión o de tiempo. Reintentar un timeout vuelve a pedir la misma generación al modelo |
 
 ## Clasificar con IA
 
@@ -68,6 +70,10 @@ repartidos entre carpetas.
 Es una [ejecución](ejecuciones.md) que **no guarda nada**. Al terminar, el borrador se carga en el editor: revísalo,
 cámbialo si hace falta y pulsa «Guardar manifiesto». Después puedes construir el contexto con «Manifiesto del
 proyecto». Lo pueden pedir los editores y propietarios. Queda en la auditoría como «Borrador de manifiesto con IA».
+
+Si la ejecución falla con «El servicio de IA no respondió a tiempo», el servicio aceptó la petición pero el modelo no
+terminó en el plazo: sube «Tiempo máximo del borrador de IA», pide una muestra más pequeña o usa un modelo más rápido.
+«No se pudo conectar con el servicio de IA» es otra cosa: la URL no responde (el proxy está parado o no se alcanza).
 
 ## Uso de IA (administradores)
 

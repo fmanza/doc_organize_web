@@ -41,6 +41,8 @@ ADMIN_KEYS: Final[tuple[str, ...]] = (
     "ai_timeout_seconds",
     "ai_retries",
     "ai_max_documents_per_run",
+    "ai_draft_timeout_seconds",
+    "ai_draft_retries",
 )
 
 Source = Literal["db", "env", "default"]

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import AuditEntry, ContextDocument, Project, ProjectContext, RunEvent
+from app.domain.ai import settings as ai_settings
 from app.domain.runs.operations import ContextBuildParams, context_ai_family
 from app.domain.scan.state import CONVERSION_DIR
 from app.integrations.doc_organize import ai as library_ai
@@ -206,6 +207,47 @@ def test_taxonomy_draft_errors_carry_no_details(
         draft_operation.run(ctx, params, project)
 
     assert failure.value.code == code and BASE_URL not in failure.value.message
+
+
+def test_draft_has_its_own_timeout_and_no_retries(db: Session, migrated: Settings) -> None:
+    """Hotfix 1.4.5: el borrador es una petición larga; las demás familias siguen con el plazo general."""
+    draft = ai_settings.connection(db, migrated, "litellm_taxonomy_manifest_draft")
+    classification = ai_settings.connection(db, migrated, "litellm_classification")
+
+    assert (draft.timeout_s, draft.retries) == (300.0, 0)
+    assert (classification.timeout_s, classification.retries) == (30.0, 2)
+
+
+@pytest.mark.parametrize(
+    ("error", "code", "timed_out"),
+    [(httpx.ReadTimeout, "ai_timeout", True), (httpx.ConnectError, "ai_connection", False)],
+)
+def test_taxonomy_draft_tells_a_timeout_from_a_connection_error(
+    run: Any,
+    project: Project,
+    litellm: Any,
+    caplog: pytest.LogCaptureFixture,
+    error: type[httpx.TransportError],
+    code: str,
+    timed_out: bool,
+) -> None:
+    """Hotfix 1.4.5: un modelo lento no es «no se pudo conectar», no se reintenta y la causa queda en el log."""
+
+    def _fail(_: dict[str, Any]) -> httpx.Response:
+        raise error("sin respuesta")
+
+    bodies = litellm(_fail)
+    ctx, params = run({"operation": "taxonomy_draft"})
+
+    with caplog.at_level("WARNING", logger=library_ai.__name__), pytest.raises(JobFailed) as failure:
+        draft_operation.run(ctx, params, project)
+
+    assert failure.value.code == code and len(bodies) == 1  # ai_draft_retries = 0 por defecto
+    assert ("300 s" in failure.value.message) is timed_out and BASE_URL not in failure.value.message
+    (record,) = [r for r in caplog.records if r.name == library_ai.__name__]
+    assert record.cause == error.__name__ and record.timed_out is timed_out  # type: ignore[attr-defined]
+    logged = record.getMessage() + json.dumps({k: str(v) for k, v in vars(record).items()})
+    assert KEY not in logged and BASE_URL not in logged
 
 
 def test_taxonomy_draft_needs_converted_documents(run: Any, project: Project, migrated: Settings, litellm: Any) -> None:

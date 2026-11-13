@@ -33,6 +33,7 @@ y en ningún caso llevan la clave.
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path, PurePosixPath
@@ -52,6 +53,8 @@ FamilyKey = Literal[
 ]
 AiErrorCode = Literal["ai_auth", "ai_connection", "ai_error"]
 UsageSourceKey = Literal["litellm", "github_copilot"]
+
+logger = logging.getLogger(__name__)
 
 #: Errores de conexión seguidos tras los que doc_organize deja de llamar al servicio en un run (``ai_max_failures``).
 MAX_CONNECTION_FAILURES: Final = 3
@@ -127,11 +130,16 @@ class AiConnection:
 
 
 class AiServiceError(Exception):
-    """Falló una llamada al servicio de IA; ``code`` dice de qué tipo (el mensaje no lleva ni URL ni clave)."""
+    """Falló una llamada al servicio de IA; ``code`` dice de qué tipo (el mensaje no lleva ni URL ni clave).
 
-    def __init__(self, code: AiErrorCode) -> None:
+    ``timed_out`` distingue, dentro de ``ai_connection``, que el servicio aceptó la conexión pero no respondió a
+    tiempo (solo lo marca el borrador de manifiesto; ``AiErrorCode`` no cambia, así que el panel de uso tampoco).
+    """
+
+    def __init__(self, code: AiErrorCode, *, timed_out: bool = False) -> None:
         super().__init__(code)
         self.code: AiErrorCode = code
+        self.timed_out = timed_out
 
 
 class NoConvertedDocumentsError(Exception):
@@ -289,7 +297,25 @@ def draft_manifest(
     try:
         result = asyncio.run(_propose())
     except TaxonomyManifestDraftError as exc:
-        raise _ai_error(exc, TaxonomyManifestDraftAuthError, TaxonomyManifestDraftConnectionError) from None
+        import httpx
+
+        error = _ai_error(exc, TaxonomyManifestDraftAuthError, TaxonomyManifestDraftConnectionError)
+        cause = exc.__cause__  # doc_organize encadena el error de httpx (``raise ... from exc``)
+        error.timed_out = error.code == "ai_connection" and isinstance(cause, httpx.TimeoutException)
+        # Solo nombres de clase: el mensaje de doc_organize lleva la base_url y nunca se registra la clave.
+        logger.warning(
+            "Falló el borrador de manifiesto con IA",
+            extra={
+                "family": connection.family,
+                "error": error.code,
+                "timed_out": error.timed_out,
+                "exc_type": type(exc).__name__,
+                "cause": type(cause).__name__ if cause is not None else None,
+                "timeout_s": connection.timeout_s,
+                "retries": connection.retries,
+            },
+        )
+        raise error from None
     manifest = TaxonomyManifest(domains=result.domains, material_types=result.material_types)
     markdown = render_taxonomy_manifest_markdown(
         manifest, reasoning=result.reasoning, sample_document_count=len(sample), total_document_count=len(documents)

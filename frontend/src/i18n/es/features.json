@@ -285,11 +285,19 @@
       },
       "ai_timeout_seconds": {
         "label": "Tiempo máximo por petición de IA (s)",
-        "hint": "Para clasificar y pedir borradores; el panel de uso espera como mucho 10 s."
+        "hint": "Para clasificar documentos; el panel de uso espera como mucho 10 s."
       },
       "ai_retries": {
         "label": "Reintentos de conexión con la IA",
         "hint": "Solo ante fallos de conexión (0–5)."
+      },
+      "ai_draft_timeout_seconds": {
+        "label": "Tiempo máximo del borrador de IA (s)",
+        "hint": "La petición del borrador de manifiesto es larga: un modelo local puede tardar minutos (5–900)."
+      },
+      "ai_draft_retries": {
+        "label": "Reintentos del borrador de IA",
+        "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, un borrador que no responde falla sin repetir la petición."
       },
       "ai_max_documents_per_run": {
         "label": "Documentos con IA por ejecución",
@@ -683,6 +691,7 @@
       "ai_not_configured": "La IA de esta operación ya no está configurada.",
       "ai_auth": "El servicio de IA rechazó la clave.",
       "ai_connection": "No se pudo conectar con el servicio de IA.",
+      "ai_timeout": "El servicio de IA no respondió a tiempo.",
       "ai_error": "El servicio de IA devolvió un error.",
       "no_converted_documents": "El proyecto no tiene documentos convertidos.",
       "out_of_memory": "El worker se quedó sin memoria. Un escaneo continúa donde se quedó al relanzarlo."
