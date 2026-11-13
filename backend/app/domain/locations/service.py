@@ -133,12 +133,18 @@ def get_location(db: Session, location_id: int, *, tenant_id: int) -> Location:
     return location
 
 
-def _validate_container_path(db: Session, relative_to_root: str, settings: Settings) -> Path:
-    """Carpeta bajo ``DOW_LOCATIONS_ROOT`` para una ubicación nueva, resuelta y sin solapes.
+def _validate_container_path(
+    db: Session, relative_to_root: str, settings: Settings, *, tenant_id: int, usage: LocationUsage
+) -> Path:
+    """Carpeta bajo ``DOW_LOCATIONS_ROOT`` para una ubicación nueva de ``tenant_id``, resuelta y sin solapes.
+
+    Los errores de solape dicen con qué ubicación choca la carpeta y cómo (1.4.4); de las de otro tenant no dan el
+    nombre. Nunca incluyen la ruta del contenedor.
 
     Raises:
         InvalidLocationPathError: Fuera de la raíz, inexistente, la propia raíz, dentro de ``data``/``workspace`` o
             solapada con otra ubicación.
+        LocationConflictError: Otra ubicación ya usa esa misma carpeta.
     """
     try:
         resolved = resolve_within(
@@ -155,13 +161,67 @@ def _validate_container_path(db: Session, relative_to_root: str, settings: Setti
         base = Path(reserved).resolve()
         if path.is_relative_to(base) or base.is_relative_to(path):
             raise InvalidLocationPathError("La carpeta no puede incluir los volúmenes de datos de la aplicación.")
-    for (other,) in db.execute(select(Location.container_path)):
-        other_path = Path(other)
+    contained: list[str] = []
+    contained_elsewhere = 0
+    for other_path_text, other_tenant, other_name, other_usage in db.execute(
+        select(Location.container_path, Location.tenant_id, Location.name, Location.usage)
+    ):
+        other_path = Path(other_path_text)
+        own = other_tenant == tenant_id
         if path == other_path:
-            raise LocationConflictError("Ya hay una ubicación con esa carpeta.")
-        if path.is_relative_to(other_path) or other_path.is_relative_to(path):
-            raise InvalidLocationPathError("La carpeta se solapa con otra ubicación.")
+            raise LocationConflictError(
+                f"Ya hay una ubicación con esa carpeta: «{other_name}»."
+                if own
+                else "La carpeta ya está registrada en otro tenant."
+            )
+        if path.is_relative_to(other_path):
+            # Las ubicaciones registradas no se solapan entre sí: la carpeta solo puede estar dentro de una.
+            raise InvalidLocationPathError(
+                _inside_message(other_name, other_usage, usage, path.relative_to(other_path).as_posix())
+                if own
+                else "La carpeta está dentro de una ubicación de otro tenant."
+            )
+        if other_path.is_relative_to(path):
+            if own:
+                contained.append(other_name)
+            else:
+                contained_elsewhere += 1
+    if contained or contained_elsewhere:
+        raise InvalidLocationPathError(_contains_message(sorted(contained, key=str.lower), contained_elsewhere))
     return path
+
+
+_MAX_NAMED_LOCATIONS = 3
+
+
+def _inside_message(other_name: str, other_usage: str, usage: LocationUsage, subpath: str) -> str:
+    """Error de una carpeta dentro de la ubicación ``other_name`` del mismo tenant; si las dos son de destino,
+    sugiere usar esa ubicación con ``subpath`` como carpeta de salidas del proyecto."""
+    message = f"La carpeta está dentro de la ubicación «{other_name}»."
+    if other_usage != "source" and usage != "source":
+        message += (
+            f" Para escribir ahí, usa «{other_name}» como destino del proyecto con la carpeta de salidas «{subpath}»."
+        )
+    return message
+
+
+def _contains_message(names: list[str], elsewhere: int) -> str:
+    """Error de una carpeta que contiene las ubicaciones ``names`` del tenant y ``elsewhere`` de otros tenants (de
+    estas solo se da el número)."""
+    if not names:
+        return (
+            "La carpeta contiene una ubicación de otro tenant."
+            if elsewhere == 1
+            else f"La carpeta contiene {elsewhere} ubicaciones de otros tenants."
+        )
+    shown = [f"«{name}»" for name in names[:_MAX_NAMED_LOCATIONS]]
+    rest = [f"{len(names) - len(shown)} más"] if len(names) > len(shown) else []
+    if elsewhere:
+        rest.append(f"{elsewhere} de otro tenant" if elsewhere == 1 else f"{elsewhere} de otros tenants")
+    items = shown + rest
+    listed = items[0] if len(items) == 1 else f"{', '.join(items[:-1])} y {items[-1]}"
+    noun = "la ubicación" if len(names) == 1 and not elsewhere else "las ubicaciones"
+    return f"La carpeta contiene {noun} {listed}."
 
 
 def _name_taken(db: Session, tenant_id: int, name: str, *, exclude_id: int | None = None) -> bool:
@@ -213,7 +273,7 @@ def create_location(
         raise InvalidIgnorePatternsError("Los patrones solo se aplican a ubicaciones de origen.")
     if _name_taken(db, tenant_id, name):
         raise LocationConflictError("Ya hay una ubicación con ese nombre.")
-    container_path = _validate_container_path(db, path, settings)
+    container_path = _validate_container_path(db, path, settings, tenant_id=tenant_id, usage=usage)
     location = Location(
         tenant_id=tenant_id,
         name=name.strip(),

@@ -5,6 +5,19 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-11-13
+
+### Changed
+
+- **backend**: al registrar una ubicación cuya carpeta choca con otra, el error dice con cuál y cómo: «La carpeta está
+  dentro de la ubicación «X»» o «La carpeta contiene las ubicaciones «A», «B», «C» y N más», en lugar de «La carpeta
+  se solapa con otra ubicación». Si la carpeta está dentro de un destino y la nueva también es de destino, sugiere
+  usar ese destino en el proyecto con la subcarpeta como carpeta de salidas. «Ya hay una ubicación con esa carpeta»
+  también nombra la ubicación. De las ubicaciones de otro tenant no se da el nombre: el error solo dice que la carpeta
+  está, está dentro o contiene una de otro tenant.
+- **frontend**: dependencias al día (Mantine 9.7.4, TanStack Query 5.105.0, react-router 8.5.1, vite 8.3.5,
+  i18next 26.5.11, react-i18next 17.1.9, react-hook-form 7.91.0, typescript-eslint 8.72.1).
+
 ## [1.4.3] - 2026-11-12
 
 ### Changed
