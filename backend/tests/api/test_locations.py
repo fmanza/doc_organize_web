@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import AuditEntry, User, Worker
+from app.db.models import AuditEntry, Location, Tenant, User, Worker
 from tests.conftest import USER_PASSWORD, do_login
 
 LOCATION = {"name": "Expedientes", "path": "expedientes", "usage": "source", "access": "ro", "kind": "network"}
@@ -94,8 +95,8 @@ def test_location_endpoints_require_session(client: TestClient, path: str) -> No
         ({**LOCATION, "name": "Otra", "path": "/etc"}, 400, "relativa"),
         ({**LOCATION, "name": "Otra", "path": "no-existe"}, 400, "no existe"),
         ({**LOCATION, "name": "Otra", "path": ""}, 400, "subcarpeta"),
-        ({**LOCATION, "name": "Otra", "path": "expedientes/2024"}, 400, "solapa"),
-        ({**LOCATION, "name": "Otra"}, 409, "carpeta"),
+        ({**LOCATION, "name": "Otra", "path": "expedientes/2024"}, 400, "dentro de la ubicación «Expedientes»"),
+        ({**LOCATION, "name": "Otra"}, 409, "carpeta: «Expedientes»"),
         ({**LOCATION, "path": "salidas"}, 409, "nombre"),
         ({**LOCATION, "name": "expedientes", "path": "salidas"}, 409, "nombre"),
     ],
@@ -107,6 +108,115 @@ def test_create_location_rejects_invalid_or_duplicate(
 
     assert response.status_code == status
     assert fragment in response.json()["detail"]
+
+
+def _register(admin_client: TestClient, name: str, path: str, usage: str = "source") -> None:
+    access = "ro" if usage == "source" else "rw"
+    response = admin_client.post(
+        "/api/v1/locations", json={**LOCATION, "name": name, "path": path, "usage": usage, "access": access}
+    )
+    assert response.status_code == 201, response.text
+
+
+def _foreign_location(db: Session, tenant: Tenant, name: str, folder: Path, usage: str = "source") -> None:
+    """Ubicación de otro tenant, insertada directamente (``POST /locations`` la crea en el tenant del admin)."""
+    db.add(
+        Location(
+            tenant_id=tenant.id,
+            name=name,
+            container_path=str(folder.resolve()),
+            kind="local",
+            usage=usage,
+            access="ro",
+        )
+    )
+    db.commit()
+
+
+def _overlap_detail(admin_client: TestClient, mnt: Path, path: str, usage: str = "source") -> tuple[int, str]:
+    access = "ro" if usage == "source" else "rw"
+    response = admin_client.post(
+        "/api/v1/locations", json={**LOCATION, "name": "Nueva", "path": path, "usage": usage, "access": access}
+    )
+    detail: str = response.json()["detail"]
+    assert str(mnt) not in detail  # nunca la ruta del contenedor
+    return response.status_code, detail
+
+
+def test_destination_inside_destination_suggests_using_it(admin_client: TestClient, mnt: Path) -> None:
+    # Caso real de MEJORAS: registrar una subcarpeta de una ubicación de destino como otro destino.
+    (mnt / "salidas" / "calidad" / "calidad").mkdir(parents=True)
+    _register(admin_client, "Salida Calidad-1", "salidas", usage="destination")
+
+    status, detail = _overlap_detail(admin_client, mnt, "salidas/calidad/calidad", usage="destination")
+
+    assert status == 400
+    assert detail == (
+        "La carpeta está dentro de la ubicación «Salida Calidad-1». Para escribir ahí, usa «Salida Calidad-1» como"
+        " destino del proyecto con la carpeta de salidas «calidad/calidad»."
+    )
+
+
+def test_source_inside_destination_has_no_suggestion(admin_client: TestClient, mnt: Path) -> None:
+    (mnt / "salidas" / "calidad").mkdir()
+    _register(admin_client, "Salidas", "salidas", usage="both")
+
+    status, detail = _overlap_detail(admin_client, mnt, "salidas/calidad", usage="source")
+
+    assert status == 400
+    assert detail == "La carpeta está dentro de la ubicación «Salidas»."
+
+
+@pytest.mark.parametrize(
+    ("names", "expected"),
+    [
+        (["Enero"], "La carpeta contiene la ubicación «Enero»."),
+        (["b", "A"], "La carpeta contiene las ubicaciones «A» y «b»."),
+        (["E", "D", "C", "B", "A"], "La carpeta contiene las ubicaciones «A», «B», «C» y 2 más."),
+    ],
+)
+def test_folder_containing_locations_names_them(
+    admin_client: TestClient, mnt: Path, names: list[str], expected: str
+) -> None:
+    for name in names:
+        (mnt / "expedientes" / f"sub-{name}").mkdir()
+        _register(admin_client, name, f"expedientes/sub-{name}")
+
+    status, detail = _overlap_detail(admin_client, mnt, "expedientes")
+
+    assert status == 400
+    assert detail == expected
+
+
+def test_overlap_with_another_tenant_hides_its_name(
+    admin_client: TestClient, mnt: Path, db: Session, make_tenant: Callable[..., Tenant]
+) -> None:
+    other = make_tenant("obras", "Obras")
+    _foreign_location(db, other, "Secreta", mnt / "expedientes" / "2024", usage="destination")
+
+    inside = _overlap_detail(admin_client, mnt, "expedientes/2024/enero", usage="destination")
+    same = _overlap_detail(admin_client, mnt, "expedientes/2024")
+    contains = _overlap_detail(admin_client, mnt, "expedientes")
+
+    assert inside == (400, "La carpeta está dentro de una ubicación de otro tenant.")
+    assert same == (409, "La carpeta ya está registrada en otro tenant.")
+    assert contains == (400, "La carpeta contiene una ubicación de otro tenant.")
+    assert all("Secreta" not in detail for _, detail in (inside, same, contains))
+
+
+def test_folder_containing_own_and_foreign_locations(
+    admin_client: TestClient, mnt: Path, db: Session, make_tenant: Callable[..., Tenant]
+) -> None:
+    other = make_tenant("obras", "Obras")
+    _foreign_location(db, other, "Secreta", mnt / "expedientes" / "2024")
+    _foreign_location(db, other, "Oculta", mnt / "expedientes" / "2025")
+    (mnt / "expedientes" / "propia").mkdir()
+    _register(admin_client, "Propia", "expedientes/propia")
+
+    status, detail = _overlap_detail(admin_client, mnt, "expedientes")
+
+    assert status == 400
+    assert detail == "La carpeta contiene las ubicaciones «Propia» y 2 de otros tenants."
 
 
 def test_location_cannot_contain_data_volume(admin_client: TestClient, migrated: Settings, mnt: Path) -> None:
