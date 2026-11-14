@@ -59,14 +59,11 @@ conflicts = [[{ group = "cpu" }, { group = "gpu" }]]
 # Cadena de suministro (ADR-001 §6): solo versiones publicadas hace al menos 2 semanas. Suspendida del 2026-11-01 a la
 # Fase 10, que la reactiva. doc_organize llega por URL de su release (ADR-006), fuera de esta regla.
 exclude-newer = "2 weeks"
-# Excepción (2026-11-14, 1.4.6): doc_organize 1.4.0 exige zensical>=0.1.1 (límite del índice de búsqueda en posiciones
-# de token; con 0.0.71-0.0.74 el sitio de contexto de un proyecto real no se construía). Fecha fija: admite 0.1.1
-# (publicada el 2026-11-10) y su zensical-ui 0.0.42 (mismo proyecto y día), nada posterior; quitarla cuando cumplan
-# las 2 semanas (2026-11-24).
-# Excepción de seguridad (2026-11-14, 1.4.7): soupsieve 4.0/4.0.1 (2026-11-03/04) corrigen GHSA-mmhr-3c5m-f64f
-# (alta: tiempo polinómico en el combinador descendiente) y otros casos cuadráticos; llega a la imagen con docling vía
-# beautifulsoup4 (HTML de los documentos de origen). Fecha fija: nada posterior a 4.0.1; quitarla el 2026-11-19.
-exclude-newer-package = { zensical = "2026-11-11T00:00:00Z", zensical-ui = "2026-11-11T00:00:00Z", soupsieve = "2026-11-05T00:00:00Z" }
+# Exenciones permanentes (decisión del mantenedor, 2026-11-14): estos paquetes no esperan las 2 semanas. zensical y
+# zensical-ui porque doc_organize exige la versión de zensical que corrige el sitio de contexto (1.4.0: >=0.1.1);
+# soupsieve porque es un parche de seguridad que llega a la imagen con docling (GHSA-mmhr-3c5m-f64f). Sustituyen a las
+# excepciones con fecha de la 1.4.6/1.4.7, para no tener que retirarlas. Ver DEPENDENCIAS.md y ADR-001 §6.
+exclude-newer-package = { zensical = false, zensical-ui = false, soupsieve = false }
 
 # docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). Cada variante
 # los toma de su índice de PyTorch (grupos `cpu` y `gpu`).

@@ -7,16 +7,22 @@ La regla de ≥ 2 semanas estuvo suspendida del 2026-11-01 a la Fase 10, que la 
 (`doc_organize[av]`: Whisper y sus dependencias), solo en la imagen con `WITH_AV=true`.
 Las versiones concretas se fijan en la Fase 0 a partir de las de util_bbdd_web 1.10.1 para no divergir.
 
-**Excepción vigente (1.4.6, 2026-11-14)**: `zensical` 0.1.1 y `zensical-ui` 0.0.42 (publicados el 2026-11-10), con
-fecha tope fija `2026-11-11` en `exclude-newer-package`. doc_organize 1.4.0 exige `zensical>=0.1.1`: con 0.0.71–0.0.74
-el índice de búsqueda limitaba cada sección por bytes y el sitio de contexto de un proyecto real no se construía.
-Quitarla cuando cumplan las 2 semanas (2026-11-24).
+**Exenciones permanentes (desde 2026-11-14, decisión del mantenedor)**: `zensical`, `zensical-ui` y `soupsieve`
+están exentos de la regla de 2 semanas (`exclude-newer-package = { … = false }`): reciben cualquier versión nueva sin
+espera, y el resto de dependencias sigue con la regla. Sustituyen a las excepciones con fecha tope de abajo, que
+había que retirar el 2026-11-19 y el 2026-11-24. Riesgo aceptado: una versión comprometida recién publicada de esos
+tres paquetes entraría en el siguiente `uv lock`; el lock sigue con hash y cada subida pasa por PR y CI.
 
-**Excepción de seguridad vigente (1.4.7, 2026-11-14)**: `soupsieve` 4.0.1 (publicada el 2026-11-04), con fecha tope
-fija `2026-11-05`. Corrige GHSA-mmhr-3c5m-f64f (alta, tiempo polinómico en el combinador descendiente) y otros casos
+**Excepción (1.4.6, 2026-11-14; sustituida por la exención)**: `zensical` 0.1.1 y `zensical-ui` 0.0.42 (publicados el
+2026-11-10), con fecha tope fija `2026-11-11` en `exclude-newer-package`. doc_organize 1.4.0 exige `zensical>=0.1.1`:
+con 0.0.71–0.0.74 el índice de búsqueda limitaba cada sección por bytes y el sitio de contexto de un proyecto real no
+se construía.
+
+**Excepción de seguridad (1.4.7, 2026-11-14; sustituida por la exención)**: `soupsieve` 4.0.1 (publicada el
+2026-11-04), con fecha tope fija `2026-11-05`. Corrige GHSA-mmhr-3c5m-f64f (alta, tiempo polinómico en el combinador descendiente) y otros casos
 cuadráticos; llega a la imagen con docling vía `beautifulsoup4`, que la usa con el HTML de los documentos de origen.
 Es MAJOR (3 → 4: no entra en `<template>`, `iframe` como elementos normales); una conversión HTML con docling da el
-mismo Markdown con 3.0.3 y con 4.0.1. Quitarla cuando cumpla las 2 semanas (2026-11-19). En la misma versión,
+mismo Markdown con 3.0.3 y con 4.0.1. En la misma versión,
 `opentelemetry-api` 1.45.2 (GHSA-mf5v-w3w3-f6cg, media) entra sin excepción. La alerta de `minimatch` (solo
 herramientas de desarrollo del frontend, no llega a la imagen) se descarta como riesgo tolerable hasta que eslint y
 typescript-eslint la suban dentro de la regla.

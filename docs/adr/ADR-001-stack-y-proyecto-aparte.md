@@ -31,6 +31,9 @@ problema se resolvió en util_bbdd con util_bbdd_web (D1).
    del 2026-11-01 a la Fase 10, que la reactiva (2026-11-05):
    - `exclude-newer = "2 weeks"` en `backend/pyproject.toml` (relativo, uv ≥ 0.9). doc_organize llega por la URL de su
      release (ADR-006) y queda fuera.
+   - **Exenciones permanentes** (2026-11-14, decisión del mantenedor): `zensical`, `zensical-ui` y `soupsieve`, con
+     `exclude-newer-package = { … = false }`. Motivo y riesgo aceptado en `docs/plan/DEPENDENCIAS.md`. Una exención
+     nueva se añade a esa lista con su justificación; las excepciones puntuales siguen llevando fecha tope fija.
    - npm 11 no tiene una opción relativa: `npm run safe -- install …` añade `--before=<hoy - 14 días>`.
    - `cooldown: default-days: 14` en Dependabot.
 
