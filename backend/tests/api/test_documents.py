@@ -79,6 +79,7 @@ def conversion(migrated: Settings) -> Path:
 # --- documentos --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.posix_paths
 def test_documents_span_the_caches_of_all_folders(
     user_client: TestClient, project: dict[str, object], migrated: Settings
 ) -> None:
@@ -117,6 +118,7 @@ def test_documents_search_and_folder_filter(user_client: TestClient, project: di
     assert unknown.status_code == 422 and unknown.json()["code"] == "folder_not_saved"
 
 
+@pytest.mark.posix_paths
 def test_documents_sort_across_folders_like_one_cache(user_client: TestClient, project: dict[str, object]) -> None:
     """web 1.3.0 (doc_organize 1.2.0, G40): con varias carpetas y otro orden, las páginas de cada caché se mezclan con el
     criterio de la librería (empates por ruta) y la paginación sigue siendo coherente."""
@@ -191,6 +193,7 @@ def test_output_is_served_with_a_fixed_type(
     assert png.headers["content-type"] == "image/png"
 
 
+@pytest.mark.posix_paths
 def test_json_output_hides_the_container_path(
     user_client: TestClient, project: dict[str, object], migrated: Settings
 ) -> None:

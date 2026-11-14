@@ -26,6 +26,11 @@ uv run --frozen pytest
 uv run --frozen python scripts/export_openapi.py   # tras cambiar la API: actualiza openapi/openapi.json
 ```
 
+En Windows, los tests marcados `posix_paths` se saltan (aparecen como *skipped* con el motivo): dan por hechas las
+rutas con `/` del contenedor, y el backend solo se despliega en Linux. Para ejecutarlos todos, usa la imagen
+`backend-dev` de arriba; el CI (Linux) los ejecuta siempre. Un test nuevo que compare rutas del contenedor lleva
+`@pytest.mark.posix_paths`.
+
 Para levantar la API en local (puerto 8000, el que usa el proxy de Vite):
 
 ```bash

@@ -246,6 +246,7 @@ def test_project_delete_keeping_outputs(
     assert (output / "a.md").is_file()
 
 
+@pytest.mark.posix_paths
 def test_project_move_within_filesystem(
     worker: JobWorker,
     user_client: TestClient,

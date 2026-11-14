@@ -97,6 +97,9 @@ def test_build_with_ai_classifies_what_rules_leave(
     assert str(migrated.locations_root) not in sent and "harina" in sent
     trail = _events(db, ctx.run_id) + json.dumps(result)
     assert KEY not in trail and BASE_URL not in trail
+    # El total da contexto: la IA solo recibe lo que las reglas no clasificaron.
+    expected = f"IA: {ai['calls']} de 4 documentos enviados (los que las reglas no clasificaron); {ai['classified']} clasificados"
+    assert expected in trail
 
 
 def test_build_stops_calling_after_a_rejected_key(

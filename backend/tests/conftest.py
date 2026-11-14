@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Literal
@@ -26,6 +27,18 @@ ADMIN_PASSWORD = "admin-password-1234"
 USER_PASSWORD = "user-password-1234"
 
 LoginFn = Callable[[TestClient, str, str], None]
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """``posix_paths``: el backend solo se despliega en Linux (CI y Docker), con rutas del contenedor con ``/``
+    (``DocumentNamer``, ``PathMasker``). En Windows esos tests fallan por el separador, no por un error: se saltan
+    con el motivo a la vista. En el CI (Linux) y en la imagen ``backend-dev`` se ejecutan siempre."""
+    if sys.platform != "win32":
+        return
+    skip = pytest.mark.skip(reason="rutas POSIX del contenedor: el backend solo se despliega en Linux")
+    for item in items:
+        if item.get_closest_marker("posix_paths") is not None:
+            item.add_marker(skip)
 
 
 @pytest.fixture

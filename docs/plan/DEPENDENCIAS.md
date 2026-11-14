@@ -12,6 +12,15 @@ fecha tope fija `2026-11-11` en `exclude-newer-package`. doc_organize 1.4.0 exig
 el índice de búsqueda limitaba cada sección por bytes y el sitio de contexto de un proyecto real no se construía.
 Quitarla cuando cumplan las 2 semanas (2026-11-24).
 
+**Excepción de seguridad vigente (1.4.7, 2026-11-14)**: `soupsieve` 4.0.1 (publicada el 2026-11-04), con fecha tope
+fija `2026-11-05`. Corrige GHSA-mmhr-3c5m-f64f (alta, tiempo polinómico en el combinador descendiente) y otros casos
+cuadráticos; llega a la imagen con docling vía `beautifulsoup4`, que la usa con el HTML de los documentos de origen.
+Es MAJOR (3 → 4: no entra en `<template>`, `iframe` como elementos normales); una conversión HTML con docling da el
+mismo Markdown con 3.0.3 y con 4.0.1. Quitarla cuando cumpla las 2 semanas (2026-11-19). En la misma versión,
+`opentelemetry-api` 1.45.2 (GHSA-mf5v-w3w3-f6cg, media) entra sin excepción. La alerta de `minimatch` (solo
+herramientas de desarrollo del frontend, no llega a la imagen) se descarta como riesgo tolerable hasta que eslint y
+typescript-eslint la suban dentro de la regla.
+
 ## Backend (`backend/pyproject.toml`)
 
 | Paquete | Para qué | Fase |

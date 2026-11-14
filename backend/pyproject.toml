@@ -1,6 +1,6 @@
 [project]
 name = "doc_organize_web"
-version = "1.4.6"
+version = "1.4.7"
 description = "Aplicación web multiusuario sobre doc_organize: ubicaciones, proyectos y ejecuciones agrupadas."
 readme = "../README.md"
 requires-python = ">=3.12,<3.13"
@@ -63,7 +63,10 @@ exclude-newer = "2 weeks"
 # de token; con 0.0.71-0.0.74 el sitio de contexto de un proyecto real no se construía). Fecha fija: admite 0.1.1
 # (publicada el 2026-11-10) y su zensical-ui 0.0.42 (mismo proyecto y día), nada posterior; quitarla cuando cumplan
 # las 2 semanas (2026-11-24).
-exclude-newer-package = { zensical = "2026-11-11T00:00:00Z", zensical-ui = "2026-11-11T00:00:00Z" }
+# Excepción de seguridad (2026-11-14, 1.4.7): soupsieve 4.0/4.0.1 (2026-11-03/04) corrigen GHSA-mmhr-3c5m-f64f
+# (alta: tiempo polinómico en el combinador descendiente) y otros casos cuadráticos; llega a la imagen con docling vía
+# beautifulsoup4 (HTML de los documentos de origen). Fecha fija: nada posterior a 4.0.1; quitarla el 2026-11-19.
+exclude-newer-package = { zensical = "2026-11-11T00:00:00Z", zensical-ui = "2026-11-11T00:00:00Z", soupsieve = "2026-11-05T00:00:00Z" }
 
 # docling exige torch y torchvision; los de PyPI para Linux arrastran las librerías CUDA (varios GB). Cada variante
 # los toma de su índice de PyTorch (grupos `cpu` y `gpu`).
@@ -121,7 +124,10 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["integration: requiere doc_organize con conversión real, GPU o montajes de red (fuera del CI)"]
+markers = [
+    "integration: requiere doc_organize con conversión real, GPU o montajes de red (fuera del CI)",
+    "posix_paths: da por hechas rutas POSIX del contenedor; se salta en Windows (el backend solo se despliega en Linux)",
+]
 addopts = "-m 'not integration'"
 filterwarnings = ["error::DeprecationWarning:app.*"]
 
