@@ -5,6 +5,13 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **deps**: `zensical`, `zensical-ui` y `soupsieve` quedan exentos de forma permanente de la regla de 2 semanas
+  (`exclude-newer-package = { … = false }`), en lugar de las excepciones con fecha tope de la 1.4.6/1.4.7 que había
+  que retirar el 2026-11-19 y el 2026-11-24. Mismas versiones en `uv.lock`. Ver `docs/plan/DEPENDENCIAS.md` y
+  ADR-001 §6.
+
 ## [1.4.7] - 2026-11-14
 
 ### Security
