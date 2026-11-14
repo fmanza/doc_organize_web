@@ -82,6 +82,7 @@ def _no_container_paths(text: str, settings: Settings) -> None:
     assert str(settings.locations_root) not in text and str(settings.data_dir) not in text
 
 
+@pytest.mark.posix_paths
 def test_zip_has_outputs_and_snapshot_without_container_paths(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
@@ -151,6 +152,7 @@ def test_zip_cancelled_while_writing_removes_the_partial_file(
     assert list((ctx.workdir / export.EXPORT_DIR).iterdir()) == []
 
 
+@pytest.mark.posix_paths
 @pytest.mark.parametrize(("kind", "sheets"), [("cache", ["Cache"]), ("errors", ["Estado actual", "Histórico"])])
 def test_xlsx_exports_without_container_paths(
     ctx: JobContext, project: Project, db: Session, migrated: Settings, kind: str, sheets: list[str]

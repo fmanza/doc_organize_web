@@ -5,6 +5,24 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.7] - 2026-11-14
+
+### Security
+
+- **deps**: `soupsieve` 4.0.1 (GHSA-mmhr-3c5m-f64f, alta: tiempo polinómico con HTML de los documentos de origen, vía
+  docling y `beautifulsoup4`), con excepción de seguridad a `exclude-newer` hasta el 2026-11-19; `opentelemetry-api`
+  1.45.2 (GHSA-mf5v-w3w3-f6cg, media). La alerta de `minimatch` (solo herramientas de desarrollo del frontend) queda
+  descartada como riesgo tolerable. Detalle en `docs/plan/DEPENDENCIAS.md`.
+
+### Changed
+
+- **backend**: el log de la IA del contexto dice sobre cuántos documentos se envió: «IA: 24 de 213 documentos enviados
+  (los que las reglas no clasificaron); 24 clasificados, 0 con error.». Antes, «24 documentos enviados» parecía que
+  la IA no había recibido el resto.
+- **tests**: los tests que dan por hechas las rutas POSIX del contenedor llevan el marcador `posix_paths` y se saltan
+  en Windows (el backend solo se despliega en Linux; el CI los sigue ejecutando). La suite local en Windows pasa sin
+  fallos. Ver `docs/guides/desarrollo.md`.
+
 ## [1.4.6] - 2026-11-14
 
 ### Fixed

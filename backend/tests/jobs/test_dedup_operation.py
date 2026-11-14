@@ -125,6 +125,7 @@ def ctx_project(ctx: JobContext, db: Session) -> Project:
     return run_project
 
 
+@pytest.mark.posix_paths
 def test_preview_groups_exact_and_versions_across_folders(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
@@ -146,6 +147,7 @@ def test_preview_groups_exact_and_versions_across_folders(
     assert "factura copia.txt" in cells and str(migrated.locations_root) not in cells
 
 
+@pytest.mark.posix_paths
 def test_fuzzy_names_and_their_limit(
     ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -160,6 +162,7 @@ def test_fuzzy_names_and_their_limit(
     assert failed.value.code == "fuzzy_too_large"
 
 
+@pytest.mark.posix_paths
 def test_missing_documents_are_counted_as_stale(ctx: JobContext, project: Project, migrated: Settings) -> None:
     (migrated.locations_root / "origen" / "2025" / "factura copia.txt").unlink()
 
@@ -168,6 +171,7 @@ def test_missing_documents_are_counted_as_stale(ctx: JobContext, project: Projec
     assert result["stale_cache"] == 1 and result["exact_groups"] == 0
 
 
+@pytest.mark.posix_paths
 def test_dry_run_counts_without_touching_files(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
@@ -179,6 +183,7 @@ def test_dry_run_counts_without_touching_files(
     assert not (migrated.locations_root / "salidas" / "Proyecto A" / "duplicados").exists()
 
 
+@pytest.mark.posix_paths
 def test_copy_keeps_the_source_and_audits_each_file(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
@@ -199,6 +204,7 @@ def test_copy_keeps_the_source_and_audits_each_file(
     assert (report_dir / "DEDUP_REPORT.json").is_file() and (report_dir / "DEDUP_HISTORY.jsonl").is_file()
 
 
+@pytest.mark.posix_paths
 def test_move_keeps_the_chosen_document(ctx: JobContext, project: Project, db: Session, migrated: Settings) -> None:
     db.execute(update(Location).where(Location.name == "Origen").values(access="rw"))
     db.commit()
@@ -215,6 +221,7 @@ def test_move_keeps_the_chosen_document(ctx: JobContext, project: Project, db: S
     assert db.scalars(select(AuditEntry).where(AuditEntry.action == "duplicate.move")).all()
 
 
+@pytest.mark.posix_paths
 def test_changed_groups_are_skipped(ctx: JobContext, project: Project, db: Session, migrated: Settings) -> None:
     dedup.run_preview(ctx, DedupPreviewParams(), project)
     (migrated.locations_root / "origen" / "2025" / "factura copia.txt").write_text("otra cosa", encoding="utf-8")
@@ -224,6 +231,7 @@ def test_changed_groups_are_skipped(ctx: JobContext, project: Project, db: Sessi
     assert (result["skipped_changed"], result["groups_done"], result["processed"]) == (1, 1, 1)
 
 
+@pytest.mark.posix_paths
 def test_report_only_touches_no_file(ctx: JobContext, project: Project, db: Session, migrated: Settings) -> None:
     dedup.run_preview(ctx, DedupPreviewParams(), project)
 
@@ -234,6 +242,7 @@ def test_report_only_touches_no_file(ctx: JobContext, project: Project, db: Sess
     assert not db.scalars(select(AuditEntry).where(AuditEntry.action.in_(["duplicate.copy", "duplicate.move"]))).all()
 
 
+@pytest.mark.posix_paths
 def test_cancel_stops_between_groups(ctx: JobContext, project: Project, db: Session) -> None:
     dedup.run_preview(ctx, DedupPreviewParams(), project)
     ctx._cancel.set()
@@ -275,6 +284,7 @@ def test_duplicates_folder_replaced_by_a_link_is_refused(
     assert failed.value.code == "folder_replaced" and list(elsewhere.iterdir()) == []
 
 
+@pytest.mark.posix_paths
 def test_a_new_preview_replaces_the_groups_of_older_ones(
     user_client: TestClient, ctx: JobContext, project: Project, db: Session, migrated: Settings, tmp_path: Path
 ) -> None:

@@ -130,6 +130,7 @@ def test_scan_options_need_a_capable_worker() -> None:
     assert missing_options(ScanParams(), []) == []
 
 
+@pytest.mark.posix_paths
 def test_path_masker_hides_container_paths() -> None:
     from pathlib import Path
 

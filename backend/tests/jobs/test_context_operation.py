@@ -124,6 +124,7 @@ def _logs(db: Session, run_id: str) -> list[str]:
 DOMAINS = {"operation": "context_build", "catalog": "domains", "domains": ["facturas", "informes"], "build_site": False}
 
 
+@pytest.mark.posix_paths
 def test_build_classifies_copies_and_projects(run: Any, project: Project, db: Session, migrated: Settings) -> None:
     ctx, params = run(DOMAINS)
 

@@ -184,9 +184,10 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         ctx.log(f"No se pudo copiar «{namer.display(path)}»: {namer.text(error)}", level="warning")
     _log_site(ctx, outcome, namer)
     if outcome.ai is not None:
+        # La IA solo recibe lo que las reglas no clasificaron: sin el total, «24 enviados» de 213 parecía un fallo.
         ctx.log(
-            f"IA: {outcome.ai['calls']} documentos enviados, {outcome.ai['classified']} clasificados, "
-            f"{outcome.ai['failed']} con error."
+            f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados (los que las reglas no "
+            f"clasificaron); {outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
         )
         if outcome.ai["stopped"]:
             ctx.log(AI_STOPPED[outcome.ai["stopped"]], level="warning")

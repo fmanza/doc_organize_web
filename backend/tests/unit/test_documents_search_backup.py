@@ -41,6 +41,7 @@ def test_state_names_match_project_layout(tmp_path: Path) -> None:
     assert folder_cache(tmp_path, "2024").name == CACHE_DB
 
 
+@pytest.mark.posix_paths
 def test_document_namer_keeps_paths_relative_to_their_folder() -> None:
     namer = DocumentNamer(
         [("2024", [Path("/mnt/docs/2024"), Path("/mnt/real/2024")]), ("2024/enero", [Path("/mnt/docs/2024/enero")])],

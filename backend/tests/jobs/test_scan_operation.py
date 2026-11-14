@@ -69,6 +69,7 @@ def _outcome(request: ScanRequest, **summary: Any) -> ScanOutcome:
     )
 
 
+@pytest.mark.posix_paths
 def test_one_call_per_folder_with_summed_counts(
     ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -134,6 +135,7 @@ def test_force_works_folder_by_folder_and_is_audited(
     assert db.scalars(select(AuditEntry).where(AuditEntry.action == "project.scan_force")).one()
 
 
+@pytest.mark.posix_paths
 def test_cancel_midway_keeps_what_was_done(
     ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -221,6 +223,7 @@ def _caches(project: Project, ctx: JobContext, by_folder: dict[str, list[str]]) 
     return lambda output, folder_state_dir: states.get(folder_state_dir, [])
 
 
+@pytest.mark.posix_paths
 def test_force_preview_counts_cache_and_orphans(
     ctx: JobContext, project: Project, migrated: Settings, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -473,6 +476,7 @@ def test_every_segment_uses_the_copy_made_when_enqueued(
     assert logs.count("«2024»: 1 subcarpeta excluida.") == 1
 
 
+@pytest.mark.posix_paths
 def test_force_preview_counts_what_exclusions_and_patterns_will_delete(
     ctx: JobContext, project: Project, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -499,6 +503,7 @@ def test_force_preview_counts_what_exclusions_and_patterns_will_delete(
     assert (result["cached"], result["excluded"], result["orphaned"]) == (5, 3, 1)
 
 
+@pytest.mark.posix_paths
 def test_patterns_never_apply_to_the_scanned_folder_itself(
     ctx: JobContext, project: Project, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
