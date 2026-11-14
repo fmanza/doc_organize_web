@@ -7,6 +7,11 @@ La regla de ≥ 2 semanas estuvo suspendida del 2026-11-01 a la Fase 10, que la 
 (`doc_organize[av]`: Whisper y sus dependencias), solo en la imagen con `WITH_AV=true`.
 Las versiones concretas se fijan en la Fase 0 a partir de las de util_bbdd_web 1.10.1 para no divergir.
 
+**Excepción vigente (1.4.6, 2026-11-14)**: `zensical` 0.1.1 y `zensical-ui` 0.0.42 (publicados el 2026-11-10), con
+fecha tope fija `2026-11-11` en `exclude-newer-package`. doc_organize 1.4.0 exige `zensical>=0.1.1`: con 0.0.71–0.0.74
+el índice de búsqueda limitaba cada sección por bytes y el sitio de contexto de un proyecto real no se construía.
+Quitarla cuando cumplan las 2 semanas (2026-11-24).
+
 ## Backend (`backend/pyproject.toml`)
 
 | Paquete | Para qué | Fase |

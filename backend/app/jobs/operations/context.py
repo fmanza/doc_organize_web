@@ -182,8 +182,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
 
     for path, error in outcome.failed[:MAX_FAILED_SHOWN]:
         ctx.log(f"No se pudo copiar «{namer.display(path)}»: {namer.text(error)}", level="warning")
-    if outcome.site_error:
-        ctx.log(f"El sitio no se pudo construir: {namer.text(outcome.site_error)}", level="warning")
+    _log_site(ctx, outcome, namer)
     if outcome.ai is not None:
         ctx.log(
             f"IA: {outcome.ai['calls']} documentos enviados, {outcome.ai['classified']} clasificados, "
@@ -217,6 +216,19 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         db.commit()
     ctx.progress("done", 1, 1)
     return result
+
+
+def _log_site(ctx: JobContext, outcome: ContextOutcome, namer: DocumentNamer) -> None:
+    """Avisos del sitio: por qué no se construyó (la causa en una línea) y qué páginas quedaron fuera del buscador."""
+    if outcome.site_error:
+        ctx.log(f"El sitio no se pudo construir: {namer.text(outcome.site_error)}", level="warning")
+    if outcome.site_search_excluded:
+        pages = ", ".join(f"«{page}»" for page in outcome.site_search_excluded[:MAX_FAILED_SHOWN])
+        ctx.log(
+            f"{len(outcome.site_search_excluded)} página(s) del sitio no aparecen en el buscador por su tamaño "
+            f"(se pueden navegar): {pages}",
+            level="warning",
+        )
 
 
 def _existing_folder(output: Path, project: Project) -> str | None:

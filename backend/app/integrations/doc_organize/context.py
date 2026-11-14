@@ -139,7 +139,10 @@ class ContextOutcome:
         domains: ``slug``, ``name``, ``description``, ``status`` y ``documents`` de cada dominio.
         failed: ``(ruta absoluta, error)`` de los documentos que no se pudieron copiar (G27).
         missing: Documentos convertidos de la caché cuyo original ya no está en el origen (no entran).
-        site_error: Por qué no se construyó el sitio (puede llevar rutas: el job lo limpia).
+        site_error: Por qué no se construyó el sitio, en una línea (``SiteBuildError.cause``; puede llevar rutas: el
+            job lo limpia).
+        site_search_excluded: Páginas del sitio que doc_organize sacó del buscador porque superan el límite del
+            índice de Zensical (rutas relativas a la carpeta reorganizada); se siguen navegando.
         ai: Recuento de la IA (``classification_stats``), o ``None`` si no se usó.
     """
 
@@ -150,6 +153,7 @@ class ContextOutcome:
     missing: int = 0
     site_built: bool = False
     site_error: str | None = None
+    site_search_excluded: list[str] = field(default_factory=list)
     ai: dict[str, Any] | None = None
 
 
@@ -500,16 +504,19 @@ def build_context(
             await Reorganizer().reorganize(project, context, on_document_copied=_copied, on_document_failed=_failed)
             context.reorganized = True
             site_error: str | None = None
+            search_excluded: list[str] = []
             generator = SiteGenerator()
             if request.build_site:
                 on_progress("context_site", 0, None, None)
-                await generator.generate(project, context, build=False)
+                site = await generator.generate(project, context, build=False)
+                search_excluded = list(site.search_excluded)
                 context.site_generated = True
                 try:
                     await generator.build_site(project, timeout=request.site_timeout)
                 except SiteBuildError as exc:
                     context.site_built = False
-                    site_error = str(exc)[:MAX_ERROR_CHARS]
+                    # La causa es la última línea de la salida de Zensical: recortar str(exc) por el principio la perdía.
+                    site_error = (exc.cause or str(exc))[:MAX_ERROR_CHARS]
                 else:
                     context.site_built = True
             else:
@@ -519,6 +526,7 @@ def build_context(
             await ContextRegistry().save_context(project, context)
         outcome = _outcome(context, failed, missing)
         outcome.site_error = site_error
+        outcome.site_search_excluded = search_excluded
         outcome.ai = classification_stats(context) if request.ai is not None else None
         return outcome
 

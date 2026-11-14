@@ -228,6 +228,52 @@ def test_build_with_the_site(run: Any, project: Project, db: Session, migrated: 
     assert stored is not None and stored.site_built
 
 
+def test_a_failed_site_logs_the_cause_not_the_head_of_the_traceback(
+    run: Any, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La causa de Zensical va al final de su salida: el aviso muestra ``SiteBuildError.cause`` entera, no el principio
+    del traceback recortado a 500 caracteres."""
+    from doc_organize import SiteBuildError, SiteGenerator
+
+    cause = "RuntimeError: Search field 'text' at 'x/' exceeds the search index limit"
+
+    async def failing_build(self: Any, *args: Any, **kwargs: Any) -> None:
+        raise SiteBuildError("Traceback (most recent call last):\n" + "  File x\n" * 200 + cause, cause=cause)
+
+    monkeypatch.setattr(SiteGenerator, "build_site", failing_build)
+    ctx, params = run(DOMAINS | {"build_site": True})
+
+    result = operation.run_build(ctx, params, project)
+
+    assert result["site_built"] is False
+    assert f"El sitio no se pudo construir: {cause}" in _logs(db, ctx.run_id)
+
+
+def test_pages_left_out_of_the_site_search_are_reported(
+    run: Any, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import dataclasses
+
+    from doc_organize import SiteGenerator
+
+    generate = SiteGenerator.generate
+
+    async def generate_with_exclusions(self: Any, *args: Any, **kwargs: Any) -> Any:
+        result = await generate(self, *args, **kwargs)
+        return dataclasses.replace(result, search_excluded=("facturas/txt/factura/factura.md",))
+
+    monkeypatch.setattr(SiteGenerator, "generate", generate_with_exclusions)
+    ctx, params = run(DOMAINS | {"build_site": True})
+
+    result = operation.run_build(ctx, params, project)
+
+    assert result["site_built"] is True, _logs(db, ctx.run_id)
+    assert (
+        "1 página(s) del sitio no aparecen en el buscador por su tamaño (se pueden navegar): "
+        "«facturas/txt/factura/factura.md»"
+    ) in _logs(db, ctx.run_id)
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="enlaces simbólicos")
 def test_linked_artifacts_are_never_copied(
     run: Any, project: Project, db: Session, migrated: Settings, tmp_path: Path

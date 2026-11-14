@@ -5,6 +5,21 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-11-14
+
+### Fixed
+
+- **backend**: el sitio de contexto no se construía cuando un documento convertido sin títulos (p. ej. una hoja de
+  cálculo grande) superaba el límite del índice de búsqueda de Zensical, y el aviso «El sitio no se pudo construir»
+  mostraba el principio del traceback recortado en lugar de la causa. Con doc_organize 1.4.0 esas páginas se sacan
+  del buscador (se siguen navegando) y el run lo avisa: «N página(s) del sitio no aparecen en el buscador por su
+  tamaño…»; si el build falla, el aviso muestra la causa en una línea (`SiteBuildError.cause`).
+
+### Changed
+
+- **deps**: doc_organize 1.4.0 (wheel de la release, hash en `uv.lock`) y `zensical` 0.1.1 (+ `zensical-ui` 0.0.42),
+  con excepción justificada a `exclude-newer` hasta el 2026-11-24 (ver `docs/plan/DEPENDENCIAS.md`).
+
 ## [1.4.5] - 2026-11-13
 
 ### Fixed
