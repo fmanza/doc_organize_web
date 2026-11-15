@@ -18,7 +18,7 @@ test('documentos: lista, visor, búsqueda de texto completo y exportación', asy
 
   // Lista de la caché, con rutas relativas a la carpeta de origen.
   await page.goto(`/projects/${id}`);
-  await page.getByRole('link', { name: 'Documentos' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Documentos' }).click();
   await expect(page.getByText('2 documentos.')).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'nota.html' })).toBeVisible();
 

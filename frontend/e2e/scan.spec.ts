@@ -24,7 +24,7 @@ test('escanea el origen, sigue el progreso y el segundo escaneo es incremental',
   const id = await createProject(page, project);
 
   await page.goto(`/projects/${id}`);
-  await page.getByRole('link', { name: 'Escanear' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Escanear' }).click();
   await expect(page.getByRole('heading', { name: `Escanear «${project}»` })).toBeVisible();
   await expect(page.getByRole('cell', { name: '/2024', exact: true })).toBeVisible();
   await scanAll(page);
