@@ -46,8 +46,9 @@ export async function ensureLocation(
   }
   await dialog.getByRole('button', { name: 'Registrar ubicación' }).click();
   const available = page.getByRole('row', { name: new RegExp(name) }).getByText('Disponible');
-  // Con varios workers, otro pudo registrarla a la vez: este recibe «nombre repetido» y su lista no se refresca.
-  await expect(available.or(dialog.getByRole('alert'))).toBeVisible();
+  // Con varios workers, otro pudo registrarla a la vez: este recibe «nombre repetido» y su lista no se refresca. El
+  // diálogo puede mostrar más de una alerta (o verse a la vez la fila): basta con el primero.
+  await expect(available.or(dialog.getByRole('alert')).first()).toBeVisible();
   if (!(await available.isVisible())) {
     await page.reload();
   }

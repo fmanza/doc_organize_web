@@ -10,6 +10,7 @@ function resultValue(page: Page, label: string) {
   return page.locator('dt', { hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd[1]');
 }
 
+// Las secciones del proyecto también están en la navegación lateral: los enlaces se buscan en el contenido principal.
 test('contexto: construir con plantilla, ver el sitio aislado y borrar', async ({ page }) => {
   test.setTimeout(420_000);
   const project = `Contexto ${Date.now()}`;
@@ -22,7 +23,7 @@ test('contexto: construir con plantilla, ver el sitio aislado y borrar', async (
 
   // Construir con una plantilla incluida (dos ejes).
   await page.goto(`/projects/${id}`);
-  await page.getByRole('link', { name: 'Contexto' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Contexto' }).click();
   await expect(page.getByText('El proyecto aún no tiene contexto.')).toBeVisible();
   await page.getByText('Plantilla', { exact: true }).first().click();
   await page.getByRole('combobox', { name: 'Plantilla' }).click();

@@ -23,7 +23,7 @@ test('duplicados: buscar, revisar y copiar en dos pasos', async ({ page }) => {
 
   // Buscar no toca ficheros: la ejecución lleva al resolutor.
   await page.goto(`/projects/${id}`);
-  await page.getByRole('link', { name: 'Duplicados' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Duplicados' }).click();
   await page.getByRole('button', { name: 'Buscar' }).click();
   await expect(page.getByRole('heading', { name: 'Buscar duplicados' })).toBeVisible();
   await expect(page.getByText('Terminada')).toBeVisible({ timeout: 120_000 });

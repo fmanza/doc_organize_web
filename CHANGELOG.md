@@ -12,6 +12,13 @@ ROADMAP (`0.<fase+1>.0`).
   que retirar el 2026-11-19 y el 2026-11-24. Mismas versiones en `uv.lock`. Ver `docs/plan/DEPENDENCIAS.md` y
   ADR-001 §6.
 
+### Fixed
+
+- **e2e**: localizadores que fallaban según el momento. Los enlaces a las secciones del proyecto (Contexto,
+  Documentos, Duplicados, Escanear) se buscan en el contenido principal, porque la navegación lateral también los
+  muestra, y el registro de una ubicación en paralelo admite más de una alerta en el diálogo. Bloquearon el check
+  `image` de `develop` y, con él, el push a `main`.
+
 ## [1.4.7] - 2026-11-14
 
 ### Security
