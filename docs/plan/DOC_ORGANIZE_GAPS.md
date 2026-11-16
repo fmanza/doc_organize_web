@@ -10,12 +10,13 @@ Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resu
 1.0) y la prueba local de la 1.0.0 abre G39 (L-17, hotfix 1.0.1). Desde el 2026-11-06 (web 1.0.1): **1.1.0**, que resuelve
 G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0. El 2026-11-07 se abrió G41 (L-19), que la web 1.4.0 cierra con doc_organize 1.3.0: no quedan huecos abiertos. Desde el 2026-11-16 (web 1.4.8):
 **1.5.0**, sin huecos nuevos al subir el pin (las novedades se adoptan en la web 1.5.0). Al adoptarlas, la web 1.5.0
-abre G42 y G43, menores.
+abre G42 y G43, menores. La medición en red del 2026-11-16 (`MEDICION_CONTEXTO_RED.md`) abre G44.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
 | G42 | `Context.unclassified_documents` solo guarda la ruta, sin `DomainDocument` | Los documentos sin clasificar no tienen autor, descripción, palabras clave ni idioma en la página del contexto | Se muestran sin metadatos. La guía `contexto.md` lo explica | Guardar los sin clasificar como `DomainDocument` (con sus propiedades) en `context.json`, sin romper los contextos anteriores | pendiente |
 | G43 | `CacheManager.load_cache_page(order_by=…)` no admite las columnas nuevas de 1.5.0 (`mime_type`, `created_time`, `owner_name`) | Documentos no se puede filtrar ni ordenar por tipo, fecha de creación o propietario | Se muestran sin filtro ni orden. La guía `usuarios_y_sesiones.md` lo dice | Añadirlas a `order_by` y un filtro por `mime_type` | pendiente |
+| G44 | `ContextBuilder` lee las propiedades de cada original de uno en uno | En una ubicación SMB, unos 80 ms por documento: ≈ 3,5 min más por construcción en 2600 documentos (`MEDICION_CONTEXTO_RED.md`) | Ninguno: se asume el coste | Leer las propiedades en paralelo con un límite (4 por defecto, configurable), sin llamar a PDFium desde dos hilos a la vez (no es thread-safe); techo medido con 4 hilos: ≈ 33 ms por documento | implementado en doc_organize 1.6.0 (sin publicar): 4 a la vez, ≈ 28 ms por documento en el NAS; `ContextBuilder(properties_concurrency=)` |
 
 ## Resueltos
 
