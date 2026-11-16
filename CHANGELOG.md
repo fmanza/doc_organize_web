@@ -5,8 +5,23 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-11-16
+
 ### Changed
 
+- **deps**: doc_organize 1.5.0 (wheel de su release, `sha256:16de8c34…d908d`; añade `py3langid` 0.4.0, unos 4,6 MB).
+  Sin cambios en la web salvo lo que cambia la librería:
+  - Al reconstruir el contexto, las reglas de clasificación ya no distinguen tildes: algunos documentos pueden pasar de
+    «sin clasificar» (o de la IA) a un dominio por reglas.
+  - Cada construcción del contexto deja una línea en `historial_contexto/CONTEXT_HISTORY.jsonl`, en la carpeta del
+    proyecto en el destino. Borrar el contexto no la borra, y la carpeta reorganizada ya no puede llamarse así.
+  - Construir el contexto abre cada original para leer su autor, descripción y palabras clave: en ubicaciones de red,
+    una lectura más por documento. En local cuesta menos de 0,5 ms por documento (mediana 0,34 ms con un PDF de 300
+    páginas, 0,14 ms con un DOCX); en red lo marca la latencia de abrir el fichero y leer unos pocos bloques, sin
+    medir todavía sobre una ubicación real.
+  - La caché de cada carpeta gana cuatro columnas (tipo MIME, fecha de creación, permisos y propietario) en el primer
+    escaneo; la web aún no las muestra.
+  - Un `context.json` dañado de cualquier forma cuenta como «sin contexto» en vez de dar un error inesperado.
 - **deps**: `zensical`, `zensical-ui` y `soupsieve` quedan exentos de forma permanente de la regla de 2 semanas
   (`exclude-newer-package = { … = false }`), en lugar de las excepciones con fecha tope de la 1.4.6/1.4.7 que había
   que retirar el 2026-11-19 y el 2026-11-24. Mismas versiones en `uv.lock`. Ver `docs/plan/DEPENDENCIAS.md` y
