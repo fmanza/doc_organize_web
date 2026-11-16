@@ -67,8 +67,19 @@ El resumen indica con qué versión de doc_organize se construyó y qué modelos
 Los documentos se pueden filtrar por **idioma** (código de dos letras, como `es`), por **palabra clave** (alguna la
 contiene) o por **La IA propuso otro**. La búsqueda también mira el autor y la descripción.
 
-Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen. Los documentos sin
-clasificar tampoco los tienen, porque doc_organize solo guarda su ruta.
+Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen.
+
+### Por qué no se clasificó un documento (1.6.0)
+
+En **Sin clasificar**, la columna **Motivo** dice por qué cada documento se quedó fuera:
+
+- **Sin convertir**: le falta el Markdown o el JSON de su conversión. Vuelve a escanear la carpeta.
+- **Por debajo del umbral**: las reglas no llegaron al umbral y la IA (si se usó) no le asignó dominio. «Cómo se
+  clasificó» muestra el dominio que propusieron las reglas y con qué confianza: bajar el umbral o ajustar la plantilla
+  puede bastar.
+
+Los sin clasificar muestran también su autor, descripción, palabras clave e idioma (la IA no los completa). En los
+contextos construidos antes de la 1.6 la página pide reconstruir para verlos.
 
 ## Sitio
 

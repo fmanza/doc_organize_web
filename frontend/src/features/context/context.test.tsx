@@ -177,6 +177,72 @@ describe('ContextPage', () => {
     });
   });
 
+  it('los sin clasificar dicen por qué y qué propusieron las reglas (1.6.0, G42)', async () => {
+    const unclassified = {
+      ...DOCUMENT,
+      domain_slug: null,
+      organized_path: null,
+      output_path: null,
+      author: 'Luis',
+      language: 'es',
+    };
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': { body: CONTEXT },
+      'GET /api/v1/projects/7/context/documents': (request: Request) =>
+        new URL(request.url).searchParams.has('domain')
+          ? { body: { items: [DOCUMENT], total: 1 } }
+          : {
+              body: {
+                items: [
+                  {
+                    ...unclassified,
+                    path: 'a.pdf',
+                    unclassified_reason: 'below_threshold',
+                    rules_domain: 'facturas',
+                    rules_confidence: 0.4,
+                  },
+                  { ...unclassified, path: 'b.pdf', unclassified_reason: 'incomplete_artifacts' },
+                ],
+                total: 2,
+              },
+            },
+      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+    await user.click(await screen.findByRole('button', { name: 'Sin clasificar' }));
+
+    const below = (await screen.findByText('2024/a.pdf')).closest('tr') as HTMLElement;
+    expect(within(below).getByText('Por debajo del umbral')).toBeInTheDocument();
+    expect(within(below).getByText('Reglas: facturas (40 %)')).toBeInTheDocument();
+    expect(within(below).getByText('Autor: Luis · Idioma: es')).toBeInTheDocument();
+    const missing = screen.getByText('2024/b.pdf').closest('tr') as HTMLElement;
+    expect(within(missing).getByText('Sin convertir')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Motivo' })).toBeInTheDocument();
+    expect(screen.queryByText(/Reconstruye el contexto para ver por qué/)).not.toBeInTheDocument();
+  });
+
+  it('un contexto anterior a la 1.6 pide reconstruir para ver el motivo', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': { body: { ...CONTEXT, domains: [] } },
+      'GET /api/v1/projects/7/context/documents': {
+        body: { items: [{ ...DOCUMENT, domain_slug: null, organized_path: null }], total: 1 },
+      },
+      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+    });
+
+    renderRoute('/projects/7/context');
+
+    expect(await screen.findByText(/Reconstruye el contexto para ver por qué/)).toBeInTheDocument();
+  });
+
   it('muestra el historial aunque no haya contexto y lo exporta a Excel (1.5.0)', async () => {
     const fetchMock = stubApi({
       ...session(USER),

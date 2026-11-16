@@ -75,7 +75,17 @@ def base(user_client: TestClient, project: dict[str, object], db: Session) -> st
                 classified_by="ai",
             ),
             _doc(2, "marzo", project_id=project_id, ai_domain="informes", ai_confidence=0.4, language="es"),
-            _doc(3, "suelto", project_id=project_id, domain_slug=None),
+            _doc(
+                3,
+                "suelto",
+                project_id=project_id,
+                domain_slug=None,
+                author="Luis",
+                language="es",
+                rules_domain="facturas",
+                rules_confidence=0.3,
+                unclassified_reason="below_threshold",
+            ),
         ]
     )
     db.commit()
@@ -132,3 +142,18 @@ def test_only_where_the_ai_proposed_another_domain(user_client: TestClient, base
 def test_search_looks_at_author_and_description(user_client: TestClient, base: str) -> None:
     assert _titles(user_client, base, q="pérez") == ["enero"]
     assert _titles(user_client, base, q="resumen de la ia") == ["february"]
+
+
+def test_unclassified_carry_their_reason_and_properties(user_client: TestClient, base: str) -> None:
+    """1.6.0 (G42): motivo, propuesta de las reglas por debajo del umbral y propiedades de los sin clasificar."""
+    (suelto,) = user_client.get(f"{base}/documents").json()["items"]
+
+    assert suelto["unclassified_reason"] == "below_threshold"
+    assert (suelto["rules_domain"], suelto["rules_confidence"]) == ("facturas", 0.3)
+    assert (suelto["author"], suelto["language"]) == ("Luis", "es")
+
+
+def test_classified_documents_have_no_unclassified_reason(user_client: TestClient, base: str) -> None:
+    items = user_client.get(f"{base}/documents", params={"domain": "facturas"}).json()["items"]
+
+    assert {item["unclassified_reason"] for item in items} == {None}

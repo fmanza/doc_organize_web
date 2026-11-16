@@ -149,6 +149,9 @@ class ContextDoc:
     ai_confidence: float | None = None
     ai_reasoning: str | None = None
     material_type_confidence: float | None = None
+    #: Sin clasificar (1.6.0): ``incomplete_artifacts`` o ``below_threshold``; nulo si está clasificado o el contexto es
+    #: anterior a 1.6.0.
+    unclassified_reason: str | None = None
 
 
 @dataclass
@@ -246,12 +249,14 @@ def site_dir(output_root: Path) -> Path:
 
 def context_paths(output_root: Path, output_folder_name: str | None) -> list[Path]:
     """Lo que gestiona el contexto en ``output_root`` (para la vista previa del borrado): ``context.json``,
-    ``domains/``, la carpeta reorganizada, ``zensical.toml``, un ``mkdocs.yml`` anterior, ``.cache/`` y ``site/``."""
+    ``unclassified.json`` (1.6.0), ``domains/``, la carpeta reorganizada, ``zensical.toml``, un ``mkdocs.yml`` anterior,
+    ``.cache/`` y ``site/``. El historial (y sus copias giradas) no: se conserva al borrar."""
     from doc_organize import ProjectLayout
 
     layout = ProjectLayout(output_root)
     paths = [
         layout.context_file,
+        layout.unclassified_file,
         layout.domains_dir,
         layout.site_config_file,
         layout.legacy_mkdocs_config_file,
@@ -473,6 +478,46 @@ def _traceability(document: Any) -> dict[str, Any]:
     }
 
 
+def _unclassified(context: Any) -> list[ContextDoc]:
+    """Documentos sin clasificar (G42, doc_organize 1.6.0): con su motivo, lo que propusieron las reglas y sus
+    propiedades si ``unclassified_details`` los trae (uno por ruta, en el mismo orden); si no (contexto de 1.5.0 o
+    detalle dañado), solo el nombre y la extensión, como hasta 1.5.0."""
+    details = list(getattr(context, "unclassified_details", None) or [])
+    paths = list(context.unclassified_documents)
+    if [detail.source_path for detail in details] == paths:
+        return [
+            ContextDoc(
+                domain_slug=None,
+                title=detail.title or Path(detail.source_path).name,
+                document_type=detail.document_type,
+                material_type=None,
+                material_type_name=None,
+                source_path=detail.source_path,
+                organized_path=None,
+                author=detail.author,
+                description=detail.description,
+                keywords=list(detail.keywords),
+                language=detail.language,
+                rules_domain=detail.rules_domain,
+                rules_confidence=detail.rules_confidence,
+                unclassified_reason=str(detail.reason),
+            )
+            for detail in details
+        ]
+    return [
+        ContextDoc(
+            domain_slug=None,
+            title=Path(path).name,
+            document_type=Path(path).suffix.lstrip(".").lower() or None,
+            material_type=None,
+            material_type_name=None,
+            source_path=path,
+            organized_path=None,
+        )
+        for path in paths
+    ]
+
+
 def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> ContextOutcome:
     failed_paths = {path for path, _ in failed}
     docs: list[ContextDoc] = []
@@ -503,18 +548,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     **_traceability(document),
                 )
             )
-    docs.extend(
-        ContextDoc(
-            domain_slug=None,
-            title=Path(path).name,
-            document_type=Path(path).suffix.lstrip(".").lower() or None,
-            material_type=None,
-            material_type_name=None,
-            source_path=path,
-            organized_path=None,
-        )
-        for path in context.unclassified_documents
-    )
+    docs.extend(_unclassified(context))
     return ContextOutcome(
         output_folder_name=context.output_folder_name,
         domains=domains,

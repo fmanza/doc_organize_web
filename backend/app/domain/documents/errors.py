@@ -29,6 +29,14 @@ class OutputTooLargeError(AppError):
     code = "output_too_large"
 
 
+class OwnerOrderForbiddenError(AppError):
+    """Ordenar por propietario sin poder verlo (G43): el orden dejaría deducir de quién es cada fichero."""
+
+    status = 403
+    title = "Solo los owners del proyecto pueden ordenar por propietario"
+    code = "owner_order_forbidden"
+
+
 class FolderNotInProjectError(AppError):
     """El filtro de carpeta no es una carpeta de origen del proyecto."""
 

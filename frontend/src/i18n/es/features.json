@@ -913,8 +913,16 @@
       "path": "Ruta",
       "updated_at": "Última actualización",
       "conversion_status": "Estado de conversión",
-      "error_retry_count": "Fallos seguidos"
-    }
+      "error_retry_count": "Fallos seguidos",
+      "mime_type": "Tipo",
+      "created_at": "Fecha de creación",
+      "owner_name": "Propietario"
+    },
+    "mimeType": "Tipo de fichero",
+    "allMimeTypes": "Todos los tipos",
+    "mimeTypeOption_one": "{{type}} ({{formatted}})",
+    "mimeTypeOption_other": "{{type}} ({{formatted}})",
+    "noMimeTypes": "Sin tipos: los documentos escaneados antes de la 1.5 no lo tienen"
   },
   "duplicates": {
     "title": "Duplicados",
@@ -1162,6 +1170,14 @@
       "draftLoaded": "Borrador cargado en el editor",
       "draftLoadedBody": "Revísalo y guárdalo si te sirve.",
       "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos."
+    },
+    "unclassified": {
+      "reason": "Motivo",
+      "incomplete_artifacts": "Sin convertir",
+      "incomplete_artifactsHelp": "Falta su Markdown o su JSON: vuelve a escanear la carpeta.",
+      "below_threshold": "Por debajo del umbral",
+      "below_thresholdHelp": "Las reglas no llegaron al umbral y la IA no le asignó dominio. «Cómo se clasificó» dice qué propusieron.",
+      "rebuild": "Reconstruye el contexto para ver por qué no se clasificaron y sus propiedades (contexto anterior a la 1.6)."
     }
   },
   "templates": {

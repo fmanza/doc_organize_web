@@ -9,7 +9,10 @@ importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas ve
                                     order_by="file_path", descending=False) -> list[CacheEntry]
 
 ``order_by`` y ``descending`` llegan con doc_organize 1.2.0 (G40/L-18, verificados en el wheel): empates por
-``file_path`` ascendente y los ``NULL`` al final en los dos sentidos.
+``file_path`` ascendente y los ``NULL`` al final en los dos sentidos. doc_organize 1.6.0 (G43) añade el orden por
+``mime_type``, ``created_time`` y ``owner_name`` (este sin distinguir mayúsculas, ``COLLATE NOCASE``), el filtro
+``mime_type`` (uno o varios tipos, igualdad exacta) en ``count_entries`` y ``load_cache_page``, y
+``list_mime_types(search=None, *, relative_to=None, conversion_status=None) -> list[tuple[str, int]]``.
 
 Con ``read_only=True`` (G21) la API no escribe en la caché (URI ``mode=ro``, sin WAL, ``CREATE`` ni ``ALTER``) y una
 caché que aún no existe da ``CacheNotFoundError``. ``relative_to`` (G22) limita a las entradas bajo la carpeta y hace
@@ -19,12 +22,23 @@ que ``search`` mire la ruta **relativa** a ella, no la del contenedor.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Literal
 
-#: Columnas por las que ``documents_page`` ordena (``doc_organize.cache.CacheOrderBy``, doc_organize 1.2.0).
-CacheOrder = Literal["file_path", "timestamp", "conversion_status", "status", "error_retry_count"]
+#: Columnas por las que ``documents_page`` ordena (``doc_organize.cache.CacheOrderBy``, doc_organize 1.2.0; las tres
+#: últimas desde 1.6.0, G43).
+CacheOrder = Literal[
+    "file_path",
+    "timestamp",
+    "conversion_status",
+    "status",
+    "error_retry_count",
+    "mime_type",
+    "created_time",
+    "owner_name",
+]
 #: Atributo de ``CachedDocument`` con el valor de cada orden, para mezclar páginas de varias cachés igual que la librería.
 ORDER_ATTRIBUTE: Final[dict[CacheOrder, str]] = {
     "file_path": "path",
@@ -32,7 +46,12 @@ ORDER_ATTRIBUTE: Final[dict[CacheOrder, str]] = {
     "conversion_status": "conversion_status",
     "status": "status",
     "error_retry_count": "error_retry_count",
+    "mime_type": "mime_type",
+    "created_time": "created_time",
+    "owner_name": "owner_name",
 }
+#: Órdenes que la librería hace sin distinguir mayúsculas (``COLLATE NOCASE`` de SQLite: solo las letras ASCII).
+CASE_INSENSITIVE_ORDERS: Final[frozenset[CacheOrder]] = frozenset({"owner_name"})
 
 
 @dataclass(frozen=True)
@@ -66,16 +85,28 @@ class CachedDocument:
 
 
 def count_documents(
-    cache_db: Path, search: str | None = None, *, root: Path, conversion_status: str | None = None
+    cache_db: Path,
+    search: str | None = None,
+    *,
+    root: Path,
+    conversion_status: str | None = None,
+    mime_type: Sequence[str] | None = None,
 ) -> int:
     """Entradas de ``cache_db`` bajo ``root`` (0 si la caché aún no existe), filtradas por ``search`` en la ruta relativa
-    a ``root`` y por estado de conversión."""
+    a ``root``, por estado de conversión y por tipo MIME (alguno de ``mime_type``, 1.6.0)."""
     from doc_organize import CacheNotFoundError
     from doc_organize.cache import CacheManager
 
     async def _count() -> int:
         async with CacheManager(cache_db, read_only=True) as cache:
-            return int(await cache.count_entries(search or None, relative_to=root, conversion_status=conversion_status))
+            return int(
+                await cache.count_entries(
+                    search or None,
+                    relative_to=root,
+                    conversion_status=conversion_status,
+                    mime_type=list(mime_type) if mime_type else None,
+                )
+            )
 
     try:
         return asyncio.run(_count())
@@ -93,6 +124,7 @@ def documents_page(
     conversion_status: str | None = None,
     order_by: CacheOrder = "file_path",
     descending: bool = False,
+    mime_type: Sequence[str] | None = None,
 ) -> list[CachedDocument]:
     """Página de ``cache_db`` (vacía si la caché aún no existe), con los mismos filtros, ordenada por ``order_by``
     (por ruta si no se dice otra cosa; empates por ruta y los vacíos al final)."""
@@ -111,6 +143,7 @@ def documents_page(
                 conversion_status=conversion_status,
                 order_by=order_by,
                 descending=descending,
+                mime_type=list(mime_type) if mime_type else None,
             )
         return [
             CachedDocument(
@@ -130,6 +163,25 @@ def documents_page(
 
     try:
         return asyncio.run(_page())
+    except CacheNotFoundError:
+        return []
+
+
+def mime_types(
+    cache_db: Path, search: str | None = None, *, root: Path, conversion_status: str | None = None
+) -> list[tuple[str, int]]:
+    """``(tipo MIME, entradas)`` de ``cache_db`` bajo ``root`` con los mismos filtros que ``count_documents`` (salvo el
+    tipo), de más a menos entradas; vacía si la caché aún no existe o es anterior a 1.5.0 (doc_organize 1.6.0, G43)."""
+    from doc_organize import CacheNotFoundError
+    from doc_organize.cache import CacheManager
+
+    async def _types() -> list[tuple[str, int]]:
+        async with CacheManager(cache_db, read_only=True) as cache:
+            found = await cache.list_mime_types(search or None, relative_to=root, conversion_status=conversion_status)
+        return [(str(mime), int(count)) for mime, count in found]
+
+    try:
+        return asyncio.run(_types())
     except CacheNotFoundError:
         return []
 

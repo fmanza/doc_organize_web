@@ -535,6 +535,11 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
               formatted: formatCount(documents.data.total),
             })}
           </Text>
+          {domain === null && documents.data.items.some((doc) => !doc.unclassified_reason) && (
+            <Text size="xs" c="dimmed">
+              {t('context.unclassified.rebuild')}
+            </Text>
+          )}
           <Table.ScrollContainer minWidth={640}>
             <Table>
               <Table.Thead>
@@ -548,9 +553,14 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                   <SortableTh state={list} sortKey="document_type">
                     {t('context.documents.type')}
                   </SortableTh>
-                  <SortableTh state={list} sortKey="organized_path">
-                    {t('context.documents.copy')}
-                  </SortableTh>
+                  {domain === null ? (
+                    // Los sin clasificar no se copian: en su lugar, por qué no se clasificaron (1.6.0, G42).
+                    <Table.Th>{t('context.unclassified.reason')}</Table.Th>
+                  ) : (
+                    <SortableTh state={list} sortKey="organized_path">
+                      {t('context.documents.copy')}
+                    </SortableTh>
+                  )}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -586,7 +596,19 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                         )}
                       </Table.Td>
                       <Table.Td>
-                        {doc.failed ? (
+                        {domain === null ? (
+                          doc.unclassified_reason ? (
+                            <Badge
+                              variant="light"
+                              color={doc.unclassified_reason === 'incomplete_artifacts' ? 'red' : 'gray'}
+                              title={t(`context.unclassified.${doc.unclassified_reason}Help`)}
+                            >
+                              {t(`context.unclassified.${doc.unclassified_reason}`)}
+                            </Badge>
+                          ) : (
+                            '—'
+                          )
+                        ) : doc.failed ? (
                           <Badge color="red" variant="light">
                             {t('context.documents.notCopied')}
                           </Badge>

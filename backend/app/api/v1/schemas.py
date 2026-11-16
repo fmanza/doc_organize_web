@@ -704,6 +704,19 @@ class DocumentPage(BaseModel):
     total: int
 
 
+class MimeTypeOut(BaseModel):
+    """Un tipo MIME de los documentos del proyecto y cuántos hay (doc_organize 1.6.0, G43)."""
+
+    mime_type: str
+    count: int
+
+
+class MimeTypeList(BaseModel):
+    """Tipos MIME presentes, de más a menos documentos, para el filtro de la lista (1.6.0)."""
+
+    items: list[MimeTypeOut]
+
+
 class SearchHitOut(_Out):
     """Documento convertido que contiene las palabras buscadas."""
 
@@ -865,6 +878,9 @@ class ContextDocumentOut(_Out):
     ai_confidence: float | None = None
     ai_reasoning: str | None = None
     material_type_confidence: float | None = None
+    # 1.6.0 (G42): por qué no se clasificó; los sin clasificar traen también sus propiedades y lo que propusieron las
+    # reglas por debajo del umbral (``rules_domain``, ``rules_confidence``). Nulo en contextos anteriores.
+    unclassified_reason: Literal["incomplete_artifacts", "below_threshold"] | None = None
 
 
 class ContextChangeOut(BaseModel):

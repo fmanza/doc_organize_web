@@ -13,7 +13,7 @@ import stat
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from app.core.config import Settings
 from app.db.models import Project
@@ -22,6 +22,7 @@ from app.domain.documents.errors import (
     OutputNotFoundError,
     OutputTooLargeError,
     OutputTypeNotAllowedError,
+    OwnerOrderForbiddenError,
 )
 from app.domain.documents.outputs import output_paths
 from app.domain.documents.paths import DocumentNamer, folder_roots
@@ -97,7 +98,15 @@ DOCUMENT_ORDER: Final[dict[str, library_cache.CacheOrder]] = {
     "conversion_status": "conversion_status",
     "status": "status",
     "error_retry_count": "error_retry_count",
+    # doc_organize 1.6.0 (G43).
+    "mime_type": "mime_type",
+    "created_at": "created_time",
+    "owner_name": "owner_name",
 }
+#: Tipos MIME como mucho en un filtro (``?mime_type=`` repetido).
+MAX_MIME_TYPES: Final = 20
+
+_ASCII_LOWER: Final = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 
 
 def _merge(
@@ -106,10 +115,17 @@ def _merge(
     """Junta páginas ya ordenadas de varias cachés con el criterio de doc_organize: por ``order`` en el sentido pedido,
     los vacíos al final y los empates por ruta ascendente (los ordenamientos de Python son estables)."""
     attribute = library_cache.ORDER_ATTRIBUTE[order]
+    nocase = order in library_cache.CASE_INSENSITIVE_ORDERS
     entries = sorted(((subpath, entry) for subpath, page in pages for entry in page), key=lambda item: item[1].path)
     filled = [item for item in entries if getattr(item[1], attribute) not in (None, "")]
     empty = [item for item in entries if getattr(item[1], attribute) in (None, "")]
-    filled.sort(key=lambda item: getattr(item[1], attribute), reverse=descending)
+
+    def key(item: tuple[str, library_cache.CachedDocument]) -> Any:
+        value = getattr(item[1], attribute)
+        # ``COLLATE NOCASE`` de SQLite: solo pliega las letras ASCII; hacer lo mismo mantiene el orden de la librería.
+        return value.translate(_ASCII_LOWER) if nocase else value
+
+    filled.sort(key=key, reverse=descending)
     return filled + empty
 
 
@@ -124,11 +140,13 @@ def list_documents(
     offset: int,
     listing: ListQuery | None = None,
     include_owner: bool = False,
+    mime_type: list[str] | None = None,
 ) -> tuple[list[DocumentRow], int]:
     """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta relativa a su carpeta,
     filtro por estado de conversión y orden (web 1.3.0, doc_organize 1.2.0).
 
-    Con ``include_owner`` (1.5.0) cada fila lleva la cuenta propietaria que guardó el escaneo; sin él, nunca.
+    Con ``include_owner`` (1.5.0) cada fila lleva la cuenta propietaria que guardó el escaneo; sin él, nunca, y
+    tampoco se puede ordenar por ella. ``mime_type`` (1.6.0, G43) deja solo los documentos de alguno de esos tipos.
 
     Sin orden, o con una sola carpeta, cada caché da su página ya ordenada y se encadenan por carpeta (como siempre).
     Con varias carpetas y otro orden, cada caché da sus ``offset + limit`` primeros y se mezclan: una página profunda
@@ -136,8 +154,12 @@ def list_documents(
 
     Raises:
         FolderNotInProjectError: ``folder`` no es una carpeta de origen del proyecto.
+        OwnerOrderForbiddenError: Orden por propietario sin ``include_owner``.
     """
     listing = listing or ListQuery()
+    if listing.sort == "owner_name" and not include_owner:
+        raise OwnerOrderForbiddenError("Ordenar por propietario solo está al alcance de quien puede verlo.")
+    types = list(dict.fromkeys(mime_type or [])) or None
     order: library_cache.CacheOrder = DOCUMENT_ORDER[listing.sort] if listing.sort else "file_path"
     descending = listing.sort is not None and listing.order == "desc"
     state = state_dir(settings, project.id)
@@ -153,7 +175,11 @@ def list_documents(
         (
             subpath,
             library_cache.count_documents(
-                folder_cache(state, subpath), search, root=folder_root[-1], conversion_status=conversion_status
+                folder_cache(state, subpath),
+                search,
+                root=folder_root[-1],
+                conversion_status=conversion_status,
+                mime_type=types,
             ),
         )
         for subpath, folder_root in roots.items()
@@ -170,6 +196,7 @@ def list_documents(
             conversion_status=conversion_status,
             order_by=order,
             descending=descending,
+            mime_type=types,
         )
 
     picked: list[tuple[str, library_cache.CachedDocument]] = []
@@ -194,6 +221,33 @@ def list_documents(
     namers = {subpath: DocumentNamer([(subpath, roots[subpath])], source.name) for subpath in roots}
     rows = [_row(subpath, entry, namers[subpath], include_owner=include_owner) for subpath, entry in picked]
     return rows, total
+
+
+def mime_types(
+    settings: Settings,
+    project: Project,
+    *,
+    folder: str | None = None,
+    search: str | None = None,
+    conversion_status: str | None = None,
+) -> list[tuple[str, int]]:
+    """Tipos MIME de los documentos del proyecto (o de una carpeta) con cuántos hay de cada uno, para el filtro de la
+    lista (doc_organize 1.6.0, G43): suma los de cada caché, de más a menos documentos y, con empate, por tipo.
+
+    Raises:
+        FolderNotInProjectError: ``folder`` no es una carpeta de origen del proyecto.
+    """
+    state = state_dir(settings, project.id)
+    search = (search or "").strip() or None
+    timeout = settings.location_probe_timeout_seconds
+    totals: dict[str, int] = {}
+    for subpath in select_folders(project, folder):
+        root = folder_roots(project.source_location.container_path, subpath, timeout=timeout)[-1]
+        for mime, count in library_cache.mime_types(
+            folder_cache(state, subpath), search, root=root, conversion_status=conversion_status
+        ):
+            totals[mime] = totals.get(mime, 0) + count
+    return sorted(totals.items(), key=lambda item: (-item[1], item[0]))
 
 
 def _row(

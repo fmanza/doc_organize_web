@@ -601,3 +601,6 @@ class ContextDocument(Base):
     ai_confidence: Mapped[float | None] = mapped_column(Float, default=None)
     ai_reasoning: Mapped[str | None] = mapped_column(String(500), default=None)
     material_type_confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    #: Por qué no se clasificó (1.6.0, G42): ``incomplete_artifacts`` (sin ``.md`` o ``.json``) o ``below_threshold``
+    #: (las reglas no llegan al umbral y la IA no lo asignó). Nulo si está clasificado o en contextos anteriores.
+    unclassified_reason: Mapped[str | None] = mapped_column(String(32), default=None)

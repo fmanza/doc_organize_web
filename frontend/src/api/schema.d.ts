@@ -658,6 +658,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/documents/mime-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tipos MIME de los documentos
+         * @description Tipos MIME de los documentos con cuántos hay de cada uno, para el filtro por tipo (doc_organize 1.6.0, G43).
+         *     Admite los mismos filtros que la lista, salvo el propio tipo; los documentos sin tipo no cuentan.
+         */
+        get: operations["list_mime_types_api_v1_projects__project_id__documents_mime_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/duplicates/last": {
         parameters: {
             query?: never;
@@ -1738,6 +1759,8 @@ export interface components {
             rules_domain?: string | null;
             /** Title */
             title: string;
+            /** Unclassified Reason */
+            unclassified_reason?: ("incomplete_artifacts" | "below_threshold") | null;
         };
         /** ContextDocumentPage */
         ContextDocumentPage: {
@@ -2460,6 +2483,24 @@ export interface components {
              * @enum {string}
              */
             role: "owner" | "editor" | "viewer";
+        };
+        /**
+         * MimeTypeList
+         * @description Tipos MIME presentes, de más a menos documentos, para el filtro de la lista (1.6.0).
+         */
+        MimeTypeList: {
+            /** Items */
+            items: components["schemas"]["MimeTypeOut"][];
+        };
+        /**
+         * MimeTypeOut
+         * @description Un tipo MIME de los documentos del proyecto y cuántos hay (doc_organize 1.6.0, G43).
+         */
+        MimeTypeOut: {
+            /** Count */
+            count: number;
+            /** Mime Type */
+            mime_type: string;
         };
         /**
          * NoopParams
@@ -5335,10 +5376,12 @@ export interface operations {
                 conversion_status?: ("pending" | "in_progress" | "success" | "error" | "ocr_pending" | "ocr_in_progress") | null;
                 limit?: number;
                 offset?: number;
-                /** @description Columna por la que ordenar (sin ella, carpeta y ruta) */
-                sort?: ("path" | "updated_at" | "conversion_status" | "status" | "error_retry_count") | null;
+                /** @description Columna por la que ordenar (sin ella, carpeta y ruta); owner_name solo para owners */
+                sort?: ("path" | "updated_at" | "conversion_status" | "status" | "error_retry_count" | "mime_type" | "created_at" | "owner_name") | null;
                 /** @description Sentido del orden */
                 order?: "asc" | "desc";
+                /** @description Solo documentos de alguno de estos tipos MIME (se repite, 1.6.0) */
+                mime_type?: string[] | null;
             };
             header?: never;
             path: {
@@ -5355,6 +5398,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Orden por propietario sin ser owner del proyecto (owner_order_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description La carpeta no es de origen del proyecto (folder_not_saved) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_mime_types_api_v1_projects__project_id__documents_mime_types_get: {
+        parameters: {
+            query?: {
+                /** @description Mismo filtro que la lista de documentos */
+                search?: string | null;
+                /** @description Solo esta carpeta de origen */
+                folder?: string | null;
+                /** @description Solo este estado de conversión */
+                conversion_status?: ("pending" | "in_progress" | "success" | "error" | "ocr_pending" | "ocr_in_progress") | null;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MimeTypeList"];
                 };
             };
             /** @description No autenticado */

@@ -1181,6 +1181,21 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "unclassified_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "incomplete_artifacts",
+                  "below_threshold"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unclassified Reason"
           }
         },
         "required": [
@@ -2865,6 +2880,42 @@
           "role"
         ],
         "title": "MemberUpdate",
+        "type": "object"
+      },
+      "MimeTypeList": {
+        "description": "Tipos MIME presentes, de más a menos documentos, para el filtro de la lista (1.6.0).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MimeTypeOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MimeTypeList",
+        "type": "object"
+      },
+      "MimeTypeOut": {
+        "description": "Un tipo MIME de los documentos del proyecto y cuántos hay (doc_organize 1.6.0, G43).",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mime_type",
+          "count"
+        ],
+        "title": "MimeTypeOut",
         "type": "object"
       },
       "NoopParams": {
@@ -7723,7 +7774,7 @@
             }
           },
           {
-            "description": "Columna por la que ordenar (sin ella, carpeta y ruta)",
+            "description": "Columna por la que ordenar (sin ella, carpeta y ruta); owner_name solo para owners",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -7735,7 +7786,10 @@
                     "updated_at",
                     "conversion_status",
                     "status",
-                    "error_retry_count"
+                    "error_retry_count",
+                    "mime_type",
+                    "created_at",
+                    "owner_name"
                   ],
                   "type": "string"
                 },
@@ -7743,7 +7797,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Columna por la que ordenar (sin ella, carpeta y ruta)",
+              "description": "Columna por la que ordenar (sin ella, carpeta y ruta); owner_name solo para owners",
               "title": "Sort"
             }
           },
@@ -7762,6 +7816,28 @@
               "title": "Order",
               "type": "string"
             }
+          },
+          {
+            "description": "Solo documentos de alguno de estos tipos MIME (se repite, 1.6.0)",
+            "in": "query",
+            "name": "mime_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo documentos de alguno de estos tipos MIME (se repite, 1.6.0)",
+              "title": "Mime Type"
+            }
           }
         ],
         "responses": {
@@ -7778,6 +7854,9 @@
           "401": {
             "description": "No autenticado"
           },
+          "403": {
+            "description": "Orden por propietario sin ser owner del proyecto (owner_order_forbidden)"
+          },
           "404": {
             "description": "Proyecto no encontrado (o sin acceso)"
           },
@@ -7786,6 +7865,112 @@
           }
         },
         "summary": "Documentos del proyecto",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/documents/mime-types": {
+      "get": {
+        "description": "Tipos MIME de los documentos con cuántos hay de cada uno, para el filtro por tipo (doc_organize 1.6.0, G43).\nAdmite los mismos filtros que la lista, salvo el propio tipo; los documentos sin tipo no cuentan.",
+        "operationId": "list_mime_types_api_v1_projects__project_id__documents_mime_types_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Mismo filtro que la lista de documentos",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mismo filtro que la lista de documentos",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Solo esta carpeta de origen",
+            "in": "query",
+            "name": "folder",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo esta carpeta de origen",
+              "title": "Folder"
+            }
+          },
+          {
+            "description": "Solo este estado de conversión",
+            "in": "query",
+            "name": "conversion_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "success",
+                    "error",
+                    "ocr_pending",
+                    "ocr_in_progress"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo este estado de conversión",
+              "title": "Conversion Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MimeTypeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "La carpeta no es de origen del proyecto (folder_not_saved)"
+          }
+        },
+        "summary": "Tipos MIME de los documentos",
         "tags": [
           "documents"
         ]
