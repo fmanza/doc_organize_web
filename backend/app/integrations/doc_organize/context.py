@@ -25,6 +25,11 @@ Desde 0.12.1/0.13.0 doc_organize no sigue enlaces simbólicos al copiar (G27): l
 resolvedor de ubicaciones, ya resueltas. Desde 0.14.0 tampoco se sobrescriben documentos con el mismo nombre (G30),
 las escrituras atómicas no siguen enlaces (G31) y ``Context`` valida ``output_folder_name`` al leer ``context.json``
 (G32): la web ya no necesita sus rodeos.
+
+Con doc_organize 1.5.0 (firmas de arriba sin cambios), ``ContextBuilder.build`` lee el ``context.json`` anterior y añade
+una línea a ``historial_contexto/CONTEXT_HISTORY.jsonl`` en ``output_root`` (nombre que ya no admite la carpeta
+reorganizada), abre cada original para sus propiedades (autor, descripción, palabras clave) y clasifica sin distinguir
+tildes. ``ContextRegistry.load_context`` lanza ``ContextError`` ante cualquier ``context.json`` dañado.
 """
 
 from __future__ import annotations

@@ -8,7 +8,8 @@ Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resu
 (antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
 (antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos); desde el 2026-11-06: **1.0.0** (L-15), la misma API. La Fase 10 abre G38 (L-16, después de la
 1.0) y la prueba local de la 1.0.0 abre G39 (L-17, hotfix 1.0.1). Desde el 2026-11-06 (web 1.0.1): **1.1.0**, que resuelve
-G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0. El 2026-11-07 se abrió G41 (L-19), que la web 1.4.0 cierra con doc_organize 1.3.0: no quedan huecos abiertos.
+G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0. El 2026-11-07 se abrió G41 (L-19), que la web 1.4.0 cierra con doc_organize 1.3.0: no quedan huecos abiertos. Desde el 2026-11-16 (web 1.4.8):
+**1.5.0**, sin huecos nuevos al subir el pin (las novedades se adoptan en la web 1.5.0).
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
