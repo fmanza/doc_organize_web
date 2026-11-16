@@ -547,6 +547,10 @@ class ProjectContext(Base):
     site_built: Mapped[bool] = mapped_column(default=False)
     #: Se construyó con la Sub-fase B (IA, Fase 8).
     ai_classification: Mapped[bool] = mapped_column(default=False)
+    #: Trazabilidad (1.5.0): versión de doc_organize y modelos de IA de la construcción; nulos en contextos anteriores.
+    built_with_version: Mapped[str | None] = mapped_column(String(128), default=None)
+    ai_classification_model: Mapped[str | None] = mapped_column(String(128), default=None)
+    ai_enrichment_model: Mapped[str | None] = mapped_column(String(128), default=None)
     domains: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -562,7 +566,10 @@ class ContextDocument(Base):
     """
 
     __tablename__ = "context_documents"
-    __table_args__ = (Index("ix_context_documents_project_domain", "project_id", "domain_slug", "seq"),)
+    __table_args__ = (
+        Index("ix_context_documents_project_domain", "project_id", "domain_slug", "seq"),
+        Index("ix_context_documents_project_language", "project_id", "language"),
+    )
 
     project_id: Mapped[int] = mapped_column(
         ForeignKey("project_contexts.project_id", ondelete="CASCADE"), primary_key=True
@@ -580,3 +587,17 @@ class ContextDocument(Base):
     collision: Mapped[bool] = mapped_column(default=False)
     #: ``rules`` o ``ai`` (quién lo clasificó, Fase 8); nulo si no se clasificó.
     classified_by: Mapped[str | None] = mapped_column(String(8), default=None)
+    # 1.5.0 (doc_organize 1.5.0): propiedades del documento y trazabilidad de la clasificación. Nulos (o ``[]``) en
+    # contextos anteriores hasta reconstruir.
+    author: Mapped[str | None] = mapped_column(String(500), default=None)
+    description: Mapped[str | None] = mapped_column(Text, default=None)
+    keywords: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    language: Mapped[str | None] = mapped_column(String(8), default=None)
+    #: Campos que rellenó la IA (``description``, ``keywords``) porque el documento no los declaraba.
+    ai_filled: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    rules_domain: Mapped[str | None] = mapped_column(String(128), default=None)
+    rules_confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    ai_domain: Mapped[str | None] = mapped_column(String(128), default=None)
+    ai_confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    ai_reasoning: Mapped[str | None] = mapped_column(String(500), default=None)
+    material_type_confidence: Mapped[float | None] = mapped_column(Float, default=None)

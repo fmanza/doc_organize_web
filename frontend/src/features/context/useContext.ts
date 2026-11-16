@@ -16,7 +16,14 @@ export type ContextBuildParams = components['schemas']['ContextBuildParams'];
 export type Catalog = ContextBuildParams['catalog'];
 export type TaxonomyTemplate = components['schemas']['TaxonomyTemplateOut'];
 export type TaxonomyTemplateDetail = components['schemas']['TaxonomyTemplateDetail'];
-export type DocumentFilter = 'failed' | 'collision';
+export type DocumentFilter = 'failed' | 'collision' | 'ai_disagrees';
+
+/** Filtros de los documentos del contexto (idioma y palabra clave desde la 1.5.0). */
+export interface ContextDocumentFilters {
+  only: DocumentFilter | null;
+  language: string | null;
+  keyword: string;
+}
 
 /** Tamaño máximo de una plantilla o manifiesto (`MAX_TEMPLATE_BYTES` de la API). */
 export const MAX_TEMPLATE_BYTES = 256 * 1024;
@@ -121,19 +128,21 @@ export function useProjectContext(projectId: number) {
 export function useContextDocuments(
   projectId: number,
   domain: string | null,
-  only: DocumentFilter | null,
+  filters: ContextDocumentFilters,
   list: ListParams<ContextDocumentSort>,
   enabled = true,
 ) {
+  const { only, language } = filters;
+  const keyword = filters.keyword.trim() || null;
   return useQuery({
-    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, ...list }],
+    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, language, keyword, ...list }],
     enabled,
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/documents', {
           params: {
             path: { project_id: projectId },
-            query: { domain, only, ...list },
+            query: { domain, only, language, keyword, ...list },
           },
         }),
       ),

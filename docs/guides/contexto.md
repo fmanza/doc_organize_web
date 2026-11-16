@@ -47,6 +47,29 @@ conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 - **Sin sitio**: no se pidió o falló (por ejemplo, superó el tiempo máximo de `DOW_CONTEXT_SITE_TIMEOUT_SECONDS`, 600 s
   por defecto). La ejecución dice por qué.
 
+### Metadatos y cómo se clasificó (1.5.0)
+
+Desde la 1.5.0, cada documento clasificado muestra:
+
+- **Autor**, **descripción** y **palabras clave** que declara el propio fichero (propiedades del PDF u Office).
+  - Si el documento no las declara y se activó [completar con IA](ia.md), las rellena la IA y llevan la marca **IA**.
+  - El autor nunca lo pone la IA.
+- **Idioma**, detectado en el texto convertido. Si no es seguro, no se muestra.
+- **Cómo se clasificó** (plegable):
+  - el dominio que propusieron las reglas y su confianza;
+  - si se preguntó a la IA, su propuesta, su confianza y su motivo;
+  - en las plantillas, la confianza del tipo de material.
+
+  «No aplicada» marca una propuesta de la IA que no se usó, porque las reglas ya habían decidido ese eje.
+
+El resumen indica con qué versión de doc_organize se construyó y qué modelos de IA se usaron.
+
+Los documentos se pueden filtrar por **idioma** (código de dos letras, como `es`), por **palabra clave** (alguna la
+contiene) o por **La IA propuso otro**. La búsqueda también mira el autor y la descripción.
+
+Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen. Los documentos sin
+clasificar tampoco los tienen, porque doc_organize solo guarda su ruta.
+
 ## Sitio
 
 **Ver el sitio** lo abre dentro de la aplicación. El sitio se genera a partir del contenido de los documentos, que

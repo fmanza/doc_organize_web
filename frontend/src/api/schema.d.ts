@@ -559,7 +559,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Documentos del contexto */
+        /**
+         * Documentos del contexto
+         * @description Documentos de un dominio o sin clasificar; ``q`` busca en título, rutas, tipo, autor y descripción.
+         */
         get: operations["list_context_documents_api_v1_projects__project_id__context_documents_get"];
         put?: never;
         post?: never;
@@ -1597,10 +1600,25 @@ export interface components {
          * @description Documento del contexto: original (``folder`` + ``path``) y copia relativa a la carpeta del proyecto.
          */
         ContextDocumentOut: {
+            /** Ai Confidence */
+            ai_confidence?: number | null;
+            /** Ai Domain */
+            ai_domain?: string | null;
+            /**
+             * Ai Filled
+             * @default []
+             */
+            ai_filled: string[];
+            /** Ai Reasoning */
+            ai_reasoning?: string | null;
+            /** Author */
+            author?: string | null;
             /** Classified By */
             classified_by?: ("rules" | "ai") | null;
             /** Collision */
             collision: boolean;
+            /** Description */
+            description?: string | null;
             /** Document Type */
             document_type: string | null;
             /** Domain Slug */
@@ -1609,8 +1627,17 @@ export interface components {
             failed: boolean;
             /** Folder */
             folder: string;
+            /**
+             * Keywords
+             * @default []
+             */
+            keywords: string[];
+            /** Language */
+            language?: string | null;
             /** Material Type */
             material_type: string | null;
+            /** Material Type Confidence */
+            material_type_confidence?: number | null;
             /** Material Type Name */
             material_type_name: string | null;
             /** Organized Path */
@@ -1619,6 +1646,10 @@ export interface components {
             output_path?: string | null;
             /** Path */
             path: string;
+            /** Rules Confidence */
+            rules_confidence?: number | null;
+            /** Rules Domain */
+            rules_domain?: string | null;
             /** Title */
             title: string;
         };
@@ -1652,6 +1683,10 @@ export interface components {
              * @default false
              */
             ai_classification: boolean;
+            /** Ai Classification Model */
+            ai_classification_model?: string | null;
+            /** Ai Enrichment Model */
+            ai_enrichment_model?: string | null;
             /**
              * Built At
              * Format: date-time
@@ -1659,6 +1694,8 @@ export interface components {
             built_at: string;
             /** Built By Run Id */
             built_by_run_id: string | null;
+            /** Built With Version */
+            built_with_version?: string | null;
             /** Catalog Kind */
             catalog_kind: string;
             /** Collisions Count */
@@ -4902,8 +4939,12 @@ export interface operations {
             query?: {
                 /** @description Slug del dominio; sin él, los documentos sin clasificar */
                 domain?: string | null;
-                /** @description Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0) */
-                only?: ("failed" | "collision") | null;
+                /** @description Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0) */
+                only?: ("failed" | "collision" | "ai_disagrees") | null;
+                /** @description Solo este idioma (ISO 639-1, 1.5.0) */
+                language?: string | null;
+                /** @description Solo si alguna palabra clave contiene este texto (1.5.0) */
+                keyword?: string | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

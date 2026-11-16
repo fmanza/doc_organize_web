@@ -14,6 +14,14 @@ ROADMAP (`0.<fase+1>.0`).
   defecto) que solo cambia el owner, desde «Editar», y que queda en la auditoría. El run de escaneo copia el ajuste al
   encolarse (lo que mande el cliente se ignora) y se aplica desde el siguiente escaneo; al desactivarlo, ese escaneo lo
   borra de la caché. Es un dato personal: `owner_name` solo llega a los owners del proyecto (y a los admins).
+- **Metadatos y trazabilidad del contexto** (doc_organize 1.5.0, migración `0013`):
+  - Cada documento clasificado guarda autor, descripción, palabras clave e idioma.
+  - También guarda cómo se clasificó: el dominio y la confianza de las reglas, y la propuesta, la confianza y el motivo
+    de la IA (`ContextDocumentOut`).
+  - El contexto guarda la versión de doc_organize y los modelos de IA usados (`ContextOut`).
+  - Nuevos filtros `language`, `keyword` y `only=ai_disagrees`; la búsqueda mira también el autor y la descripción.
+  - En la página del contexto, propiedades y un detalle plegable «Cómo se clasificó».
+  - Los contextos anteriores quedan sin estos datos hasta reconstruir.
 
 ## [1.4.8] - 2026-11-16
 

@@ -35,6 +35,8 @@ const DOCUMENT = {
   failed: false,
   collision: false,
   output_path: '2024/enero/factura.md',
+  keywords: [],
+  ai_filled: [],
 };
 const TEMPLATES = {
   items: [
@@ -112,6 +114,67 @@ describe('ContextPage', () => {
     expect(screen.getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
     // Reconstruir no deja cambiar la carpeta.
     expect(screen.getByText(/Se reconstruye en la carpeta «organizado»/)).toBeInTheDocument();
+  });
+
+  it('muestra los metadatos, la trazabilidad y filtra por idioma, palabra clave y propuesta de la IA (1.5.0)', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': {
+        body: { ...CONTEXT, built_with_version: '1.5.0', ai_classification_model: 'clasificador' },
+      },
+      'GET /api/v1/projects/7/context/documents': {
+        body: {
+          items: [
+            {
+              ...DOCUMENT,
+              author: 'Ana Pérez',
+              language: 'es',
+              description: 'Factura de la luz',
+              keywords: ['energía', 'IVA'],
+              ai_filled: ['description'],
+              rules_domain: 'informes',
+              rules_confidence: 0.31,
+              ai_domain: 'facturas',
+              ai_confidence: 0.9,
+              ai_reasoning: 'Habla de importes.',
+            },
+          ],
+          total: 1,
+        },
+      },
+      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+
+    expect(
+      await screen.findByText('doc_organize 1.5.0 · clasificación con clasificador'),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Autor: Ana Pérez · Idioma: es')).toBeInTheDocument();
+    expect(screen.getByText('energía')).toBeInTheDocument();
+    expect(screen.getByTitle('Lo rellenó la IA porque el documento no lo declaraba')).toBeInTheDocument();
+    expect(screen.getByText('Cómo se clasificó')).toBeInTheDocument();
+    expect(screen.getByText('Reglas: informes (31 %)')).toBeInTheDocument();
+    expect(screen.getByText('IA: facturas (90 %)')).toBeInTheDocument();
+    expect(screen.queryByText('No aplicada')).not.toBeInTheDocument();
+    expect(screen.getByText('Motivo de la IA: Habla de importes.')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: 'Idioma' }), 'ES');
+    await user.type(screen.getByRole('textbox', { name: 'Palabra clave' }), 'iva');
+    await user.click(screen.getByRole('radio', { name: 'La IA propuso otro' }));
+
+    await waitFor(() => {
+      const urls = callsTo(fetchMock, 'GET', '/api/v1/projects/7/context/documents').map(
+        (request) => new URL(request.url).searchParams,
+      );
+      const last = urls.at(-1);
+      expect(last?.get('language')).toBe('es');
+      expect(last?.get('keyword')).toBe('iva');
+      expect(last?.get('only')).toBe('ai_disagrees');
+    });
   });
 
   it('un lector no construye ni edita el manifiesto', async () => {

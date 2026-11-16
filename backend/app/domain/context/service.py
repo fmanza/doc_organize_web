@@ -7,13 +7,14 @@ manifiesto, un fichero pequeño del destino a través del resolvedor de ubicacio
 
 from __future__ import annotations
 
+import json
 import os
 import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, Text, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -40,7 +41,7 @@ from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
 DEFAULT_FOLDER_NAME: Final = "organizado"
-DocumentFilter = Literal["failed", "collision"]
+DocumentFilter = Literal["failed", "collision", "ai_disagrees"]
 
 
 @dataclass(frozen=True)
@@ -63,17 +64,32 @@ def get_context(db: Session, project: Project) -> ProjectContext:
     return context
 
 
+def _keywords_contain(keyword: str) -> ColumnElement[bool]:
+    """Alguna palabra clave contiene ``keyword``, sobre el texto JSON de la lista.
+
+    El término se escapa igual que lo guarda ``JSON`` (``json.dumps``, con ``\\uXXXX`` fuera de ASCII) para que las tildes
+    coincidan; sin distinguir mayúsculas solo en ASCII, como el resto de búsquedas sobre SQLite.
+    """
+    escaped = json.dumps(keyword.strip().lower())[1:-1]
+    return func.lower(cast(ContextDocument.keywords, Text)).contains(escaped, autoescape=True)
+
+
 def list_documents(
     db: Session,
     project: Project,
     *,
     domain: str | None,
     only: DocumentFilter | None = None,
+    language: str | None = None,
+    keyword: str | None = None,
     limit: int,
     offset: int,
     listing: ListQuery | None = None,
 ) -> tuple[list[ContextDocument], int]:
     """Documentos de un dominio (``domain``) o sin clasificar (``None``), en el orden del contexto.
+
+    Filtros 1.5.0: ``language`` (código exacto), ``keyword`` (alguna palabra clave lo contiene) y ``only="ai_disagrees"``
+    (la IA propuso un dominio distinto del asignado). La búsqueda ``q`` mira también el autor y la descripción.
 
     Raises:
         ContextNotFoundError: Sin contexto o sin ese dominio.
@@ -87,11 +103,27 @@ def list_documents(
         where.append(ContextDocument.failed.is_(True))
     elif only == "collision":
         where.append(ContextDocument.collision.is_(True))
+    elif only == "ai_disagrees":
+        where.append(ContextDocument.ai_domain.is_not(None))
+        where.append(
+            or_(ContextDocument.domain_slug.is_(None), ContextDocument.ai_domain != ContextDocument.domain_slug)
+        )
+    if language:
+        where.append(ContextDocument.language == language.strip().lower())
+    if keyword and keyword.strip():
+        where.append(_keywords_contain(keyword))
     listing = listing or ListQuery()
     query = apply_search(
         select(ContextDocument).where(*where),
         listing.q,
-        [ContextDocument.title, ContextDocument.path, ContextDocument.document_type, ContextDocument.organized_path],
+        [
+            ContextDocument.title,
+            ContextDocument.path,
+            ContextDocument.document_type,
+            ContextDocument.organized_path,
+            ContextDocument.author,
+            ContextDocument.description,
+        ],
     )
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     columns = {

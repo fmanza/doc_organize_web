@@ -55,7 +55,23 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "failed": doc.failed,
         "collision": doc.collision,
         "classified_by": doc.classified_by if doc.domain_slug is not None else None,
+        # 1.5.0: recortes defensivos al tamaño de las columnas (doc_organize ya limita la justificación a 500).
+        "author": _cut(doc.author, 500),
+        "description": doc.description,
+        "keywords": doc.keywords,
+        "language": _cut(doc.language, 8),
+        "ai_filled": doc.ai_filled,
+        "rules_domain": _cut(doc.rules_domain, 128),
+        "rules_confidence": doc.rules_confidence,
+        "ai_domain": _cut(doc.ai_domain, 128),
+        "ai_confidence": doc.ai_confidence,
+        "ai_reasoning": _cut(doc.ai_reasoning, 500),
+        "material_type_confidence": doc.material_type_confidence,
     }
+
+
+def _cut(value: str | None, size: int) -> str | None:
+    return value[:size] if value else None
 
 
 def _project_rows(
@@ -82,6 +98,9 @@ def _project_rows(
                 collisions_count=0,  # desde 0.14.0 doc_organize no sobrescribe nombres repetidos (G30)
                 site_built=outcome.site_built,
                 ai_classification=params.ai_classification,
+                built_with_version=_cut(outcome.built_with_version, 128),
+                ai_classification_model=_cut(outcome.ai_classification_model, 128),
+                ai_enrichment_model=_cut(outcome.ai_enrichment_model, 128),
                 domains=outcome.domains,
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),

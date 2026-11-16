@@ -150,6 +150,24 @@ def test_build_classifies_copies_and_projects(run: Any, project: Project, db: Se
     assert db.scalar(select(AuditEntry.action).where(AuditEntry.action == "project.context_build"))
 
 
+def test_build_stores_the_traceability(run: Any, project: Project, db: Session) -> None:
+    """web 1.5.0 (doc_organize 1.5.0): versión de la librería, sin modelos de IA, y cómo clasificaron las reglas."""
+    import doc_organize
+
+    ctx, params = run(DOMAINS)
+
+    operation.run_build(ctx, params, project)
+
+    stored = db.get(ProjectContext, project.id)
+    assert stored is not None and stored.built_with_version == doc_organize.__version__
+    assert stored.ai_classification_model is None and stored.ai_enrichment_model is None
+    docs = list(db.scalars(select(ContextDocument).where(ContextDocument.project_id == project.id)))
+    classified = [d for d in docs if d.domain_slug is not None]
+    assert classified and all(d.rules_domain == d.domain_slug and d.rules_confidence for d in classified)
+    assert all(d.ai_domain is None and d.ai_filled == [] for d in docs)
+    assert all(isinstance(d.keywords, list) for d in docs)
+
+
 def test_rebuild_replaces_the_projection_and_keeps_the_folder(run: Any, project: Project, db: Session) -> None:
     ctx, params = run(DOMAINS | {"output_folder_name": "por-temas"})
     operation.run_build(ctx, params, project)
