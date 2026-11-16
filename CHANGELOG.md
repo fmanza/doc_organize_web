@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-16
+
+Lo que añade doc_organize 1.5.0 (la librería ya venía fijada desde la 1.4.8). Migraciones `0012` y `0013`, aditivas:
+los contextos construidos antes no tienen sus metadatos ni su trazabilidad hasta reconstruirlos.
+
 ### Added
 
 - **Metadatos del fichero** (doc_organize 1.5.0): la lista de documentos muestra el tipo MIME, la fecha de creación y

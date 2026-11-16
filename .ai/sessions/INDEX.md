@@ -15,3 +15,4 @@ Una carpeta por sesión (`AAAA-MM-DD-<slug>/`) creada a partir de [`TEMPLATE/`](
 | [2026-11-02-fase8](2026-11-02-fase8/TRACEABILITY.md) | phase | Fase 8 cerrada (0.9.0): configuración IA cifrada, clasificación con IA, borrador de manifiesto y panel de uso |
 | [2026-11-03-fase9](2026-11-03-fase9/TRACEABILITY.md) | phase | Fase 9 cerrada (0.10.0): tenants, roles con permisos, selector de tenant y aislamiento; paridad completa |
 | [2026-11-07-exclusiones](2026-11-07-exclusiones/TRACEABILITY.md) | new_feature | Web 1.4.0: exclusión de subcarpetas por proyecto y patrones de ruido por ubicación con doc_organize 1.3.0 (G41 resuelto) |
+| [2026-11-16-doc-organize-1.5.0](2026-11-16-doc-organize-1.5.0/TRACEABILITY.md) | new_feature | Web 1.4.8 y 1.5.0 con doc_organize 1.5.0: metadatos del fichero y propietario opcional, trazabilidad del contexto, descripciones con IA e historial del contexto |
