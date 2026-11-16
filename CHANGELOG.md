@@ -5,6 +5,8 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-17
+
 Adopta doc_organize 1.6.0 (W2) y reorganiza el menú de Administración (W1). Migración `0014`, aditiva: los contextos
 construidos antes no tienen el motivo de los sin clasificar hasta reconstruirlos.
 
