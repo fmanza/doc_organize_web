@@ -60,11 +60,12 @@ const COUNTS = new Set([
   'missing_originals',
   'calls',
   'classified',
+  'applied',
   'sample_documents',
   'total_documents',
 ]);
 /** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
-const TRANSLATED = new Set(['mode', 'ai.stopped']);
+const TRANSLATED = new Set(['mode', 'ai.stopped', 'ai_enrichment.stopped']);
 const SECONDS = new Set(['duration_seconds', 'discovery_duration_seconds', 'total_conversion_seconds']);
 /** Datos técnicos que no aportan al usuario (o que se muestran en otra pantalla, como el borrador del manifiesto). */
 const HIDDEN = new Set(['event_schema_version', 'manifest_markdown', 'segments']);

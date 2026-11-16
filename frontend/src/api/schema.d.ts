@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Ver la configuración de IA
-         * @description Las 5 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
+         * @description Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
          */
         get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
         put?: never;
@@ -1270,7 +1270,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "litellm_classification" | "litellm_taxonomy_classification" | "litellm_taxonomy_manifest_draft" | "litellm_usage" | "github_copilot_usage";
+            key: "litellm_classification" | "litellm_taxonomy_classification" | "litellm_taxonomy_manifest_draft" | "litellm_enrichment" | "litellm_usage" | "github_copilot_usage";
         };
         /**
          * AiFamilyUpdate
@@ -1536,6 +1536,8 @@ export interface components {
          *     descarta) y no se devuelve en el run.
          *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
          *     ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
+         *     ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
+         *     documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
          */
         ContextBuildParams: {
             /**
@@ -1543,6 +1545,11 @@ export interface components {
              * @default false
              */
             ai_classification: boolean;
+            /**
+             * Ai Enrichment
+             * @default false
+             */
+            ai_enrichment: boolean;
             /**
              * Build Site
              * @default true

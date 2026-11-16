@@ -22,6 +22,15 @@ ROADMAP (`0.<fase+1>.0`).
   - Nuevos filtros `language`, `keyword` y `only=ai_disagrees`; la búsqueda mira también el autor y la descripción.
   - En la página del contexto, propiedades y un detalle plegable «Cómo se clasificó».
   - Los contextos anteriores quedan sin estos datos hasta reconstruir.
+- **Descripciones y palabras clave con IA** (doc_organize 1.5.0):
+  - Familia nueva `litellm_enrichment` (variables `DOC_ORGANIZE_LITELLM_ENRICHMENT_*`), con su tarjeta en
+    Configuración IA.
+  - Casilla nueva al construir el contexto, `ai_enrichment`. Rellena lo que no declara cada documento clasificado y
+    nunca sustituye lo declarado.
+  - Tiene su propio presupuesto de documentos por ejecución: con clasificar y completar marcados, una construcción
+    puede enviar hasta el doble.
+  - Tiene su propia etapa en el progreso, «Completando descripciones con IA».
+  - Su recuento va en el resultado del run (`ai_enrichment`) y en el registro.
 
 ## [1.4.8] - 2026-11-16
 

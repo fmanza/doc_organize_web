@@ -177,6 +177,8 @@ class ContextBuildParams(_Params):
     descarta) y no se devuelve en el run.
     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
     ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
+    ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
+    documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
     """
 
     operation: Literal["context_build"] = "context_build"
@@ -187,6 +189,7 @@ class ContextBuildParams(_Params):
     threshold: float = Field(default=0.5, ge=0, le=1)
     build_site: bool = True
     ai_classification: bool = False
+    ai_enrichment: bool = False
     template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
 
     @model_validator(mode="after")

@@ -152,6 +152,32 @@ AI_STOPPED: Final[dict[str, str]] = {
     "connection": "No se pudo conectar con el servicio de IA varias veces seguidas: no se clasificó nada más con IA.",
     "budget": "Se llegó al máximo de documentos con IA por ejecución (ajuste ai_max_documents_per_run).",
 }
+#: Lo mismo para las descripciones con IA (1.5.0): el resto se queda con lo que declara el documento.
+ENRICHMENT_STOPPED: Final[dict[str, str]] = {
+    "auth": "El servicio de IA rechazó la clave de las descripciones: no se completó nada más con IA.",
+    "connection": "No se pudo conectar varias veces seguidas con la IA de las descripciones: no se completó nada más.",
+    "budget": "Las descripciones con IA llegaron al máximo de documentos por ejecución (ai_max_documents_per_run).",
+}
+
+
+def _log_ai(ctx: JobContext, outcome: ContextOutcome) -> None:
+    """Recuento de la clasificación y de las descripciones con IA, y por qué paró cada una."""
+    if outcome.ai is not None:
+        # La IA solo recibe lo que las reglas no clasificaron: sin el total, «24 enviados» de 213 parecía un fallo.
+        ctx.log(
+            f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados (los que las reglas no "
+            f"clasificaron); {outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
+        )
+        if outcome.ai["stopped"]:
+            ctx.log(AI_STOPPED[outcome.ai["stopped"]], level="warning")
+    if outcome.enrichment is not None:
+        ctx.log(
+            f"IA (descripciones): {outcome.enrichment['calls']} documentos enviados (los clasificados sin descripción "
+            f"o sin palabras clave); {outcome.enrichment['applied']} completados, {outcome.enrichment['failed']} con "
+            "error."
+        )
+        if outcome.enrichment["stopped"]:
+            ctx.log(ENRICHMENT_STOPPED[outcome.enrichment["stopped"]], level="warning")
 
 
 def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | None) -> dict[str, Any]:
@@ -160,6 +186,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     require_rw(project.destination_location)
     output, request_folders, namer = context_folders(ctx, project)
     ai = ai_connection(ctx, context_ai_family(params)) if params.ai_classification else None
+    enrichment = ai_connection(ctx, "litellm_enrichment") if params.ai_enrichment else None
     folder_name = params.output_folder_name or "organizado"
     existing = _existing_folder(output, project)
     if existing and existing != folder_name:
@@ -179,6 +206,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         build_site=params.build_site,
         site_timeout=float(ctx.settings.context_site_timeout_seconds),
         ai=ai,
+        enrichment=enrichment,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:
@@ -202,14 +230,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     for path, error in outcome.failed[:MAX_FAILED_SHOWN]:
         ctx.log(f"No se pudo copiar «{namer.display(path)}»: {namer.text(error)}", level="warning")
     _log_site(ctx, outcome, namer)
-    if outcome.ai is not None:
-        # La IA solo recibe lo que las reglas no clasificaron: sin el total, «24 enviados» de 213 parecía un fallo.
-        ctx.log(
-            f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados (los que las reglas no "
-            f"clasificaron); {outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
-        )
-        if outcome.ai["stopped"]:
-            ctx.log(AI_STOPPED[outcome.ai["stopped"]], level="warning")
+    _log_ai(ctx, outcome)
     ctx.progress("context_save", 0, None)
     _project_rows(ctx, project, params, outcome, namer)
     result: dict[str, Any] = {
@@ -222,6 +243,9 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         "missing_originals": outcome.missing,
         "site_built": outcome.site_built,
         "ai": {"enabled": True, **outcome.ai} if outcome.ai is not None else {"enabled": False},
+        "ai_enrichment": (
+            {"enabled": True, **outcome.enrichment} if outcome.enrichment is not None else {"enabled": False}
+        ),
     }
     with ctx.session_factory() as db:
         audit.record(

@@ -24,6 +24,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
 | Clasificación de dominios (un eje) | Contexto con dominios descubiertos o catálogo propio | URL, clave virtual, modelo |
 | Clasificación por taxonomía (dos ejes) | Contexto con plantilla o manifiesto | URL, clave virtual, modelo |
 | Borrador de manifiesto | Botón «Pedir borrador» | URL, clave virtual, modelo |
+| Descripciones y palabras clave (1.5.0) | [Completar con IA](#completar-descripciones-con-ia) al construir el contexto | URL, clave virtual, modelo |
 | Uso de LiteLLM | Panel de uso | URL, clave virtual |
 | Uso de GitHub Copilot | Panel de uso | Usuario de GitHub, token personal (PAT) |
 
@@ -43,7 +44,7 @@ En **Administración → Ajustes** hay cinco ajustes más:
 |---|---|---|
 | Tiempo máximo por petición de IA | 30 s | Para clasificar documentos (el panel de uso espera como mucho 10 s) |
 | Reintentos de conexión con la IA | 2 | Solo ante fallos de conexión |
-| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA |
+| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por servicio: clasificar y completar descripciones cuentan cada uno el suyo |
 | Tiempo máximo del borrador de IA | 300 s | La petición del borrador es una sola y larga; con un modelo local puede tardar minutos (5–900) |
 | Reintentos del borrador de IA | 0 | Ante un fallo de conexión o de tiempo. Reintentar un timeout vuelve a pedir la misma generación al modelo |
 
@@ -60,6 +61,22 @@ usa el de un eje. Con plantilla o manifiesto se usa el de dos ejes, que asigna d
   faltan quedan sin clasificar.
 - El resultado de la ejecución dice cuántos documentos se enviaron, cuántos clasificó la IA, cuántos dieron error y,
   si paró, por qué. En la lista de documentos, los que clasificó la IA llevan la marca **IA**.
+
+## Completar descripciones con IA
+
+Desde la 1.5.0, en la página **Contexto** se puede marcar «Completar descripción y palabras clave con IA» antes de
+construir. Solo está disponible si el servicio «Descripciones y palabras clave» está configurado (variables
+`DOC_ORGANIZE_LITELLM_ENRICHMENT_*`).
+
+- Solo se envían los documentos **clasificados** a los que les falta la descripción o las palabras clave en sus
+  propiedades. Lo que declara el documento nunca se sustituye, y el autor nunca lo pone la IA.
+- Lo que rellena la IA lleva la marca **IA** en la lista de documentos del [contexto](contexto.md).
+- Tiene su propio tope de documentos por ejecución: con clasificar y completar marcados, la construcción puede enviar
+  hasta el doble.
+- Se detiene igual que la clasificación: si el servicio rechaza la clave, tras 3 fallos de conexión seguidos o al
+  llegar al tope. El contexto se construye igualmente, y los documentos que faltan se quedan con lo que declaran.
+- La ejecución muestra su propia etapa, «Completando descripciones con IA», y al terminar dice cuántos documentos se
+  enviaron, cuántos se completaron y cuántos dieron error.
 
 ## Borrador de manifiesto
 

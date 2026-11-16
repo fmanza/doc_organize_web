@@ -52,7 +52,7 @@ conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 Desde la 1.5.0, cada documento clasificado muestra:
 
 - **Autor**, **descripción** y **palabras clave** que declara el propio fichero (propiedades del PDF u Office).
-  - Si el documento no las declara y se activó [completar con IA](ia.md), las rellena la IA y llevan la marca **IA**.
+  - Si el documento no las declara y se activó [completar con IA](ia.md#completar-descripciones-con-ia), las rellena la IA y llevan la marca **IA**.
   - El autor nunca lo pone la IA.
 - **Idioma**, detectado en el texto convertido. Si no es seguro, no se muestra.
 - **Cómo se clasificó** (plegable):

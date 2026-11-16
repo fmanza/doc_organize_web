@@ -566,6 +566,7 @@
       "measure_context": "Contando el contexto",
       "context_delete": "Borrando el contexto",
       "context_ai": "Clasificando con IA",
+      "context_enrichment": "Completando descripciones con IA",
       "ai_sample": "Eligiendo la muestra",
       "ai_request": "Esperando al servicio de IA"
     },
@@ -652,6 +653,13 @@
             "connection": "sin conexión",
             "budget": "máximo por ejecución"
           }
+        },
+        "ai_enrichment": {
+          "stopped": {
+            "auth": "clave rechazada",
+            "connection": "sin conexión",
+            "budget": "máximo por ejecución"
+          }
         }
       },
       "output_folder_name": "Carpeta reorganizada",
@@ -666,6 +674,13 @@
         "classified": "Clasificados por la IA",
         "failed": "Errores de la IA",
         "stopped": "La IA paró por"
+      },
+      "ai_enrichment": {
+        "enabled": "Descripciones con IA",
+        "calls": "Documentos enviados para describir",
+        "applied": "Completados por la IA",
+        "failed": "Errores al describir",
+        "stopped": "Las descripciones pararon por"
       },
       "reasoning": "Criterio de la IA",
       "sample_documents": "Documentos de muestra",
@@ -1104,8 +1119,12 @@
       "notConfigured": {
         "litellm_classification": "Un administrador tiene que configurar la «Clasificación de dominios» en Configuración IA.",
         "litellm_taxonomy_classification": "Con plantilla o manifiesto, un administrador tiene que configurar la «Clasificación por taxonomía».",
-        "litellm_taxonomy_manifest_draft": "Un administrador tiene que configurar el «Borrador de manifiesto» en Configuración IA."
+        "litellm_taxonomy_manifest_draft": "Un administrador tiene que configurar el «Borrador de manifiesto» en Configuración IA.",
+        "litellm_enrichment": "Un administrador tiene que configurar «Descripciones y palabras clave» en Configuración IA."
       },
+      "enrich": "Completar descripción y palabras clave con IA",
+      "enrichHelp": "Solo los documentos clasificados que no las declaran, con su propio máximo por ejecución. Lo que declara el documento no se sustituye.",
+      "enrichEgress": "El título y un extracto de cada documento clasificado sin descripción o sin palabras clave se enviarán al servicio de IA configurado.",
       "egressTitle": "El contenido sale de la aplicación",
       "egress": "El título y un extracto de cada documento pendiente se enviarán al servicio de IA configurado. No lo actives con documentos que no puedan salir de tu organización.",
       "draftTitle": "Borrador con IA",
@@ -1187,6 +1206,10 @@
       "litellm_taxonomy_manifest_draft": {
         "title": "Borrador de manifiesto",
         "intro": "LiteLLM Proxy que propone un manifiesto de taxonomía a partir de una muestra de documentos."
+      },
+      "litellm_enrichment": {
+        "title": "Descripciones y palabras clave",
+        "intro": "LiteLLM Proxy que, al construir el contexto, propone descripción y palabras clave de los documentos que no las declaran."
       },
       "litellm_usage": {
         "title": "Uso de LiteLLM",

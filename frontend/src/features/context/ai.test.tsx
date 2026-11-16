@@ -28,6 +28,7 @@ function status(families: Record<string, boolean>) {
           litellm_classification: false,
           litellm_taxonomy_classification: false,
           litellm_taxonomy_manifest_draft: false,
+          litellm_enrichment: false,
           litellm_usage: false,
           github_copilot_usage: false,
           ...families,
@@ -80,6 +81,47 @@ describe('ContextPage con IA', () => {
       catalog: 'discover',
       ai_classification: true,
     });
+  });
+
+  it('completar descripciones con IA va aparte de clasificar (1.5.0)', async () => {
+    const fetchMock = stubApi({
+      ...BASE,
+      ...status({ litellm_enrichment: true }),
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: RUN_ID, operation: 'context_build' }),
+      },
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ id: RUN_ID, operation: 'context_build' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+
+    const enrich = await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ });
+    await waitFor(() => expect(enrich).toBeEnabled());
+    expect(screen.getByRole('switch', { name: /Clasificar con IA/ })).toBeDisabled();
+    await user.click(enrich);
+    expect(screen.getByText(/sin descripción o sin palabras clave se enviarán/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Construir' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toMatchObject({
+      operation: 'context_build',
+      ai_classification: false,
+      ai_enrichment: true,
+    });
+  });
+
+  it('sin configurar, completar descripciones explica por qué', async () => {
+    stubApi({ ...BASE, ...status({}) });
+
+    renderRoute('/projects/7/context');
+
+    expect(
+      await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ }),
+    ).toBeDisabled();
+    expect(screen.getByText(/configurar «Descripciones y palabras clave»/)).toBeInTheDocument();
   });
 
   it('el borrador se carga en el editor sin guardarse', async () => {

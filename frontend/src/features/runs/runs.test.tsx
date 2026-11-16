@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { callsTo, session, stubApi, USER } from '../../test/api';
 import { PROJECT, runOut } from '../../test/fixtures';
-import { renderRoute } from '../../test/render';
+import { renderRoute, renderWithProviders } from '../../test/render';
+import { RunResult } from './RunResult';
 
 type Listener = (event: MessageEvent<string>) => void;
 
@@ -295,5 +296,24 @@ describe('Fase 10: aviso de una ejecución corta', () => {
 
     expect(await screen.findByText(/^Exportar ZIP ha terminado$|ha terminado$/)).toBeInTheDocument();
     expect(screen.queryByText(/Falló en/)).not.toBeInTheDocument();
+  });
+});
+
+describe('RunResult', () => {
+  it('muestra por separado la clasificación y las descripciones con IA (1.5.0)', () => {
+    renderWithProviders(
+      <RunResult
+        result={{
+          ai: { enabled: true, calls: 3, classified: 2, failed: 1, stopped: null },
+          ai_enrichment: { enabled: true, calls: 5, applied: 4, failed: 0, stopped: 'budget' },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Clasificados por la IA')).toBeInTheDocument();
+    expect(screen.getByText('Completados por la IA').nextSibling).toHaveTextContent('4');
+    expect(screen.getByText('Las descripciones pararon por').nextSibling).toHaveTextContent(
+      'máximo por ejecución',
+    );
   });
 });
