@@ -864,6 +864,43 @@ class ContextDocumentOut(_Out):
     material_type_confidence: float | None = None
 
 
+class ContextChangeOut(BaseModel):
+    """Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0)."""
+
+    path: str = Field(description="Original relativo a la carpeta de origen (``<carpeta>/<ruta>``)")
+    change: Literal["added", "removed", "reclassified"]
+    previous_domain: str | None
+    domain: str | None
+    previous_material_type: str | None
+    material_type: str | None
+    classified_by: str | None
+
+
+class ContextBuildOut(BaseModel):
+    """Una construcción del historial del contexto (1.5.0)."""
+
+    built_at: str
+    previous_built_at: str | None
+    built_with_version: str | None
+    taxonomy_manifest_used: bool
+    ai_classification_model: str | None
+    ai_enrichment_model: str | None
+    classified: int
+    unclassified: int
+    changes_total: int = Field(description="Cambios de la construcción; en ``changes`` van como mucho los primeros")
+    changes: list[ContextChangeOut]
+
+
+class ContextHistoryOut(BaseModel):
+    """Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto."""
+
+    items: list[ContextBuildOut]
+    total: int
+    error: Literal["history_too_large"] | None = Field(
+        default=None, description="No se leyó: el historial es demasiado grande; usa la exportación a Excel"
+    )
+
+
 class ContextDocumentPage(BaseModel):
     items: list[ContextDocumentOut]
     total: int

@@ -263,6 +263,88 @@ def context_paths(output_root: Path, output_folder_name: str | None) -> list[Pat
     return [Path(p) for p in paths]
 
 
+def history_file(output_root: Path) -> Path:
+    """``historial_contexto/CONTEXT_HISTORY.jsonl`` del proyecto (``ProjectLayout.context_history``, 1.5.0)."""
+    from doc_organize import ProjectLayout
+
+    return Path(ProjectLayout(output_root).context_history)
+
+
+@dataclass(frozen=True)
+class ContextChangeRow:
+    """Un documento que entró (``added``), salió (``removed``) o cambió de sitio (``reclassified``) en una construcción.
+
+    ``source_path`` es la del contenedor: quien la muestre la hace relativa.
+    """
+
+    source_path: str
+    change: str
+    previous_domain: str | None
+    domain: str | None
+    previous_material_type: str | None
+    material_type: str | None
+    classified_by: str | None
+
+
+@dataclass(frozen=True)
+class ContextBuild:
+    """Una construcción del historial (``ContextBuildRecord``)."""
+
+    built_at: str
+    previous_built_at: str | None
+    built_with_version: str | None
+    taxonomy_manifest_used: bool
+    ai_classification_model: str | None
+    ai_enrichment_model: str | None
+    classified: int
+    unclassified: int
+    changes: list[ContextChangeRow]
+
+
+def parse_history(text: str) -> list[ContextBuild]:
+    """Construcciones de un ``CONTEXT_HISTORY.jsonl`` ya leído, las más recientes primero.
+
+    Igual que ``load_context_history`` de doc_organize: una línea que no es un ``ContextBuildRecord`` válido se ignora.
+    La API lee el fichero con sus propias comprobaciones (dentro de la carpeta, sin seguir enlaces, con tope de tamaño).
+    """
+    from doc_organize.core.models import ContextBuildRecord
+    from pydantic import ValidationError
+
+    builds: list[ContextBuild] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = ContextBuildRecord.model_validate_json(line)
+        except (ValidationError, ValueError):
+            continue
+        builds.append(
+            ContextBuild(
+                built_at=record.built_at,
+                previous_built_at=record.previous_built_at,
+                built_with_version=record.built_with_version,
+                taxonomy_manifest_used=record.taxonomy_manifest_used,
+                ai_classification_model=record.ai_classification_model,
+                ai_enrichment_model=record.ai_enrichment_model,
+                classified=record.classified,
+                unclassified=record.unclassified,
+                changes=[
+                    ContextChangeRow(
+                        source_path=change.source_path,
+                        change=str(getattr(change.change, "value", change.change)),
+                        previous_domain=change.previous_domain,
+                        domain=change.domain,
+                        previous_material_type=change.previous_material_type,
+                        material_type=change.material_type,
+                        classified_by=change.classified_by,
+                    )
+                    for change in record.changes
+                ],
+            )
+        )
+    return sorted(builds, key=lambda build: build.built_at, reverse=True)
+
+
 def check_folder_name(name: str) -> str | None:
     """Problema de ``name`` como carpeta reorganizada (``validate_output_folder_name``, L-8b), o ``None``."""
     from doc_organize import validate_output_folder_name

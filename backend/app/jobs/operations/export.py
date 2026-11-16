@@ -3,7 +3,8 @@
 - ZIP: ``Conversión/`` del proyecto y ``cache_export.json`` (las entradas de las cachés de todas las carpetas de
   origen). Antes de escribir se calcula su tamaño (``preview_project_zip``): con ``dry_run`` el run devuelve solo eso,
   y sin él se comprueba que caben en la cuota del usuario y en el espacio libre del workspace.
-- Excel: la caché (``cache``) o los errores de escaneo (``errors``: estado actual e histórico).
+- Excel: la caché (``cache``), los errores de escaneo (``errors``: estado actual e histórico) o el historial del
+  contexto (``context_history``, 1.5.0).
 
 ``cache_export.json`` y los Excel no llevan rutas del contenedor: las rutas de documentos van relativas a su carpeta de
 origen (``2024/facturas/a.pdf``) y los mensajes de error, enmascarados. Excepción aceptada por el mantenedor hasta que
@@ -14,6 +15,7 @@ from __future__ import annotations
 
 import re
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Final
 
@@ -113,14 +115,22 @@ def run_zip(ctx: JobContext, params: ExportZipParams, project: Project | None) -
     return {"file_count": written.files, "total_size_bytes": written.bytes, "size_bytes": target.stat().st_size}
 
 
+#: Sufijo del fichero y función que lo escribe, por ``ExportXlsxParams.kind``.
+XLSX_KINDS: Final[dict[str, tuple[str, Callable[..., int]]]] = {
+    "cache": ("-cache.xlsx", library.write_cache_xlsx),
+    "errors": ("-errores.xlsx", library.write_errors_xlsx),
+    "context_history": ("-historial-contexto.xlsx", library.write_context_history_xlsx),
+}
+
+
 def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None) -> dict[str, Any]:
     """Escribe el Excel de la caché o de los errores de escaneo como artefacto del run."""
     project = require_project(project)
     request = _request(ctx, project)
-    name = _file_name(project, "-cache.xlsx" if params.kind == "cache" else "-errores.xlsx")
+    suffix, write = XLSX_KINDS[params.kind]
+    name = _file_name(project, suffix)
     target: Path = ctx.workdir / EXPORT_DIR / name
     target.parent.mkdir(parents=True, exist_ok=True)
-    write = library.write_cache_xlsx if params.kind == "cache" else library.write_errors_xlsx
     try:
         rows = write(target, request, on_progress=_progress(ctx), is_cancelled=lambda: ctx.cancelled)
     except ExportCancelled:

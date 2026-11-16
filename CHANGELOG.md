@@ -31,6 +31,16 @@ ROADMAP (`0.<fase+1>.0`).
     puede enviar hasta el doble.
   - Tiene su propia etapa en el progreso, «Completando descripciones con IA».
   - Su recuento va en el resultado del run (`ai_enrichment`) y en el registro.
+- **Historial del contexto** (doc_organize 1.5.0):
+  - `GET /api/v1/projects/{id}/context/history`, para cualquier miembro:
+    - las últimas construcciones con su versión, modelos y recuentos;
+    - como mucho 200 cambios por construcción, con `changes_total`;
+    - rutas relativas a las carpetas de origen;
+    - una línea dañada se ignora; si pasa de 16 MB, `error="history_too_large"`.
+  - Exportación `export_xlsx` con `kind="context_history"`: hojas «Construcciones» y «Cambios».
+  - Bloque «Historial» en la página del contexto y botón en Documentos → Exportar.
+  - El historial se conserva al borrar el contexto (lo dice la vista previa del borrado). «Vaciar histórico» sí lo
+    borra.
 
 ## [1.4.8] - 2026-11-16
 

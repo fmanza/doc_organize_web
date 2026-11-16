@@ -168,6 +168,36 @@ def test_build_stores_the_traceability(run: Any, project: Project, db: Session) 
     assert all(isinstance(d.keywords, list) for d in docs)
 
 
+def test_two_builds_leave_their_history_and_its_excel(
+    run: Any, project: Project, db: Session, migrated: Settings, user_client: TestClient
+) -> None:
+    """web 1.5.0 (doc_organize 1.5.0): cada construcción deja una línea en el historial; la API la lee y el Excel
+    tiene sus dos hojas. Cambiar el catálogo cambia documentos de sitio."""
+    from openpyxl import load_workbook
+
+    from app.domain.runs.operations import ExportXlsxParams
+    from app.jobs.operations import export
+
+    ctx, params = run(DOMAINS)
+    operation.run_build(ctx, params, project)
+    _finish(db, ctx)
+    ctx, params = run(DOMAINS | {"domains": ["informes"]})
+    operation.run_build(ctx, params, project)
+    _finish(db, ctx)
+
+    body = user_client.get(f"/api/v1/projects/{project.id}/context/history").json()
+
+    assert body["total"] == 2 and body["error"] is None
+    newest, first = body["items"]
+    assert first["changes_total"] == 4 and {c["change"] for c in first["changes"]} == {"added"}
+    assert newest["changes_total"] >= 1 and newest["previous_built_at"] == first["built_at"]
+    ctx, _ = run({"operation": "export_xlsx", "kind": "context_history"})
+    result = export.run_xlsx(ctx, ExportXlsxParams(kind="context_history"), project)
+    (artifact,) = ctx.workdir.glob("export/*-historial-contexto.xlsx")
+    assert result["rows"] > 0
+    assert load_workbook(artifact, read_only=True).sheetnames == ["Construcciones", "Cambios"]
+
+
 def test_rebuild_replaces_the_projection_and_keeps_the_folder(run: Any, project: Project, db: Session) -> None:
     ctx, params = run(DOMAINS | {"output_folder_name": "por-temas"})
     operation.run_build(ctx, params, project)
@@ -416,6 +446,7 @@ def test_delete_previews_then_removes_only_the_context(
     for gone in ("context.json", "domains", "organizado", "site", "zensical.toml", ".cache"):
         assert not (output / gone).exists(), gone
     assert (output / CONVERSION_DIR).is_dir()
+    assert (output / "historial_contexto" / "CONTEXT_HISTORY.jsonl").is_file()  # 1.5.0: el historial se conserva
     assert db.get(ProjectContext, project.id) is None
     assert db.scalar(select(ContextDocument.seq)) is None
     assert db.scalar(select(AuditEntry.action).where(AuditEntry.action == "project.context_delete"))

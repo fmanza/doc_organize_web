@@ -113,10 +113,11 @@ class ExportZipParams(_Params):
 
 
 class ExportXlsxParams(_Params):
-    """Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico)."""
+    """Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del
+    historial del contexto (``context_history``, 1.5.0: construcciones y cambios)."""
 
     operation: Literal["export_xlsx"] = "export_xlsx"
-    kind: Literal["cache", "errors"]
+    kind: Literal["cache", "errors", "context_history"]
 
 
 class DedupPreviewParams(_Params):

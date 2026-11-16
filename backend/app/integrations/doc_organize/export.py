@@ -9,6 +9,8 @@ tag ``v0.11.0``::
     write_project_zip(destination, entries, *, conversion_dir, dedup_report, on_progress, cancel_token) -> ExportStats
     write_cache_xlsx(destination, entries, *, on_progress, cancel_token) -> int
     write_scan_errors_xlsx(destination, entries, history, *, on_progress, cancel_token) -> int
+    load_context_history(history_logs) -> list[ContextBuildRecord]                       # 1.5.0
+    write_context_history_xlsx(destination, history, *, on_progress, cancel_token) -> int  # 1.5.0
 
 Las escrituras son síncronas y borran el fichero parcial si se cancelan (``OperationCancelledError``). La caché guarda
 rutas **absolutas** del contenedor: antes de escribir nada, cada ``file_path`` pasa por ``ExportRequest.rename`` y cada
@@ -192,6 +194,44 @@ def write_cache_xlsx(
     entries = _entries(request)
     rows: int = _run(
         lambda token, progress: _write(destination, entries, on_progress=progress, cancel_token=token),
+        on_progress=on_progress,
+        is_cancelled=is_cancelled,
+    )
+    return rows
+
+
+def _context_history(request: ExportRequest) -> list[Any]:
+    """``ContextBuildRecord`` del proyecto (1.5.0), las más recientes primero, con rutas relativas al origen."""
+    from doc_organize import ProjectLayout
+    from doc_organize.export import load_context_history
+
+    records = load_context_history([ProjectLayout(request.output_root).context_history])
+    return [
+        record.model_copy(
+            update={
+                "changes": [
+                    change.model_copy(update={"source_path": request.rename(change.source_path)})
+                    for change in record.changes
+                ]
+            }
+        )
+        for record in records
+    ]
+
+
+def write_context_history_xlsx(
+    destination: Path, request: ExportRequest, *, on_progress: ProgressFn, is_cancelled: Callable[[], bool]
+) -> int:
+    """Excel del historial del contexto (1.5.0: hojas ``Construcciones`` y ``Cambios``); devuelve las filas escritas.
+
+    El historial vive en la carpeta del proyecto (``historial_contexto/CONTEXT_HISTORY.jsonl``) y no se borra con el
+    contexto. Las líneas dañadas se ignoran (``load_context_history``).
+    """
+    from doc_organize.export import write_context_history_xlsx as _write
+
+    history = _context_history(request)
+    rows: int = _run(
+        lambda token, progress: _write(destination, history, on_progress=progress, cancel_token=token),
         on_progress=on_progress,
         is_cancelled=is_cancelled,
     )
