@@ -417,7 +417,9 @@
     },
     "edit": {
       "title": "Editar proyecto",
-      "renameHint": "Cambiar el nombre no renombra la carpeta de salidas."
+      "renameHint": "Cambiar el nombre no renombra la carpeta de salidas.",
+      "captureOwner": "Guardar el propietario de cada fichero",
+      "captureOwnerHint": "Es un dato personal: solo lo ven los propietarios del proyecto. Se aplica desde el siguiente escaneo, y al desactivarlo ese escaneo lo borra de la caché."
     },
     "members": {
       "title": "Miembros",
@@ -840,6 +842,11 @@
     "total_other": "{{formatted}} documentos.",
     "view": "Ver",
     "viewLabel": "Ver {{path}}",
+    "metadata": {
+      "created": "creado {{date}}",
+      "permissions": "permisos {{value}}",
+      "owner": "propietario {{value}}"
+    },
     "conversion": {
       "success": "Convertido",
       "error": "Error",

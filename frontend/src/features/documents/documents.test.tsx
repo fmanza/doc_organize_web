@@ -107,6 +107,52 @@ describe('DocumentsPage', () => {
     expect(body).toEqual({ operation: 'export_xlsx', kind: 'errors' });
   });
 
+  it('muestra los metadatos del fichero que haya (web 1.5.0)', async () => {
+    const base = {
+      folder: '2024',
+      status: 'new',
+      conversion_status: 'success',
+      error_message: null,
+      error_retry_count: 0,
+      updated_at: '2026-11-01T08:00:00Z',
+      output_path: null,
+    };
+    stubApi({
+      ...session(USER),
+      ...PROJECT_ROUTES,
+      'GET /api/v1/projects/7/documents': {
+        body: {
+          items: [
+            {
+              ...base,
+              path: 'factura.pdf',
+              mime_type: 'application/pdf',
+              created_at: null,
+              file_permissions: 'rw-r--r--',
+              owner_name: 'ana',
+            },
+            {
+              ...base,
+              path: 'sin_datos.bin',
+              mime_type: null,
+              created_at: null,
+              file_permissions: null,
+              owner_name: null,
+            },
+          ],
+          total: 2,
+        },
+      },
+    });
+
+    renderRoute('/projects/7/documents');
+
+    expect(
+      await screen.findByText('application/pdf · permisos rw-r--r-- · propietario ana'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/creado/)).not.toBeInTheDocument();
+  });
+
   it('busca por nombre en el servidor', async () => {
     const fetchMock = stubApi({
       ...session(USER),

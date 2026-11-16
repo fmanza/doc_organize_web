@@ -67,6 +67,7 @@ def project_out(access: ProjectAccess, last_run: Run | None = None, *, active_ru
         destination_location=LocationRef.model_validate(p.destination_location),
         destination_subpath=p.destination_subpath,
         role=access.role,
+        capture_owner=p.capture_owner,
         created_at=p.created_at,
         updated_at=p.updated_at,
         last_run=RunBrief.model_validate(last_run) if last_run else None,
@@ -147,7 +148,8 @@ def get_project(project_id: int, user: CurrentUser, db: DbSession) -> ProjectOut
 def update_project(
     project_id: int, body: ProjectUpdate, user: CurrentUser, db: DbSession, settings: SettingsDep, ctx: Context
 ) -> ProjectOut:
-    """Renombra (solo en la BD), cambia la descripción o las carpetas de origen (``owner``)."""
+    """Renombra (solo en la BD), cambia la descripción, las carpetas de origen o si se guarda el propietario de los
+    ficheros (``owner``)."""
     access = service.get_access(db, project_id, user, min_role="owner")
     changes = ProjectChanges(**body.model_dump(exclude_unset=True))
     service.update_project(db, access, changes, settings=settings, actor=user, ctx=ctx)

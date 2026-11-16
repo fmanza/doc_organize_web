@@ -55,6 +55,10 @@ class DocumentRow:
         folder: Carpeta de origen (``""`` = la raíz de la ubicación).
         path: Ruta relativa a la carpeta.
         output_path: Markdown relativo a ``Conversión/`` si se convirtió.
+        mime_type: Tipo MIME según la extensión (doc_organize 1.5.0); ``None`` hasta el primer escaneo con 1.5.0.
+        created_at: Fecha de creación del fichero; ``None`` si el servidor no la da (Linux) o aún no se escaneó.
+        file_permissions: Permisos POSIX en octal; ``None`` en Windows o sin escanear.
+        owner_name: Cuenta propietaria; solo si el proyecto la guarda y quien pregunta es ``owner`` (o admin).
     """
 
     folder: str
@@ -65,6 +69,10 @@ class DocumentRow:
     error_retry_count: int
     updated_at: datetime
     output_path: str | None
+    mime_type: str | None = None
+    created_at: datetime | None = None
+    file_permissions: str | None = None
+    owner_name: str | None = None
 
 
 def select_folders(project: Project, folder: str | None) -> list[str]:
@@ -115,9 +123,12 @@ def list_documents(
     limit: int,
     offset: int,
     listing: ListQuery | None = None,
+    include_owner: bool = False,
 ) -> tuple[list[DocumentRow], int]:
     """Página de documentos del proyecto (o de una carpeta) y el total, con búsqueda en la ruta relativa a su carpeta,
     filtro por estado de conversión y orden (web 1.3.0, doc_organize 1.2.0).
+
+    Con ``include_owner`` (1.5.0) cada fila lleva la cuenta propietaria que guardó el escaneo; sin él, nunca.
 
     Sin orden, o con una sola carpeta, cada caché da su página ya ordenada y se encadenan por carpeta (como siempre).
     Con varias carpetas y otro orden, cada caché da sus ``offset + limit`` primeros y se mezclan: una página profunda
@@ -181,26 +192,31 @@ def list_documents(
             picked.extend((subpath, entry) for entry in page)
 
     namers = {subpath: DocumentNamer([(subpath, roots[subpath])], source.name) for subpath in roots}
-    rows: list[DocumentRow] = []
-    for subpath, entry in picked:
-        namer = namers[subpath]
-        parts = namer.split(entry.path)
-        relative = parts[1] if parts else Path(entry.path).name
-        rows.append(
-            DocumentRow(
-                folder=subpath,
-                path=relative,
-                status=entry.status,
-                conversion_status=entry.conversion_status,
-                error_message=namer.text(entry.error_message)[:MAX_ERROR_MESSAGE] if entry.error_message else None,
-                error_retry_count=entry.error_retry_count,
-                updated_at=datetime.fromtimestamp(entry.updated_at, UTC),
-                output_path=output_paths(subpath, relative).markdown
-                if entry.conversion_status == "success" and parts
-                else None,
-            )
-        )
+    rows = [_row(subpath, entry, namers[subpath], include_owner=include_owner) for subpath, entry in picked]
     return rows, total
+
+
+def _row(
+    subpath: str, entry: library_cache.CachedDocument, namer: DocumentNamer, *, include_owner: bool
+) -> DocumentRow:
+    """Fila de ``entry`` con su ruta relativa a ``subpath`` y los mensajes sin rutas del servidor."""
+    parts = namer.split(entry.path)
+    relative = parts[1] if parts else Path(entry.path).name
+    converted = entry.conversion_status == "success" and parts
+    return DocumentRow(
+        folder=subpath,
+        path=relative,
+        status=entry.status,
+        conversion_status=entry.conversion_status,
+        error_message=namer.text(entry.error_message)[:MAX_ERROR_MESSAGE] if entry.error_message else None,
+        error_retry_count=entry.error_retry_count,
+        updated_at=datetime.fromtimestamp(entry.updated_at, UTC),
+        output_path=output_paths(subpath, relative).markdown if converted else None,
+        mime_type=entry.mime_type,
+        created_at=datetime.fromtimestamp(entry.created_time, UTC) if entry.created_time is not None else None,
+        file_permissions=entry.file_permissions,
+        owner_name=entry.owner_name if include_owner else None,
+    )
 
 
 @dataclass(frozen=True)

@@ -158,14 +158,22 @@ def _validate_scan(db: Session, project: Project, params: ScanParams, settings: 
         raise ForceRequiresAllFoldersError(
             "«Forzar reconversión» vacía toda la caché: escanea todas las carpetas del proyecto."
         )
-    # Copia de las exclusiones y los patrones vigentes (1.4.0): el run no las relee aunque cambien después.
+    # Copia de las exclusiones, los patrones (1.4.0) y el ajuste del propietario (1.5.0) vigentes: el run no los relee
+    # aunque cambien después, y lo que mande el cliente se descarta.
     scanned = folders or project.source_subpaths
     rows = db.scalars(
         select(ScannedFolder).where(ScannedFolder.project_id == project.id, ScannedFolder.subpath.in_(scanned))
     )
     exclusions = {row.subpath: list(row.excluded_subpaths) for row in rows if row.excluded_subpaths}
     patterns = list(project.source_location.ignore_patterns or [])
-    params = params.model_copy(update={"folders": folders, "exclusions": exclusions, "ignore_patterns": patterns})
+    params = params.model_copy(
+        update={
+            "folders": folders,
+            "exclusions": exclusions,
+            "ignore_patterns": patterns,
+            "capture_owner": project.capture_owner,
+        }
+    )
     check_options(db, settings, params)
     return params
 

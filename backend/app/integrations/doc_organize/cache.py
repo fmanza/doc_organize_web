@@ -46,6 +46,11 @@ class CachedDocument:
         error_message: Último error de conversión, sin sanear.
         error_retry_count: Fallos seguidos sin cambios en el fichero.
         updated_at: Marca Unix de la última actualización de la entrada.
+        mime_type: Tipo MIME según la extensión (doc_organize 1.5.0); ``None`` en entradas anteriores o extensión
+            desconocida.
+        created_time: Marca Unix de creación del fichero (``st_birthtime``); ``None`` en Linux o en entradas anteriores.
+        file_permissions: Permisos POSIX en octal; ``None`` en Windows o en entradas anteriores.
+        owner_name: Cuenta propietaria, solo si el proyecto la guarda (``capture_owner``).
     """
 
     path: str
@@ -54,6 +59,10 @@ class CachedDocument:
     error_message: str | None
     error_retry_count: int
     updated_at: float
+    mime_type: str | None = None
+    created_time: float | None = None
+    file_permissions: str | None = None
+    owner_name: str | None = None
 
 
 def count_documents(
@@ -111,6 +120,10 @@ def documents_page(
                 error_message=entry.error_message,
                 error_retry_count=entry.error_retry_count,
                 updated_at=entry.timestamp,
+                mime_type=entry.mime_type,
+                created_time=entry.created_time,
+                file_permissions=entry.file_permissions,
+                owner_name=entry.owner_name,
             )
             for entry in entries
         ]

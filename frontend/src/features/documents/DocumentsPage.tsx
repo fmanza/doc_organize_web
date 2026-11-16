@@ -197,6 +197,28 @@ function DocumentList({ projectId, rows, root }: { projectId: number; rows: Docu
   );
 }
 
+/**
+ * Metadatos del fichero (web 1.5.0, doc_organize 1.5.0): tipo, creación, permisos y propietario, solo los que haya. El
+ * propietario solo llega a los owners del proyecto; permisos y creación dependen del sistema de ficheros.
+ */
+function FileMetadata({ row }: { row: DocumentOut }) {
+  const { t } = useTranslation();
+  const parts = [
+    row.mime_type,
+    row.created_at && t('documents.metadata.created', { date: formatDateTime(row.created_at) }),
+    row.file_permissions && t('documents.metadata.permissions', { value: row.file_permissions }),
+    row.owner_name && t('documents.metadata.owner', { value: row.owner_name }),
+  ].filter(Boolean);
+  if (parts.length === 0) {
+    return null;
+  }
+  return (
+    <Text size="xs" c="dimmed" truncate="end">
+      {parts.join(' · ')}
+    </Text>
+  );
+}
+
 function DocumentRow({ projectId, row, root }: { projectId: number; row: DocumentOut; root: string }) {
   const { t } = useTranslation();
   const conversion = row.conversion_status ?? 'pending';
@@ -210,6 +232,7 @@ function DocumentRow({ projectId, row, root }: { projectId: number; row: Documen
           {folderLabel(row.folder, root)} · {formatDateTime(row.updated_at)}
           {row.error_message ? ` · ${row.error_message}` : ''}
         </Text>
+        <FileMetadata row={row} />
       </Stack>
       <Group gap="xs" wrap="nowrap">
         <Badge color={STATUS_COLOR[conversion] ?? 'gray'} variant="light">

@@ -389,6 +389,7 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
             reuse_hashes=ctx.settings.scan_reuse_hashes,
             exclude_paths=folder.excluded,
             ignore_patterns=params.ignore_patterns,
+            capture_owner=params.capture_owner,
         )
         try:
             outcome = library.run_scan(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)

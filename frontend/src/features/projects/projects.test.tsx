@@ -281,6 +281,27 @@ describe('ProjectDetailPage', () => {
     const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/members');
     expect(await request?.json()).toEqual({ user_id: 3, role: 'editor' });
   });
+
+  it('el propietario activa guardar el propietario de los ficheros (web 1.5.0)', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes(),
+      'PATCH /api/v1/projects/7': { body: { ...PROJECT, capture_owner: true } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    await user.click(await screen.findByRole('button', { name: 'Editar' }));
+    const dialog = await screen.findByRole('dialog');
+    const checkbox = within(dialog).getByRole('checkbox', { name: /propietario de cada fichero/ });
+    expect(checkbox).not.toBeChecked();
+    expect(within(dialog).getByText(/dato personal/)).toBeInTheDocument();
+    await user.click(checkbox);
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PATCH', '/api/v1/projects/7')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PATCH', '/api/v1/projects/7');
+    expect(await request?.json()).toEqual({ name: 'Proyecto A', description: '', capture_owner: true });
+  });
 });
 
 describe('Fase 10: menú del proyecto', () => {

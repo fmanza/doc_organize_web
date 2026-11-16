@@ -433,12 +433,39 @@ class ProjectChanges:
     name: str | None = None
     description: str | None = None
     source_subpaths: list[str] | None = None
+    capture_owner: bool | None = None
+
+
+def _change_sources(db: Session, project: Project, subpaths: list[str], *, settings: Settings, actor: User) -> bool:
+    """Cambia las carpetas de origen si son otras; ``True`` si cambiaron.
+
+    Raises:
+        ProjectConflictError: Hay un run en marcha.
+        InvalidProjectError: Origen solapado con las salidas.
+    """
+    sources = resolve_sources(project.source_location, subpaths, settings)
+    if sources == project.source_subpaths:
+        return False
+    if has_active_run(db, project.id):
+        raise ProjectConflictError("No se puede cambiar el origen con una ejecución en marcha.")
+    check_destination_free(
+        db,
+        destination_location_id=project.destination_location_id,
+        destination_subpath=project.destination_subpath,
+        source_location_id=project.source_location_id,
+        source_subpaths=sources,
+        exclude_project_id=project.id,
+    )
+    project.source_subpaths = sources
+    sync_scanned_folders(db, project, actor_id=actor.id)
+    return True
 
 
 def update_project(
     db: Session, access: ProjectAccess, changes: ProjectChanges, *, settings: Settings, actor: User, ctx: RequestContext
 ) -> Project:
-    """Renombra (solo en la BD), cambia la descripción o las carpetas de origen.
+    """Renombra (solo en la BD), cambia la descripción, las carpetas de origen o si se guarda el propietario de los
+    ficheros (``capture_owner``, 1.5.0: se aplica desde el siguiente escaneo).
 
     Raises:
         ProjectConflictError: Nombre repetido, o cambio de origen con un run en marcha.
@@ -454,22 +481,13 @@ def update_project(
     if changes.description is not None and (changes.description.strip() or None) != project.description:
         project.description = changes.description.strip() or None
         changed.append("description")
-    if changes.source_subpaths is not None:
-        sources = resolve_sources(project.source_location, changes.source_subpaths, settings)
-        if sources != project.source_subpaths:
-            if has_active_run(db, project.id):
-                raise ProjectConflictError("No se puede cambiar el origen con una ejecución en marcha.")
-            check_destination_free(
-                db,
-                destination_location_id=project.destination_location_id,
-                destination_subpath=project.destination_subpath,
-                source_location_id=project.source_location_id,
-                source_subpaths=sources,
-                exclude_project_id=project.id,
-            )
-            project.source_subpaths = sources
-            sync_scanned_folders(db, project, actor_id=actor.id)
-            changed.append("source_subpaths")
+    if changes.source_subpaths is not None and _change_sources(
+        db, project, changes.source_subpaths, settings=settings, actor=actor
+    ):
+        changed.append("source_subpaths")
+    if changes.capture_owner is not None and changes.capture_owner != project.capture_owner:
+        project.capture_owner = changes.capture_owner
+        changed.append("capture_owner")
     if changed:
         project.updated_at = utcnow()
         audit.record(

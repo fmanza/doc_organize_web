@@ -25,6 +25,7 @@ from sqlalchemy import (
     Text,
     TypeDecorator,
     UniqueConstraint,
+    false,
     text,
 )
 from sqlalchemy.engine import Dialect
@@ -290,6 +291,9 @@ class Project(Base):
     source_subpaths: Mapped[list[str]] = mapped_column(JSON)
     destination_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="RESTRICT"), index=True)
     destination_subpath: Mapped[str] = mapped_column(String(4096))
+    #: Guardar la cuenta propietaria de cada fichero al escanear (1.5.0, ``ScanOptions.capture_owner``): dato personal,
+    #: solo lo activa el ``owner`` y es fijo por proyecto para que un escaneo no lo borre por olvidar la opción.
+    capture_owner: Mapped[bool] = mapped_column(default=False, server_default=false())
     status: Mapped[str] = mapped_column(String(16), default="active")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

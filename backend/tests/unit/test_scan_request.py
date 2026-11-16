@@ -103,3 +103,15 @@ def test_without_exclusions_scan_options_keep_their_defaults(monkeypatch: pytest
     (options,) = seen
     assert options.exclude_paths == [] and options.ignore_patterns == []
     assert "exclude_paths" not in options.model_fields_set and "ignore_patterns" not in options.model_fields_set
+    assert options.capture_owner is False
+    assert "capture_owner" not in options.model_fields_set
+
+
+def test_capture_owner_reaches_scan_options(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """web 1.5.0 (doc_organize 1.5.0): el ajuste del proyecto llega a ``ScanOptions.capture_owner``."""
+    seen = _fake(monkeypatch, ScanEventType.COMPLETED, {})
+
+    run_scan(_request(tmp_path, capture_owner=True), on_progress=lambda _: None, is_cancelled=lambda: False)
+
+    (options,) = seen
+    assert options.capture_owner is True
