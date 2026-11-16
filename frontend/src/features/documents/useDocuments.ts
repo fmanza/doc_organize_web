@@ -29,6 +29,8 @@ export interface DocumentFilters {
   search: string;
   folder: string | null;
   conversionStatus: ConversionStatus | null;
+  /** Tipos MIME (alguno de ellos, doc_organize 1.6.0); vacío = todos. */
+  mimeTypes: string[];
 }
 
 export type DocumentSort = SortOf<'/api/v1/projects/{project_id}/documents'>;
@@ -49,10 +51,35 @@ export function useDocuments(projectId: number, filters: DocumentFilters, page: 
               search: filters.search || null,
               folder: filters.folder,
               conversion_status: filters.conversionStatus,
+              ...(filters.mimeTypes.length > 0 ? { mime_type: filters.mimeTypes } : {}),
             },
           },
         }),
       ),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Tipos MIME de los documentos con su recuento, para el filtro por tipo (doc_organize 1.6.0, G43): con los mismos
+ * filtros que la lista salvo el propio tipo, así el desplegable dice cuántos quedarían al elegir cada uno.
+ */
+export function useMimeTypes(projectId: number, filters: Omit<DocumentFilters, 'mimeTypes'>) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'documents', 'mime-types', filters],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/documents/mime-types', {
+          params: {
+            path: { project_id: projectId },
+            query: {
+              search: filters.search || null,
+              folder: filters.folder,
+              conversion_status: filters.conversionStatus,
+            },
+          },
+        }),
+      ).items,
     placeholderData: keepPreviousData,
   });
 }

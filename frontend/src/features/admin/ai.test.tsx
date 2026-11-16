@@ -66,7 +66,7 @@ describe('AiSettingsPage', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/admin/ai-settings');
+    renderRoute('/admin/ai-settings'); // URL de 1.5: redirige a /admin/ai/settings (W1)
 
     const classification = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
     expect(within(classification).getByText('Configurada')).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('AiSettingsPage', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/admin/ai-settings');
+    renderRoute('/admin/ai/settings');
 
     await user.click(
       await screen.findByRole('button', { name: 'Borrar el valor guardado de Clave virtual' }),
@@ -126,7 +126,7 @@ describe('AiSettingsPage', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/admin/ai-settings');
+    renderRoute('/admin/ai/settings');
 
     expect(await screen.findByText('Cifrado no configurado')).toBeInTheDocument();
     const copilot = screen.getByRole('region', { name: 'Uso de GitHub Copilot' });
@@ -141,7 +141,7 @@ describe('AiSettingsPage', () => {
       'GET /api/v1/admin/ai-settings': { status: 500, body: { title: 'Error interno', status: 500 } },
     });
 
-    renderRoute('/admin/ai-settings');
+    renderRoute('/admin/ai/settings');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Error interno');
   });
@@ -149,7 +149,7 @@ describe('AiSettingsPage', () => {
   it('un usuario sin rol admin no la ve', async () => {
     stubApi({ ...session(USER) });
 
-    renderRoute('/admin/ai-settings');
+    renderRoute('/admin/ai/settings');
 
     expect(await screen.findByText('Sin permiso')).toBeInTheDocument();
   });
@@ -199,7 +199,7 @@ describe('AiUsagePage', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/admin/ai-usage');
+    renderRoute('/admin/ai/usage');
 
     const litellm = await screen.findByRole('region', { name: 'LiteLLM' });
     expect(within(litellm).getByText(/Total:/)).toHaveTextContent('1,25');
@@ -240,8 +240,62 @@ describe('AiUsagePage', () => {
       },
     });
 
-    renderRoute('/admin/ai-usage');
+    renderRoute('/admin/ai-usage'); // URL de 1.5: redirige a /admin/ai/usage (W1)
 
     expect(await screen.findAllByRole('link', { name: 'Configurar' })).toHaveLength(2);
+    for (const link of screen.getAllByRole('link', { name: 'Configurar' })) {
+      expect(link).toHaveAttribute('href', '/admin/ai/settings');
+    }
+    expect(screen.getByRole('link', { name: 'IA › Parámetros' })).toHaveAttribute(
+      'href',
+      '/admin/ai/parameters',
+    );
+    // La redirección deja abierto el grupo «IA» con la página actual.
+    expect(screen.getByRole('link', { name: 'Uso' })).toHaveAttribute('aria-current', 'page');
+  });
+});
+
+describe('AiParametersPage (W1)', () => {
+  const SETTINGS = {
+    items: [
+      { key: 'login_max_attempts', value: 5, default: 5, source: 'default', group: 'security' },
+      { key: 'ai_retries', value: 2, default: 2, source: 'default', group: 'ai' },
+      { key: 'ai_max_documents_per_run', value: 0, default: 0, source: 'default', group: 'ai' },
+    ],
+  };
+
+  it('muestra solo los ajustes de IA y los guarda con el PATCH de ajustes', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/settings': { body: SETTINGS },
+      'PATCH /api/v1/admin/settings': { body: SETTINGS },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/parameters');
+
+    const input = await screen.findByRole('textbox', { name: 'Reintentos de conexión con la IA' });
+    expect(
+      screen.queryByRole('textbox', { name: 'Intentos fallidos antes del bloqueo' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'IA › Configuración' })).toHaveAttribute(
+      'href',
+      '/admin/ai/settings',
+    );
+    await user.clear(input);
+    await user.type(input, '4');
+    await user.click(screen.getByRole('button', { name: 'Guardar Reintentos de conexión con la IA' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PATCH', '/api/v1/admin/settings')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PATCH', '/api/v1/admin/settings');
+    expect(await request?.json()).toEqual({ values: { ai_retries: 4 } });
+  });
+
+  it('un administrador del tenant no entra', async () => {
+    stubApi({ ...session({ ...ADMIN, is_instance_admin: false } as never) });
+
+    renderRoute('/admin/ai/parameters');
+
+    expect(await screen.findByText('Sin permiso')).toBeInTheDocument();
   });
 });

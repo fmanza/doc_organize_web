@@ -86,7 +86,10 @@ Todos los listados de la aplicación funcionan igual (desde la 1.2.0):
 - Los **documentos** del proyecto se ordenan con «Ordenar por» (ruta, última actualización, estado de conversión o
   fallos seguidos) desde la 1.3.0. Sin elegir nada, salen por carpeta y ruta.
 - Desde la 1.5.0, cada documento muestra debajo su tipo (MIME), la fecha de creación y los permisos, cuando el
-  sistema de ficheros los da. Por ahora no se puede filtrar ni ordenar por ellos.
+  sistema de ficheros los da. Desde la 1.6, se puede **filtrar por tipo de fichero** (uno o varios; el desplegable dice
+  cuántos documentos hay de cada uno) y **ordenar por tipo o por fecha de creación**. Los que no tienen el dato van al
+  final. Los owners del proyecto pueden ordenar también por **propietario** (sin distinguir mayúsculas); al resto la
+  API se lo niega, porque el orden dejaría deducir de quién es cada fichero.
 
 ### Propietario de los ficheros
 

@@ -5,6 +5,41 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+Adopta doc_organize 1.6.0 (W2) y reorganiza el menú de Administración (W1). Migración `0014`, aditiva: los contextos
+construidos antes no tienen el motivo de los sin clasificar hasta reconstruirlos.
+
+### Added
+
+- **Por qué no se clasificó un documento** (doc_organize 1.6.0, G42): los sin clasificar guardan su motivo
+  (`ContextDocumentOut.unclassified_reason`: `incomplete_artifacts` o `below_threshold`, migración `0014`), lo que
+  propusieron las reglas por debajo del umbral y su autor, descripción, palabras clave e idioma. Columna «Motivo» en
+  la página del contexto; en los contextos anteriores, un aviso pide reconstruir.
+- **Filtrar y ordenar los documentos por los metadatos de fichero** (doc_organize 1.6.0, G43): `GET /documents`
+  admite `mime_type` (uno o varios) y `sort=mime_type|created_at|owner_name`; `GET /documents/mime-types` da los tipos
+  con su recuento para el desplegable «Tipo de fichero», sumando las cachés de todas las carpetas. Ordenar por
+  propietario es solo para los owners del proyecto: al resto, 403 (`owner_order_forbidden`), porque el orden dejaría
+  deducir el dato.
+
+### Changed
+
+- **doc_organize 1.6.0** (antes 1.5.0), wheel de su release con hash en `uv.lock`. Con ella, `Context.created_at` se
+  conserva entre reconstrucciones (la fecha «creado» del contexto ya no se mueve), el historial del contexto gira a los
+  5 MB y no pierde líneas con varias construcciones a la vez (CLI y web, dos workers), y la construcción lee las
+  propiedades de los originales en paralelo (unas 3 veces más rápido en una carpeta de red, G44). La vista previa del
+  borrado del contexto incluye `unclassified.json`; el historial se sigue conservando.
+- **Menú de Administración por grupos** (W1): «Acceso» (Usuarios, Roles, Sesiones, Tenants), «Plantillas de
+  taxonomía», «IA» (Configuración, Parámetros, Uso), «Ajustes», «Información» y «Auditoría». Cada página conserva su
+  permiso y un grupo sin ninguna página visible no se muestra (un administrador de tenant no ve «IA»). El grupo de la
+  página actual se abre solo.
+- **IA › Parámetros** (`/admin/ai/parameters`): los cinco ajustes `ai_*` salen de «Ajustes» a su propia página, con la
+  misma tabla y el mismo `PATCH /admin/settings`. «Ajustes» se divide en secciones (sesión e inicio de sesión,
+  ubicaciones, retención y cuotas) y enlaza a la página nueva.
+- **Información** (`/admin/info`, solo lectura): versiones de la web y de la librería, ficha de capacidades y workers,
+  que antes estaban al final de «Ajustes»; avisa si ningún worker da señales de vida.
+- Las URLs `/admin/ai-settings` y `/admin/ai-usage` redirigen a `/admin/ai/settings` y `/admin/ai/usage`.
+- API: `SettingOut.group` (`security`, `locations`, `storage` o `ai`) dice en qué sección va cada ajuste; lo decide el
+  backend (`SETTING_GROUPS`), y un test falla si se añade una clave administrable sin sección.
+
 ## [1.5.0] - 2026-11-16
 
 Lo que añade doc_organize 1.5.0 (la librería ya venía fijada desde la 1.4.8). Migraciones `0012` y `0013`, aditivas:

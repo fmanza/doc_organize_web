@@ -360,7 +360,13 @@ def test_settings_api_shows_source_and_applies_without_restart(
     other.post("/api/v1/auth/login", json={"username": "ana", "password": "mal"}, headers={"X-CSRF-Token": csrf})
     locked = admin_client.get(f"/api/v1/users/{user.id}").json()
 
-    assert initial["login_max_attempts"] == {"key": "login_max_attempts", "value": 5, "default": 5, "source": "default"}
+    assert initial["login_max_attempts"] == {
+        "key": "login_max_attempts",
+        "value": 5,
+        "default": 5,
+        "source": "default",
+        "group": "security",
+    }
     assert {i["key"]: i["source"] for i in updated.json()["items"]}["login_max_attempts"] == "db"
     assert locked["locked_until"] is not None  # un solo fallo ya bloquea: el ajuste vale sin reiniciar
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "settings.update")).one()
@@ -415,7 +421,7 @@ def test_capabilities_for_any_session(user_client: TestClient, published_capabil
     assert body["queues"] == ["cpu"]
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
-    assert body["doc_organize_version"] == "1.5.0"
+    assert body["doc_organize_version"] == "1.6.0"
 
 
 def test_capabilities_add_up_the_live_workers(user_client: TestClient, db: Session) -> None:

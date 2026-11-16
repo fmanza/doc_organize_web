@@ -36,10 +36,15 @@ describe('guardas de ruta', () => {
   it('el admin ve la sección de administración en la navegación', async () => {
     stubApi(session(ADMIN));
 
+    const user = userEvent.setup();
+
     renderRoute('/');
 
+    expect(await screen.findByRole('link', { name: 'Auditoría' })).toBeInTheDocument();
+    // Las páginas de un grupo aparecen al abrirlo (W1).
+    await user.click(screen.getByRole('button', { name: 'Acceso' }));
     expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Auditoría' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'IA' })).toBeInTheDocument();
   });
 });
 

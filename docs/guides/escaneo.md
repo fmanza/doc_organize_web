@@ -20,7 +20,7 @@ escaneo (enlaza a la ejecución) y si ha dejado de existir en el origen («no ex
 ## Opciones
 
 Cada opción tiene un botón **?** con una explicación y un ejemplo. Las que la instancia no puede atender aparecen
-desactivadas con el motivo (lo publica el worker: ver **Administración → Ajustes → Capacidades**).
+desactivadas con el motivo (lo publica el worker: ver **Administración → Información → Capacidades**).
 
 | Opción | Qué hace | Necesita |
 |---|---|---|

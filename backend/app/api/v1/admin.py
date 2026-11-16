@@ -33,7 +33,9 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 
 
 def _page(views: list[SettingView]) -> SettingsPage:
-    return SettingsPage(items=[SettingOut(key=v.key, value=v.value, default=v.default, source=v.source) for v in views])
+    return SettingsPage(
+        items=[SettingOut(key=v.key, value=v.value, default=v.default, source=v.source, group=v.group) for v in views]
+    )
 
 
 @router.get("/settings", response_model=SettingsPage, summary="Ver ajustes administrables", responses=_ERRORS)

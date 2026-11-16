@@ -28,7 +28,17 @@ ScanErrorSort = Literal["path", "message", "retry_count"]
 GroupSort = Literal["position", "reason", "member_count"]
 ContextDocumentSort = Literal["title", "path", "document_type", "organized_path"]
 #: Documentos de la caché (web 1.3.0): los ordena doc_organize 1.2.0 (G40).
-DocumentSort = Literal["path", "updated_at", "conversion_status", "status", "error_retry_count"]
+DocumentSort = Literal[
+    "path",
+    "updated_at",
+    "conversion_status",
+    "status",
+    "error_retry_count",
+    # doc_organize 1.6.0 (G43); ``owner_name`` solo para quien ve la columna (owners y admins).
+    "mime_type",
+    "created_at",
+    "owner_name",
+]
 
 
 def listing(q: str | None, sort: str | None, order: Order) -> ListQuery:

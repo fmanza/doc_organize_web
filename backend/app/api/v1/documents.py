@@ -13,7 +13,15 @@ from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, DbSession, SettingsDep
 from app.api.v1.listing import DocumentSort, OrderQuery, listing
-from app.api.v1.schemas import MAX_PAGE_SIZE, DocumentOut, DocumentPage, SearchHitOut, SearchPage
+from app.api.v1.schemas import (
+    MAX_PAGE_SIZE,
+    DocumentOut,
+    DocumentPage,
+    MimeTypeList,
+    MimeTypeOut,
+    SearchHitOut,
+    SearchPage,
+)
 from app.domain.documents import service as documents
 from app.domain.projects import service as projects
 from app.domain.projects.service import state_dir
@@ -34,7 +42,11 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
     "/{project_id}/documents",
     response_model=DocumentPage,
     summary="Documentos del proyecto",
-    responses={**_ERRORS, 422: {"description": "La carpeta no es de origen del proyecto (folder_not_saved)"}},
+    responses={
+        **_ERRORS,
+        403: {"description": "Orden por propietario sin ser owner del proyecto (owner_order_forbidden)"},
+        422: {"description": "La carpeta no es de origen del proyecto (folder_not_saved)"},
+    },
 )
 def list_documents(
     project_id: int,
@@ -56,9 +68,17 @@ def list_documents(
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
     sort: Annotated[
-        DocumentSort | None, Query(description="Columna por la que ordenar (sin ella, carpeta y ruta)")
+        DocumentSort | None,
+        Query(description="Columna por la que ordenar (sin ella, carpeta y ruta); owner_name solo para owners"),
     ] = None,
     order: OrderQuery = "asc",
+    mime_type: Annotated[
+        list[str] | None,
+        Query(
+            max_length=documents.MAX_MIME_TYPES,
+            description="Solo documentos de alguno de estos tipos MIME (se repite, 1.6.0)",
+        ),
+    ] = None,
 ) -> DocumentPage:
     """Documentos de la caché de doc_organize (por carpeta de origen y ruta si no se pide otro orden), con su estado
     de conversión. La búsqueda mira la ruta relativa a la carpeta, nunca la del servidor."""
@@ -74,8 +94,35 @@ def list_documents(
         listing=listing(None, sort, order),
         # El propietario es un dato personal: solo para owner (y admin, que entra como owner).
         include_owner=access.role == "owner",
+        mime_type=mime_type,
     )
     return DocumentPage(items=[DocumentOut.model_validate(row) for row in rows], total=total)
+
+
+@router.get(
+    "/{project_id}/documents/mime-types",
+    response_model=MimeTypeList,
+    summary="Tipos MIME de los documentos",
+    responses={**_ERRORS, 422: {"description": "La carpeta no es de origen del proyecto (folder_not_saved)"}},
+)
+def list_mime_types(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    search_text: Annotated[
+        str | None, Query(alias="search", max_length=200, description="Mismo filtro que la lista de documentos")
+    ] = None,
+    folder: Annotated[str | None, Query(max_length=4096, description="Solo esta carpeta de origen")] = None,
+    conversion_status: Annotated[ConversionFilter | None, Query(description="Solo este estado de conversión")] = None,
+) -> MimeTypeList:
+    """Tipos MIME de los documentos con cuántos hay de cada uno, para el filtro por tipo (doc_organize 1.6.0, G43).
+    Admite los mismos filtros que la lista, salvo el propio tipo; los documentos sin tipo no cuentan."""
+    access = projects.get_access(db, project_id, user)
+    found = documents.mime_types(
+        settings, access.project, folder=folder, search=search_text, conversion_status=conversion_status
+    )
+    return MimeTypeList(items=[MimeTypeOut(mime_type=mime, count=count) for mime, count in found])
 
 
 @router.get(

@@ -107,6 +107,57 @@ describe('DocumentsPage', () => {
     expect(body).toEqual({ operation: 'export_xlsx', kind: 'errors' });
   });
 
+  it('filtra por tipo con sus recuentos y ordena por propietario si es owner (web 1.6.0, G43)', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      ...PROJECT_ROUTES,
+      'GET /api/v1/projects/7/documents': { body: { items: [], total: 0 } },
+      'GET /api/v1/projects/7/documents/mime-types': {
+        body: {
+          items: [
+            { mime_type: 'application/pdf', count: 1200 },
+            { mime_type: 'text/plain', count: 3 },
+          ],
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/documents?sort=owner_name&order=desc');
+    await waitFor(() =>
+      expect(callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents/mime-types')).toHaveLength(1),
+    );
+    await user.type(screen.getByRole('combobox', { name: 'Tipo de fichero' }), 'pdf');
+    // Mantine deja el desplegable fuera del árbol accesible en jsdom: se elige por el texto de la opción.
+    await user.click(await screen.findByText('application/pdf (1200)'));
+
+    await waitFor(() => {
+      const last = callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents').at(-1);
+      const params = new URL(last?.url ?? 'http://x').searchParams;
+      expect(params.getAll('mime_type')).toEqual(['application/pdf']);
+      // PROJECT es del usuario como owner: puede ordenar por propietario.
+      expect(params.get('sort')).toBe('owner_name');
+    });
+  });
+
+  it('quien no es owner no ordena por propietario (web 1.6.0)', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: { ...PROJECT, role: 'viewer' } },
+      'GET /api/v1/projects/7/documents': { body: { items: [], total: 0 } },
+      'GET /api/v1/projects/7/documents/mime-types': { body: { items: [] } },
+    });
+
+    renderRoute('/projects/7/documents?sort=owner_name');
+
+    expect(
+      await screen.findByText('Aún no hay documentos: escanea el proyecto para verlos aquí.'),
+    ).toBeInTheDocument();
+    for (const request of callsTo(fetchMock, 'GET', '/api/v1/projects/7/documents')) {
+      expect(new URL(request.url).searchParams.get('sort')).toBeNull();
+    }
+  });
+
   it('muestra los metadatos del fichero que haya (web 1.5.0)', async () => {
     const base = {
       folder: '2024',

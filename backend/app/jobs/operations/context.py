@@ -67,6 +67,7 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "ai_confidence": doc.ai_confidence,
         "ai_reasoning": _cut(doc.ai_reasoning, 500),
         "material_type_confidence": doc.material_type_confidence,
+        "unclassified_reason": doc.unclassified_reason if doc.domain_slug is None else None,
     }
 
 

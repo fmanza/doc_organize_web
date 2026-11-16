@@ -32,6 +32,8 @@ test('el admin inicia sesión, ve la administración y cierra sesión', async ({
   expect(session?.secure).toBe(true);
   expect(session?.sameSite).toBe('Lax');
 
+  // web 1.6 (W1): Usuarios, Roles, Sesiones y Tenants van en el grupo «Acceso» del menú.
+  await page.getByRole('button', { name: 'Acceso' }).click();
   await page.getByRole('link', { name: 'Sesiones' }).click();
   await expect(page.getByRole('heading', { name: 'Sesiones activas' })).toBeVisible();
   await expect(page.getByText('Esta sesión')).toBeVisible();
@@ -51,6 +53,7 @@ test('el admin crea un usuario que puede entrar pero no ve la administración', 
   const username = `e2e-${Date.now()}`;
   const password = 'frase-de-paso-e2e-1234';
   await login(page, ADMIN_USER ?? '', ADMIN_PASSWORD ?? '');
+  await page.getByRole('button', { name: 'Acceso' }).click();
   await page.getByRole('link', { name: 'Usuarios' }).click();
   await page.getByRole('button', { name: 'Nuevo usuario' }).click();
   const dialog = page.getByRole('dialog');
@@ -63,6 +66,7 @@ test('el admin crea un usuario que puede entrar pero no ve la administración', 
   const other = await browser.newPage();
   await login(other, username, password);
   await expect(other.getByRole('button', { name: /Menú de usuario de Usuaria E2E/ })).toBeVisible();
+  await expect(other.getByRole('button', { name: 'Acceso' })).toHaveCount(0);
   await expect(other.getByRole('link', { name: 'Usuarios' })).toHaveCount(0);
   await other.goto('/admin/users');
   await expect(other.getByText('Sin permiso')).toBeVisible();
@@ -74,6 +78,7 @@ test('un usuario cambia su contraseña y entra con la nueva', async ({ page, bro
   const first = 'frase-de-paso-inicial-1';
   const second = 'frase-de-paso-cambiada-2';
   await login(page, ADMIN_USER ?? '', ADMIN_PASSWORD ?? '');
+  await page.getByRole('button', { name: 'Acceso' }).click();
   await page.getByRole('link', { name: 'Usuarios' }).click();
   await page.getByRole('button', { name: 'Nuevo usuario' }).click();
   const dialog = page.getByRole('dialog');

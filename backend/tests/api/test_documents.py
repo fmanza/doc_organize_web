@@ -197,6 +197,91 @@ def test_documents_show_file_metadata_and_the_owner_only_to_owners(
     assert as_viewer["owner_name"] is None
 
 
+@pytest.fixture
+def typed(project: dict[str, object], project_locations: dict[str, Location], migrated: Settings) -> str:
+    """Las dos cachés con tipo MIME, creación y propietario (doc_organize 1.5.0); devuelve la URL de la lista."""
+    source = Path(project_locations["source"].container_path)
+    state = state_dir(migrated, int(project["id"]))  # type: ignore[arg-type]
+    pdf, text = "application/pdf", "text/plain"
+    for folder in ("2024", "2025"):  # sustituye las de ``project``
+        folder_cache(state, folder).unlink()
+    write_cache(
+        folder_cache(state, "2024"),
+        [
+            entry(source / "2024" / "factura.txt").model_copy(
+                update={"mime_type": text, "created_time": 3.0, "owner_name": "bea"}
+            ),
+            entry(source / "2024" / "roto.pdf").model_copy(
+                update={"mime_type": pdf, "created_time": 1.0, "owner_name": "Carlos"}
+            ),
+            entry(source / "2024" / "sin_tipo.bin"),
+        ],
+    )
+    write_cache(
+        folder_cache(state, "2025"),
+        [
+            entry(source / "2025" / "Café.pdf").model_copy(
+                update={"mime_type": pdf, "created_time": 2.0, "owner_name": "Ana"}
+            )
+        ],
+    )
+    return f"/api/v1/projects/{project['id']}/documents"
+
+
+def test_documents_filter_by_one_or_several_mime_types(user_client: TestClient, typed: str) -> None:
+    """web 1.6.0 (doc_organize 1.6.0, G43): igualdad exacta; el parámetro se repite para varios tipos."""
+    pdfs = user_client.get(typed, params={"mime_type": "application/pdf"}).json()
+    both = user_client.get(typed, params={"mime_type": ["application/pdf", "text/plain"]}).json()
+
+    assert sorted(item["path"] for item in pdfs["items"]) == ["Café.pdf", "roto.pdf"] and pdfs["total"] == 2
+    assert both["total"] == 3
+    assert user_client.get(typed, params={"mime_type": "application"}).json()["total"] == 0
+
+
+def test_documents_sort_by_type_and_creation_across_folders(user_client: TestClient, typed: str) -> None:
+    by_creation = user_client.get(typed, params={"sort": "created_at"}).json()["items"]
+    by_type = user_client.get(typed, params={"sort": "mime_type", "order": "desc"}).json()["items"]
+
+    # Los que no tienen el dato, al final (como la librería).
+    assert [item["path"] for item in by_creation] == ["roto.pdf", "Café.pdf", "factura.txt", "sin_tipo.bin"]
+    # Empate entre los dos PDF: por ruta completa ascendente (2024 antes que 2025), también en descendente.
+    assert [item["path"] for item in by_type] == ["factura.txt", "roto.pdf", "Café.pdf", "sin_tipo.bin"]
+
+
+def test_owners_sort_by_owner_without_case_and_others_get_403(
+    user_client: TestClient, typed: str, project: dict[str, object], make_user: Callable[..., User]
+) -> None:
+    viewer = make_user("lector")
+    user_client.post(f"/api/v1/projects/{project['id']}/members", json={"user_id": viewer.id, "role": "viewer"})
+
+    items = user_client.get(typed, params={"sort": "owner_name"}).json()["items"]
+    denied = login_as(user_client, "lector").get(typed, params={"sort": "owner_name"})
+
+    assert [item["owner_name"] for item in items] == ["Ana", "bea", "Carlos", None]
+    # El orden dejaría deducir el propietario a quien no ve la columna (S3).
+    assert denied.status_code == 403
+    assert denied.json()["code"] == "owner_order_forbidden"
+    assert login_as(user_client, "lector").get(typed, params={"sort": "mime_type"}).status_code == 200
+
+
+def test_mime_types_add_up_the_caches_of_every_folder(user_client: TestClient, typed: str) -> None:
+    body = user_client.get(f"{typed}/mime-types").json()
+    only_2025 = user_client.get(f"{typed}/mime-types", params={"folder": "2025"}).json()
+    searched = user_client.get(f"{typed}/mime-types", params={"search": "factura"}).json()
+
+    assert body["items"] == [{"mime_type": "application/pdf", "count": 2}, {"mime_type": "text/plain", "count": 1}]
+    assert only_2025["items"] == [{"mime_type": "application/pdf", "count": 1}]
+    assert searched["items"] == [{"mime_type": "text/plain", "count": 1}]
+
+
+def test_mime_types_of_a_project_without_scan_are_empty(
+    user_client: TestClient, project_locations: dict[str, Location]
+) -> None:
+    created = user_client.post("/api/v1/projects", json=project_payload(project_locations)).json()
+
+    assert user_client.get(f"/api/v1/projects/{created['id']}/documents/mime-types").json() == {"items": []}
+
+
 def test_project_without_scan_has_no_documents(user_client: TestClient, project_locations: dict[str, Location]) -> None:
     created = user_client.post("/api/v1/projects", json=project_payload(project_locations, name="Nuevo")).json()
 

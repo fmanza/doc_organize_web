@@ -37,7 +37,7 @@ sin capacidades y `no-new-privileges`.
 
 Sin `worker` la aplicación funciona, pero las ejecuciones se quedan **en cola**. `/api/health` indica su estado en
 `worker` (`ok`, `stale` si dejó de latir, `none` si no hay ninguno) sin cambiar el `status` general, y
-**Administración → Ajustes** lista los workers con su último latido. El worker publica también la ficha de
+**Administración → Información** lista los workers con su último latido. El worker publica también la ficha de
 capacidades (GPU, audio/vídeo, LibreOffice, modelos) y sondea las ubicaciones cada
 `location_probe_interval_minutes`.
 

@@ -6,6 +6,7 @@ import {
   Center,
   Group,
   Loader,
+  MultiSelect,
   Select,
   Stack,
   Text,
@@ -22,7 +23,7 @@ import { formatCount, formatDateTime } from '../../components/format';
 import { PageControls } from '../../components/Paging';
 import { ClearSection, SortSelect } from '../../components/listing';
 import { useListState } from '../../components/useListState';
-import { useProject } from '../projects/useProjects';
+import { canDo, useProject } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
 import {
   CONVERSION_STATUSES,
@@ -31,6 +32,7 @@ import {
   type DocumentSort,
   ROOT_FOLDER,
   useDocuments,
+  useMimeTypes,
 } from './useDocuments';
 
 const DOCUMENT_SORT: readonly DocumentSort[] = [
@@ -38,7 +40,12 @@ const DOCUMENT_SORT: readonly DocumentSort[] = [
   'updated_at',
   'conversion_status',
   'error_retry_count',
+  // doc_organize 1.6.0 (G43).
+  'mime_type',
+  'created_at',
 ];
+/** El propietario es un dato personal: solo los owners (y los admins) lo ven y pueden ordenar por él. */
+const OWNER_SORT: readonly DocumentSort[] = [...DOCUMENT_SORT, 'owner_name'];
 
 const STATUS_COLOR: Record<string, string> = { success: 'green', error: 'red' };
 
@@ -58,10 +65,17 @@ export function DocumentsPage() {
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [folder, setFolder] = useState<string | null>(null);
   const [conversionStatus, setConversionStatus] = useState<ConversionStatus | null>(null);
+  const [mimeTypes, setMimeTypes] = useState<string[]>([]);
   // web 1.3.0: orden por columna (doc_organize 1.2.0, G40); la búsqueda sigue siendo la del nombre o subcarpeta.
-  const list = useListState(DOCUMENT_SORT);
+  const sortKeys = project.data && canDo(project.data, 'owner') ? OWNER_SORT : DOCUMENT_SORT;
+  const list = useListState(sortKeys);
   const { paging } = list;
-  const documents = useDocuments(projectId, { search: debounced, folder, conversionStatus }, list.query);
+  const documents = useDocuments(
+    projectId,
+    { search: debounced, folder, conversionStatus, mimeTypes },
+    list.query,
+  );
+  const types = useMimeTypes(projectId, { search: debounced, folder, conversionStatus });
 
   if (project.isPending) {
     return (
@@ -141,10 +155,37 @@ export function DocumentsPage() {
             label: t(`documents.conversion.${status}`),
           }))}
         />
+        <MultiSelect
+          label={t('documents.mimeType')}
+          placeholder={mimeTypes.length === 0 ? t('documents.allMimeTypes') : undefined}
+          clearable
+          searchable
+          value={mimeTypes}
+          onChange={(value) => {
+            setMimeTypes(value);
+            paging.setPage(1, true);
+          }}
+          // Un tipo elegido que ya no aparece con los otros filtros sigue en la lista para poder quitarlo.
+          data={[
+            ...(types.data ?? []).map((item) => ({
+              value: item.mime_type,
+              label: t('documents.mimeTypeOption', {
+                type: item.mime_type,
+                count: item.count,
+                formatted: formatCount(item.count),
+              }),
+            })),
+            ...mimeTypes
+              .filter((value) => !(types.data ?? []).some((item) => item.mime_type === value))
+              .map((value) => ({ value, label: value })),
+          ]}
+          nothingFoundMessage={t('documents.noMimeTypes')}
+          maw={360}
+        />
         <SortSelect
           state={list}
           label={t('listing.sortLabel')}
-          options={DOCUMENT_SORT.map((value) => ({ value, label: t(`documents.sort.${value}`) }))}
+          options={sortKeys.map((value) => ({ value, label: t(`documents.sort.${value}`) }))}
         />
       </Group>
       {documents.isError ? (
@@ -155,7 +196,9 @@ export function DocumentsPage() {
         </Center>
       ) : total === 0 ? (
         <Text c="dimmed" role="status">
-          {debounced || folder || conversionStatus ? t('documents.noMatches') : t('documents.empty')}
+          {debounced || folder || conversionStatus || mimeTypes.length > 0
+            ? t('documents.noMatches')
+            : t('documents.empty')}
         </Text>
       ) : (
         <>
