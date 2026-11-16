@@ -476,7 +476,7 @@
       "context_delete": {
         "button": "Borrar contexto",
         "title": "Borrar el contexto de «{{name}}»",
-        "body": "Se borran la carpeta reorganizada, el sitio, context.json y domains/ de la carpeta del proyecto. Las conversiones, los originales y el manifiesto de taxonomía se conservan.",
+        "body": "Se borran la carpeta reorganizada, el sitio, context.json y domains/ de la carpeta del proyecto. Las conversiones, los originales, el manifiesto de taxonomía y el historial del contexto se conservan.",
         "confirm": "Borrar contexto"
       }
     },
@@ -876,7 +876,8 @@
       "zipSize": "Calcular tamaño del ZIP",
       "zip": "Exportar ZIP",
       "cacheXlsx": "Excel de la caché",
-      "errorsXlsx": "Excel de errores"
+      "errorsXlsx": "Excel de errores",
+      "contextHistoryXlsx": "Excel del historial del contexto"
     },
     "viewer": {
       "back": "← Documentos",
@@ -1072,6 +1073,25 @@
       "aiDisagrees": "La IA propuso otro",
       "language": "Idioma",
       "keyword": "Palabra clave"
+    },
+    "history": {
+      "title": "Historial",
+      "intro": "Cada construcción del contexto, la más reciente primero. Se conserva aunque se borre el contexto.",
+      "empty": "Aún no hay construcciones en el historial.",
+      "tooLarge": "El historial es demasiado grande para mostrarlo aquí: descárgalo como Excel.",
+      "export": "Descargar Excel",
+      "build": "{{date}} · {{classified}} clasificados, {{unclassified}} sin clasificar",
+      "changes_one": "{{count}} cambio",
+      "changes_other": "{{count}} cambios",
+      "noChanges": "Sin cambios",
+      "shown": "Se muestran los primeros {{shown}} de {{total}}: el Excel los tiene todos.",
+      "kinds": {
+        "added": "Entra",
+        "removed": "Sale",
+        "reclassified": "Cambia"
+      },
+      "none": "sin clasificar",
+      "older": "Hay {{count}} construcciones más antiguas en el Excel."
     },
     "trace": {
       "version": "doc_organize {{version}}",

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import stat
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final, Literal
 
@@ -29,7 +29,7 @@ from app.domain.context.errors import (
     TemplateNotFoundError,
 )
 from app.domain.documents.errors import OutputNotFoundError, OutputTooLargeError
-from app.domain.documents.service import read_inside
+from app.domain.documents.service import project_namer, read_inside
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.listing import ListQuery, apply_search, apply_sort
@@ -41,6 +41,8 @@ from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
 DEFAULT_FOLDER_NAME: Final = "organizado"
+#: Tamaño máximo del historial del contexto que lee la API (más grande: «Historial del contexto (Excel)»).
+MAX_HISTORY_BYTES: Final = 16 * 1024 * 1024
 DocumentFilter = Literal["failed", "collision", "ai_disagrees"]
 
 
@@ -197,6 +199,70 @@ def read_manifest(settings: Settings, project: Project) -> Manifest:
         return Manifest(markdown=markdown, info=library.parse_template(markdown))
     except library.TemplateInvalidError as exc:
         return Manifest(markdown=markdown, error=str(exc))
+
+
+@dataclass(frozen=True)
+class History:
+    """Últimas construcciones del contexto (rutas relativas al origen), cuántas hay y, si no se pudo leer, por qué.
+
+    ``builds`` lleva cada construcción, con sus cambios ya recortados, y cuántos cambios tenía en total.
+    """
+
+    builds: list[tuple[library.ContextBuild, int]]
+    total: int
+    error: str | None = None
+
+
+def read_history(settings: Settings, project: Project, *, limit: int, max_changes: int) -> History:
+    """``historial_contexto/CONTEXT_HISTORY.jsonl`` del proyecto (1.5.0): las ``limit`` construcciones más recientes,
+    con como mucho ``max_changes`` cambios cada una y rutas relativas a las carpetas de origen.
+
+    El historial no se borra con el contexto. Se lee como el manifiesto: dentro de la carpeta, sin seguir enlaces y con
+    tope de tamaño (si lo pasa, se pide el Excel). Sin carpeta del proyecto o sin fichero, el historial está vacío.
+
+    Raises:
+        LocationUnavailableError: El destino no responde.
+    """
+    try:
+        root = _output_root(settings, project)
+    except ContextNotFoundError:
+        return History(builds=[], total=0)
+    path = library.history_file(root)
+
+    def _read() -> str | None:
+        try:
+            info = os.lstat(path)
+        except FileNotFoundError:
+            return None
+        if not stat.S_ISREG(info.st_mode):
+            return None  # enlace o carpeta en su lugar: no se sigue (ni se muestra nada de lo que apunte)
+        try:
+            return read_inside(path, root, max_bytes=MAX_HISTORY_BYTES).decode("utf-8", errors="replace")
+        except OutputNotFoundError:
+            return None
+
+    try:
+        text = run_with_timeout(_read, settings.location_probe_timeout_seconds)
+    except OutputTooLargeError:
+        return History(builds=[], total=0, error="history_too_large")
+    if text is None:
+        return History(builds=[], total=0)
+    builds = library.parse_history(text)
+    namer = project_namer(settings, project)
+    shown = [
+        (
+            replace(
+                build,
+                changes=[
+                    replace(change, source_path=namer.display(change.source_path))
+                    for change in build.changes[:max_changes]
+                ],
+            ),
+            len(build.changes),
+        )
+        for build in builds[:limit]
+    ]
+    return History(builds=shown, total=len(builds))
 
 
 def _check_writable(db: Session, project: Project) -> None:

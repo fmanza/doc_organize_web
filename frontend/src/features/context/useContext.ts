@@ -5,7 +5,7 @@ import type { ListParams, SortOf } from '../../api/listing';
 
 import { api, ensureOk, isApiError, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
-import { useEnqueueRun } from '../projects/useProjects';
+import { type RunRequest, useEnqueueRun } from '../projects/useProjects';
 import { useRun } from '../runs/useRuns';
 
 export type ContextDocumentSort = SortOf<'/api/v1/projects/{project_id}/context/documents'>;
@@ -247,3 +247,22 @@ export function nameFromFile(fileName: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
 }
+
+export type ContextHistory = components['schemas']['ContextHistoryOut'];
+export type ContextBuild = components['schemas']['ContextBuildOut'];
+
+/** Construcciones más recientes del contexto con sus cambios (1.5.0). Se conserva al borrar el contexto. */
+export function useContextHistory(projectId: number, limit = 10) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'context', 'history', limit],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/context/history', {
+          params: { path: { project_id: projectId }, query: { limit } },
+        }),
+      ),
+  });
+}
+
+/** Construcciones y cambios del contexto (1.5.0) en Excel; el historial se conserva al borrar el contexto. */
+export const CONTEXT_HISTORY_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_history' };

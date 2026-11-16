@@ -58,6 +58,7 @@ workspace y se borra según la retención de ejecuciones.
 | **Exportar ZIP** | Todo `Conversión/` (Markdown, JSON e imágenes de todas las carpetas) y `cache_export.json` con el estado de cada documento |
 | **Excel de la caché** | Una fila por documento: ruta, hash, estado y errores |
 | **Excel de errores** | Hoja «Estado actual» (documentos que fallan ahora) e «Histórico» (los errores de cada escaneo) |
+| **Excel del historial del contexto** (1.5.0) | Hoja «Construcciones» (una fila por construcción del contexto) y «Cambios» (documentos que entraron, salieron o cambiaron de dominio). Ver [Historial](contexto.md#historial) |
 
 Las rutas de los documentos van relativas a su carpeta de origen y los mensajes de error, sin rutas del servidor. Los
 JSON que van dentro del ZIP son los que escribió doc_organize: desde la versión 0.6.x de la aplicación llevan la ruta

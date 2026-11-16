@@ -572,6 +572,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historial del contexto
+         * @description Últimas construcciones del contexto con sus cambios (1.5.0), para cualquier miembro.
+         *
+         *     Sale de ``historial_contexto/CONTEXT_HISTORY.jsonl``, que se conserva al borrar el contexto. Cada construcción lleva
+         *     como mucho los primeros 200 cambios (``changes_total`` dice cuántos hay), con rutas relativas a las carpetas de
+         *     origen.
+         */
+        get: operations["get_context_history_api_v1_projects__project_id__context_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/site-session": {
         parameters: {
             query?: never;
@@ -1526,6 +1550,35 @@ export interface components {
             slug: string;
         };
         /**
+         * ContextBuildOut
+         * @description Una construcción del historial del contexto (1.5.0).
+         */
+        ContextBuildOut: {
+            /** Ai Classification Model */
+            ai_classification_model: string | null;
+            /** Ai Enrichment Model */
+            ai_enrichment_model: string | null;
+            /** Built At */
+            built_at: string;
+            /** Built With Version */
+            built_with_version: string | null;
+            /** Changes */
+            changes: components["schemas"]["ContextChangeOut"][];
+            /**
+             * Changes Total
+             * @description Cambios de la construcción; en ``changes`` van como mucho los primeros
+             */
+            changes_total: number;
+            /** Classified */
+            classified: number;
+            /** Previous Built At */
+            previous_built_at: string | null;
+            /** Taxonomy Manifest Used */
+            taxonomy_manifest_used: boolean;
+            /** Unclassified */
+            unclassified: number;
+        };
+        /**
          * ContextBuildParams
          * @description Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).
          *
@@ -1580,6 +1633,32 @@ export interface components {
              * @default 0.5
              */
             threshold: number;
+        };
+        /**
+         * ContextChangeOut
+         * @description Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0).
+         */
+        ContextChangeOut: {
+            /**
+             * Change
+             * @enum {string}
+             */
+            change: "added" | "removed" | "reclassified";
+            /** Classified By */
+            classified_by: string | null;
+            /** Domain */
+            domain: string | null;
+            /** Material Type */
+            material_type: string | null;
+            /**
+             * Path
+             * @description Original relativo a la carpeta de origen (``<carpeta>/<ruta>``)
+             */
+            path: string;
+            /** Previous Domain */
+            previous_domain: string | null;
+            /** Previous Material Type */
+            previous_material_type: string | null;
         };
         /**
          * ContextDeleteParams
@@ -1679,6 +1758,21 @@ export interface components {
             slug: string;
             /** Status */
             status: string;
+        };
+        /**
+         * ContextHistoryOut
+         * @description Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto.
+         */
+        ContextHistoryOut: {
+            /**
+             * Error
+             * @description No se leyó: el historial es demasiado grande; usa la exportación a Excel
+             */
+            error?: "history_too_large" | null;
+            /** Items */
+            items: components["schemas"]["ContextBuildOut"][];
+            /** Total */
+            total: number;
         };
         /**
          * ContextOut
@@ -1932,14 +2026,15 @@ export interface components {
         };
         /**
          * ExportXlsxParams
-         * @description Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico).
+         * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del
+         *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios).
          */
         ExportXlsxParams: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "cache" | "errors";
+            kind: "cache" | "errors" | "context_history";
             /**
              * Operation
              * @default export_xlsx
@@ -5000,6 +5095,61 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_context_history_api_v1_projects__project_id__context_history_get: {
+        parameters: {
+            query?: {
+                /** @description Construcciones más recientes que se devuelven */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextHistoryOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación de destino no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

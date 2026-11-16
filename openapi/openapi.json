@@ -648,6 +648,97 @@
         "title": "CatalogEntryOut",
         "type": "object"
       },
+      "ContextBuildOut": {
+        "description": "Una construcción del historial del contexto (1.5.0).",
+        "properties": {
+          "ai_classification_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Classification Model"
+          },
+          "ai_enrichment_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Enrichment Model"
+          },
+          "built_at": {
+            "title": "Built At",
+            "type": "string"
+          },
+          "built_with_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built With Version"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ContextChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "changes_total": {
+            "description": "Cambios de la construcción; en ``changes`` van como mucho los primeros",
+            "title": "Changes Total",
+            "type": "integer"
+          },
+          "classified": {
+            "title": "Classified",
+            "type": "integer"
+          },
+          "previous_built_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Built At"
+          },
+          "taxonomy_manifest_used": {
+            "title": "Taxonomy Manifest Used",
+            "type": "boolean"
+          },
+          "unclassified": {
+            "title": "Unclassified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "built_at",
+          "previous_built_at",
+          "built_with_version",
+          "taxonomy_manifest_used",
+          "ai_classification_model",
+          "ai_enrichment_model",
+          "classified",
+          "unclassified",
+          "changes_total",
+          "changes"
+        ],
+        "title": "ContextBuildOut",
+        "type": "object"
+      },
       "ContextBuildParams": {
         "additionalProperties": false,
         "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con\n``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).\n``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los\ndocumentos clasificados que no las declaran; tiene su propio presupuesto de documentos.",
@@ -742,6 +833,91 @@
           }
         },
         "title": "ContextBuildParams",
+        "type": "object"
+      },
+      "ContextChangeOut": {
+        "description": "Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0).",
+        "properties": {
+          "change": {
+            "enum": [
+              "added",
+              "removed",
+              "reclassified"
+            ],
+            "title": "Change",
+            "type": "string"
+          },
+          "classified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classified By"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "material_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Type"
+          },
+          "path": {
+            "description": "Original relativo a la carpeta de origen (``<carpeta>/<ruta>``)",
+            "title": "Path",
+            "type": "string"
+          },
+          "previous_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Domain"
+          },
+          "previous_material_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Material Type"
+          }
+        },
+        "required": [
+          "path",
+          "change",
+          "previous_domain",
+          "domain",
+          "previous_material_type",
+          "material_type",
+          "classified_by"
+        ],
+        "title": "ContextChangeOut",
         "type": "object"
       },
       "ContextDeleteParams": {
@@ -1081,6 +1257,41 @@
           "documents"
         ],
         "title": "ContextDomainOut",
+        "type": "object"
+      },
+      "ContextHistoryOut": {
+        "description": "Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "const": "history_too_large",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "No se leyó: el historial es demasiado grande; usa la exportación a Excel",
+            "title": "Error"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextBuildOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ContextHistoryOut",
         "type": "object"
       },
       "ContextOut": {
@@ -1638,12 +1849,13 @@
       },
       "ExportXlsxParams": {
         "additionalProperties": false,
-        "description": "Excel de la caché (``cache``) o de los errores de escaneo (``errors``, estado actual e histórico).",
+        "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios).",
         "properties": {
           "kind": {
             "enum": [
               "cache",
-              "errors"
+              "errors",
+              "context_history"
             ],
             "title": "Kind",
             "type": "string"
@@ -7167,6 +7379,72 @@
           }
         },
         "summary": "Documentos del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/history": {
+      "get": {
+        "description": "Últimas construcciones del contexto con sus cambios (1.5.0), para cualquier miembro.\n\nSale de ``historial_contexto/CONTEXT_HISTORY.jsonl``, que se conserva al borrar el contexto. Cada construcción lleva\ncomo mucho los primeros 200 cambios (``changes_total`` dice cuántos hay), con rutas relativas a las carpetas de\norigen.",
+        "operationId": "get_context_history_api_v1_projects__project_id__context_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Construcciones más recientes que se devuelven",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Construcciones más recientes que se devuelven",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación de destino no disponible"
+          }
+        },
+        "summary": "Historial del contexto",
         "tags": [
           "context"
         ]

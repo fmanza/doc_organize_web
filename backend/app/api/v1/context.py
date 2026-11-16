@@ -16,9 +16,12 @@ from app.api.v1.listing import ContextDocumentSort, OrderQuery, SearchQuery, lis
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     CatalogEntryOut,
+    ContextBuildOut,
+    ContextChangeOut,
     ContextDocumentOut,
     ContextDocumentPage,
     ContextDomainOut,
+    ContextHistoryOut,
     ContextOut,
     SiteSessionOut,
     TaxonomyManifestOut,
@@ -225,6 +228,65 @@ def list_context_documents(
         listing=listing(q, sort, order),
     )
     return ContextDocumentPage(items=[_document_out(r) for r in rows], total=total)
+
+
+#: Cambios por construcción que devuelve el historial (todos van en «Historial del contexto (Excel)»).
+MAX_HISTORY_CHANGES = 200
+
+
+@router.get(
+    "/projects/{project_id}/context/history",
+    response_model=ContextHistoryOut,
+    summary="Historial del contexto",
+    responses={**_ERRORS, 503: {"description": "Ubicación de destino no disponible"}},
+)
+def get_context_history(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    limit: Annotated[int, Query(ge=1, le=50, description="Construcciones más recientes que se devuelven")] = 10,
+) -> ContextHistoryOut:
+    """Últimas construcciones del contexto con sus cambios (1.5.0), para cualquier miembro.
+
+    Sale de ``historial_contexto/CONTEXT_HISTORY.jsonl``, que se conserva al borrar el contexto. Cada construcción lleva
+    como mucho los primeros 200 cambios (``changes_total`` dice cuántos hay), con rutas relativas a las carpetas de
+    origen.
+    """
+    access = projects.get_access(db, project_id, user)
+    history = context.read_history(settings, access.project, limit=limit, max_changes=MAX_HISTORY_CHANGES)
+    return ContextHistoryOut(
+        items=[
+            ContextBuildOut(
+                built_at=build.built_at,
+                previous_built_at=build.previous_built_at,
+                built_with_version=build.built_with_version,
+                taxonomy_manifest_used=build.taxonomy_manifest_used,
+                ai_classification_model=build.ai_classification_model,
+                ai_enrichment_model=build.ai_enrichment_model,
+                classified=build.classified,
+                unclassified=build.unclassified,
+                changes_total=total,
+                changes=[
+                    ContextChangeOut(path=change.source_path, **_change_fields(change)) for change in build.changes
+                ],
+            )
+            for build, total in history.builds
+        ],
+        total=history.total,
+        error=history.error,
+    )
+
+
+def _change_fields(change: Any) -> dict[str, Any]:
+    return {
+        "change": change.change,
+        "previous_domain": change.previous_domain,
+        "domain": change.domain,
+        "previous_material_type": change.previous_material_type,
+        "material_type": change.material_type,
+        "classified_by": change.classified_by,
+    }
 
 
 def _manifest_out(manifest: context.Manifest) -> TaxonomyManifestOut:

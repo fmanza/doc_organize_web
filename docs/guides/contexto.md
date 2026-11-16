@@ -124,5 +124,28 @@ ficheros:
 1. Vista previa: cuántos ficheros y cuánto ocupan.
 2. Escribir el nombre del proyecto y confirmar.
 
-Se borran la carpeta reorganizada, el sitio, `context.json` y `domains/`. Las conversiones, los originales y el
-manifiesto se conservan. Vaciar el histórico del proyecto también borra el contexto.
+Se borran la carpeta reorganizada, el sitio, `context.json` y `domains/`. Las conversiones, los originales, el
+manifiesto y el [historial](#historial) se conservan. Vaciar el histórico del proyecto también borra el contexto y su
+historial.
+
+## Historial
+
+Desde la 1.5.0, cada construcción del contexto deja una línea en `historial_contexto/CONTEXT_HISTORY.jsonl`, en la
+carpeta del proyecto. Lo escribe doc_organize y la web solo lo lee.
+
+El bloque **Historial** de la página del contexto muestra las últimas 10 construcciones, la más reciente primero. Cada
+una indica la fecha, los documentos clasificados y sin clasificar, el número de cambios, la versión de doc_organize y
+los modelos de IA. Al desplegar una construcción se ven sus cambios:
+
+- **Entra**: un documento nuevo en el contexto.
+- **Sale**: un documento que ya no está.
+- **Cambia**: un documento que pasa de un dominio o tipo de material a otro; también si pasa de clasificado a sin
+  clasificar, o al revés.
+
+La página muestra como mucho los primeros 200 cambios de cada construcción. **Descargar Excel** genera el historial
+completo, con las hojas «Construcciones» y «Cambios». Lo mismo está en
+[Documentos → Exportar](documentos.md), con el botón «Excel del historial del contexto».
+
+- El historial se ve aunque se haya borrado el contexto.
+- Una línea dañada del fichero se ignora.
+- Si el fichero pasa de 16 MB, la página no lo muestra y remite al Excel.

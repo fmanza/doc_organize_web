@@ -177,6 +177,85 @@ describe('ContextPage', () => {
     });
   });
 
+  it('muestra el historial aunque no haya contexto y lo exporta a Excel (1.5.0)', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': NOT_BUILT,
+      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+      'GET /api/v1/projects/7/context/history': {
+        body: {
+          items: [
+            {
+              built_at: '2026-11-02T08:00:00+00:00',
+              previous_built_at: '2026-11-01T08:00:00+00:00',
+              built_with_version: '1.5.0',
+              taxonomy_manifest_used: false,
+              ai_classification_model: null,
+              ai_enrichment_model: 'describe',
+              classified: 3,
+              unclassified: 1,
+              changes_total: 250,
+              changes: [
+                {
+                  path: '2024/enero/factura.pdf',
+                  change: 'reclassified',
+                  previous_domain: null,
+                  domain: 'facturas',
+                  previous_material_type: null,
+                  material_type: null,
+                  classified_by: 'rules',
+                },
+              ],
+            },
+          ],
+          total: 3,
+          error: null,
+        },
+      },
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: RUN_ID, operation: 'export_xlsx' }),
+      },
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ id: RUN_ID, operation: 'export_xlsx' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+
+    const history = await screen.findByRole('region', { name: 'Historial' });
+    expect(await within(history).findByText('250 cambios')).toBeInTheDocument();
+    expect(within(history).getByText('doc_organize 1.5.0 · descripciones con describe')).toBeInTheDocument();
+    expect(within(history).getByText('2024/enero/factura.pdf')).toBeInTheDocument();
+    expect(within(history).getByText('sin clasificar → facturas')).toBeInTheDocument();
+    expect(within(history).getByText(/primeros 1 de 250/)).toBeInTheDocument();
+    expect(within(history).getByText(/2 construcciones más antiguas/)).toBeInTheDocument();
+    await user.click(within(history).getByRole('button', { name: 'Descargar Excel' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toEqual({ operation: 'export_xlsx', kind: 'context_history' });
+  });
+
+  it('un historial demasiado grande remite al Excel', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': NOT_BUILT,
+      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+      'GET /api/v1/projects/7/context/history': {
+        body: { items: [], total: 0, error: 'history_too_large' },
+      },
+    });
+
+    renderRoute('/projects/7/context');
+
+    expect(await screen.findByText(/demasiado grande para mostrarlo aquí/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Descargar Excel' })).toBeInTheDocument();
+  });
+
   it('un lector no construye ni edita el manifiesto', async () => {
     stubApi({
       ...session(USER),
