@@ -307,6 +307,9 @@ class SettingOut(BaseModel):
     value: int
     default: int
     source: Literal["db", "env", "default"]
+    group: Literal["security", "locations", "storage", "ai"] = Field(
+        description="Sección de la administración: «Ajustes» (security, locations, storage) o «IA › Parámetros» (ai)."
+    )
 
 
 class SettingsPage(BaseModel):

@@ -4372,6 +4372,17 @@
             "title": "Default",
             "type": "integer"
           },
+          "group": {
+            "description": "Sección de la administración: «Ajustes» (security, locations, storage) o «IA › Parámetros» (ai).",
+            "enum": [
+              "security",
+              "locations",
+              "storage",
+              "ai"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -4394,7 +4405,8 @@
           "key",
           "value",
           "default",
-          "source"
+          "source",
+          "group"
         ],
         "title": "SettingOut",
         "type": "object"

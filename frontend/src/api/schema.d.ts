@@ -3092,6 +3092,12 @@ export interface components {
         SettingOut: {
             /** Default */
             default: number;
+            /**
+             * Group
+             * @description Sección de la administración: «Ajustes» (security, locations, storage) o «IA › Parámetros» (ai).
+             * @enum {string}
+             */
+            group: "security" | "locations" | "storage" | "ai";
             /** Key */
             key: string;
             /**

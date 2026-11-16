@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 
 import { RequireAccess, RequireAuth } from '../features/auth/guards';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -114,13 +114,26 @@ export const routes: RouteObject[] = [
                     ...page(async () => (await import('../features/admin/SettingsPage')).SettingsPage),
                   },
                   {
-                    path: 'ai-settings',
+                    path: 'info',
+                    ...page(async () => (await import('../features/admin/InfoPage')).InfoPage),
+                  },
+                  {
+                    path: 'ai/settings',
                     ...page(async () => (await import('../features/admin/AiSettingsPage')).AiSettingsPage),
                   },
                   {
-                    path: 'ai-usage',
+                    path: 'ai/parameters',
+                    ...page(
+                      async () => (await import('../features/admin/AiParametersPage')).AiParametersPage,
+                    ),
+                  },
+                  {
+                    path: 'ai/usage',
                     ...page(async () => (await import('../features/admin/AiUsagePage')).AiUsagePage),
                   },
+                  // URLs de 1.5 y anteriores (marcadores y enlaces de la documentación), W1.
+                  { path: 'ai-settings', element: <Navigate to="/admin/ai/settings" replace /> },
+                  { path: 'ai-usage', element: <Navigate to="/admin/ai/usage" replace /> },
                 ],
               },
               {

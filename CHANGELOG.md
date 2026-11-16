@@ -5,6 +5,21 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **Menú de Administración por grupos** (W1): «Acceso» (Usuarios, Roles, Sesiones, Tenants), «Plantillas de
+  taxonomía», «IA» (Configuración, Parámetros, Uso), «Ajustes», «Información» y «Auditoría». Cada página conserva su
+  permiso y un grupo sin ninguna página visible no se muestra (un administrador de tenant no ve «IA»). El grupo de la
+  página actual se abre solo.
+- **IA › Parámetros** (`/admin/ai/parameters`): los cinco ajustes `ai_*` salen de «Ajustes» a su propia página, con la
+  misma tabla y el mismo `PATCH /admin/settings`. «Ajustes» se divide en secciones (sesión e inicio de sesión,
+  ubicaciones, retención y cuotas) y enlaza a la página nueva.
+- **Información** (`/admin/info`, solo lectura): versiones de la web y de la librería, ficha de capacidades y workers,
+  que antes estaban al final de «Ajustes»; avisa si ningún worker da señales de vida.
+- Las URLs `/admin/ai-settings` y `/admin/ai-usage` redirigen a `/admin/ai/settings` y `/admin/ai/usage`.
+- API: `SettingOut.group` (`security`, `locations`, `storage` o `ai`) dice en qué sección va cada ajuste; lo decide el
+  backend (`SETTING_GROUPS`), y un test falla si se añade una clave administrable sin sección.
+
 ## [1.5.0] - 2026-11-16
 
 Lo que añade doc_organize 1.5.0 (la librería ya venía fijada desde la 1.4.8). Migraciones `0012` y `0013`, aditivas:

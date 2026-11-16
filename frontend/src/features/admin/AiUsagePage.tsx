@@ -44,6 +44,12 @@ export function AiUsagePage() {
         </Button>
       </Group>
       <Text c="dimmed">{t('ai.usage.intro')}</Text>
+      <Text size="sm">
+        {t('ai.usage.limits')}{' '}
+        <Anchor component={Link} to="/admin/ai/parameters">
+          {t('ai.usage.parameters')}
+        </Anchor>
+      </Text>
       {refresh.isError && <ErrorAlert error={refresh.error} />}
       {usage.isPending ? (
         <Center>
@@ -94,7 +100,7 @@ function SourceCard({ source }: { source: AiUsageSource }) {
       {!source.configured ? (
         <Text c="dimmed" role="status">
           {t('ai.usage.notConfigured')}{' '}
-          <Anchor component={Link} to="/admin/ai-settings">
+          <Anchor component={Link} to="/admin/ai/settings">
             {t('ai.usage.configure')}
           </Anchor>
         </Text>

@@ -33,7 +33,7 @@ dentro de ella. Si la ubicación no está disponible, el explorador lo indica y 
 No se puede registrar la propia `/mnt`, una carpeta dentro de otra ubicación (ni al revés) ni una que contenga los
 datos de la aplicación.
 
-## Ajustes y capacidades (administradores)
+## Ajustes, capacidades y workers (administradores)
 
 **Administración → Ajustes** permite cambiar, sin reiniciar, la duración de las sesiones, el bloqueo por intentos, la
 longitud mínima de contraseña y los umbrales de las comprobaciones de ubicaciones (tiempo máximo, latencia para
@@ -44,6 +44,9 @@ ejecuciones y la cuota por usuario. Cada ajuste indica su origen: cambiado aquí
 El **worker** sondea todas las ubicaciones cada `location_probe_interval_minutes` (5 por defecto), así que el estado
 se mantiene al día sin pulsar «Comprobar».
 
-La **ficha de capacidades** muestra si esta instalación puede hacer OCR con GPU, convertir audio y vídeo y leer `.xls`
+Desde la 1.6, los ajustes se agrupan en «Sesión e inicio de sesión», «Ubicaciones» y «Retención y cuotas»; los de la
+IA están en **Administración → IA → Parámetros** ([IA](ia.md)).
+
+En **Administración → Información** (hasta la 1.5, al final de Ajustes), la **ficha de capacidades** muestra si esta instalación puede hacer OCR con GPU, convertir audio y vídeo y leer `.xls`
 antiguos (LibreOffice). La calcula el worker al arrancar y cada hora; «Volver a comprobar» se lo pide en su siguiente
 latido. Debajo, la tabla de **workers** indica cuáles están en marcha y sus colas.

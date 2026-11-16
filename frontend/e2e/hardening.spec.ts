@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { ADMIN_PASSWORD, ADMIN_USER, createProject, login } from './helpers';
 
-// Fase 10: menú del proyecto con Duplicados primero, recursos del worker en Ajustes y cabeceras (el aviso al terminar
+// Fase 10: menú del proyecto con Duplicados primero, recursos del worker en Información (W1) y cabeceras (el aviso al terminar
 // una ejecución se comprueba en scan.spec.ts, sin lanzar ejecuciones de más: el tope es de 5 por usuario).
 test.skip(!ADMIN_USER || !ADMIN_PASSWORD, 'Define DOW_E2E_ADMIN_USER y DOW_E2E_ADMIN_PASSWORD');
 
@@ -18,9 +18,9 @@ test('el proyecto abierto pone Duplicados el primero', async ({ page }) => {
   expect(links.slice(start, start + 4)).toEqual(['Duplicados', 'Escaneo', 'Documentos', 'Contexto']);
 });
 
-test('Ajustes enseña el estado, la memoria y el escaneo de cada worker', async ({ page }) => {
+test('Información enseña el estado, la memoria y el escaneo de cada worker', async ({ page }) => {
   await login(page);
-  await page.goto('/admin/settings');
+  await page.goto('/admin/info');
 
   await expect(page.getByRole('columnheader', { name: 'Memoria' })).toBeVisible();
   // 1.1.0: «Libre» o «Trabajando», no «En marcha»; uso actual y pico desde el arranque; ajustes del escaneo.

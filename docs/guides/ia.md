@@ -17,7 +17,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
 
 ## Configuración IA (administradores)
 
-**Administración → Configuración IA** tiene una tarjeta por servicio:
+**Administración → IA → Configuración** tiene una tarjeta por servicio:
 
 | Servicio | Para qué | Campos |
 |---|---|---|
@@ -38,7 +38,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
   avisa y solo deja guardar URL, modelo y usuario.
 - Cada cambio queda en la [auditoría](usuarios_y_sesiones.md) con los nombres de los campos, nunca con las claves.
 
-En **Administración → Ajustes** hay cinco ajustes más:
+En **Administración → IA → Parámetros** hay cinco ajustes más (hasta la 1.5 estaban en Ajustes):
 
 | Ajuste | Por defecto | Qué hace |
 |---|---|---|
@@ -94,7 +94,7 @@ terminó en el plazo: sube «Tiempo máximo del borrador de IA», pide una muest
 
 ## Uso de IA (administradores)
 
-**Administración → Uso de IA** muestra el periodo actual de cada fuente:
+**Administración → IA → Uso** muestra el periodo actual de cada fuente:
 
 - **LiteLLM**: el gasto acumulado de la clave configurada (en USD).
 - **GitHub Copilot**: las peticiones premium del mes en curso, con su coste si GitHub lo indica.

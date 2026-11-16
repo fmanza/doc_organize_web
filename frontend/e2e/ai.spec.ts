@@ -37,7 +37,7 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
   const project = `IA ${Date.now()}`;
   await login(page);
 
-  await page.goto('/admin/ai-settings');
+  await page.goto('/admin/ai/settings');
   await expect(page.getByRole('heading', { name: 'Configuración IA' })).toBeVisible();
   for (const family of ['Clasificación de dominios (un eje)', 'Borrador de manifiesto', 'Uso de LiteLLM']) {
     await configure(page, family);
@@ -45,7 +45,11 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
   const settings = await page.request.get('/api/v1/admin/ai-settings');
   expect(await settings.text()).not.toContain(FAKE_KEY);
 
-  await page.getByRole('link', { name: 'Uso de IA' }).click();
+  // W1: «Uso» dentro del grupo «IA» del menú, abierto porque estamos en una página suya.
+  await page
+    .getByRole('navigation', { name: 'Navegación principal' })
+    .getByRole('link', { name: 'Uso' })
+    .click();
   const usage = page.getByRole('region', { name: 'LiteLLM' });
   await expect(usage.getByText(/Total:/)).toContainText('0,42');
 

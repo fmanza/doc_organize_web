@@ -47,6 +47,29 @@ ADMIN_KEYS: Final[tuple[str, ...]] = (
 
 Source = Literal["db", "env", "default"]
 
+SettingGroup = Literal["security", "locations", "storage", "ai"]
+
+#: Sección de cada clave en la administración: «Ajustes» pinta las tres primeras y «IA › Parámetros» la de ``ai``. Lo
+#: decide el backend para que el frontend no deduzca la sección por el prefijo de la clave.
+SETTING_GROUPS: Final[dict[str, SettingGroup]] = {
+    "session_idle_minutes": "security",
+    "session_absolute_hours": "security",
+    "login_max_attempts": "security",
+    "login_lockout_minutes": "security",
+    "password_min_length": "security",
+    "location_probe_timeout_seconds": "locations",
+    "location_latency_degraded_ms": "locations",
+    "location_min_free_gb": "locations",
+    "location_probe_interval_minutes": "locations",
+    "run_retention_days": "storage",
+    "user_quota_mb": "storage",
+    "ai_timeout_seconds": "ai",
+    "ai_retries": "ai",
+    "ai_max_documents_per_run": "ai",
+    "ai_draft_timeout_seconds": "ai",
+    "ai_draft_retries": "ai",
+}
+
 
 class UnknownSettingError(AppError):
     """Clave no administrable."""
@@ -69,6 +92,7 @@ class SettingView:
     value: Any
     default: Any
     source: Source
+    group: SettingGroup
 
 
 def _validate(key: str, value: Any) -> Any:
@@ -118,6 +142,7 @@ def list_settings(db: Session, settings: Settings) -> list[SettingView]:
             value=stored.get(key, getattr(settings, key)),
             default=getattr(settings, key),
             source="db" if key in stored else "env" if key in settings.model_fields_set else "default",
+            group=SETTING_GROUPS[key],
         )
         for key in ADMIN_KEYS
     ]

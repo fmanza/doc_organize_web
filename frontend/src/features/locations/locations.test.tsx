@@ -255,8 +255,10 @@ describe('LocationDetailPage', () => {
 describe('SettingsPage', () => {
   const SETTINGS = {
     items: [
-      { key: 'login_max_attempts', value: 5, default: 5, source: 'default' },
-      { key: 'password_min_length', value: 16, default: 12, source: 'db' },
+      { key: 'login_max_attempts', value: 5, default: 5, source: 'default', group: 'security' },
+      { key: 'password_min_length', value: 16, default: 12, source: 'db', group: 'security' },
+      { key: 'user_quota_mb', value: 0, default: 0, source: 'default', group: 'storage' },
+      { key: 'ai_retries', value: 2, default: 2, source: 'default', group: 'ai' },
     ],
   };
 
@@ -265,17 +267,6 @@ describe('SettingsPage', () => {
       ...session(ADMIN),
       'GET /api/v1/admin/settings': { body: SETTINGS },
       'PATCH /api/v1/admin/settings': { body: SETTINGS },
-      'GET /api/v1/instance/capabilities': {
-        body: {
-          status: 'pending',
-          checked_at: null,
-          capabilities: null,
-          queues: ['cpu'],
-          doc_organize_version: '0.10.0',
-          scan_options: { use_gpu: false, include_audio_video: false, use_picture_description: false },
-        },
-      },
-      'GET /api/v1/admin/workers': { body: { items: [] } },
     });
     const user = userEvent.setup();
 
@@ -290,13 +281,30 @@ describe('SettingsPage', () => {
     const [save, reset] = callsTo(fetchMock, 'PATCH', '/api/v1/admin/settings');
     expect(await save?.json()).toEqual({ values: { login_max_attempts: 3 } });
     expect(await reset?.json()).toEqual({ values: { password_min_length: null } });
-    expect(screen.getByText('Comprobando… (el worker tarda un minuto la primera vez)')).toBeInTheDocument();
   });
 
-  it('muestra la ficha de capacidades', async () => {
+  it('agrupa los ajustes por sección y deja los de IA para «IA › Parámetros» (W1)', async () => {
+    stubApi({ ...session(ADMIN), 'GET /api/v1/admin/settings': { body: SETTINGS } });
+
+    renderRoute('/admin/settings');
+
+    expect(await screen.findByRole('heading', { name: 'Sesión e inicio de sesión' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Retención y cuotas' })).toBeInTheDocument();
+    // Sin ajustes de esa sección, su título no aparece.
+    expect(screen.queryByRole('heading', { name: 'Ubicaciones' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: 'Reintentos de conexión con la IA' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'IA › Parámetros' })).toHaveAttribute(
+      'href',
+      '/admin/ai/parameters',
+    );
+    expect(screen.queryByText('Capacidades de la instancia')).not.toBeInTheDocument();
+  });
+
+  it('muestra la ficha de capacidades en «Información» (W1)', async () => {
     stubApi({
       ...session(ADMIN),
-      'GET /api/v1/admin/settings': { body: { items: [] } },
       'GET /api/v1/instance/capabilities': {
         body: {
           status: 'ok',
@@ -361,7 +369,7 @@ describe('SettingsPage', () => {
       },
     });
 
-    renderRoute('/admin/settings');
+    renderRoute('/admin/info');
 
     const gpu = (await screen.findByText('OCR con GPU (EasyOCR)')).parentElement as HTMLElement;
     expect(within(gpu).getByText('Sí')).toBeInTheDocument();

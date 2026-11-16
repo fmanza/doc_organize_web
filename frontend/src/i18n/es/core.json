@@ -69,10 +69,14 @@
     "audit": "Auditoría",
     "settings": "Ajustes",
     "taxonomy-templates": "Plantillas de taxonomía",
-    "ai-settings": "Configuración IA",
-    "ai-usage": "Uso de IA",
     "tenants": "Tenants",
-    "roles": "Roles"
+    "roles": "Roles",
+    "access": "Acceso",
+    "ai": "IA",
+    "ai-settings": "Configuración",
+    "ai-parameters": "Parámetros",
+    "ai-usage": "Uso",
+    "info": "Información"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",

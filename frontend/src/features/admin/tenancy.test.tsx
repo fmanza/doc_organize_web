@@ -77,10 +77,18 @@ describe('Guardas por permiso', () => {
     const tenantAdmin = { ...ADMIN, is_instance_admin: false };
     stubApi({ ...session(tenantAdmin as never) });
 
+    const user = userEvent.setup();
+
     renderRoute('/admin/tenants');
 
     expect(await screen.findByText('Sin permiso')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Acceso' }));
+    expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Tenants' })).not.toBeInTheDocument();
+    // Sin ninguna página de la instancia, el grupo «IA» no se pinta (W1, F2).
+    expect(screen.queryByRole('button', { name: 'IA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Información' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument();
   });
 });
 

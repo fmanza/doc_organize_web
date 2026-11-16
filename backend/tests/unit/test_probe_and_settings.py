@@ -14,6 +14,8 @@ from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.locations import probe as probe_module
 from app.domain.locations.probe import probe
 from app.domain.settings.service import (
+    ADMIN_KEYS,
+    SETTING_GROUPS,
     InvalidSettingError,
     UnknownSettingError,
     effective_settings,
@@ -110,3 +112,20 @@ def test_out_of_range_row_in_db_is_ignored(db: Session, caplog: pytest.LogCaptur
 
     assert effective_settings(db, Settings()).password_min_length == 12  # type: ignore[call-arg]
     assert "fuera de rango" in caplog.text
+
+
+def test_every_admin_key_has_a_section_and_ai_keys_go_to_ai() -> None:
+    # Una clave nueva sin sección rompería «Ajustes» o «IA › Parámetros»: falla aquí antes que en la página.
+    assert set(SETTING_GROUPS) == set(ADMIN_KEYS)
+    assert {key for key, group in SETTING_GROUPS.items() if group == "ai"} == {
+        key for key in ADMIN_KEYS if key.startswith("ai_")
+    }
+
+
+def test_list_settings_carries_the_section(db: Session) -> None:
+    views = {view.key: view.group for view in list_settings(db, Settings())}  # type: ignore[call-arg]
+
+    assert views["login_max_attempts"] == "security"
+    assert views["location_min_free_gb"] == "locations"
+    assert views["user_quota_mb"] == "storage"
+    assert views["ai_retries"] == "ai"

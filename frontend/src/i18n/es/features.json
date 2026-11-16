@@ -303,6 +303,13 @@
         "label": "Documentos con IA por ejecución",
         "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA."
       }
+    },
+    "aiMoved": "Los tiempos, reintentos y límites de la IA están ahora en",
+    "aiMovedLink": "IA › Parámetros",
+    "sections": {
+      "security": "Sesión e inicio de sesión",
+      "locations": "Ubicaciones",
+      "storage": "Retención y cuotas"
     }
   },
   "capabilities": {
@@ -1267,12 +1274,28 @@
       "product": "Producto",
       "quantity": "Cantidad",
       "cost": "Coste",
-      "search": "Buscar en el uso de {{source}}"
+      "search": "Buscar en el uso de {{source}}",
+      "limits": "Para limitar cuántos documentos procesa la IA en cada ejecución:",
+      "parameters": "IA › Parámetros"
     },
     "errors": {
       "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",
       "ai_connection": "No se pudo conectar con el servicio (o no respondió a tiempo).",
       "ai_error": "El servicio devolvió un error o una respuesta inesperada."
+    },
+    "parameters": {
+      "title": "Parámetros de la IA",
+      "intro": "Tiempos, reintentos y tope de documentos por ejecución. Se aplican sin reiniciar. Los servicios, modelos y claves están en",
+      "configure": "IA › Configuración"
     }
+  },
+  "info": {
+    "title": "Información",
+    "intro": "Estado de la instancia, de solo lectura: versiones, capacidades y workers.",
+    "versions": "Versiones",
+    "web": "doc_organize_web",
+    "library": "doc_organize (workers)",
+    "noneAlive": "Ningún worker en marcha",
+    "noneAliveBody": "Ningún worker ha dado señales de vida recientemente: los escaneos y las construcciones quedarán en cola hasta que arranque alguno."
   }
 }
