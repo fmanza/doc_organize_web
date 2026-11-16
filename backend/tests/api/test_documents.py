@@ -162,6 +162,41 @@ def test_documents_need_membership(
     assert login_as(user_client, "lectora").get(f"/api/v1/projects/{project['id']}/documents").status_code == 404
 
 
+def test_documents_show_file_metadata_and_the_owner_only_to_owners(
+    user_client: TestClient,
+    project: dict[str, object],
+    project_locations: dict[str, Location],
+    migrated: Settings,
+    make_user: Callable[..., User],
+) -> None:
+    """web 1.5.0 (doc_organize 1.5.0): tipo, creación y permisos para todos; el propietario, dato personal, solo para
+    owner (o admin)."""
+    source = Path(project_locations["source"].container_path)
+    state = state_dir(migrated, int(project["id"]))  # type: ignore[arg-type]
+    document = entry(source / "2025" / "Café.docx").model_copy(
+        update={
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "created_time": 1_700_000_000.0,
+            "file_permissions": "640",
+            "owner_name": "EMPRESA\\ana",
+        }
+    )
+    write_cache(folder_cache(state, "2025"), [document])
+    viewer = make_user("lector")
+    user_client.post(f"/api/v1/projects/{project['id']}/members", json={"user_id": viewer.id, "role": "viewer"})
+    base = f"/api/v1/projects/{project['id']}/documents"
+
+    (as_owner,) = user_client.get(base, params={"folder": "2025"}).json()["items"]
+    (as_viewer,) = login_as(user_client, "lector").get(base, params={"folder": "2025"}).json()["items"]
+
+    assert as_owner["mime_type"].endswith("wordprocessingml.document")
+    assert as_owner["created_at"].startswith("2023-11-14T22:13:20")
+    assert as_owner["file_permissions"] == "640"
+    assert as_owner["owner_name"] == "EMPRESA\\ana"
+    assert as_viewer["file_permissions"] == "640"
+    assert as_viewer["owner_name"] is None
+
+
 def test_project_without_scan_has_no_documents(user_client: TestClient, project_locations: dict[str, Location]) -> None:
     created = user_client.post("/api/v1/projects", json=project_payload(project_locations, name="Nuevo")).json()
 

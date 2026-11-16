@@ -50,6 +50,8 @@ class ScanRequest:
         exclude_paths: Subcarpetas absolutas (resueltas) que no se recorren (G41, ``ScanOptions.exclude_paths``).
         ignore_patterns: Patrones ``fnmatch`` de nombre que no se recorren (G41, ``ScanOptions.ignore_patterns``).
             Sin ``force``, lo ya convertido que cubren se conserva; con ``force``, se borra como si no existiera.
+        capture_owner: Guardar en la caché la cuenta propietaria de cada fichero (doc_organize 1.5.0,
+            ``ScanOptions.capture_owner``). Sin ella, la caché guarda ``None`` y borra el propietario que hubiera.
     """
 
     folders: list[Path]
@@ -69,6 +71,7 @@ class ScanRequest:
     reuse_hashes: bool = False
     exclude_paths: list[Path] = field(default_factory=list)
     ignore_patterns: list[str] = field(default_factory=list)
+    capture_owner: bool = False
 
 
 @dataclass(frozen=True)
@@ -132,6 +135,19 @@ def _new_lines(path: Path, offset: int) -> list[str]:
     return [line for line in data.decode("utf-8", errors="replace").splitlines() if line.strip()]
 
 
+def _optional_options(request: ScanRequest) -> dict[str, Any]:
+    """Opciones de ``ScanOptions`` que solo se pasan si se usan, para que sin ellas sean las de antes: exclusiones
+    (G41, doc_organize 1.3.0) y propietario (doc_organize 1.5.0)."""
+    options: dict[str, Any] = {}
+    if request.exclude_paths:
+        options["exclude_paths"] = [str(path) for path in request.exclude_paths]
+    if request.ignore_patterns:
+        options["ignore_patterns"] = list(request.ignore_patterns)
+    if request.capture_owner:
+        options["capture_owner"] = True
+    return options
+
+
 def run_scan(
     request: ScanRequest,
     *,
@@ -158,14 +174,8 @@ def run_scan(
     )
 
     layout = ProjectLayout(request.output_root, state_root=request.state_root)
-    # G41 (doc_organize 1.3.0): solo si hay algo que excluir; sin ello, las opciones son las de la web 1.3.0.
-    exclusions: dict[str, Any] = {}
-    if request.exclude_paths:
-        exclusions["exclude_paths"] = [str(path) for path in request.exclude_paths]
-    if request.ignore_patterns:
-        exclusions["ignore_patterns"] = list(request.ignore_patterns)
     options = ScanOptions(
-        **exclusions,
+        **_optional_options(request),
         use_ocr=request.use_ocr,
         use_gpu=request.use_gpu,
         force=request.force,

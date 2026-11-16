@@ -85,3 +85,14 @@ Todos los listados de la aplicación funcionan igual (desde la 1.2.0):
   sentido. Los grupos de duplicados, que son tarjetas, tienen un selector «Ordenar por».
 - Los **documentos** del proyecto se ordenan con «Ordenar por» (ruta, última actualización, estado de conversión o
   fallos seguidos) desde la 1.3.0. Sin elegir nada, salen por carpeta y ruta.
+- Desde la 1.5.0, cada documento muestra debajo su tipo (MIME), la fecha de creación y los permisos, cuando el
+  sistema de ficheros los da. Por ahora no se puede filtrar ni ordenar por ellos.
+
+### Propietario de los ficheros
+
+El owner del proyecto puede activar «Guardar el propietario de cada fichero» en **Editar** (desactivado por
+defecto). Es un dato personal:
+
+- Solo lo ven los owners del proyecto y los administradores.
+- Se aplica desde el siguiente escaneo, y el cambio queda en la auditoría.
+- Al desactivarlo, el siguiente escaneo lo borra de la caché.

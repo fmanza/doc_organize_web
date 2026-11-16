@@ -1201,6 +1201,19 @@
             "description": "success, error, pending, in_progress, ocr_pending…",
             "title": "Conversion Status"
           },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Creación del fichero (1.5.0); nula si el servidor no la da (Linux) o sin escanear",
+            "title": "Created At"
+          },
           "error_message": {
             "anyOf": [
               {
@@ -1216,10 +1229,34 @@
             "title": "Error Retry Count",
             "type": "integer"
           },
+          "file_permissions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Permisos POSIX en octal (1.5.0); nulos en Windows",
+            "title": "File Permissions"
+          },
           "folder": {
             "description": "Carpeta de origen («» = la raíz de la ubicación)",
             "title": "Folder",
             "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tipo MIME según la extensión (1.5.0)",
+            "title": "Mime Type"
           },
           "output_path": {
             "anyOf": [
@@ -1232,6 +1269,18 @@
             ],
             "description": "Markdown convertido, relativo a Conversión/ (para el visor)",
             "title": "Output Path"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cuenta propietaria (1.5.0): solo si el proyecto la guarda y quien pregunta es owner o admin",
+            "title": "Owner Name"
           },
           "path": {
             "description": "Ruta del documento relativa a su carpeta",
@@ -2738,6 +2787,12 @@
             "title": "Active Run",
             "type": "boolean"
           },
+          "capture_owner": {
+            "default": false,
+            "description": "Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)",
+            "title": "Capture Owner",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2843,8 +2898,20 @@
       },
       "ProjectUpdate": {
         "additionalProperties": false,
-        "description": "Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen.",
+        "description": "Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.",
         "properties": {
+          "capture_owner": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Guardar la cuenta propietaria de cada fichero desde el siguiente escaneo (dato personal; desactivarlo la borra de la caché en el siguiente escaneo)",
+            "title": "Capture Owner"
+          },
           "description": {
             "anyOf": [
               {
@@ -3540,7 +3607,7 @@
       },
       "ScanParams": {
         "additionalProperties": false,
-        "description": "Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).\n\n``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que\nya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa\n(``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.\n\n``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la\nubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del\nrun usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.",
+        "description": "Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).\n\n``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que\nya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa\n(``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.\n\n``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la\nubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del\nrun usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.\n``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.",
         "properties": {
           "confirm_name": {
             "anyOf": [
@@ -6621,7 +6688,7 @@
         ]
       },
       "patch": {
-        "description": "Renombra (solo en la BD), cambia la descripción o las carpetas de origen (``owner``).",
+        "description": "Renombra (solo en la BD), cambia la descripción, las carpetas de origen o si se guarda el propietario de los\nficheros (``owner``).",
         "operationId": "update_project_api_v1_projects__project_id__patch",
         "parameters": [
           {

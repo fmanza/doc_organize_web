@@ -452,6 +452,9 @@ class ProjectOut(BaseModel):
     destination_location: LocationRef
     destination_subpath: str
     role: MemberRole
+    capture_owner: bool = Field(
+        default=False, description="Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)"
+    )
     created_at: datetime
     updated_at: datetime
     last_run: RunBrief | None = None
@@ -481,13 +484,20 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    """Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen."""
+    """Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario."""
 
     model_config = ConfigDict(extra="forbid")
 
     name: ProjectName | None = None
     description: Annotated[str, Field(max_length=1024)] | None = None
     source_subpaths: list[RelativePath] | None = Field(default=None, min_length=1, max_length=20)
+    capture_owner: bool | None = Field(
+        default=None,
+        description=(
+            "Guardar la cuenta propietaria de cada fichero desde el siguiente escaneo (dato personal; desactivarlo la "
+            "borra de la caché en el siguiente escaneo)"
+        ),
+    )
 
 
 class MemberOut(BaseModel):
@@ -673,6 +683,15 @@ class DocumentOut(_Out):
     error_retry_count: int
     updated_at: datetime
     output_path: str | None = Field(description="Markdown convertido, relativo a Conversión/ (para el visor)")
+    mime_type: str | None = Field(default=None, description="Tipo MIME según la extensión (1.5.0)")
+    created_at: datetime | None = Field(
+        default=None, description="Creación del fichero (1.5.0); nula si el servidor no la da (Linux) o sin escanear"
+    )
+    file_permissions: str | None = Field(default=None, description="Permisos POSIX en octal (1.5.0); nulos en Windows")
+    owner_name: str | None = Field(
+        default=None,
+        description="Cuenta propietaria (1.5.0): solo si el proyecto la guarda y quien pregunta es owner o admin",
+    )
 
 
 class DocumentPage(BaseModel):

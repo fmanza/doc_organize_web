@@ -526,7 +526,8 @@ export interface paths {
         head?: never;
         /**
          * Editar proyecto
-         * @description Renombra (solo en la BD), cambia la descripción o las carpetas de origen (``owner``).
+         * @description Renombra (solo en la BD), cambia la descripción, las carpetas de origen o si se guarda el propietario de los
+         *     ficheros (``owner``).
          */
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
@@ -1757,20 +1758,40 @@ export interface components {
              * @description success, error, pending, in_progress, ocr_pending…
              */
             conversion_status: string | null;
+            /**
+             * Created At
+             * @description Creación del fichero (1.5.0); nula si el servidor no la da (Linux) o sin escanear
+             */
+            created_at?: string | null;
             /** Error Message */
             error_message: string | null;
             /** Error Retry Count */
             error_retry_count: number;
+            /**
+             * File Permissions
+             * @description Permisos POSIX en octal (1.5.0); nulos en Windows
+             */
+            file_permissions?: string | null;
             /**
              * Folder
              * @description Carpeta de origen («» = la raíz de la ubicación)
              */
             folder: string;
             /**
+             * Mime Type
+             * @description Tipo MIME según la extensión (1.5.0)
+             */
+            mime_type?: string | null;
+            /**
              * Output Path
              * @description Markdown convertido, relativo a Conversión/ (para el visor)
              */
             output_path: string | null;
+            /**
+             * Owner Name
+             * @description Cuenta propietaria (1.5.0): solo si el proyecto la guarda y quien pregunta es owner o admin
+             */
+            owner_name?: string | null;
             /**
              * Path
              * @description Ruta del documento relativa a su carpeta
@@ -2441,6 +2462,12 @@ export interface components {
              */
             active_run: boolean;
             /**
+             * Capture Owner
+             * @description Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)
+             * @default false
+             */
+            capture_owner: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -2481,9 +2508,14 @@ export interface components {
         };
         /**
          * ProjectUpdate
-         * @description Edición parcial: renombrar (solo en la BD), descripción y carpetas de origen.
+         * @description Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.
          */
         ProjectUpdate: {
+            /**
+             * Capture Owner
+             * @description Guardar la cuenta propietaria de cada fichero desde el siguiente escaneo (dato personal; desactivarlo la borra de la caché en el siguiente escaneo)
+             */
+            capture_owner?: boolean | null;
             /** Description */
             description?: string | null;
             /** Name */
@@ -2722,6 +2754,7 @@ export interface components {
          *     ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
          *     ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
          *     run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
+         *     ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.
          */
         ScanParams: {
             /** Confirm Name */

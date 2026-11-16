@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Center,
+  Checkbox,
   Group,
   Loader,
   Modal,
@@ -33,12 +34,16 @@ function EditProjectModal({ project, onClose }: { project: ProjectOut; onClose: 
   const update = useUpdateProject(project.id);
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? '');
+  const [captureOwner, setCaptureOwner] = useState(project.capture_owner);
   return (
     <Modal opened onClose={onClose} title={t('projects.edit.title')}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          update.mutate({ name: name.trim(), description }, { onSuccess: onClose });
+          update.mutate(
+            { name: name.trim(), description, capture_owner: captureOwner },
+            { onSuccess: onClose },
+          );
         }}
       >
         <Stack>
@@ -56,6 +61,13 @@ function EditProjectModal({ project, onClose }: { project: ProjectOut; onClose: 
             rows={3}
             value={description}
             onChange={(event) => setDescription(event.currentTarget.value)}
+          />
+          {/* web 1.5.0 (doc_organize 1.5.0): el modal solo lo abre el owner (y el admin, que entra como owner). */}
+          <Checkbox
+            label={t('projects.edit.captureOwner')}
+            description={t('projects.edit.captureOwnerHint')}
+            checked={captureOwner}
+            onChange={(event) => setCaptureOwner(event.currentTarget.checked)}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>

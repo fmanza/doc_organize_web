@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Annotated, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from app.db.models import MemberRole, RunQueue
 
@@ -70,6 +71,7 @@ class ScanParams(_Params):
     ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
     ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
     run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
+    ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.
     """
 
     operation: Literal["scan"] = "scan"
@@ -87,6 +89,8 @@ class ScanParams(_Params):
     include_audio_video: bool = False
     extract_images: bool = False
     use_picture_description: bool = False
+    # Fuera del esquema OpenAPI: lo pone la API y el cliente no tiene que mandarlo (si lo manda, se descarta).
+    capture_owner: SkipJsonSchema[bool] = False
     dry_run: bool = False
     preview_run_id: str | None = Field(default=None, max_length=36)
     confirm_name: str | None = Field(default=None, max_length=128)

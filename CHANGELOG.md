@@ -5,6 +5,16 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **Metadatos del fichero** (doc_organize 1.5.0): la lista de documentos muestra el tipo MIME, la fecha de creación y
+  los permisos que haya en la caché (`DocumentOut.mime_type`, `created_at`, `file_permissions`). Creación y permisos
+  dependen del sistema de ficheros: en Windows no hay permisos, y en Linux la creación suele faltar.
+- **Guardar el propietario de cada fichero**: ajuste del proyecto (`capture_owner`, migración `0012`, desactivado por
+  defecto) que solo cambia el owner, desde «Editar», y que queda en la auditoría. El run de escaneo copia el ajuste al
+  encolarse (lo que mande el cliente se ignora) y se aplica desde el siguiente escaneo; al desactivarlo, ese escaneo lo
+  borra de la caché. Es un dato personal: `owner_name` solo llega a los owners del proyecto (y a los admins).
+
 ## [1.4.8] - 2026-11-16
 
 ### Changed

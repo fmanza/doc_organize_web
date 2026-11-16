@@ -72,6 +72,8 @@ def list_documents(
         limit=limit,
         offset=offset,
         listing=listing(None, sort, order),
+        # El propietario es un dato personal: solo para owner (y admin, que entra como owner).
+        include_owner=access.role == "owner",
     )
     return DocumentPage(items=[DocumentOut.model_validate(row) for row in rows], total=total)
 

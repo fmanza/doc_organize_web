@@ -16,6 +16,7 @@ export const PROJECT = {
   updated_at: '2026-11-01T08:00:00Z',
   last_run: null,
   active_run: false,
+  capture_owner: false,
 };
 
 export function runOut(overrides: Record<string, unknown> = {}) {
