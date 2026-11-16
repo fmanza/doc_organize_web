@@ -1,4 +1,4 @@
-"""Configuración de las 5 familias de IA (WB-8.1, ADR-004).
+"""Configuración de las 6 familias de IA (WB-8.1, ADR-004).
 
 Precedencia: valor guardado por un admin en ``ai_settings`` > variable ``DOC_ORGANIZE_*`` del entorno (los mismos
 nombres que la web integrada y que la librería). Los campos secretos se guardan cifrados con MultiFernet. Nunca se
@@ -70,7 +70,7 @@ def family_spec(key: str) -> FamilySpec:
     """La familia ``key``.
 
     Raises:
-        AiFamilyNotFoundError: No es una de las 5.
+        AiFamilyNotFoundError: No es una de las 6.
     """
     spec = FAMILIES_BY_KEY.get(key)
     if spec is None:
@@ -128,7 +128,7 @@ def _family_view(settings: Settings, spec: FamilySpec, rows: dict[tuple[str, str
 
 
 def list_families(db: Session, settings: Settings) -> list[FamilyView]:
-    """Las 5 familias con el estado de cada campo (sin ningún secreto)."""
+    """Las 6 familias con el estado de cada campo (sin ningún secreto)."""
     rows = _rows(db)
     return [_family_view(settings, spec, rows) for spec in FAMILIES]
 

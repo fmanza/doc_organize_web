@@ -291,4 +291,6 @@ def validate_build(
         markdown = manifest.markdown
     if params.ai_classification:
         ai_settings.require_configured(db, settings, context_ai_family(params))
+    if params.ai_enrichment:
+        ai_settings.require_configured(db, settings, "litellm_enrichment")
     return params.model_copy(update={"output_folder_name": folder, "template_markdown": markdown})

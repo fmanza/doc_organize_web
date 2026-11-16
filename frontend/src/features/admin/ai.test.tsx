@@ -46,6 +46,7 @@ const SETTINGS = {
       virtual_key: { source: 'env', hint: '***' },
     }),
     family('litellm_taxonomy_manifest_draft', LITELLM),
+    family('litellm_enrichment', LITELLM),
     family('litellm_usage', ['base_url', 'virtual_key']),
     family('github_copilot_usage', ['username', 'pat']),
   ],
@@ -73,6 +74,8 @@ describe('AiSettingsPage', () => {
     expect(within(classification).getByLabelText(/Clave virtual/, { selector: 'input' })).toHaveValue('');
     const taxonomy = screen.getByRole('region', { name: 'Clasificación por taxonomía (dos ejes)' });
     expect(within(taxonomy).getByText('Variable del servidor')).toBeInTheDocument();
+    // 1.5.0: tarjeta propia para las descripciones con IA.
+    expect(screen.getByRole('region', { name: 'Descripciones y palabras clave' })).toBeInTheDocument();
 
     const usage = screen.getByRole('region', { name: 'Uso de LiteLLM' });
     const save = within(usage).getByRole('button', { name: 'Guardar Uso de LiteLLM' });

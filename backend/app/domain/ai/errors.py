@@ -6,7 +6,7 @@ from app.core.errors import AppError
 
 
 class AiFamilyNotFoundError(AppError):
-    """No es una de las 5 familias de configuración de IA."""
+    """No es una de las 6 familias de configuración de IA."""
 
     status = 404
     title = "Familia de IA desconocida"

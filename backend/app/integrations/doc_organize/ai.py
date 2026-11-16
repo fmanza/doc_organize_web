@@ -48,6 +48,7 @@ FamilyKey = Literal[
     "litellm_classification",
     "litellm_taxonomy_classification",
     "litellm_taxonomy_manifest_draft",
+    "litellm_enrichment",
     "litellm_usage",
     "github_copilot_usage",
 ]
@@ -74,7 +75,7 @@ class FieldSpec:
 
 @dataclass(frozen=True)
 class FamilySpec:
-    """Una de las 5 familias de configuración de IA (mismas claves y variables que la web integrada)."""
+    """Una de las 6 familias de configuración de IA (mismas claves y variables que la web integrada)."""
 
     key: FamilyKey
     fields: tuple[FieldSpec, ...]
@@ -94,11 +95,13 @@ def _litellm(key: FamilyKey, prefix: str, *, model: bool = True) -> FamilySpec:
     return FamilySpec(key, tuple(fields))
 
 
-#: Orden fijo: primero las 3 de clasificación y borrador (todas de LiteLLM) y después las 2 de uso.
+#: Orden fijo: primero las 4 de LiteLLM que llaman a un modelo (clasificación, borrador y, desde 1.5.0, descripciones)
+#: y después las 2 de uso.
 FAMILIES: Final[tuple[FamilySpec, ...]] = (
     _litellm("litellm_classification", "DOC_ORGANIZE_LITELLM_CLASSIFICATION"),
     _litellm("litellm_taxonomy_classification", "DOC_ORGANIZE_LITELLM_TAXONOMY_CLASSIFICATION"),
     _litellm("litellm_taxonomy_manifest_draft", "DOC_ORGANIZE_LITELLM_TAXONOMY_MANIFEST_DRAFT"),
+    _litellm("litellm_enrichment", "DOC_ORGANIZE_LITELLM_ENRICHMENT"),
     _litellm("litellm_usage", "DOC_ORGANIZE_LITELLM", model=False),
     FamilySpec(
         "github_copilot_usage",
@@ -174,6 +177,7 @@ def config_for(connection: AiConnection) -> Any:
     from doc_organize.core.models import (
         GitHubCopilotUsageConfig,
         LiteLLMClassificationConfig,
+        LiteLLMEnrichmentConfig,
         LiteLLMTaxonomyClassificationConfig,
         LiteLLMTaxonomyManifestDraftConfig,
         LiteLLMUsageConfig,
@@ -194,6 +198,7 @@ def config_for(connection: AiConnection) -> Any:
         "litellm_classification": LiteLLMClassificationConfig,
         "litellm_taxonomy_classification": LiteLLMTaxonomyClassificationConfig,
         "litellm_taxonomy_manifest_draft": LiteLLMTaxonomyManifestDraftConfig,
+        "litellm_enrichment": LiteLLMEnrichmentConfig,
     }[connection.family]
     return config_cls(**_litellm_kwargs(connection))
 
@@ -227,6 +232,27 @@ def classification_stats(context: Any) -> dict[str, Any]:
         "classified": int(context.ai_documents_classified),
         "failed": int(context.ai_documents_failed),
         "stopped": context.ai_classification_stopped,
+    }
+
+
+def enrichment_client(connection: AiConnection) -> Any:
+    """``DocumentEnrichmentClient`` (1.5.0) para ``ContextBuilder.build``: descripción y palabras clave de los
+    documentos que no las declaran. Se usa con ``async with``; los límites son ``classification_limits`` (cada fase
+    cuenta su propio presupuesto)."""
+    from doc_organize.ai import DocumentEnrichmentClient
+
+    if connection.family != "litellm_enrichment":
+        raise ValueError(f"{connection.family} no es la familia de descripciones")
+    return DocumentEnrichmentClient(config_for(connection), transport=_transport(connection))
+
+
+def enrichment_stats(context: Any) -> dict[str, Any]:
+    """Lo que hizo el enriquecimiento con IA en una construcción (``Context.ai_enrichment_*``, 1.5.0)."""
+    return {
+        "calls": int(context.ai_enrichment_sent),
+        "applied": int(context.ai_enrichment_applied),
+        "failed": int(context.ai_enrichment_failed),
+        "stopped": context.ai_enrichment_stopped,
     }
 
 

@@ -227,6 +227,7 @@ def test_ai_runs_need_their_family(
     runs = f"/api/v1/projects/{project['id']}/runs"
     for body in (
         {"operation": "context_build", "ai_classification": True},
+        {"operation": "context_build", "ai_enrichment": True},  # 1.5.0: familia litellm_enrichment
         {"operation": "taxonomy_draft"},
     ):
         response = user_client.post(runs, json=body)
@@ -237,6 +238,23 @@ def test_ai_runs_need_their_family(
     built = user_client.post(runs, json={"operation": "context_build", "ai_classification": True})
     assert built.status_code == 202, built.text
     assert KEY not in built.text and built.json()["params"]["ai_classification"] is True
+
+
+def test_enrichment_runs_need_their_own_family(
+    user_client: TestClient, admin_api: TestClient, project: dict[str, object], fernet: str
+) -> None:
+    """Configurar la clasificación no basta para las descripciones con IA (1.5.0)."""
+    runs = f"/api/v1/projects/{project['id']}/runs"
+    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
+    body = {"operation": "context_build", "ai_enrichment": True}
+    assert user_client.post(runs, json=body).json()["code"] == "ai_not_configured"
+
+    admin_api.put(f"{URL}/litellm_enrichment", json={"fields": LITELLM})
+    built = user_client.post(runs, json=body)
+
+    assert built.status_code == 202, built.text
+    assert built.json()["params"]["ai_enrichment"] is True
+    assert user_client.get("/api/v1/ai/status").json()["families"]["litellm_enrichment"] is True
 
 
 def test_taxonomy_draft_roles(

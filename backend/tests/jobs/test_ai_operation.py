@@ -35,7 +35,7 @@ def _ai_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for family in library_ai.FAMILIES:
         for field in family.fields:
             monkeypatch.delenv(field.env_var, raising=False)
-    for prefix in ("CLASSIFICATION", "TAXONOMY_CLASSIFICATION", "TAXONOMY_MANIFEST_DRAFT"):
+    for prefix in ("CLASSIFICATION", "TAXONOMY_CLASSIFICATION", "TAXONOMY_MANIFEST_DRAFT", "ENRICHMENT"):
         monkeypatch.setenv(f"DOC_ORGANIZE_LITELLM_{prefix}_BASE_URL", BASE_URL)
         monkeypatch.setenv(f"DOC_ORGANIZE_LITELLM_{prefix}_VIRTUAL_KEY", KEY)
 
@@ -100,6 +100,50 @@ def test_build_with_ai_classifies_what_rules_leave(
     # El total da contexto: la IA solo recibe lo que las reglas no clasificaron.
     expected = f"IA: {ai['calls']} de 4 documentos enviados (los que las reglas no clasificaron); {ai['classified']} clasificados"
     assert expected in trail
+
+
+def test_build_with_ai_enrichment_describes_the_classified_documents(
+    run: Any, project: Project, db: Session, migrated: Settings, litellm: Any
+) -> None:
+    """web 1.5.0 (doc_organize 1.5.0): descripción y palabras clave de la IA, marcadas en ``ai_filled``."""
+    bodies = litellm(lambda _: _chat({"description": "Resumen de la IA.", "keywords": ["clave"]}))
+    ctx, params = run({**DOMAINS, "ai_enrichment": True})
+
+    result = operation.run_build(ctx, params, project)
+
+    enrichment = result["ai_enrichment"]
+    assert enrichment["enabled"] is True and enrichment["calls"] == len(bodies) >= 1
+    assert enrichment["applied"] == enrichment["calls"] and enrichment["failed"] == 0 and enrichment["stopped"] is None
+    assert result["ai"] == {"enabled": False}
+    stored = db.get(ProjectContext, project.id)
+    assert stored is not None and stored.ai_enrichment_model and stored.ai_classification_model is None
+    docs = list(db.scalars(select(ContextDocument).where(ContextDocument.project_id == project.id)))
+    described = [d for d in docs if d.description == "Resumen de la IA."]
+    assert described and all(
+        d.keywords == ["clave"] and set(d.ai_filled) == {"description", "keywords"} for d in described
+    )
+    trail = _events(db, ctx.run_id) + json.dumps(result)
+    assert KEY not in trail and BASE_URL not in trail
+    assert "IA (descripciones):" in trail
+    assert '"phase": "context_enrichment"' in trail  # su propia etapa en el progreso del run
+
+
+def test_classification_and_enrichment_each_have_their_own_budget(
+    run: Any, project: Project, migrated: Settings, litellm: Any
+) -> None:
+    """«Uno por familia»: con las dos fases activas y presupuesto 1, cada una envía como mucho un documento."""
+    litellm(
+        lambda body: _chat(
+            {"description": "Resumen.", "keywords": []} if "description" in json.dumps(body) else {"domain": None}
+        )
+    )
+    ctx, params = run({**AI_DOMAINS, "ai_enrichment": True})
+    ctx.settings = migrated.model_copy(update={"ai_max_documents_per_run": 1})
+
+    result = operation.run_build(ctx, params, project)
+
+    assert result["ai"]["calls"] <= 1 and result["ai_enrichment"]["calls"] == 1
+    assert result["ai_enrichment"]["stopped"] == "budget"
 
 
 def test_build_stops_calling_after_a_rejected_key(

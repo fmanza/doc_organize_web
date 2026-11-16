@@ -20,6 +20,7 @@
               "litellm_classification",
               "litellm_taxonomy_classification",
               "litellm_taxonomy_manifest_draft",
+              "litellm_enrichment",
               "litellm_usage",
               "github_copilot_usage"
             ],
@@ -649,11 +650,16 @@
       },
       "ContextBuildParams": {
         "additionalProperties": false,
-        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con\n``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).",
+        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con\n``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).\n``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los\ndocumentos clasificados que no las declaran; tiene su propio presupuesto de documentos.",
         "properties": {
           "ai_classification": {
             "default": false,
             "title": "Ai Classification",
+            "type": "boolean"
+          },
+          "ai_enrichment": {
+            "default": false,
+            "title": "Ai Enrichment",
             "type": "boolean"
           },
           "build_site": {
@@ -5222,7 +5228,7 @@
     },
     "/api/v1/admin/ai-settings": {
       "get": {
-        "description": "Las 5 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.",
+        "description": "Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.",
         "operationId": "get_ai_settings_api_v1_admin_ai_settings_get",
         "responses": {
           "200": {

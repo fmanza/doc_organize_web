@@ -247,7 +247,9 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
   const [buildSite, setBuildSite] = useState(true);
   const status = useAiStatus();
   const [withAi, setWithAi] = useState(false);
+  const [withEnrichment, setWithEnrichment] = useState(false);
   const aiAvailable = status.data?.[aiFamily(catalog)] === true;
+  const enrichmentAvailable = status.data?.litellm_enrichment === true;
 
   const ready =
     (catalog !== 'domains' || domains.length > 0) && (catalog !== 'template' || template !== null);
@@ -261,6 +263,7 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
         threshold,
         build_site: buildSite,
         ai_classification: withAi && aiAvailable,
+        ai_enrichment: withEnrichment && enrichmentAvailable,
       }),
       { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
     );
@@ -348,6 +351,20 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
         {withAi && aiAvailable && (
           <Alert color="grape" title={t('context.ai.egressTitle')}>
             {t('context.ai.egress')}
+          </Alert>
+        )}
+        <Switch
+          label={t('context.ai.enrich')}
+          description={t(
+            enrichmentAvailable ? 'context.ai.enrichHelp' : 'context.ai.notConfigured.litellm_enrichment',
+          )}
+          checked={withEnrichment && enrichmentAvailable}
+          disabled={!enrichmentAvailable}
+          onChange={(event) => setWithEnrichment(event.currentTarget.checked)}
+        />
+        {withEnrichment && enrichmentAvailable && (
+          <Alert color="grape" title={t('context.ai.egressTitle')}>
+            {t('context.ai.enrichEgress')}
           </Alert>
         )}
         {enqueue.isError && <ErrorAlert error={enqueue.error} />}

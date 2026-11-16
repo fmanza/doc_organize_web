@@ -55,7 +55,7 @@ def _family_out(view: FamilyView) -> AiFamilyOut:
 
 @router.get("/admin/ai-settings", response_model=AiSettingsOut, summary="Ver la configuración de IA", responses=_ERRORS)
 def get_ai_settings(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> AiSettingsOut:
-    """Las 5 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos."""
+    """Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos."""
     return AiSettingsOut(
         encryption_configured=crypto.is_configured(settings),
         families=[_family_out(view) for view in ai_settings.list_families(db, settings)],

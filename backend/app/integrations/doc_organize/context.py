@@ -39,7 +39,7 @@ import os
 import stat as stat_mode
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, AsyncExitStack
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -104,6 +104,8 @@ class ContextRequest:
         site_timeout: Segundos máximos de ``zensical build``.
         ai: Clasificación con IA de lo que las reglas dejan sin clasificar (Fase 8): familia de un eje o de
             taxonomía según haya manifiesto. ``None`` = sin IA.
+        enrichment: Descripción y palabras clave con IA de los documentos que no las declaran (1.5.0, familia
+            ``litellm_enrichment``), con su propio presupuesto. ``None`` = sin IA.
     """
 
     name: str
@@ -118,6 +120,7 @@ class ContextRequest:
     build_site: bool = True
     site_timeout: float | None = None
     ai: AiConnection | None = None
+    enrichment: AiConnection | None = None
 
 
 @dataclass(frozen=True)
@@ -161,6 +164,7 @@ class ContextOutcome:
         site_search_excluded: Páginas del sitio que doc_organize sacó del buscador porque superan el límite del
             índice de Zensical (rutas relativas a la carpeta reorganizada); se siguen navegando.
         ai: Recuento de la IA (``classification_stats``), o ``None`` si no se usó.
+        enrichment: Recuento de las descripciones con IA (``enrichment_stats``, 1.5.0), o ``None`` si no se usó.
         built_with_version: Versión de doc_organize que construyó el contexto (1.5.0).
         ai_classification_model: Modelo de la clasificación con IA, si se ejecutó (1.5.0).
         ai_enrichment_model: Modelo del enriquecimiento con IA, si se ejecutó (1.5.0).
@@ -175,6 +179,7 @@ class ContextOutcome:
     site_error: str | None = None
     site_search_excluded: list[str] = field(default_factory=list)
     ai: dict[str, Any] | None = None
+    enrichment: dict[str, Any] | None = None
     built_with_version: str | None = None
     ai_classification_model: str | None = None
     ai_enrichment_model: str | None = None
@@ -469,7 +474,13 @@ def build_context(
     )
     from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
-    from app.integrations.doc_organize.ai import classification_client, classification_limits, classification_stats
+    from app.integrations.doc_organize.ai import (
+        classification_client,
+        classification_limits,
+        classification_stats,
+        enrichment_client,
+        enrichment_stats,
+    )
 
     if request.ai is not None:
         expected = (
@@ -507,8 +518,9 @@ def build_context(
         failed.append((path, error[:MAX_ERROR_CHARS]))
         on_progress("context_reorganize", index, total, path)
 
-    def _classified(event: Any) -> None:  # progreso de la Sub-fase B (un documento enviado a la IA)
-        on_progress("context_ai", int(event.processed), int(event.total) if event.total else None, None)
+    def _ai_progress(event: Any) -> None:  # un documento enviado a la IA: clasificar (Sub-fase B) o describir (1.5.0)
+        stage = "context_enrichment" if event.phase == "enrichment" else "context_ai"
+        on_progress(stage, int(event.processed), int(event.total) if event.total else None, None)
 
     async def _classify() -> Any:
         kwargs: dict[str, Any] = {
@@ -519,19 +531,20 @@ def build_context(
             "taxonomy_template_name": request.template_name if manifest is not None else None,
             "cancel_token": token,
         }
-        if request.ai is None:
+        ai = request.ai or request.enrichment
+        if ai is None:
             return await ContextBuilder().build(project, documents, **kwargs)
-        async with classification_client(request.ai) as client:
-            client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
-            kwargs[client_arg] = client
-            return await ContextBuilder().build(
-                project,
-                documents,
-                ai_classification_enabled=True,
-                on_progress=_classified,
-                **classification_limits(request.ai),
-                **kwargs,
-            )
+        # Los límites son argumentos comunes de build(), pero cada fase cuenta su propio presupuesto (doc_organize 1.5.0).
+        kwargs |= {"on_progress": _ai_progress, **classification_limits(ai)}
+        async with AsyncExitStack() as stack:
+            if request.ai is not None:
+                client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
+                kwargs[client_arg] = await stack.enter_async_context(classification_client(request.ai))
+                kwargs["ai_classification_enabled"] = True
+            if request.enrichment is not None:
+                kwargs["ai_enrichment_client"] = await stack.enter_async_context(enrichment_client(request.enrichment))
+                kwargs["ai_enrichment_enabled"] = True
+            return await ContextBuilder().build(project, documents, **kwargs)
 
     async def _run() -> ContextOutcome | None:
         on_progress("context_classify", 0, len(documents), None)
@@ -572,6 +585,7 @@ def build_context(
         outcome.site_error = site_error
         outcome.site_search_excluded = search_excluded
         outcome.ai = classification_stats(context) if request.ai is not None else None
+        outcome.enrichment = enrichment_stats(context) if request.enrichment is not None else None
         return outcome
 
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)

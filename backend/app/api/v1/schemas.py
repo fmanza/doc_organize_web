@@ -882,6 +882,7 @@ AiFamilyKey = Literal[
     "litellm_classification",
     "litellm_taxonomy_classification",
     "litellm_taxonomy_manifest_draft",
+    "litellm_enrichment",
     "litellm_usage",
     "github_copilot_usage",
 ]
