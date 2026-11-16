@@ -20,6 +20,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -36,6 +37,7 @@ import {
   aiFamily,
   buildParams,
   type Catalog,
+  type ContextDocument,
   type ContextOut,
   type DocumentFilter,
   type ContextDocumentSort,
@@ -167,6 +169,7 @@ function Summary({
           </Badge>
         )}
       </Text>
+      <Traceability context={context} />
       <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs" component="dl">
         {stats.map(([key, value]) => (
           <div key={key}>
@@ -207,6 +210,25 @@ function Summary({
         )}
       </Group>
     </Card>
+  );
+}
+
+/** Versión de doc_organize y modelos de IA de la construcción (1.5.0); nada en contextos anteriores. */
+function Traceability({ context }: { context: ContextOut }) {
+  const { t } = useTranslation();
+  const parts = [
+    context.built_with_version && t('context.trace.version', { version: context.built_with_version }),
+    context.ai_classification_model &&
+      t('context.trace.classificationModel', { model: context.ai_classification_model }),
+    context.ai_enrichment_model && t('context.trace.enrichmentModel', { model: context.ai_enrichment_model }),
+  ].filter(Boolean);
+  if (parts.length === 0) {
+    return null;
+  }
+  return (
+    <Text size="xs" c="dimmed" mb="xs">
+      {parts.join(' · ')}
+    </Text>
   );
 }
 
@@ -346,8 +368,22 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
   const { t } = useTranslation();
   const [domain, setDomain] = useState<string | null>(context.domains[0]?.slug ?? null);
   const [only, setOnly] = useState<DocumentFilter | null>(null);
+  const [language, setLanguage] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [debouncedLanguage] = useDebouncedValue(language.trim().toLowerCase(), 300);
+  const [debouncedKeyword] = useDebouncedValue(keyword, 300);
   const list = useListState(CONTEXT_DOCUMENT_SORT, 'doc');
-  const documents = useContextDocuments(projectId, domain, only, list.query);
+  const documents = useContextDocuments(
+    projectId,
+    domain,
+    {
+      only,
+      // La API pide entre 2 y 8 caracteres: con uno solo, todavía no se filtra.
+      language: debouncedLanguage.length >= 2 ? debouncedLanguage : null,
+      keyword: debouncedKeyword,
+    },
+    list.query,
+  );
   const select = (slug: string | null) => {
     setDomain(slug);
     list.paging.setPage(1, true);
@@ -429,10 +465,36 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
             { value: 'all', label: t('context.documents.all') },
             { value: 'failed', label: t('context.documents.failed') },
             { value: 'collision', label: t('context.documents.collision') },
+            { value: 'ai_disagrees', label: t('context.documents.aiDisagrees') },
           ]}
         />
       </Group>
-      <SearchBox value={list.q} onChange={list.setQ} label={t('context.documents.search')} />
+      <Group align="flex-end" gap="sm">
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <SearchBox value={list.q} onChange={list.setQ} label={t('context.documents.search')} />
+        </div>
+        <TextInput
+          label={t('context.documents.language')}
+          placeholder="es"
+          value={language}
+          maxLength={8}
+          w={110}
+          onChange={(event) => {
+            setLanguage(event.currentTarget.value);
+            list.paging.setPage(1, true);
+          }}
+        />
+        <TextInput
+          label={t('context.documents.keyword')}
+          value={keyword}
+          maxLength={100}
+          w={200}
+          onChange={(event) => {
+            setKeyword(event.currentTarget.value);
+            list.paging.setPage(1, true);
+          }}
+        />
+      </Group>
       {documents.isError ? (
         <ErrorAlert error={documents.error} />
       ) : !documents.data ? (
@@ -476,6 +538,8 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                     <Table.Tr key={original}>
                       <Table.Td>
                         <Text size="sm">{doc.title}</Text>
+                        <DocumentProperties doc={doc} />
+                        <HowClassified doc={doc} />
                         {doc.output_path && (
                           <Anchor
                             component={Link}
@@ -524,6 +588,96 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
         </>
       )}
     </Card>
+  );
+}
+
+const percent = (value: number) => `${Math.round(value * 100)} %`;
+
+/**
+ * Autor, idioma, palabras clave y descripción del documento (1.5.0). Lo que rellenó la IA porque el documento no lo
+ * declaraba lleva la marca «IA».
+ */
+function DocumentProperties({ doc }: { doc: ContextDocument }) {
+  const { t } = useTranslation();
+  const byAi = (field: string) =>
+    doc.ai_filled.includes(field) ? (
+      <Badge ml={4} size="xs" variant="light" color="grape" title={t('context.properties.byAi')}>
+        {t('context.ai.badge')}
+      </Badge>
+    ) : null;
+  const meta = [
+    doc.author && t('context.properties.author', { author: doc.author }),
+    doc.language && t('context.properties.language', { language: doc.language }),
+  ].filter(Boolean);
+  if (meta.length === 0 && doc.keywords.length === 0 && !doc.description) {
+    return null;
+  }
+  return (
+    <Stack gap={2} mt={2}>
+      {meta.length > 0 && (
+        <Text size="xs" c="dimmed">
+          {meta.join(' · ')}
+        </Text>
+      )}
+      {doc.description && (
+        <Text size="xs">
+          {doc.description}
+          {byAi('description')}
+        </Text>
+      )}
+      {doc.keywords.length > 0 && (
+        <Group gap={4}>
+          {doc.keywords.map((keyword) => (
+            <Badge key={keyword} size="xs" variant="outline" color="gray" tt="none">
+              {keyword}
+            </Badge>
+          ))}
+          {byAi('keywords')}
+        </Group>
+      )}
+    </Stack>
+  );
+}
+
+/** Detalle plegable «Cómo se clasificó» (1.5.0): reglas, propuesta de la IA y su justificación. */
+function HowClassified({ doc }: { doc: ContextDocument }) {
+  const { t } = useTranslation();
+  const materialConfidence = doc.material_type_confidence;
+  if (!doc.rules_domain && !doc.ai_domain && typeof materialConfidence !== 'number') {
+    return null;
+  }
+  return (
+    <Text component="details" size="xs" mt={2}>
+      <summary style={{ cursor: 'pointer' }}>{t('context.how.title')}</summary>
+      <Stack gap={2} mt={2}>
+        {doc.rules_domain && (
+          <Text size="xs">
+            {t('context.how.rules', {
+              domain: doc.rules_domain,
+              confidence: percent(doc.rules_confidence ?? 0),
+            })}
+          </Text>
+        )}
+        {doc.ai_domain && (
+          <Text size="xs">
+            {t('context.how.ai', { domain: doc.ai_domain, confidence: percent(doc.ai_confidence ?? 0) })}
+            {doc.ai_domain !== doc.domain_slug && (
+              <Badge ml={4} size="xs" variant="light" color="orange">
+                {t('context.how.notApplied')}
+              </Badge>
+            )}
+          </Text>
+        )}
+        {doc.ai_reasoning && (
+          <Text size="xs" c="dimmed">
+            {t('context.how.reasoning', { reasoning: doc.ai_reasoning })}
+          </Text>
+        )}
+        {typeof materialConfidence === 'number' && (
+          <Text size="xs">{t('context.how.material', { confidence: percent(materialConfidence) })}</Text>
+        )}
+      </Stack>
+    </Text>
   );
 }
 

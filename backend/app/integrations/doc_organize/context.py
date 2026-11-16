@@ -134,6 +134,18 @@ class ContextDoc:
     failed: bool = False
     collision: bool = False
     classified_by: str | None = None
+    # 1.5.0: propiedades del documento y trazabilidad de la clasificación (``DomainDocument``).
+    author: str | None = None
+    description: str | None = None
+    keywords: list[str] = field(default_factory=list)
+    language: str | None = None
+    ai_filled: list[str] = field(default_factory=list)
+    rules_domain: str | None = None
+    rules_confidence: float | None = None
+    ai_domain: str | None = None
+    ai_confidence: float | None = None
+    ai_reasoning: str | None = None
+    material_type_confidence: float | None = None
 
 
 @dataclass
@@ -149,6 +161,9 @@ class ContextOutcome:
         site_search_excluded: Páginas del sitio que doc_organize sacó del buscador porque superan el límite del
             índice de Zensical (rutas relativas a la carpeta reorganizada); se siguen navegando.
         ai: Recuento de la IA (``classification_stats``), o ``None`` si no se usó.
+        built_with_version: Versión de doc_organize que construyó el contexto (1.5.0).
+        ai_classification_model: Modelo de la clasificación con IA, si se ejecutó (1.5.0).
+        ai_enrichment_model: Modelo del enriquecimiento con IA, si se ejecutó (1.5.0).
     """
 
     output_folder_name: str = ""
@@ -160,6 +175,9 @@ class ContextOutcome:
     site_error: str | None = None
     site_search_excluded: list[str] = field(default_factory=list)
     ai: dict[str, Any] | None = None
+    built_with_version: str | None = None
+    ai_classification_model: str | None = None
+    ai_enrichment_model: str | None = None
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
@@ -351,6 +369,23 @@ def _organized(document: Any, output_folder_name: str) -> str:
     return PurePosixPath(output_folder_name, folder, Path(document.source_path).name).as_posix()
 
 
+def _traceability(document: Any) -> dict[str, Any]:
+    """Campos 1.5.0 de ``DomainDocument`` para ``ContextDoc`` (``ai_filled`` son ``StrEnum`` o texto)."""
+    return {
+        "author": document.author,
+        "description": document.description,
+        "keywords": list(document.keywords),
+        "language": document.language,
+        "ai_filled": [str(getattr(item, "value", item)) for item in document.ai_filled],
+        "rules_domain": document.rules_domain,
+        "rules_confidence": document.rules_confidence,
+        "ai_domain": document.ai_domain,
+        "ai_confidence": document.ai_confidence,
+        "ai_reasoning": document.ai_reasoning,
+        "material_type_confidence": document.material_type_confidence,
+    }
+
+
 def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> ContextOutcome:
     failed_paths = {path for path, _ in failed}
     docs: list[ContextDoc] = []
@@ -378,6 +413,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     organized_path=None if document.source_path in failed_paths else organized,
                     failed=document.source_path in failed_paths,
                     classified_by=str(document.classified_by) if document.classified_by else None,
+                    **_traceability(document),
                 )
             )
     docs.extend(
@@ -399,6 +435,9 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         failed=failed,
         missing=missing,
         site_built=bool(context.site_built),
+        built_with_version=context.built_with_version,
+        ai_classification_model=context.ai_classification_model,
+        ai_enrichment_model=context.ai_enrichment_model,
     )
 
 

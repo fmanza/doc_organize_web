@@ -825,6 +825,10 @@ class ContextOut(BaseModel):
     collisions_count: int
     site_built: bool
     ai_classification: bool = False
+    #: Trazabilidad (1.5.0): versión de doc_organize y modelos de IA usados; nulos en contextos anteriores.
+    built_with_version: str | None = None
+    ai_classification_model: str | None = None
+    ai_enrichment_model: str | None = None
     domains: list[ContextDomainOut]
     built_by_run_id: str | None
     built_at: datetime
@@ -845,6 +849,19 @@ class ContextDocumentOut(_Out):
     collision: bool
     classified_by: Literal["rules", "ai"] | None = None
     output_path: str | None = None
+    # 1.5.0: propiedades declaradas en el documento (o de la IA si faltan: ``ai_filled``) e idioma detectado.
+    author: str | None = None
+    description: str | None = None
+    keywords: list[str] = []
+    language: str | None = None
+    ai_filled: list[str] = []
+    # 1.5.0: cómo se clasificó. Reglas y su confianza, propuesta de la IA (puede diferir del dominio) y justificación.
+    rules_domain: str | None = None
+    rules_confidence: float | None = None
+    ai_domain: str | None = None
+    ai_confidence: float | None = None
+    ai_reasoning: str | None = None
+    material_type_confidence: float | None = None
 
 
 class ContextDocumentPage(BaseModel):

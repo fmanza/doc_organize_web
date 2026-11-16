@@ -162,6 +162,9 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         collisions_count=row.collisions_count,
         site_built=row.site_built,
         ai_classification=row.ai_classification,
+        built_with_version=row.built_with_version,
+        ai_classification_model=row.ai_classification_model,
+        ai_enrichment_model=row.ai_enrichment_model,
         domains=[ContextDomainOut.model_validate(d) for d in row.domains],
         built_by_run_id=row.built_by_run_id,
         built_at=row.built_at,
@@ -189,7 +192,18 @@ def list_context_documents(
     ] = None,
     only: Annotated[
         context.DocumentFilter | None,
-        Query(description="Solo fallidos o con colisión (G30, contextos construidos con doc_organize 0.13.0)"),
+        Query(
+            description=(
+                "Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro "
+                "dominio (ai_disagrees, 1.5.0)"
+            )
+        ),
+    ] = None,
+    language: Annotated[
+        str | None, Query(min_length=2, max_length=8, description="Solo este idioma (ISO 639-1, 1.5.0)")
+    ] = None,
+    keyword: Annotated[
+        str | None, Query(max_length=100, description="Solo si alguna palabra clave contiene este texto (1.5.0)")
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -197,9 +211,18 @@ def list_context_documents(
     sort: Annotated[ContextDocumentSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
 ) -> ContextDocumentPage:
+    """Documentos de un dominio o sin clasificar; ``q`` busca en título, rutas, tipo, autor y descripción."""
     access = projects.get_access(db, project_id, user)
     rows, total = context.list_documents(
-        db, access.project, domain=domain, only=only, limit=limit, offset=offset, listing=listing(q, sort, order)
+        db,
+        access.project,
+        domain=domain,
+        only=only,
+        language=language,
+        keyword=keyword,
+        limit=limit,
+        offset=offset,
+        listing=listing(q, sort, order),
     )
     return ContextDocumentPage(items=[_document_out(r) for r in rows], total=total)
 

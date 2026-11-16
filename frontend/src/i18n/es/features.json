@@ -1053,7 +1053,28 @@
       "view": "Ver conversión",
       "notCopied": "No copiado",
       "overwritten": "Nombre repetido",
-      "search": "Buscar documentos"
+      "search": "Buscar documentos",
+      "aiDisagrees": "La IA propuso otro",
+      "language": "Idioma",
+      "keyword": "Palabra clave"
+    },
+    "trace": {
+      "version": "doc_organize {{version}}",
+      "classificationModel": "clasificación con {{model}}",
+      "enrichmentModel": "descripciones con {{model}}"
+    },
+    "properties": {
+      "author": "Autor: {{author}}",
+      "language": "Idioma: {{language}}",
+      "byAi": "Lo rellenó la IA porque el documento no lo declaraba"
+    },
+    "how": {
+      "title": "Cómo se clasificó",
+      "rules": "Reglas: {{domain}} ({{confidence}})",
+      "ai": "IA: {{domain}} ({{confidence}})",
+      "notApplied": "No aplicada",
+      "reasoning": "Motivo de la IA: {{reasoning}}",
+      "material": "Tipo de material: {{confidence}}"
     },
     "manifest": {
       "title": "Manifiesto de taxonomía",
