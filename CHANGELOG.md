@@ -5,6 +5,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-17
+
+El manifiesto de taxonomía solo con su catálogo, «Personalizar para este proyecto» desde una plantilla y versiones del
+manifiesto para deshacer (guardar, borrar, restaurar, vaciar el histórico). Migración `0015`, aditiva. Sigue
+doc_organize 1.6.0. **Cambio de contrato**: guardar el manifiesto exige `If-Match`.
+
 ### Added
 
 - **Versiones del manifiesto de taxonomía** (migración `0015`, tabla `project_manifest_versions`, aditiva): cada

@@ -3,10 +3,10 @@
 ## Session metadata
 - id: 2026-11-17-manifest-from-template
 - fecha: 2026-11-17
-- rama: `feat/manifest-versions` (parte 1, W1 del plan único de doc_organize 2.0.0); plan en `docs/plan-2.0-manifiesto`
-  (PR #69)
+- rama: `feat/manifest-versions` (PR #70; parte 1, W1 del plan único de doc_organize 2.0.0); plan en
+  `docs/plan-2.0-manifiesto` (PR #69); release **1.8.0** desde `develop`
 - skill: new_feature
-- fase: IMPLEMENT + AUDIT_CODE de la **parte 1** (manifiesto). Versión objetivo: **1.8.0** (D17 del plan único: sale
+- fase: IMPLEMENT + AUDIT_CODE + VERSION (1.8.0) de la **parte 1** (manifiesto). Versión objetivo: **1.8.0** (D17 del plan único: sale
   antes de la 2.0.0, sobre doc_organize 1.6.x). La parte 2 (ejes) es de la 2.0.0
 
 ## Prompt issued
@@ -60,6 +60,8 @@
   (aviso en el log).
 
 ## Verificación
+- CI de #70 en verde (backend, frontend, docs, imagen con E2E). Dos correcciones durante el CI: el E2E pulsaba el
+  `input` sin tamaño del `SegmentedControl` (se pulsa su etiqueta) y un test esperaba al texto y no al botón «Ver».
 - Backend: ruff, mypy, pytest completo (600 passed + 27 con `caplog`), `export_openapi.py --check`.
 - Frontend: format, lint, typecheck, `npm test` (142 passed), build. Docs: `zensical build --strict` sin avisos.
 
