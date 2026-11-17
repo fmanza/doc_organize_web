@@ -4,7 +4,7 @@ Skill: `new-feature` (web). Solo PLAN y AUDIT_PLAN; sin implementar.
 
 > Revisión 6 (2026-11-17). **Fusionado en doc_organize_web 2.0.0**, que se publica a la vez que doc_organize 2.0.0
 > (plan único: `doc_organize/.ai/sessions/2026-11-17-ai-2.0/PLAN.md`, §I y §Hitos W1-W9). La **parte 1** no cambia de
-> diseño y es el hito W1 (puede empezar ya; **D17 decidida: se publica antes, como doc_organize_web 1.8.0**, sobre doc_organize 1.6.x; la `feature/2.0` de la web se crea después y sus migraciones empiezan en `0016`). La **parte 2** queda adaptada a
+> diseño y es el hito W1 (puede empezar ya; **D17 decidida: se publica antes, como doc_organize_web 1.8.0** (publicada: #70, #71, tag `v1.8.0`; ver `TRACEABILITY.md`), sobre doc_organize 1.6.x; la `feature/2.0` de la web se crea después y sus migraciones empiezan en `0016`). La **parte 2** queda adaptada a
 > ejes: en la librería 2.0 las facetas son **ejes** genéricos (dominio y tipo de material también), y la IA de facetas
 > ya no es una fase propia sino el alcance `ai_scope="missing_axes"`. Cambios sobre la parte 2:
 >
