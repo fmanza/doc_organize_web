@@ -98,6 +98,82 @@ describe('AiSettingsPage', () => {
     expect(within(usage).getByLabelText(/Clave virtual/, { selector: 'input' })).toHaveValue('');
   });
 
+  it('prueba la conexión con los valores del formulario sin guardar (1.7)', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-settings': { body: SETTINGS },
+      'POST /api/v1/admin/ai-settings/litellm_classification/test': {
+        body: {
+          ok: true,
+          error: null,
+          model_access: 'denied',
+          model_checked: false,
+          elapsed_ms: 412,
+          tested_at: '2026-11-17T09:00:00Z',
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/settings');
+    const card = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
+    await user.type(within(card).getByLabelText(/Modelo/, { selector: 'input' }), 'clasificador');
+    await user.click(
+      within(card).getByRole('button', { name: 'Probar la conexión de Clasificación de dominios (un eje)' }),
+    );
+
+    expect(await within(card).findByText('Conexión correcta (412 ms)')).toBeInTheDocument();
+    expect(within(card).getByText(/esta clave no tiene acceso al modelo/)).toBeInTheDocument();
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm_classification/test');
+    expect(await request?.clone().json()).toEqual({ fields: { model: 'clasificador' }, model_check: false });
+    expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm_classification')).toHaveLength(0);
+
+    // Al editar, el resultado deja de valer.
+    await user.type(within(card).getByLabelText(/Modelo/, { selector: 'input' }), '-2');
+    expect(within(card).queryByText('Conexión correcta (412 ms)')).not.toBeInTheDocument();
+  });
+
+  it('prueba el modelo y muestra el error (1.7)', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-settings': { body: SETTINGS },
+      'POST /api/v1/admin/ai-settings/litellm_classification/test': {
+        body: {
+          ok: false,
+          error: 'ai_model',
+          model_access: 'unknown',
+          model_checked: true,
+          elapsed_ms: 900,
+          tested_at: '2026-11-17T09:00:00Z',
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/settings');
+    const card = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
+    await user.click(
+      within(card).getByRole('button', { name: 'Probar el modelo de Clasificación de dominios (un eje)' }),
+    );
+
+    expect(await within(card).findByText('La prueba falló')).toBeInTheDocument();
+    expect(within(card).getByText(/El modelo no respondió/)).toBeInTheDocument();
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm_classification/test');
+    expect(await request?.clone().json()).toEqual({ fields: {}, model_check: true });
+  });
+
+  it('solo las familias con modelo lo prueban, y sin obligatorios no se prueba (1.7)', async () => {
+    stubApi({ ...session(ADMIN), 'GET /api/v1/admin/ai-settings': { body: SETTINGS } });
+
+    renderRoute('/admin/ai/settings');
+
+    const usage = await screen.findByRole('region', { name: 'Uso de LiteLLM' });
+    expect(within(usage).queryByRole('button', { name: /Probar el modelo/ })).not.toBeInTheDocument();
+    expect(
+      within(usage).getByRole('button', { name: 'Probar la conexión de Uso de LiteLLM' }),
+    ).toBeDisabled();
+  });
+
   it('borra un valor guardado', async () => {
     const fetchMock = stubApi({
       ...session(ADMIN),

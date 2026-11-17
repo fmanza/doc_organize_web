@@ -35,3 +35,19 @@ class AiNotConfiguredError(AppError):
     status = 422
     title = "IA no configurada"
     code = "ai_not_configured"
+
+
+class SecretRequiredError(AppError):
+    """Se prueba otra ``base_url`` sin escribir la clave: la guardada nunca se manda a un servidor distinto."""
+
+    status = 422
+    title = "Escribe la clave para probar con otra URL"
+    code = "secret_required"
+
+
+class AiTestTooSoonError(AppError):
+    """Otra prueba de la misma familia hace menos de ``MIN_TEST_INTERVAL_SECONDS``."""
+
+    status = 429
+    title = "Espera unos segundos antes de volver a probar"
+    code = "ai_test_too_soon"

@@ -3,6 +3,7 @@ caché (clientes reales de doc_organize sobre ``httpx.MockTransport``) y comprob
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable, Iterator
 
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.db.models import AiSetting, AuditEntry, Location, User
+from app.domain.ai import connection_test
 from app.domain.ai import usage as ai_usage
 from app.integrations.doc_organize import ai as library_ai
 from tests.conftest import ADMIN_PASSWORD, login_as, project_payload
@@ -32,8 +34,10 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         for field in family.fields:
             monkeypatch.delenv(field.env_var, raising=False)
     ai_usage.clear_cache()
+    connection_test.clear_rate_limit()
     yield
     ai_usage.clear_cache()
+    connection_test.clear_rate_limit()
 
 
 @pytest.fixture
@@ -293,3 +297,189 @@ def test_usage_never_logs_the_key(
 
     assert KEY not in caplog.text
     assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
+
+
+# --- probar la conexión ---------------------------------------------------------------------------------------------
+
+TEST = f"{URL}/litellm_classification/test"
+CHAT_OK = {
+    "choices": [{"message": {"content": json.dumps({"domain": "prueba", "confidence": 0.9, "reasoning": "ok"})}}]
+}
+
+
+def _probe(monkeypatch: pytest.MonkeyPatch, key_info: httpx.Response, chat: httpx.Response | None = None) -> list[str]:
+    """Transporte que responde a ``/key/info`` y ``/chat/completions``; devuelve las rutas pedidas."""
+    paths: list[str] = []
+
+    def _handle(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path.endswith("/chat/completions"):
+            return chat or httpx.Response(500)
+        return key_info
+
+    monkeypatch.setattr(library_ai, "_transport", lambda _: httpx.MockTransport(_handle))
+    return paths
+
+
+def _saved(db: Session) -> list[tuple[str, str]]:
+    return [(row.family, row.field) for row in db.scalars(select(AiSetting))]
+
+
+def test_probe_checks_the_key_without_spending_tokens(
+    admin_api: TestClient, fernet: str, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = _probe(monkeypatch, httpx.Response(200, json={"info": {"spend": 0, "models": ["clasificador"]}}))
+    admin_api.put(f"{URL}/litellm_classification", json={"fields": {**LITELLM, "model": "clasificador"}})
+
+    response = admin_api.post(TEST, json={})
+
+    body = response.json()
+    assert response.status_code == 200, response.text
+    assert body["ok"] is True and body["error"] is None
+    assert body["model_access"] == "ok" and body["model_checked"] is False
+    assert paths == ["/key/info"]  # sin /chat/completions: no gasta tokens
+
+
+def test_probe_uses_the_form_values_and_saves_nothing(
+    admin_api: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sin nada guardado (ni cifrado configurado): se prueba lo escrito en el formulario y no se guarda."""
+    _probe(monkeypatch, httpx.Response(200, json={"info": {"spend": 0}}))
+
+    body = admin_api.post(TEST, json={"fields": LITELLM}).json()
+
+    assert body["ok"] is True and body["model_access"] == "unknown"
+    assert _saved(db) == []
+
+
+@pytest.mark.parametrize(
+    ("key_info", "error"),
+    [(httpx.Response(401), "ai_auth"), (httpx.Response(502), "ai_error"), (None, "ai_connection")],
+)
+def test_probe_reports_the_kind_of_error(
+    admin_api: TestClient, monkeypatch: pytest.MonkeyPatch, key_info: httpx.Response | None, error: str
+) -> None:
+    def _handle(request: httpx.Request) -> httpx.Response:
+        if key_info is None:
+            raise httpx.ConnectError("sin red", request=request)
+        return key_info
+
+    monkeypatch.setattr(library_ai, "_transport", lambda _: httpx.MockTransport(_handle))
+
+    body = admin_api.post(TEST, json={"fields": LITELLM}).json()
+
+    assert (body["ok"], body["error"]) == (False, error)
+
+
+def test_probe_warns_when_the_key_cannot_use_the_model(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _probe(monkeypatch, httpx.Response(200, json={"info": {"models": ["otro-modelo"]}}))
+
+    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model": "clasificador"}}).json()
+
+    assert body["ok"] is True and body["model_access"] == "denied"
+
+
+def test_model_check_sends_one_minimal_request(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    paths = _probe(monkeypatch, httpx.Response(200, json={"info": {}}), httpx.Response(200, json=CHAT_OK))
+
+    body = admin_api.post(TEST, json={"fields": LITELLM, "model_check": True}).json()
+
+    assert body["ok"] is True and body["model_checked"] is True
+    assert paths == ["/key/info", "/chat/completions"]
+
+
+def test_a_missing_model_is_reported_as_such(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _probe(monkeypatch, httpx.Response(200, json={"info": {}}), httpx.Response(400, json={"error": "no existe"}))
+
+    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model": "no-existe"}, "model_check": True}).json()
+
+    assert (body["ok"], body["error"], body["model_checked"]) == (False, "ai_model", True)
+
+
+def test_model_check_decides_when_key_info_is_forbidden(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Algunos proxies no dejan a la clave leer su /key/info: la prueba del modelo es la referencia."""
+    _probe(monkeypatch, httpx.Response(403), httpx.Response(200, json=CHAT_OK))
+
+    basic = admin_api.post(TEST, json={"fields": LITELLM}).json()
+    connection_test.clear_rate_limit()
+    with_model = admin_api.post(TEST, json={"fields": LITELLM, "model_check": True}).json()
+
+    assert basic["error"] == "ai_auth"
+    assert with_model["ok"] is True and with_model["model_checked"] is True
+
+
+def test_the_saved_key_never_goes_to_another_url(
+    admin_api: TestClient, fernet: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S1: probar otra base_url con la clave guardada permitiría llevársela a un servidor propio."""
+    hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(200, json={"info": {}}))
+    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
+
+    other = admin_api.post(TEST, json={"fields": {"base_url": "https://evil.example"}})
+    same = admin_api.post(TEST, json={"fields": {"base_url": LITELLM["base_url"] + "/"}})  # misma URL normalizada
+    connection_test.clear_rate_limit()
+    typed = admin_api.post(TEST, json={"fields": {"base_url": "https://otro.example", "virtual_key": "sk-otra-0000"}})
+
+    assert other.status_code == 422 and other.json()["code"] == "secret_required"
+    assert same.status_code == 200
+    assert typed.status_code == 200
+    assert hosts == ["litellm.example.internal", "otro.example"]
+
+
+def test_probe_is_rate_limited_per_family(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _probe(monkeypatch, httpx.Response(200, json={"info": {}}))
+
+    first = admin_api.post(TEST, json={"fields": LITELLM})
+    second = admin_api.post(TEST, json={"fields": LITELLM})
+    other_family = admin_api.post(f"{URL}/litellm_usage/test", json={"fields": LITELLM})
+
+    assert first.status_code == 200
+    assert second.status_code == 429 and second.json()["code"] == "ai_test_too_soon"
+    assert other_family.status_code == 200
+
+
+def test_probe_validation_and_permissions(
+    admin_api: TestClient, user_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = _probe(monkeypatch, httpx.Response(200, json={"info": {}}))
+
+    assert user_client.post(TEST, json={"fields": LITELLM}).status_code == 403
+    assert admin_api.post(f"{URL}/nada/test", json={}).status_code == 404
+    missing = admin_api.post(TEST, json={})
+    assert missing.status_code == 422 and missing.json()["code"] == "ai_not_configured"
+    bad_url = admin_api.post(TEST, json={"fields": {**LITELLM, "base_url": "ftp://x"}})
+    assert bad_url.status_code == 422 and bad_url.json()["code"] == "ai_setting_invalid"
+    usage_model = admin_api.post(f"{URL}/litellm_usage/test", json={"fields": LITELLM, "model_check": True})
+    assert usage_model.status_code == 422 and usage_model.json()["code"] == "ai_setting_invalid"
+    assert paths == []
+
+
+def test_github_probe_uses_the_usage_endpoint(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(401))
+
+    body = admin_api.post(
+        f"{URL}/github_copilot_usage/test", json={"fields": {"username": "octo-cat", "pat": "ghp_fake_token_0001"}}
+    ).json()
+
+    assert (body["ok"], body["error"]) == (False, "ai_auth")
+    assert hosts == ["api.github.com"]
+
+
+def test_probe_never_leaks_the_key(
+    admin_api: TestClient,
+    fernet: str,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """S3: ni en la respuesta, ni en los logs, ni en la auditoría (que tampoco guarda la URL)."""
+    configure_logging("DEBUG")
+    _probe(monkeypatch, httpx.Response(401), httpx.Response(200, json=CHAT_OK))
+
+    with caplog.at_level(logging.DEBUG):
+        response = admin_api.post(TEST, json={"fields": LITELLM, "model_check": True})
+
+    entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "ai_settings.test")).one()
+    assert KEY not in response.text and KEY not in caplog.text
+    assert KEY not in json.dumps(entry.details) and "litellm.example" not in json.dumps(entry.details)
+    assert entry.details == {"model_check": True, "error": None, "form_fields": ["base_url", "virtual_key"]}

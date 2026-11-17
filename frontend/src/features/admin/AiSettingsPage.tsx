@@ -17,7 +17,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { type AiFamily, type AiField, useAiSettings, useUpdateAiFamily } from './useAi';
+import {
+  type AiFamily,
+  type AiField,
+  type AiTestResult,
+  useAiSettings,
+  useTestAiFamily,
+  useUpdateAiFamily,
+} from './useAi';
 
 /**
  * Configuración de IA (sustituye a `ai_settings.html.j2`): una tarjeta por familia. Los secretos nunca llegan al
@@ -62,9 +69,34 @@ function sourceBadge(field: AiField, t: (key: string) => string) {
   );
 }
 
+/** Resultado de «Probar conexión» (no se guarda nada; con los valores que había en el formulario). */
+function TestResult({ result }: { result: AiTestResult }) {
+  const { t } = useTranslation();
+  const time = { ms: result.elapsed_ms };
+  if (!result.ok) {
+    return (
+      <Alert color="red" role="status" mt="xs" title={t('ai.settings.testFailed')}>
+        {t(`ai.errors.${result.error ?? 'ai_error'}`)}
+        {result.error === 'ai_auth' && !result.model_checked && ` ${t('ai.settings.testAuthHint')}`}
+      </Alert>
+    );
+  }
+  return (
+    <Alert color="teal" role="status" mt="xs" title={t('ai.settings.testOk', time)}>
+      {t(result.model_checked ? 'ai.settings.testOkModel' : 'ai.settings.testOkKey')}
+      {result.model_access === 'denied' && (
+        <Text size="sm" c="orange" mt={4}>
+          {t('ai.settings.modelDenied')}
+        </Text>
+      )}
+    </Alert>
+  );
+}
+
 function FamilyCard({ family, encryption }: { family: AiFamily; encryption: boolean }) {
   const { t } = useTranslation();
   const update = useUpdateAiFamily();
+  const probe = useTestAiFamily();
   const initial = (field: AiField) => (field.secret || field.source !== 'db' ? '' : (field.value ?? ''));
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(family.fields.map((field) => [field.name, initial(field)])),
@@ -76,6 +108,12 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
       .map((field) => [field.name, (values[field.name] ?? '').trim()]),
   );
   const blockedBySecret = !encryption && family.fields.some((field) => field.secret && field.name in changes);
+  // Se puede probar sin guardar: basta con que cada obligatorio esté escrito o ya tenga valor (guardado o del entorno).
+  const testable = family.fields.every(
+    (field) => !field.required || field.name in changes || field.source !== 'none',
+  );
+  const hasModel = family.fields.some((field) => field.name === 'model');
+  const test = (modelCheck: boolean) => probe.mutate({ family: family.key, fields: changes, modelCheck });
   const save = () =>
     update.mutate(
       { family: family.key, fields: changes },
@@ -144,6 +182,7 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
                 onChange={(event) => {
                   const next = event.currentTarget.value;
                   setValues((current) => ({ ...current, [field.name]: next }));
+                  probe.reset(); // el resultado era de otros valores
                 }}
               />
               {field.source === 'db' && (
@@ -174,7 +213,30 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
           {t('ai.settings.saved')}
         </Text>
       )}
+      {probe.isError && <ErrorAlert error={probe.error} mt="xs" />}
+      {probe.data && <TestResult result={probe.data} />}
       <Group justify="flex-end" mt="sm">
+        <Button
+          variant="default"
+          onClick={() => test(false)}
+          loading={probe.isPending && !probe.variables?.modelCheck}
+          disabled={!testable || probe.isPending}
+          aria-label={t('ai.settings.testLabel', { label: title })}
+        >
+          {t('ai.settings.test')}
+        </Button>
+        {hasModel && (
+          <Button
+            variant="default"
+            onClick={() => test(true)}
+            loading={probe.isPending && probe.variables?.modelCheck === true}
+            disabled={!testable || probe.isPending}
+            title={t('ai.settings.testModelHint')}
+            aria-label={t('ai.settings.testModelLabel', { label: title })}
+          >
+            {t('ai.settings.testModel')}
+          </Button>
+        )}
         <Button
           onClick={save}
           loading={update.isPending}

@@ -1,8 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import '../i18n';
 
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+
+// `findBy*` y `waitFor` esperan 1 s por defecto. La primera pantalla de cada test carga su ruta en diferido y las
+// traducciones de `features.json`: en una máquina cargada (CI, o Docker con los workers en marcha) pasa del segundo y
+// fallaban tests distintos en cada ejecución. 5 s solo alargan un test que de verdad falla.
+configure({ asyncUtilTimeout: 5000 });
 
 // jsdom no implementa matchMedia ni ResizeObserver, que Mantine usa.
 Object.defineProperty(window, 'matchMedia', {

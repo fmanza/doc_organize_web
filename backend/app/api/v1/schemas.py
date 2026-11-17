@@ -980,6 +980,36 @@ class AiFamilyUpdate(BaseModel):
     )
 
 
+class AiTestIn(BaseModel):
+    """«Probar conexión»: valores del formulario que sustituyen a los efectivos (ausente = el efectivo; ``null`` o ``""``
+    = sin valor). No se guarda nada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
+        default_factory=dict, max_length=8
+    )
+    model_check: bool = Field(
+        default=False,
+        description="Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
+    )
+
+
+class AiTestOut(BaseModel):
+    """Resultado de «Probar conexión»: solo un código, nunca el cuerpo de lo que respondió el servidor."""
+
+    ok: bool
+    error: Literal["ai_auth", "ai_connection", "ai_error", "ai_model"] | None = Field(
+        description="Credencial rechazada, sin conexión o timeout, otro error, o el modelo no respondió"
+    )
+    model_access: Literal["ok", "denied", "unknown"] = Field(
+        description="Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)"
+    )
+    model_checked: bool = Field(description="Si se envió la petición al modelo")
+    elapsed_ms: int
+    tested_at: AwareDatetime
+
+
 class AiStatusOut(BaseModel):
     """Qué familias de IA están configuradas (para cualquier usuario, sin valores)."""
 

@@ -5,6 +5,16 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **Probar la conexión en IA › Configuración**: cada tarjeta prueba su servicio con los valores del formulario, sin
+  guardarlos (`POST /admin/ai-settings/{family}/test`, solo admin de instancia).
+  - «Probar conexión» consulta `/key/info` en LiteLLM (servidor y clave, sin gastar tokens, con aviso si la clave no
+    tiene acceso al modelo) o el uso del mes en GitHub Copilot.
+  - «Probar el modelo» envía además una clasificación mínima al modelo (código `ai_model` si no responde).
+  - La clave guardada nunca se envía a otra URL (`secret_required`). Como mucho una prueba por familia cada 10 s
+    (`ai_test_too_soon`). La respuesta solo trae un código, y la auditoría (`ai_settings.test`) no guarda valores.
+
 ## [1.6.0] - 2026-11-17
 
 Adopta doc_organize 1.6.0 (W2) y reorganiza el menú de Administración (W1). Migración `0014`, aditiva: los contextos
