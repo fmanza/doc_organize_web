@@ -12,12 +12,17 @@ const theme = createTheme({
 interface ProvidersProps {
   children: ReactNode;
   queryClient?: QueryClient;
+  /**
+   * `test` desactiva las transiciones y los portales de Mantine. En jsdom, con la suite en paralelo, la transición de
+   * apertura de un menú a veces no terminaba y el desplegable se quedaba en `display: none`.
+   */
+  env?: 'default' | 'test';
 }
 
-export function Providers({ children, queryClient }: ProvidersProps) {
+export function Providers({ children, queryClient, env = 'default' }: ProvidersProps) {
   const [client] = useState(() => queryClient ?? createQueryClient());
   return (
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <MantineProvider theme={theme} defaultColorScheme="auto" env={env}>
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     </MantineProvider>
   );

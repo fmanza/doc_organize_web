@@ -12,12 +12,16 @@ export function renderRoute(path: string) {
   queryClient.setDefaultOptions({ queries: { retry: false } });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   return render(
-    <Providers queryClient={queryClient}>
+    <Providers queryClient={queryClient} env="test">
       <RouterProvider router={router} />
     </Providers>,
   );
 }
 
 export function renderWithProviders(ui: ReactElement) {
-  return render(<Providers queryClient={createQueryClient()}>{ui}</Providers>);
+  return render(
+    <Providers queryClient={createQueryClient()} env="test">
+      {ui}
+    </Providers>,
+  );
 }
