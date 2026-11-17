@@ -556,6 +556,34 @@ class ProjectContext(Base):
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
+ManifestVersionAction = Literal["save", "delete", "restore", "history_clear"]
+
+
+class ProjectManifestVersion(Base):
+    """Versión anterior de ``taxonomy_manifest.md`` (1.8.0): lo que había **antes** de guardar, borrar, restaurar o
+    vaciar el histórico, para poder deshacerlo. ``markdown`` nulo = no había manifiesto.
+
+    Se conservan las ``MAX_MANIFEST_VERSIONS`` últimas por proyecto (``app/domain/context/manifest_versions.py``).
+    ``domains`` y ``material_types`` son los recuentos del catálogo de esa versión, nulos si no era válida. Los
+    proyectos se borran de forma lógica: las versiones solo se van con el proyecto si alguna vez se purga.
+    """
+
+    __tablename__ = "project_manifest_versions"
+    __table_args__ = (
+        CheckConstraint("action IN ('save', 'delete', 'restore', 'history_clear')", name="action"),
+        Index("ix_project_manifest_versions_project_created", "project_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    action: Mapped[str] = mapped_column(String(16))
+    markdown: Mapped[str | None] = mapped_column(Text, default=None)
+    domains: Mapped[int | None] = mapped_column(Integer, default=None)
+    material_types: Mapped[int | None] = mapped_column(Integer, default=None)
+
+
 class ContextDocument(Base):
     """Documento del contexto (Fase 7): clasificado en un dominio o, con ``domain_slug`` nulo, sin clasificar.
 

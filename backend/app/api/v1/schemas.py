@@ -813,12 +813,44 @@ class TaxonomyMarkdownIn(BaseModel):
 
 
 class TaxonomyManifestOut(BaseModel):
-    """``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido."""
+    """``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.
+
+    ``etag`` se envía en ``If-Match`` al guardar, borrar o restaurar (``"none"`` si no hay manifiesto).
+    ``last_changed_at`` es la fecha de la versión más reciente (último cambio hecho desde la app), o nula.
+    """
 
     markdown: str | None
     error: str | None = None
     domains: list[CatalogEntryOut] = []
     material_types: list[CatalogEntryOut] = []
+    etag: str
+    last_changed_at: datetime | None = None
+
+
+class ManifestVersionOut(BaseModel):
+    """Versión anterior del manifiesto (sin el texto): lo que había antes de ``action``.
+
+    ``empty``: no había manifiesto. ``valid``: era un manifiesto válido (se puede restaurar).
+    """
+
+    id: int
+    created_at: datetime
+    created_by: str | None
+    action: Literal["save", "delete", "restore", "history_clear"]
+    empty: bool
+    valid: bool
+    domains: int | None
+    material_types: int | None
+
+
+class ManifestVersionList(BaseModel):
+    items: list[ManifestVersionOut]
+    #: Cuántas se conservan por proyecto.
+    limit: int
+
+
+class ManifestVersionDetail(ManifestVersionOut):
+    markdown: str | None
 
 
 class ContextDomainOut(BaseModel):

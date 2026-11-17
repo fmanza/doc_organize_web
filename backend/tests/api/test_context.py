@@ -227,10 +227,17 @@ def test_manifest_is_validated_and_written_by_editors(
     viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
     target = migrated.locations_root / "salidas" / "Proyecto A" / "taxonomy_manifest.md"
 
-    assert user_client.get(url).json() == {"markdown": None, "error": None, "domains": [], "material_types": []}
-    assert viewer.put(url, json={"markdown": TEMPLATE}).status_code == 403
+    assert user_client.get(url).json() == {
+        "markdown": None,
+        "error": None,
+        "domains": [],
+        "material_types": [],
+        "etag": "none",
+        "last_changed_at": None,
+    }
+    assert viewer.put(url, json={"markdown": TEMPLATE}, headers={"If-Match": "none"}).status_code == 403
     assert user_client.put(url, json={"markdown": "no"}).json()["code"] == "template_invalid"
-    saved = user_client.put(url, json={"markdown": TEMPLATE})
+    saved = user_client.put(url, json={"markdown": TEMPLATE}, headers={"If-Match": "none"})
 
     assert saved.status_code == 200, saved.text
     assert target.read_text(encoding="utf-8") == TEMPLATE
@@ -246,11 +253,12 @@ def test_manifest_waits_for_writes_and_needs_a_writable_destination(
 ) -> None:
     url = f"/api/v1/projects/{project['id']}/context/taxonomy-manifest"
     run = user_client.post(f"/api/v1/projects/{project['id']}/runs", json={"operation": "search_index"}).json()
-    assert user_client.put(url, json={"markdown": TEMPLATE}).json()["code"] == "write_locked"
+    none = {"If-Match": "none"}
+    assert user_client.put(url, json={"markdown": TEMPLATE}, headers=none).json()["code"] == "write_locked"
     db.execute(update(Run).where(Run.id == run["id"]).values(status="succeeded"))
     db.execute(update(Location).where(Location.name == "Salidas").values(access="ro"))
     db.commit()
-    assert user_client.put(url, json={"markdown": TEMPLATE}).json()["code"] == "location_read_only"
+    assert user_client.put(url, json={"markdown": TEMPLATE}, headers=none).json()["code"] == "location_read_only"
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="enlaces simbólicos")
@@ -263,9 +271,8 @@ def test_a_linked_manifest_is_neither_read_nor_overwritten(
     url = f"/api/v1/projects/{project['id']}/context/taxonomy-manifest"
 
     assert user_client.get(url).json()["code"] == "manifest_replaced"
-    assert user_client.put(url, json={"markdown": TEMPLATE.replace("Obras", "Otra")}).json()["code"] == (
-        "manifest_replaced"
-    )
+    replaced = user_client.put(url, json={"markdown": TEMPLATE.replace("Obras", "Otra")}, headers={"If-Match": "none"})
+    assert replaced.json()["code"] == "manifest_replaced"
     assert outside.read_text(encoding="utf-8") == TEMPLATE
 
 

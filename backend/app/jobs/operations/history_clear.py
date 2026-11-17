@@ -6,15 +6,23 @@ API) y vuelve a comprobar que el destino es ``rw``.
 
 from __future__ import annotations
 
+import os
+import stat
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import delete
 
 from app.db.models import Project, ProjectContext
+from app.domain.context import manifest_versions
+from app.domain.context.service import MAX_VERSION_BYTES
+from app.domain.documents.errors import OutputNotFoundError, OutputTooLargeError
+from app.domain.documents.service import read_inside
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import HistoryClearParams
 from app.integrations.doc_organize import DocOrganizeOperationError, clear_project_history
+from app.integrations.doc_organize import context as library
 from app.jobs.context import JobContext, JobFailed
 from app.jobs.operations._files import measure, project_paths, require_rw
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
@@ -36,6 +44,7 @@ def run(ctx: JobContext, params: HistoryClearParams, project: Project | None) ->
         return result
     require_rw(project.destination_location)
     ctx.check_cancelled()
+    _keep_manifest_version(ctx, project, paths.output.absolute)
     ctx.progress("clear", 0, None)
     paths.state.mkdir(parents=True, exist_ok=True)
     with ctx.uninterruptible():
@@ -58,3 +67,27 @@ def run(ctx: JobContext, params: HistoryClearParams, project: Project | None) ->
         )
         db.commit()
     return result
+
+
+def _keep_manifest_version(ctx: JobContext, project: Project, output: Path) -> None:
+    """Vaciar borra también ``taxonomy_manifest.md``: antes se guarda como versión (``history_clear``, 1.8.0) para
+    poder restaurarlo. Solo un fichero normal dentro de la carpeta (un enlace o una carpeta en su lugar no se lee)."""
+    path = library.manifest_file(output)
+    try:
+        if not stat.S_ISREG(os.lstat(path).st_mode):
+            return
+        data = read_inside(path, output, max_bytes=MAX_VERSION_BYTES)
+    except (FileNotFoundError, OutputNotFoundError):
+        return
+    except OutputTooLargeError:
+        ctx.log("El manifiesto es demasiado grande para guardarlo como versión: se borra sin versión.", level="warning")
+        return
+    with ctx.session_factory() as db:
+        manifest_versions.add_version(
+            db,
+            project.id,
+            manifest_versions.normalize(data.decode("utf-8", errors="replace")),
+            "history_clear",
+            actor_id=ctx.created_by,
+        )
+        db.commit()

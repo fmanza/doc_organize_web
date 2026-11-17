@@ -2818,6 +2818,192 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "ManifestVersionDetail": {
+        "properties": {
+          "action": {
+            "enum": [
+              "save",
+              "delete",
+              "restore",
+              "history_clear"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "domains": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domains"
+          },
+          "empty": {
+            "title": "Empty",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "material_types": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Types"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "created_by",
+          "action",
+          "empty",
+          "valid",
+          "domains",
+          "material_types",
+          "markdown"
+        ],
+        "title": "ManifestVersionDetail",
+        "type": "object"
+      },
+      "ManifestVersionList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManifestVersionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit"
+        ],
+        "title": "ManifestVersionList",
+        "type": "object"
+      },
+      "ManifestVersionOut": {
+        "description": "Versión anterior del manifiesto (sin el texto): lo que había antes de ``action``.\n\n``empty``: no había manifiesto. ``valid``: era un manifiesto válido (se puede restaurar).",
+        "properties": {
+          "action": {
+            "enum": [
+              "save",
+              "delete",
+              "restore",
+              "history_clear"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "domains": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domains"
+          },
+          "empty": {
+            "title": "Empty",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "material_types": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Types"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "created_by",
+          "action",
+          "empty",
+          "valid",
+          "domains",
+          "material_types"
+        ],
+        "title": "ManifestVersionOut",
+        "type": "object"
+      },
       "Me": {
         "description": "Usuario de la sesión actual: su tenant, el tenant en el que actúa (distinto solo para un admin de instancia que\nlo cambió con el selector), su rol y sus permisos en el tenant activo (Fase 9).",
         "properties": {
@@ -4639,7 +4825,7 @@
         "type": "object"
       },
       "TaxonomyManifestOut": {
-        "description": "``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.",
+        "description": "``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.\n\n``etag`` se envía en ``If-Match`` al guardar, borrar o restaurar (``\"none\"`` si no hay manifiesto).\n``last_changed_at`` es la fecha de la versión más reciente (último cambio hecho desde la app), o nula.",
         "properties": {
           "domains": {
             "default": [],
@@ -4659,6 +4845,22 @@
               }
             ],
             "title": "Error"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "last_changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Changed At"
           },
           "markdown": {
             "anyOf": [
@@ -4681,7 +4883,8 @@
           }
         },
         "required": [
-          "markdown"
+          "markdown",
+          "etag"
         ],
         "title": "TaxonomyManifestOut",
         "type": "object"
@@ -7715,6 +7918,76 @@
       }
     },
     "/api/v1/projects/{project_id}/context/taxonomy-manifest": {
+      "delete": {
+        "description": "Borra ``taxonomy_manifest.md`` guardando antes su versión (se puede restaurar).",
+        "operationId": "delete_manifest_api_v1_projects__project_id__context_taxonomy_manifest_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyManifestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin acceso o sin manifiesto (manifest_not_found)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"
+          },
+          "422": {
+            "description": "Markdown no válido (template_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Borrar manifiesto de taxonomía",
+        "tags": [
+          "context"
+        ]
+      },
       "get": {
         "operationId": "get_manifest_api_v1_projects__project_id__context_taxonomy_manifest_get",
         "parameters": [
@@ -7765,7 +8038,7 @@
         ]
       },
       "put": {
-        "description": "Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto (lo usa el catálogo «manifiesto»).",
+        "description": "Valida y escribe ``taxonomy_manifest.md`` (lo usa el catálogo «manifiesto»), guardando antes como versión lo\nque había. El mismo texto no escribe ni crea versión.",
         "operationId": "put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put",
         "parameters": [
           {
@@ -7775,6 +8048,24 @@
             "schema": {
               "title": "Project Id",
               "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
             }
           }
         ],
@@ -7809,16 +8100,206 @@
             "description": "No encontrado (o sin acceso)"
           },
           "409": {
-            "description": "Escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"
+            "description": "Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"
           },
           "422": {
             "description": "Markdown no válido (template_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
           },
           "503": {
             "description": "Ubicación no disponible"
           }
         },
         "summary": "Guardar manifiesto de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions": {
+      "get": {
+        "description": "Las últimas versiones (lo que había antes de cada cambio), de la más reciente a la más antigua, sin el texto.",
+        "operationId": "list_manifest_versions_api_v1_projects__project_id__context_taxonomy_manifest_versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestVersionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Versiones anteriores del manifiesto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}": {
+      "get": {
+        "operationId": "get_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestVersionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "Sin acceso o versión inexistente (manifest_version_not_found)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Texto de una versión del manifiesto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}/restore": {
+      "post": {
+        "description": "Restaura la versión (una «sin manifiesto» borra el fichero), guardando antes lo que había: se puede deshacer.",
+        "operationId": "restore_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyManifestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin acceso o versión inexistente (manifest_version_not_found)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"
+          },
+          "422": {
+            "description": "Versión no válida (manifest_version_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Restaurar una versión del manifiesto",
         "tags": [
           "context"
         ]
