@@ -151,31 +151,109 @@ export function useContextDocuments(
   });
 }
 
-export function useManifest(projectId: number) {
-  return useQuery({
-    queryKey: ['projects', projectId, 'context', 'manifest'],
-    queryFn: async () =>
+export type Manifest = components['schemas']['TaxonomyManifestOut'];
+export type ManifestVersion = components['schemas']['ManifestVersionOut'];
+export type ManifestVersionDetail = components['schemas']['ManifestVersionDetail'];
+
+export const manifestKey = (projectId: number) => ['projects', projectId, 'context', 'manifest'] as const;
+const versionsKey = (projectId: number) =>
+  ['projects', projectId, 'context', 'manifest', 'versions'] as const;
+
+export function manifestQuery(projectId: number) {
+  return {
+    queryKey: manifestKey(projectId),
+    queryFn: async (): Promise<Manifest> =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/taxonomy-manifest', {
+          params: { path: { project_id: projectId } },
+        }),
+      ),
+  };
+}
+
+export function useManifest(projectId: number) {
+  return useQuery(manifestQuery(projectId));
+}
+
+/**
+ * Tras guardar, borrar o restaurar: el manifiesto nuevo (con su `etag`) y la lista de versiones al día. Ante 409
+ * `manifest_changed` (otro usuario lo cambió) se vuelve a leer el manifiesto; el borrador vive en la página y no se
+ * pierde.
+ */
+function useManifestChange<V>(projectId: number, request: (vars: V) => Promise<Manifest>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: request,
+    onSuccess: (manifest) => {
+      queryClient.setQueryData(manifestKey(projectId), manifest);
+      void queryClient.invalidateQueries({ queryKey: versionsKey(projectId) });
+    },
+    onError: (error) => {
+      if (isApiError(error, 409) && error.problem.code === 'manifest_changed') {
+        void queryClient.invalidateQueries({ queryKey: manifestKey(projectId), exact: true });
+      }
+    },
+  });
+}
+
+export function useSaveManifest(projectId: number) {
+  return useManifestChange(projectId, async ({ markdown, etag }: { markdown: string; etag: string }) =>
+    unwrap(
+      await api.PUT('/api/v1/projects/{project_id}/context/taxonomy-manifest', {
+        params: { path: { project_id: projectId }, header: { 'if-match': etag } },
+        body: { markdown },
+      }),
+    ),
+  );
+}
+
+export function useDeleteManifest(projectId: number) {
+  return useManifestChange(projectId, async ({ etag }: { etag: string }) =>
+    unwrap(
+      await api.DELETE('/api/v1/projects/{project_id}/context/taxonomy-manifest', {
+        params: { path: { project_id: projectId }, header: { 'if-match': etag } },
+      }),
+    ),
+  );
+}
+
+export function useRestoreManifest(projectId: number) {
+  return useManifestChange(projectId, async ({ versionId, etag }: { versionId: number; etag: string }) =>
+    unwrap(
+      await api.POST(
+        '/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}/restore',
+        {
+          params: { path: { project_id: projectId, version_id: versionId }, header: { 'if-match': etag } },
+        },
+      ),
+    ),
+  );
+}
+
+/** Versiones anteriores del manifiesto (las últimas `limit`), de la más reciente a la más antigua, sin el texto. */
+export function useManifestVersions(projectId: number) {
+  return useQuery({
+    queryKey: versionsKey(projectId),
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/context/taxonomy-manifest/versions', {
           params: { path: { project_id: projectId } },
         }),
       ),
   });
 }
 
-export function useSaveManifest(projectId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (markdown: string) =>
+/** Texto de una versión (se pide al pulsar «Ver» o «Cargar en el editor», no al pintar la lista). */
+export function manifestVersionQuery(projectId: number, versionId: number) {
+  return {
+    queryKey: [...versionsKey(projectId), versionId] as const,
+    queryFn: async (): Promise<ManifestVersionDetail> =>
       unwrap(
-        await api.PUT('/api/v1/projects/{project_id}/context/taxonomy-manifest', {
-          params: { path: { project_id: projectId } },
-          body: { markdown },
+        await api.GET('/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}', {
+          params: { path: { project_id: projectId, version_id: versionId } },
         }),
       ),
-    onSuccess: (manifest) =>
-      queryClient.setQueryData(['projects', projectId, 'context', 'manifest'], manifest),
-  });
+  };
 }
 
 /** Abre una sesión del sitio aislado: URL con su token (caduca en una hora). */
@@ -199,13 +277,16 @@ export function useTemplates() {
   });
 }
 
+export function templateQuery(name: string) {
+  return {
+    queryKey: ['taxonomy-templates', name] as const,
+    queryFn: async (): Promise<TaxonomyTemplateDetail> =>
+      unwrap(await api.GET('/api/v1/taxonomy-templates/{name}', { params: { path: { name } } })),
+  };
+}
+
 export function useTemplate(name: string | null) {
-  return useQuery({
-    queryKey: ['taxonomy-templates', name],
-    enabled: name !== null,
-    queryFn: async () =>
-      unwrap(await api.GET('/api/v1/taxonomy-templates/{name}', { params: { path: { name: name ?? '' } } })),
-  });
+  return useQuery({ ...templateQuery(name ?? ''), enabled: name !== null });
 }
 
 export function useSaveTemplate() {
@@ -266,3 +347,33 @@ export function useContextHistory(projectId: number, limit = 10) {
 
 /** Construcciones y cambios del contexto (1.5.0) en Excel; el historial se conserva al borrar el contexto. */
 export const CONTEXT_HISTORY_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_history' };
+
+// --- manifiesto en la página del contexto (1.8.0) ---------------------------------------------------------------
+
+/** Mismo texto salvo los saltos de línea (el navegador envía `\n`; el disco puede tener `\r\n`). */
+export function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? '').replace(/\r\n/g, '\n') === (b ?? '').replace(/\r\n/g, '\n');
+}
+
+/** El contexto se construyó con el manifiesto antes del último cambio (B5): hay que reconstruir para aplicarlo. */
+export function contextIsStale(context: ContextOut | null, manifest: Manifest): boolean {
+  return (
+    context?.catalog_kind === 'manifest' &&
+    manifest.last_changed_at != null &&
+    new Date(context.built_at) < new Date(manifest.last_changed_at)
+  );
+}
+
+/** Catálogo y plantilla elegidos para construir (los comparten la tarjeta de construcción y el manifiesto). */
+export interface Selection {
+  catalog: Catalog;
+  template: string | null;
+}
+
+/** Selección inicial: la del contexto construido, o «Descubrir dominios». */
+export function initialSelection(context: ContextOut | null): Selection {
+  return {
+    catalog: (context?.catalog_kind as Catalog | undefined) ?? 'discover',
+    template: context?.taxonomy_template_name ?? null,
+  };
+}

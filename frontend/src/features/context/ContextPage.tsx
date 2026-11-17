@@ -7,6 +7,7 @@ import {
   Center,
   Group,
   Loader,
+  Modal,
   NumberInput,
   SegmentedControl,
   Select,
@@ -16,11 +17,11 @@ import {
   Table,
   TagsInput,
   Text,
-  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -43,16 +44,20 @@ import {
   type ContextDocument,
   type ContextOut,
   type DocumentFilter,
+  initialSelection,
+  sameText,
+  type Selection,
   type ContextDocumentSort,
-  MAX_TEMPLATE_BYTES,
+  type Manifest,
+  manifestKey,
+  manifestQuery,
+  templateQuery,
   useContextDocuments,
   useContextHistory,
-  useManifest,
   useProjectContext,
-  useSaveManifest,
-  useTaxonomyDraft,
   useTemplates,
 } from './useContext';
+import { ManifestCard } from './ManifestCard';
 
 /**
  * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
@@ -66,12 +71,30 @@ const CONTEXT_DOCUMENT_SORT: readonly ContextDocumentSort[] = [
   'organized_path',
 ];
 
+/** Copia de una plantilla al borrador del manifiesto, con lo que había antes para «Deshacer». */
+interface Copied {
+  name: string;
+  previous: { draft: string | null; selection: Selection };
+}
+
 export function ContextPage() {
   const { t } = useTranslation();
   const projectId = Number(useParams().projectId);
   const project = useProject(projectId);
   const context = useProjectContext(projectId);
+  const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  // Selección derivada de `built_at` sin efectos (A4): al terminar una construcción vuelve a la del contexto nuevo.
+  const [chosen, setChosen] = useState<Selection & { builtAt: string | null }>({
+    builtAt: null,
+    ...initialSelection(null),
+  });
+  const [draft, setDraft] = useState<string | null>(null);
+  const [copied, setCopied] = useState<Copied | null>(null);
+  const [confirm, setConfirm] = useState<{ body: string; apply: () => void } | null>(null);
+  const [focusToken, setFocusToken] = useState(0);
+  const [showManifest, setShowManifest] = useState(false);
+  const [copyError, setCopyError] = useState<unknown>(null);
 
   if (project.isPending || context.isPending) {
     return (
@@ -87,7 +110,71 @@ export function ContextPage() {
     return <ErrorAlert error={context.error} />;
   }
   const built = context.data;
+  const builtAt = built?.built_at ?? null;
+  const selection: Selection = chosen.builtAt === builtAt ? chosen : initialSelection(built);
+  const select = (next: Selection) => setChosen({ builtAt, ...next });
   const writable = project.data.destination_location.access === 'rw';
+  const canBuild = canDo(project.data, 'editor') && writable;
+  const savedManifest = queryClient.getQueryData<Manifest>(manifestKey(projectId))?.markdown ?? null;
+  const manifestDirty = draft !== null && !sameText(draft, savedManifest);
+
+  /** Sustituye el borrador; si hay otro texto (borrador o guardado), pide confirmación antes (A6, B6). */
+  const replaceDraft = (markdown: string, body: string, apply: () => void) => {
+    const current = draft ?? queryClient.getQueryData<Manifest>(manifestKey(projectId))?.markdown ?? null;
+    if (current && !sameText(current, markdown)) {
+      setConfirm({ body, apply });
+    } else {
+      apply();
+    }
+  };
+
+  /** «Personalizar para este proyecto»: copia la plantilla al borrador del manifiesto (nunca guarda). */
+  const copyTemplateToManifest = (name: string) => {
+    setCopyError(null);
+    Promise.all([
+      queryClient.ensureQueryData(templateQuery(name)),
+      queryClient.ensureQueryData(manifestQuery(projectId)),
+    ])
+      .then(([template]) =>
+        replaceDraft(template.markdown, t('context.manifest.replaceBody', { name }), () => {
+          setCopied({ name, previous: { draft, selection } });
+          setDraft(template.markdown);
+          select({ catalog: 'manifest', template: selection.template });
+          setFocusToken((token) => token + 1);
+        }),
+      )
+      .catch(setCopyError);
+  };
+
+  const manifestCard = (editable: boolean) => (
+    <ManifestCard
+      projectId={projectId}
+      editable={editable}
+      context={built}
+      draft={draft}
+      onDraftChange={(markdown) => {
+        setDraft(markdown);
+        if (markdown === null) {
+          setCopied(null);
+        }
+      }}
+      onReplace={(markdown, body) =>
+        replaceDraft(markdown, body, () => {
+          setCopied(null);
+          setDraft(markdown);
+        })
+      }
+      copiedFrom={copied?.name ?? null}
+      onUndoCopy={() => {
+        if (copied) {
+          setDraft(copied.previous.draft);
+          select(copied.previous.selection);
+          setCopied(null);
+        }
+      }}
+      focusToken={focusToken}
+    />
+  );
 
   return (
     <Stack>
@@ -108,18 +195,32 @@ export function ContextPage() {
         </Text>
       )}
 
-      {canDo(project.data, 'editor') &&
-        (writable ? (
-          <BuildCard key={built?.built_at ?? 'nuevo'} project={project.data} context={built} />
+      {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
+      {canBuild && (
+        <BuildCard
+          key={builtAt ?? 'nuevo'}
+          project={project.data}
+          context={built}
+          selection={selection}
+          onSelectionChange={select}
+          manifestDirty={manifestDirty}
+          onUseTemplate={copyTemplateToManifest}
+          copyError={copyError}
+        />
+      )}
+      {canBuild && selection.catalog === 'manifest' && manifestCard(true)}
+      {!canBuild &&
+        (built?.catalog_kind === 'manifest' || showManifest ? (
+          manifestCard(false)
         ) : (
-          <Alert color="gray">{t('context.readOnly')}</Alert>
+          <Anchor component="button" onClick={() => setShowManifest(true)} w="fit-content">
+            {t('context.manifest.show')}
+          </Anchor>
         ))}
 
       {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
 
       <HistoryCard projectId={projectId} />
-
-      <ManifestCard projectId={projectId} editable={canDo(project.data, 'editor') && writable} />
 
       {deleting && (
         <DangerousOperationModal
@@ -128,6 +229,28 @@ export function ContextPage() {
           onClose={() => setDeleting(false)}
         />
       )}
+      <Modal
+        opened={confirm !== null}
+        onClose={() => setConfirm(null)}
+        title={t('context.manifest.replaceTitle')}
+      >
+        <Stack>
+          <Text>{confirm?.body}</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirm(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => {
+                confirm?.apply();
+                setConfirm(null);
+              }}
+            >
+              {t('context.manifest.replace')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
@@ -236,16 +359,32 @@ function Traceability({ context }: { context: ContextOut }) {
   );
 }
 
-function BuildCard({ project, context }: { project: ProjectOut; context: ContextOut | null }) {
+function BuildCard({
+  project,
+  context,
+  selection,
+  onSelectionChange,
+  manifestDirty,
+  onUseTemplate,
+  copyError,
+}: {
+  project: ProjectOut;
+  context: ContextOut | null;
+  selection: Selection;
+  onSelectionChange: (selection: Selection) => void;
+  /** Hay un borrador del manifiesto distinto del guardado: con su catálogo no se construye (A3). */
+  manifestDirty: boolean;
+  onUseTemplate: (name: string) => void;
+  copyError: unknown;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const enqueue = useEnqueueRun(project.id);
   const templates = useTemplates();
-  const [catalog, setCatalog] = useState<Catalog>(
-    (context?.catalog_kind as Catalog | undefined) ?? 'discover',
-  );
+  const { catalog, template } = selection;
+  const setCatalog = (value: Catalog) => onSelectionChange({ catalog: value, template });
+  const setTemplate = (value: string | null) => onSelectionChange({ catalog, template: value });
   const [domains, setDomains] = useState<string[]>([]);
-  const [template, setTemplate] = useState<string | null>(context?.taxonomy_template_name ?? null);
   const [folder, setFolder] = useState('organizado');
   const [threshold, setThreshold] = useState(0.5);
   const [buildSite, setBuildSite] = useState(true);
@@ -255,8 +394,11 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
   const aiAvailable = status.data?.[aiFamily(catalog)] === true;
   const enrichmentAvailable = status.data?.litellm_enrichment === true;
 
+  const blockedByDraft = catalog === 'manifest' && manifestDirty;
   const ready =
-    (catalog !== 'domains' || domains.length > 0) && (catalog !== 'template' || template !== null);
+    (catalog !== 'domains' || domains.length > 0) &&
+    (catalog !== 'template' || template !== null) &&
+    !blockedByDraft;
   const launch = () =>
     enqueue.mutate(
       buildParams({
@@ -313,6 +455,17 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
             nothingFoundMessage={t('context.build.noTemplates')}
           />
         )}
+        {catalog === 'template' && template !== null && (
+          <Group gap="xs">
+            <Button variant="default" size="xs" onClick={() => onUseTemplate(template)}>
+              {t('context.build.useTemplateAsManifest')}
+            </Button>
+            <Text size="xs" c="dimmed">
+              {t('context.build.useTemplateAsManifestHint')}
+            </Text>
+          </Group>
+        )}
+        {copyError !== null && <ErrorAlert error={copyError} />}
         {templates.isError && catalog === 'template' && <ErrorAlert error={templates.error} />}
         <Group align="flex-end">
           {context ? (
@@ -369,6 +522,11 @@ function BuildCard({ project, context }: { project: ProjectOut; context: Context
         {withEnrichment && enrichmentAvailable && (
           <Alert color="grape" title={t('context.ai.egressTitle')}>
             {t('context.ai.enrichEgress')}
+          </Alert>
+        )}
+        {blockedByDraft && (
+          <Alert color="orange" role="status">
+            {t('context.build.unsavedManifest')}
           </Alert>
         )}
         {enqueue.isError && <ErrorAlert error={enqueue.error} />}
@@ -847,143 +1005,5 @@ function BuildEntry({ build }: { build: ContextBuild }) {
         </Text>
       )}
     </Text>
-  );
-}
-
-function ManifestCard({ projectId, editable }: { projectId: number; editable: boolean }) {
-  const { t } = useTranslation();
-  const manifest = useManifest(projectId);
-  const save = useSaveManifest(projectId);
-  const [draft, setDraft] = useState<string | null>(null);
-
-  if (manifest.isPending) {
-    return (
-      <Center>
-        <Loader aria-label={t('common.loading')} />
-      </Center>
-    );
-  }
-  if (manifest.isError) {
-    return <ErrorAlert error={manifest.error} />;
-  }
-  const text = draft ?? manifest.data.markdown ?? '';
-  const tooLarge = new TextEncoder().encode(text).length > MAX_TEMPLATE_BYTES;
-  return (
-    <Card withBorder>
-      <Title order={3} size="h4" mb="xs">
-        {t('context.manifest.title')}
-      </Title>
-      <Text size="sm" c="dimmed" mb="xs">
-        {t('context.manifest.intro')}
-      </Text>
-      {manifest.data.error && (
-        <Alert color="orange" mb="xs" title={t('context.manifest.invalid')}>
-          {manifest.data.error}
-        </Alert>
-      )}
-      {manifest.data.markdown !== null && !manifest.data.error && (
-        <Text size="sm" mb="xs">
-          {t('context.manifest.catalog', {
-            domains: manifest.data.domains.length,
-            materials: manifest.data.material_types.length,
-          })}
-        </Text>
-      )}
-      {editable && <DraftPanel projectId={projectId} onDraft={setDraft} />}
-      <Textarea
-        label={t('context.manifest.markdown')}
-        value={text}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        readOnly={!editable}
-        rows={10}
-        resize="vertical"
-        styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
-        error={tooLarge ? t('context.manifest.tooLarge') : undefined}
-      />
-      {save.isError && <ErrorAlert error={save.error} mt="xs" />}
-      {save.isSuccess && draft === null && (
-        <Text size="sm" c="teal" role="status" mt="xs">
-          {t('context.manifest.saved')}
-        </Text>
-      )}
-      {editable && (
-        <Group justify="flex-end" mt="xs">
-          <Button
-            onClick={() => save.mutate(text, { onSuccess: () => setDraft(null) })}
-            loading={save.isPending}
-            disabled={draft === null || !text.trim() || tooLarge}
-          >
-            {t('context.manifest.save')}
-          </Button>
-        </Group>
-      )}
-    </Card>
-  );
-}
-
-/**
- * Borrador del manifiesto con IA: lanza el run `taxonomy_draft`, espera a que termine y carga el Markdown en el
- * editor **sin guardarlo** (se revisa y se guarda con «Guardar manifiesto»).
- */
-function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markdown: string) => void }) {
-  const { t } = useTranslation();
-  const status = useAiStatus();
-  const [sampleSize, setSampleSize] = useState(25);
-  const draft = useTaxonomyDraft(projectId, onDraft);
-  const available = status.data?.litellm_taxonomy_manifest_draft === true;
-
-  return (
-    <Card withBorder mb="sm" component="section" aria-label={t('context.ai.draftTitle')}>
-      <Text fw={500} size="sm">
-        {t('context.ai.draftTitle')}
-      </Text>
-      <Text size="xs" c="dimmed" mb="xs">
-        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.litellm_taxonomy_manifest_draft')}
-      </Text>
-      <Group align="flex-end">
-        <NumberInput
-          label={t('context.ai.sampleSize')}
-          min={1}
-          max={60}
-          allowDecimal={false}
-          clampBehavior="strict"
-          value={sampleSize}
-          onChange={(value) => setSampleSize(typeof value === 'number' ? value : 25)}
-          w={180}
-          disabled={!available}
-        />
-        <Button
-          variant="light"
-          color="grape"
-          onClick={() => draft.start(sampleSize)}
-          loading={draft.running}
-          disabled={!available}
-        >
-          {t('context.ai.draft')}
-        </Button>
-        {draft.runId && (
-          <Anchor component={Link} to={`/runs/${draft.runId}`} size="sm">
-            {t('context.ai.openRun')}
-          </Anchor>
-        )}
-      </Group>
-      {draft.error && <ErrorAlert error={draft.error} mt="xs" />}
-      {draft.failure && (
-        <Alert color="red" role="alert" mt="xs">
-          {draft.failure}
-        </Alert>
-      )}
-      {draft.loaded && (
-        <Alert color="grape" role="status" mt="xs" title={t('context.ai.draftLoaded')}>
-          {draft.loaded.reasoning ?? t('context.ai.draftLoadedBody')}
-          <Text size="xs" mt={4}>
-            {t('context.ai.draftSample', {
-              sample: draft.loaded.sample_documents,
-              total: draft.loaded.total_documents,
-            })}
-          </Text>
-        </Alert>
-      )}
-    </Card>
   );
 }

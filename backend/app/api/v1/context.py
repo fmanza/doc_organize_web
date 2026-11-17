@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Header, Query, Response, status
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
 from app.api.v1.listing import ContextDocumentSort, OrderQuery, SearchQuery, listing
@@ -23,6 +23,9 @@ from app.api.v1.schemas import (
     ContextDomainOut,
     ContextHistoryOut,
     ContextOut,
+    ManifestVersionDetail,
+    ManifestVersionList,
+    ManifestVersionOut,
     SiteSessionOut,
     TaxonomyManifestOut,
     TaxonomyMarkdownIn,
@@ -31,8 +34,8 @@ from app.api.v1.schemas import (
     TaxonomyTemplateOut,
 )
 from app.db.models import ContextDocument
+from app.domain.context import manifest_versions, site, templates
 from app.domain.context import service as context
-from app.domain.context import site, templates
 from app.domain.context.errors import SiteNotFoundError
 from app.domain.context.templates import TemplateView
 from app.domain.documents.outputs import output_paths
@@ -289,13 +292,33 @@ def _change_fields(change: Any) -> dict[str, Any]:
     }
 
 
-def _manifest_out(manifest: context.Manifest) -> TaxonomyManifestOut:
+def _manifest_out(manifest: context.Manifest, db: DbSession, project_id: int) -> TaxonomyManifestOut:
     return TaxonomyManifestOut(
         markdown=manifest.markdown,
         error=manifest.error,
         domains=_catalog(manifest.info.domains) if manifest.info else [],
         material_types=_catalog(manifest.info.material_types) if manifest.info else [],
+        etag=manifest.etag,
+        last_changed_at=manifest_versions.latest_version_at(db, project_id),
     )
+
+
+IfMatch = Annotated[
+    str | None,
+    Header(description="``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo"),
+]
+
+_MANIFEST_WRITE_ERRORS: dict[int | str, dict[str, Any]] = {
+    **_ERRORS,
+    403: {"description": "Rol insuficiente (editor)"},
+    409: {
+        "description": "Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un "
+        "fichero normal (manifest_replaced)"
+    },
+    422: {"description": "Markdown no válido (template_invalid) o destino de solo lectura"},
+    428: {"description": "Falta If-Match (etag_required)"},
+    503: {"description": "Ubicación no disponible"},
+}
 
 
 @router.get(
@@ -306,20 +329,14 @@ def _manifest_out(manifest: context.Manifest) -> TaxonomyManifestOut:
 )
 def get_manifest(project_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep) -> TaxonomyManifestOut:
     access = projects.get_access(db, project_id, user)
-    return _manifest_out(context.read_manifest(settings, access.project))
+    return _manifest_out(context.read_manifest(settings, access.project), db, project_id)
 
 
 @router.put(
     "/projects/{project_id}/context/taxonomy-manifest",
     response_model=TaxonomyManifestOut,
     summary="Guardar manifiesto de taxonomía",
-    responses={
-        **_ERRORS,
-        403: {"description": "Rol insuficiente (editor)"},
-        409: {"description": "Escritura en curso (write_locked) o no es un fichero normal (manifest_replaced)"},
-        422: {"description": "Markdown no válido (template_invalid) o destino de solo lectura"},
-        503: {"description": "Ubicación no disponible"},
-    },
+    responses=_MANIFEST_WRITE_ERRORS,
 )
 def put_manifest(
     project_id: int,
@@ -328,10 +345,101 @@ def put_manifest(
     db: DbSession,
     settings: SettingsDep,
     ctx: Context,
+    if_match: IfMatch = None,
 ) -> TaxonomyManifestOut:
-    """Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto (lo usa el catálogo «manifiesto»)."""
+    """Valida y escribe ``taxonomy_manifest.md`` (lo usa el catálogo «manifiesto»), guardando antes como versión lo
+    que había. El mismo texto no escribe ni crea versión."""
     access = projects.get_access(db, project_id, user, min_role="editor")
-    return _manifest_out(context.save_manifest(db, settings, access.project, body.markdown, actor=user, ctx=ctx))
+    saved = context.save_manifest(db, settings, access.project, body.markdown, if_match=if_match, actor=user, ctx=ctx)
+    return _manifest_out(saved, db, project_id)
+
+
+@router.delete(
+    "/projects/{project_id}/context/taxonomy-manifest",
+    response_model=TaxonomyManifestOut,
+    summary="Borrar manifiesto de taxonomía",
+    responses={**_MANIFEST_WRITE_ERRORS, 404: {"description": "Sin acceso o sin manifiesto (manifest_not_found)"}},
+)
+def delete_manifest(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    ctx: Context,
+    if_match: IfMatch = None,
+) -> TaxonomyManifestOut:
+    """Borra ``taxonomy_manifest.md`` guardando antes su versión (se puede restaurar)."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    deleted = context.delete_manifest(db, settings, access.project, if_match=if_match, actor=user, ctx=ctx)
+    return _manifest_out(deleted, db, project_id)
+
+
+def _version_fields(version: manifest_versions.VersionSummary) -> dict[str, Any]:
+    return {
+        "id": version.id,
+        "created_at": version.created_at,
+        "created_by": version.created_by,
+        "action": version.action,
+        "empty": version.empty,
+        "valid": version.valid,
+        "domains": version.domains,
+        "material_types": version.material_types,
+    }
+
+
+@router.get(
+    "/projects/{project_id}/context/taxonomy-manifest/versions",
+    response_model=ManifestVersionList,
+    summary="Versiones anteriores del manifiesto",
+    responses=_ERRORS,
+)
+def list_manifest_versions(project_id: int, user: CurrentUser, db: DbSession) -> ManifestVersionList:
+    """Las últimas versiones (lo que había antes de cada cambio), de la más reciente a la más antigua, sin el texto."""
+    projects.get_access(db, project_id, user)
+    return ManifestVersionList(
+        items=[ManifestVersionOut(**_version_fields(v)) for v in manifest_versions.list_versions(db, project_id)],
+        limit=manifest_versions.MAX_MANIFEST_VERSIONS,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}",
+    response_model=ManifestVersionDetail,
+    summary="Texto de una versión del manifiesto",
+    responses={**_ERRORS, 404: {"description": "Sin acceso o versión inexistente (manifest_version_not_found)"}},
+)
+def get_manifest_version(project_id: int, version_id: int, user: CurrentUser, db: DbSession) -> ManifestVersionDetail:
+    projects.get_access(db, project_id, user)
+    stored = manifest_versions.get_version(db, project_id, version_id)  # 404 si no es de este proyecto
+    summary = next(v for v in manifest_versions.list_versions(db, project_id) if v.id == stored.id)
+    return ManifestVersionDetail(**_version_fields(summary), markdown=stored.markdown)
+
+
+@router.post(
+    "/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}/restore",
+    response_model=TaxonomyManifestOut,
+    summary="Restaurar una versión del manifiesto",
+    responses={
+        **_MANIFEST_WRITE_ERRORS,
+        404: {"description": "Sin acceso o versión inexistente (manifest_version_not_found)"},
+        422: {"description": "Versión no válida (manifest_version_invalid) o destino de solo lectura"},
+    },
+)
+def restore_manifest_version(
+    project_id: int,
+    version_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    ctx: Context,
+    if_match: IfMatch = None,
+) -> TaxonomyManifestOut:
+    """Restaura la versión (una «sin manifiesto» borra el fichero), guardando antes lo que había: se puede deshacer."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    restored = context.restore_manifest(
+        db, settings, access.project, version_id, if_match=if_match, actor=user, ctx=ctx
+    )
+    return _manifest_out(restored, db, project_id)
 
 
 @router.post(

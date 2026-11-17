@@ -69,8 +69,10 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
   await expect(resultValue(page, 'Con IA')).toHaveText('Sí');
   await expect(resultValue(page, 'Errores de la IA')).toHaveText('0');
 
-  // Borrador: se carga en el editor sin guardarse y se guarda a mano.
+  // Borrador: está con el manifiesto (solo con su catálogo); se carga en el editor sin guardarse y se guarda a mano.
   await page.goto(`/projects/${id}/context`);
+  // La opción del SegmentedControl: el `input` de Mantine no tiene tamaño, se pulsa su etiqueta visible.
+  await page.getByText('Manifiesto del proyecto', { exact: true }).click();
   await page.getByRole('button', { name: 'Pedir borrador' }).click();
   await expect(page.getByText('Borrador cargado en el editor')).toBeVisible({ timeout: 120_000 });
   const editor = page.getByRole('textbox', { name: /^Markdown \(front matter/ });

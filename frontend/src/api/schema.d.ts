@@ -650,10 +650,72 @@ export interface paths {
         get: operations["get_manifest_api_v1_projects__project_id__context_taxonomy_manifest_get"];
         /**
          * Guardar manifiesto de taxonomía
-         * @description Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto (lo usa el catálogo «manifiesto»).
+         * @description Valida y escribe ``taxonomy_manifest.md`` (lo usa el catálogo «manifiesto»), guardando antes como versión lo
+         *     que había. El mismo texto no escribe ni crea versión.
          */
         put: operations["put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put"];
         post?: never;
+        /**
+         * Borrar manifiesto de taxonomía
+         * @description Borra ``taxonomy_manifest.md`` guardando antes su versión (se puede restaurar).
+         */
+        delete: operations["delete_manifest_api_v1_projects__project_id__context_taxonomy_manifest_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Versiones anteriores del manifiesto
+         * @description Las últimas versiones (lo que había antes de cada cambio), de la más reciente a la más antigua, sin el texto.
+         */
+        get: operations["list_manifest_versions_api_v1_projects__project_id__context_taxonomy_manifest_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Texto de una versión del manifiesto */
+        get: operations["get_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/taxonomy-manifest/versions/{version_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restaurar una versión del manifiesto
+         * @description Restaura la versión (una «sin manifiesto» borra el fichero), guardando antes lo que había: se puede deshacer.
+         */
+        post: operations["restore_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__restore_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2480,6 +2542,70 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** ManifestVersionDetail */
+        ManifestVersionDetail: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "save" | "delete" | "restore" | "history_clear";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Domains */
+            domains: number | null;
+            /** Empty */
+            empty: boolean;
+            /** Id */
+            id: number;
+            /** Markdown */
+            markdown: string | null;
+            /** Material Types */
+            material_types: number | null;
+            /** Valid */
+            valid: boolean;
+        };
+        /** ManifestVersionList */
+        ManifestVersionList: {
+            /** Items */
+            items: components["schemas"]["ManifestVersionOut"][];
+            /** Limit */
+            limit: number;
+        };
+        /**
+         * ManifestVersionOut
+         * @description Versión anterior del manifiesto (sin el texto): lo que había antes de ``action``.
+         *
+         *     ``empty``: no había manifiesto. ``valid``: era un manifiesto válido (se puede restaurar).
+         */
+        ManifestVersionOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "save" | "delete" | "restore" | "history_clear";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Domains */
+            domains: number | null;
+            /** Empty */
+            empty: boolean;
+            /** Id */
+            id: number;
+            /** Material Types */
+            material_types: number | null;
+            /** Valid */
+            valid: boolean;
+        };
         /**
          * Me
          * @description Usuario de la sesión actual: su tenant, el tenant en el que actúa (distinto solo para un admin de instancia que
@@ -3273,6 +3399,9 @@ export interface components {
         /**
          * TaxonomyManifestOut
          * @description ``taxonomy_manifest.md`` del proyecto: ``markdown`` nulo si no existe; ``error`` si no es válido.
+         *
+         *     ``etag`` se envía en ``If-Match`` al guardar, borrar o restaurar (``"none"`` si no hay manifiesto).
+         *     ``last_changed_at`` es la fecha de la versión más reciente (último cambio hecho desde la app), o nula.
          */
         TaxonomyManifestOut: {
             /**
@@ -3282,6 +3411,10 @@ export interface components {
             domains: components["schemas"]["CatalogEntryOut"][];
             /** Error */
             error?: string | null;
+            /** Etag */
+            etag: string;
+            /** Last Changed At */
+            last_changed_at?: string | null;
             /** Markdown */
             markdown: string | null;
             /**
@@ -5432,7 +5565,10 @@ export interface operations {
     put_manifest_api_v1_projects__project_id__context_taxonomy_manifest_put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
             path: {
                 project_id: number;
             };
@@ -5474,7 +5610,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Escritura en curso (write_locked) o no es un fichero normal (manifest_replaced) */
+            /** @description Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5483,6 +5619,253 @@ export interface operations {
             };
             /** @description Markdown no válido (template_invalid) o destino de solo lectura */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_manifest_api_v1_projects__project_id__context_taxonomy_manifest_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyManifestOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin acceso o sin manifiesto (manifest_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Markdown no válido (template_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_manifest_versions_api_v1_projects__project_id__context_taxonomy_manifest_versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManifestVersionList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManifestVersionDetail"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin acceso o versión inexistente (manifest_version_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_manifest_version_api_v1_projects__project_id__context_taxonomy_manifest_versions__version_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyManifestOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin acceso o versión inexistente (manifest_version_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (manifest_changed), escritura en curso (write_locked) o no es un fichero normal (manifest_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Versión no válida (manifest_version_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
                 headers: {
                     [name: string]: unknown;
                 };

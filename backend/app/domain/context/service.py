@@ -8,24 +8,40 @@ manifiesto, un fichero pequeño del destino a través del resolvedor de ubicacio
 from __future__ import annotations
 
 import json
+import logging
 import os
 import stat
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final, Literal
 
-from sqlalchemy import ColumnElement, Text, cast, func, or_, select
+from sqlalchemy import ColumnElement, Text, cast, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import ACTIVE_RUN_STATUSES, ContextDocument, Project, ProjectContext, Run, User
+from app.db.models import (
+    ACTIVE_RUN_STATUSES,
+    ContextDocument,
+    ManifestVersionAction,
+    Project,
+    ProjectContext,
+    ProjectManifestVersion,
+    Run,
+    User,
+)
 from app.domain.ai import settings as ai_settings
-from app.domain.context import templates
+from app.domain.context import manifest_versions, templates
 from app.domain.context.errors import (
     ContextNotFoundError,
     DestinationReadOnlyError,
     InvalidContextBuildError,
+    ManifestChangedError,
+    ManifestEtagRequiredError,
+    ManifestNotFoundError,
     ManifestReplacedError,
+    ManifestVersionInvalidError,
+    TemplateInvalidError,
     TemplateNotFoundError,
 )
 from app.domain.documents.errors import OutputNotFoundError, OutputTooLargeError
@@ -40,7 +56,14 @@ from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, c
 from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_FOLDER_NAME: Final = "organizado"
+#: Tamaño máximo del manifiesto que se copia en una versión (uno mayor que ``MAX_TEMPLATE_BYTES`` solo puede venir de
+#: una edición fuera de la app; si pasa también de este, la versión se guarda sin texto y se avisa en el log).
+MAX_VERSION_BYTES: Final = 4 * 1024 * 1024
+#: ``etag`` de un manifiesto que no se puede leer entero (más grande que ``MAX_VERSION_BYTES``).
+TOO_LARGE_ETAG: Final = "too_large"
 #: Tamaño máximo del historial del contexto que lee la API (más grande: «Historial del contexto (Excel)»).
 MAX_HISTORY_BYTES: Final = 16 * 1024 * 1024
 DocumentFilter = Literal["failed", "collision", "ai_disagrees"]
@@ -53,6 +76,8 @@ class Manifest:
     markdown: str | None
     info: library.TemplateInfo | None = None
     error: str | None = None
+    #: Para ``If-Match`` al guardar, borrar o restaurar (``manifest_versions.manifest_etag``).
+    etag: str = manifest_versions.NO_MANIFEST_ETAG
 
 
 # --- lectura de la proyección ----------------------------------------------------------------------------------------
@@ -176,29 +201,56 @@ def _manifest_state(path: Path) -> bool:
     return True
 
 
+def _read_text(path: Path, root: Path, max_bytes: int) -> str | None:
+    """Texto de ``taxonomy_manifest.md`` (``None`` si no existe), leído dentro de ``root`` sin seguir enlaces.
+
+    Raises:
+        ManifestReplacedError: Existe, pero no es un fichero normal.
+        OutputTooLargeError: Pasa de ``max_bytes``.
+    """
+    if not _manifest_state(path):
+        return None
+    try:
+        return read_inside(path, root, max_bytes=max_bytes).decode("utf-8", errors="replace")
+    except OutputNotFoundError:
+        return None
+
+
+def _current_for_version(settings: Settings, path: Path, root: Path) -> tuple[str | None, str]:
+    """``(texto, etag)`` del manifiesto en el disco para guardarlo como versión (hasta ``MAX_VERSION_BYTES``).
+
+    Uno aún mayor da ``(None, "too_large")``: se puede sustituir, pero su versión queda sin texto.
+    """
+    try:
+        text = run_with_timeout(
+            lambda: _read_text(path, root, MAX_VERSION_BYTES), settings.location_probe_timeout_seconds
+        )
+    except OutputTooLargeError:
+        return None, TOO_LARGE_ETAG
+    if text is not None:
+        text = manifest_versions.normalize(text)  # las versiones se guardan siempre con saltos LF
+    return text, manifest_versions.manifest_etag(text)
+
+
 def read_manifest(settings: Settings, project: Project) -> Manifest:
-    """``taxonomy_manifest.md`` del proyecto, validado (un manifiesto inválido se devuelve con su error)."""
+    """``taxonomy_manifest.md`` del proyecto, validado (un manifiesto inválido se devuelve con su error) y su ``etag``."""
     root = _output_root(settings, project)
     path = library.manifest_file(root)
 
-    def _read() -> str | None:
-        if not _manifest_state(path):
-            return None
-        try:
-            return read_inside(path, root, max_bytes=MAX_TEMPLATE_BYTES).decode("utf-8", errors="replace")
-        except OutputNotFoundError:
-            return None
-
     try:
-        markdown = run_with_timeout(_read, settings.location_probe_timeout_seconds)
+        markdown = run_with_timeout(
+            lambda: _read_text(path, root, MAX_TEMPLATE_BYTES), settings.location_probe_timeout_seconds
+        )
     except OutputTooLargeError:
-        return Manifest(markdown=None, error=f"El manifiesto pasa de {MAX_TEMPLATE_BYTES // 1024} KiB.")
+        _, etag = _current_for_version(settings, path, root)
+        return Manifest(markdown=None, error=f"El manifiesto pasa de {MAX_TEMPLATE_BYTES // 1024} KiB.", etag=etag)
+    etag = manifest_versions.manifest_etag(markdown)
     if markdown is None:
-        return Manifest(markdown=None)
+        return Manifest(markdown=None, etag=etag)
     try:
-        return Manifest(markdown=markdown, info=library.parse_template(markdown))
+        return Manifest(markdown=markdown, info=library.parse_template(markdown), etag=etag)
     except library.TemplateInvalidError as exc:
-        return Manifest(markdown=markdown, error=str(exc))
+        return Manifest(markdown=markdown, error=str(exc), etag=etag)
 
 
 @dataclass(frozen=True)
@@ -275,42 +327,228 @@ def _check_writable(db: Session, project: Project) -> None:
         raise WriteLockedError("Espera a que termine la operación de escritura en curso.")
 
 
+def _mutate_manifest(
+    db: Session,
+    settings: Settings,
+    project: Project,
+    *,
+    if_match: str | None,
+    action: ManifestVersionAction,
+    actor: User,
+    change: Callable[[Path, Path, bool], bool],
+) -> tuple[str | None, ProjectManifestVersion | None]:
+    """Sección crítica común a guardar, borrar y restaurar: comprobar ``If-Match``, guardar la versión y cambiar.
+
+    1. Sin ``if_match``: 428. Destino ``rw`` y sin escrituras en curso.
+    2. Con el cerrojo del proyecto: se lee lo que hay en el disco y se compara su ``etag`` con ``if_match`` (409 si
+       cambió). ``change(path, root, apply=False)`` decide primero, sin escribir, si hay algo que hacer (``False``: nada,
+       ni versión ni escritura); ``change(path, root, apply=True)`` hace el cambio.
+    3. La versión (lo que había) se guarda y **se confirma antes de escribir** (B3). Si la escritura falla de forma
+       definitiva, se retira; si se agota el tiempo (la escritura puede seguir en segundo plano), se conserva: es lo
+       que había y restaurarla es inocuo. Así el fichero nunca cambia sin versión.
+
+    Devuelve el texto que había y la versión guardada (``None`` si no hubo cambio).
+
+    Raises:
+        ManifestEtagRequiredError: Falta ``If-Match``.
+        ManifestChangedError: El manifiesto cambió desde que se leyó.
+        DestinationReadOnlyError: El destino es de solo lectura.
+        WriteLockedError: Hay una escritura en cola o en marcha en el proyecto.
+        ManifestReplacedError: El fichero actual no es un fichero normal.
+        LocationUnavailableError: El destino no responde o no se pudo escribir.
+    """
+    if not if_match:
+        raise ManifestEtagRequiredError("Recarga el manifiesto y vuelve a intentarlo.")
+    _check_writable(db, project)
+    root = _output_root(settings, project)
+    path = library.manifest_file(root)
+    with manifest_versions.project_lock(project.id):
+        current, etag = _current_for_version(settings, path, root)
+        if etag != if_match.strip('"'):
+            raise ManifestChangedError("Otro usuario lo ha cambiado: recarga para ver su versión.")
+        if not run_with_timeout(lambda: change(path, root, False), settings.location_probe_timeout_seconds):
+            return current, None
+        if etag == TOO_LARGE_ETAG:
+            logger.warning("Manifiesto del proyecto %s demasiado grande: su versión se guarda sin texto", project.id)
+        version = manifest_versions.add_version(db, project.id, current, action, actor_id=actor.id)
+        db.commit()
+        version_id = version.id
+        try:
+            run_with_timeout(lambda: change(path, root, True), settings.location_probe_timeout_seconds)
+        except LocationUnavailableError:
+            raise  # tiempo agotado: la versión se conserva
+        except (DocOrganizeOperationError, library.TemplateInvalidError, ManifestReplacedError, OSError) as exc:
+            db.execute(delete(ProjectManifestVersion).where(ProjectManifestVersion.id == version_id))
+            db.commit()
+            if isinstance(exc, ManifestReplacedError):
+                raise
+            raise LocationUnavailableError("No se pudo escribir el manifiesto en el destino.") from None
+        return current, db.get(ProjectManifestVersion, version_id)
+
+
+def _write_change(project: Project, markdown: str) -> Callable[[Path, Path, bool], bool]:
+    """``change`` de ``_mutate_manifest`` que escribe ``markdown`` (nada si es igual a lo que hay)."""
+    target = manifest_versions.normalize(markdown)
+
+    def _change(path: Path, root: Path, apply: bool) -> bool:
+        if not apply:
+            try:
+                on_disk = _read_text(path, root, MAX_VERSION_BYTES)
+            except OutputTooLargeError:
+                return True
+            return on_disk is None or manifest_versions.normalize(on_disk) != target
+        _manifest_state(path)
+        library.save_manifest(root, markdown, name=project.name, created_at=project.created_at)
+        return True
+
+    return _change
+
+
+def _unlink_manifest(path: Path) -> None:
+    """Borra ``taxonomy_manifest.md`` sin seguir enlaces (``os.unlink`` borra el enlace, nunca su destino)."""
+    if _manifest_state(path):
+        os.unlink(path)
+
+
 def save_manifest(
-    db: Session, settings: Settings, project: Project, markdown: str, *, actor: User, ctx: RequestContext
+    db: Session,
+    settings: Settings,
+    project: Project,
+    markdown: str,
+    *,
+    if_match: str | None,
+    actor: User,
+    ctx: RequestContext,
 ) -> Manifest:
-    """Valida y escribe ``taxonomy_manifest.md`` en la carpeta del proyecto.
+    """Valida y escribe ``taxonomy_manifest.md``, guardando antes como versión lo que había.
+
+    El mismo texto que ya hay no escribe ni guarda versión.
 
     Raises:
         TemplateInvalidError: El Markdown no es un manifiesto válido.
+        ManifestEtagRequiredError, ManifestChangedError: Ver ``_mutate_manifest``.
         DestinationReadOnlyError: El destino es de solo lectura.
         WriteLockedError: Hay una escritura en cola o en marcha en el proyecto.
         ManifestReplacedError: El fichero actual no es un fichero normal.
         LocationUnavailableError: El destino no responde o no se pudo escribir.
     """
     info = templates.validate_markdown(markdown)
-    _check_writable(db, project)
-    root = _output_root(settings, project)
-    path = library.manifest_file(root)
+    _, version = _mutate_manifest(
+        db, settings, project, if_match=if_match, action="save", actor=actor, change=_write_change(project, markdown)
+    )
+    if version is not None:
+        audit.record(
+            db,
+            action=AuditAction.PROJECT_TAXONOMY_MANIFEST_SAVE,
+            ctx=ctx,
+            actor_id=actor.id,
+            target_type="project",
+            target_id=project.id,
+            details={
+                "domains": len(info.domains),
+                "material_types": len(info.material_types),
+                "version_id": version.id,
+            },
+        )
+        db.commit()
+    return Manifest(markdown=markdown, info=info, etag=manifest_versions.manifest_etag(markdown))
 
-    def _write() -> None:
-        _manifest_state(path)
-        library.save_manifest(root, markdown, name=project.name, created_at=project.created_at)
 
-    try:
-        run_with_timeout(_write, settings.location_probe_timeout_seconds)
-    except (DocOrganizeOperationError, library.TemplateInvalidError):
-        raise LocationUnavailableError("No se pudo guardar el manifiesto en el destino.") from None
+def delete_manifest(
+    db: Session, settings: Settings, project: Project, *, if_match: str | None, actor: User, ctx: RequestContext
+) -> Manifest:
+    """Borra ``taxonomy_manifest.md`` guardando antes su versión (acción ``delete``).
+
+    Raises:
+        ManifestNotFoundError: No hay manifiesto.
+        ManifestEtagRequiredError, ManifestChangedError, DestinationReadOnlyError, WriteLockedError,
+        ManifestReplacedError, LocationUnavailableError: Ver ``_mutate_manifest``.
+    """
+
+    def _change(path: Path, root: Path, apply: bool) -> bool:
+        del root
+        if not apply:
+            if not _manifest_state(path):
+                raise ManifestNotFoundError("El proyecto no tiene manifiesto de taxonomía.")
+            return True
+        _unlink_manifest(path)
+        return True
+
+    _, version = _mutate_manifest(
+        db, settings, project, if_match=if_match, action="delete", actor=actor, change=_change
+    )
+    if version is None:  # no ocurre: sin fichero, la comprobación ya lanza ``ManifestNotFoundError``
+        raise ManifestNotFoundError("El proyecto no tiene manifiesto de taxonomía.")
     audit.record(
         db,
-        action=AuditAction.PROJECT_TAXONOMY_MANIFEST_SAVE,
+        action=AuditAction.PROJECT_TAXONOMY_MANIFEST_DELETE,
         ctx=ctx,
         actor_id=actor.id,
         target_type="project",
         target_id=project.id,
-        details={"domains": len(info.domains), "material_types": len(info.material_types)},
+        details={"version_id": version.id},
     )
     db.commit()
-    return Manifest(markdown=markdown, info=info)
+    return Manifest(markdown=None)
+
+
+def restore_manifest(
+    db: Session,
+    settings: Settings,
+    project: Project,
+    version_id: int,
+    *,
+    if_match: str | None,
+    actor: User,
+    ctx: RequestContext,
+) -> Manifest:
+    """Restaura la versión ``version_id`` (una «sin manifiesto» borra el fichero) guardando antes lo que había, para
+    que restaurar también se pueda deshacer.
+
+    Raises:
+        ManifestVersionNotFoundError: No existe esa versión en el proyecto.
+        ManifestVersionInvalidError: La versión no es un manifiesto válido.
+        ManifestEtagRequiredError, ManifestChangedError, DestinationReadOnlyError, WriteLockedError,
+        ManifestReplacedError, LocationUnavailableError: Ver ``_mutate_manifest``.
+    """
+    stored = manifest_versions.get_version(db, project.id, version_id)
+    markdown = stored.markdown
+    info: library.TemplateInfo | None = None
+    if markdown is not None:
+        try:
+            info = templates.validate_markdown(markdown)
+        except TemplateInvalidError as exc:
+            raise ManifestVersionInvalidError(exc.detail) from None
+        change = _write_change(project, markdown)
+    else:
+
+        def change(path: Path, root: Path, apply: bool) -> bool:
+            del root
+            if not apply:
+                return _manifest_state(path)  # ya no hay manifiesto: nada que hacer
+            _unlink_manifest(path)
+            return True
+
+    _, version = _mutate_manifest(
+        db, settings, project, if_match=if_match, action="restore", actor=actor, change=change
+    )
+    audit.record(
+        db,
+        action=AuditAction.PROJECT_TAXONOMY_MANIFEST_RESTORE,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="project",
+        target_id=project.id,
+        details={
+            "restored_version_id": version_id,
+            "version_id": version.id if version else None,
+            "domains": len(info.domains) if info else None,
+        },
+    )
+    db.commit()
+    if markdown is None:
+        return Manifest(markdown=None)
+    return Manifest(markdown=markdown, info=info, etag=manifest_versions.manifest_etag(markdown))
 
 
 # --- validación de context_build al encolar --------------------------------------------------------------------------

@@ -5,6 +5,42 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-17
+
+El manifiesto de taxonomía solo con su catálogo, «Personalizar para este proyecto» desde una plantilla y versiones del
+manifiesto para deshacer (guardar, borrar, restaurar, vaciar el histórico). Migración `0015`, aditiva. Sigue
+doc_organize 1.6.0. **Cambio de contrato**: guardar el manifiesto exige `If-Match`.
+
+### Added
+
+- **Versiones del manifiesto de taxonomía** (migración `0015`, tabla `project_manifest_versions`, aditiva): cada
+  cambio guarda antes lo que había (al guardar, borrar, restaurar o vaciar el histórico) y se conservan las 5 últimas
+  por proyecto. «Restaurar la versión anterior» y la lista «Versiones» («Ver», «Restaurar», «Cargar en el editor» si no
+  es válida); restaurar también se puede deshacer.
+- **Borrar manifiesto**, con confirmación (`DELETE …/context/taxonomy-manifest`, `manifest_not_found` si no hay);
+  no sigue enlaces (`manifest_replaced`).
+- **«Personalizar para este proyecto»**: con el catálogo «Plantilla», copia la plantilla elegida al editor del
+  manifiesto sin guardarla y cambia a «Manifiesto del proyecto», con «Deshacer». Todas las plantillas incluidas se
+  aceptan como manifiesto (test).
+- API: `GET …/taxonomy-manifest/versions`, `GET …/versions/{version_id}` y `POST …/versions/{version_id}/restore`
+  (`manifest_version_not_found`, `manifest_version_invalid`); auditoría `project.taxonomy_manifest_delete` y
+  `project.taxonomy_manifest_restore`, sin el texto.
+
+### Changed
+
+- **El bloque del manifiesto solo aparece con el catálogo «Manifiesto del proyecto»** (con «Pedir borrador»); el
+  borrador sin guardar se conserva al cambiar de catálogo. Quien no construye lo ve si el contexto se construyó con él
+  o con el enlace «Ver el manifiesto del proyecto».
+- Con cambios sin guardar en el manifiesto y su catálogo, «Construir» se desactiva y lo explica.
+- Copiar una plantilla, pedir un borrador a la IA o cargar una versión piden confirmación antes de sustituir otro texto.
+- **Concurrencia en el manifiesto**: `GET …/taxonomy-manifest` devuelve `etag` y `last_changed_at`; `PUT`, `DELETE` y
+  `restore` exigen `If-Match` (428 `etag_required`; 409 `manifest_changed` si otro lo cambió, y la página vuelve a
+  leerlo sin perder el borrador). **Cambio de contrato** para clientes de la API que guarden el manifiesto.
+- «Vaciar histórico» guarda antes el manifiesto como versión, y su confirmación lo dice.
+- Aviso «reconstruye para aplicarlo» si el contexto se construyó con el manifiesto antes de su último cambio.
+- La ayuda y la guía describen bien «Descubrir dominios» (un dominio por carpeta, sin leer el contenido) y comparan
+  ese catálogo con el manifiesto.
+
 ## [1.7.0] - 2026-11-17
 
 Probar la conexión de la IA antes de guardarla, iconos en toda la interfaz y un menú que se puede plegar en móvil. Sin

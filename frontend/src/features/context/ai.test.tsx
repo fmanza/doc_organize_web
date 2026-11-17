@@ -7,7 +7,14 @@ import { PROJECT, runOut } from '../../test/fixtures';
 import { renderRoute } from '../../test/render';
 
 const RUN_ID = '66666666-6666-4666-8666-666666666666';
-const NO_MANIFEST = { markdown: null, error: null, domains: [], material_types: [] };
+const NO_MANIFEST = {
+  markdown: null,
+  error: null,
+  domains: [],
+  material_types: [],
+  etag: 'none',
+  last_changed_at: null,
+};
 const NOT_BUILT = {
   status: 404,
   body: { title: 'Contexto no encontrado', status: 404, code: 'context_not_found' },
@@ -17,6 +24,7 @@ const BASE = {
   'GET /api/v1/projects/7': { body: PROJECT },
   'GET /api/v1/projects/7/context': NOT_BUILT,
   'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+  'GET /api/v1/projects/7/context/taxonomy-manifest/versions': { body: { items: [], limit: 5 } },
   'GET /api/v1/taxonomy-templates': { body: { items: [] } },
 };
 
@@ -47,6 +55,9 @@ describe('ContextPage con IA', () => {
     const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
     expect(toggle).toBeDisabled();
     expect(screen.getByText(/configurar la «Clasificación de dominios»/)).toBeInTheDocument();
+    // «Pedir borrador» está con el manifiesto, que solo se ve con su catálogo (A5).
+    expect(screen.queryByRole('button', { name: 'Pedir borrador' })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('radio', { name: 'Manifiesto del proyecto' }));
     expect(await screen.findByRole('button', { name: 'Pedir borrador' })).toBeDisabled();
   });
 
@@ -158,6 +169,7 @@ describe('ContextPage con IA', () => {
 
     renderRoute('/projects/7/context');
 
+    await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
     const sample = await screen.findByRole('textbox', { name: 'Documentos de muestra' });
     await user.clear(sample);
     await user.type(sample, '10');
@@ -197,6 +209,7 @@ describe('ContextPage con IA', () => {
 
     renderRoute('/projects/7/context');
 
+    await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
     await user.click(await screen.findByRole('button', { name: 'Pedir borrador' }));
 
     expect(await screen.findByText(/rechazó la clave del borrador/)).toBeInTheDocument();
