@@ -252,7 +252,8 @@ describe('Manifiesto del proyecto', () => {
     expect(screen.getByText(/se construyó con el manifiesto anterior a este cambio/)).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Versiones (1)' }));
     expect(await screen.findByText('2 dominios · 1 tipos')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ver' })).toBeInTheDocument();
+    // El panel del acordeón tarda en ser accesible: se espera al botón, no solo al texto.
+    expect(await screen.findByRole('button', { name: 'Ver' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Restaurar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Restaurar la versión anterior' })).not.toBeInTheDocument();
   });
