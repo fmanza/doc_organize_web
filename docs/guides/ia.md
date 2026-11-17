@@ -38,6 +38,23 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
   avisa y solo deja guardar URL, modelo y usuario.
 - Cada cambio queda en la [auditoría](usuarios_y_sesiones.md) con los nombres de los campos, nunca con las claves.
 
+### Probar la conexión
+
+Cada tarjeta tiene **Probar conexión**. Prueba con lo que haya en el formulario, **sin guardarlo**; lo que no has tocado
+se toma de lo guardado o de la variable del servidor. Así puedes comprobar un cambio antes de guardarlo.
+
+- **Probar conexión** comprueba que el servidor responde y que la clave es válida, sin gastar tokens:
+  - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
+    configurado, lo avisa.
+  - GitHub Copilot: consulta el uso del mes, como el panel de uso. El token necesita permiso de facturación.
+- **Probar el modelo** (solo en las tarjetas con modelo) envía además una petición mínima al modelo, que gasta unos
+  pocos tokens. Es la prueba que detecta un nombre de modelo mal escrito. Si «Probar conexión» dice que la clave fue
+  rechazada, prueba el modelo: algunos proxies no dejan a la clave consultar sus propios datos.
+- El resultado dice el tiempo que tardó o el tipo de error: clave rechazada, sin conexión (o sin respuesta a tiempo), el
+  modelo no respondió u otro error. Nunca muestra lo que contestó el servidor.
+- Si cambias la URL, escribe también la clave: la guardada nunca se envía a otro servidor.
+- Como mucho una prueba por tarjeta cada 10 segundos. Cada prueba queda en la auditoría, sin URL ni claves.
+
 En **Administración → IA → Parámetros** hay cinco ajustes más (hasta la 1.5 estaban en Ajustes):
 
 | Ajuste | Por defecto | Qué hace |

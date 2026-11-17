@@ -16,11 +16,14 @@ from app.api.v1.schemas import (
     AiFieldOut,
     AiSettingsOut,
     AiStatusOut,
+    AiTestIn,
+    AiTestOut,
     AiUsageItemOut,
     AiUsageOut,
     AiUsageSourceOut,
 )
 from app.core import crypto
+from app.domain.ai import connection_test
 from app.domain.ai import settings as ai_settings
 from app.domain.ai import usage as ai_usage
 from app.domain.ai.settings import FamilyView
@@ -80,6 +83,44 @@ def put_ai_family(
     view = ai_settings.update_family(db, family, body.fields, settings=settings, actor=admin, ctx=ctx)
     ai_usage.clear_cache()
     return _family_out(view)
+
+
+@router.post(
+    "/admin/ai-settings/{family}/test",
+    response_model=AiTestOut,
+    summary="Probar la conexión de una familia de IA",
+    responses={
+        **_ERRORS,
+        404: {"description": "Familia desconocida (``ai_family_not_found``)"},
+        422: {
+            "description": (
+                "Campo ajeno o valor no válido (``ai_setting_invalid``), falta un obligatorio (``ai_not_configured``) "
+                "u otra URL sin escribir la clave (``secret_required``)"
+            )
+        },
+        429: {"description": "Otra prueba de la familia hace menos de 10 s (``ai_test_too_soon``)"},
+    },
+)
+def probe_ai_family(
+    family: str, body: AiTestIn, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
+) -> AiTestOut:
+    """Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.
+
+    Con LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una
+    clasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.
+    """
+    outcome = connection_test.probe_family(
+        db, family, body.fields, model_check=body.model_check, settings=settings, actor=admin, ctx=ctx
+    )
+    check = outcome.check
+    return AiTestOut(
+        ok=outcome.ok,
+        error=check.error,
+        model_access=check.model_access,
+        model_checked=check.model_checked,
+        elapsed_ms=check.elapsed_ms,
+        tested_at=outcome.tested_at,
+    )
 
 
 @router.get("/ai/status", response_model=AiStatusOut, summary="Familias de IA configuradas", responses=_ERRORS)

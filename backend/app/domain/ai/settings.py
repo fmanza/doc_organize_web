@@ -203,6 +203,22 @@ def validate_base_url(value: str) -> str:
     return value.rstrip("/")
 
 
+def validate_changes(spec: FamilySpec, changes: dict[str, str | None]) -> dict[str, str | None]:
+    """``changes`` validados con las reglas de cada campo (``None`` o ``""`` = sin valor), sin escribir nada.
+
+    Raises:
+        InvalidAiSettingError: Campo ajeno o valor no válido.
+    """
+    validated: dict[str, str | None] = {}
+    for name, raw in changes.items():
+        field = spec.field(name)
+        if field is None:
+            raise InvalidAiSettingError(f"«{name}» no es un campo de {spec.key}")
+        text = (raw or "").strip()
+        validated[name] = _validate(field, text) if text else None
+    return validated
+
+
 def _validate(spec: FieldSpec, value: str) -> str:
     if spec.name == "base_url":
         return validate_base_url(value)
@@ -237,13 +253,7 @@ def update_family(
         EncryptionNotConfiguredError: Hay que cifrar un secreto y no hay ``DOW_FERNET_KEYS``.
     """
     spec = family_spec(key)
-    validated: dict[str, str | None] = {}
-    for name, raw in changes.items():
-        field = spec.field(name)
-        if field is None:
-            raise InvalidAiSettingError(f"«{name}» no es un campo de {key}")
-        text = (raw or "").strip()
-        validated[name] = _validate(field, text) if text else None
+    validated = validate_changes(spec, changes)
     specs = {field.name: field for field in spec.fields}
     if any(value and specs[name].secret for name, value in validated.items()) and not crypto.is_configured(settings):
         raise EncryptionNotConfiguredError("Define DOW_FERNET_KEYS para guardar credenciales")

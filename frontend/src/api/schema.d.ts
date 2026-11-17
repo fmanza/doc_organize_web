@@ -64,6 +64,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/ai-settings/{family}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probar la conexión de una familia de IA
+         * @description Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.
+         *
+         *     Con LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una
+         *     clasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.
+         */
+        post: operations["probe_ai_family_api_v1_admin_ai_settings__family__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/ai-usage": {
         parameters: {
             query?: never;
@@ -1374,6 +1397,54 @@ export interface components {
             families: {
                 [key: string]: boolean;
             };
+        };
+        /**
+         * AiTestIn
+         * @description «Probar conexión»: valores del formulario que sustituyen a los efectivos (ausente = el efectivo; ``null`` o ``""``
+         *     = sin valor). No se guarda nada.
+         */
+        AiTestIn: {
+            /** Fields */
+            fields?: {
+                [key: string]: string | null;
+            };
+            /**
+             * Model Check
+             * @description Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)
+             * @default false
+             */
+            model_check: boolean;
+        };
+        /**
+         * AiTestOut
+         * @description Resultado de «Probar conexión»: solo un código, nunca el cuerpo de lo que respondió el servidor.
+         */
+        AiTestOut: {
+            /** Elapsed Ms */
+            elapsed_ms: number;
+            /**
+             * Error
+             * @description Credencial rechazada, sin conexión o timeout, otro error, o el modelo no respondió
+             */
+            error: ("ai_auth" | "ai_connection" | "ai_error" | "ai_model") | null;
+            /**
+             * Model Access
+             * @description Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)
+             * @enum {string}
+             */
+            model_access: "ok" | "denied" | "unknown";
+            /**
+             * Model Checked
+             * @description Si se envió la petición al modelo
+             */
+            model_checked: boolean;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Tested At
+             * Format: date-time
+             */
+            tested_at: string;
         };
         /** AiUsageItemOut */
         AiUsageItemOut: {
@@ -3673,6 +3744,67 @@ export interface operations {
             };
             /** @description Campo ajeno o valor no válido (``ai_setting_invalid``) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    probe_ai_family_api_v1_admin_ai_settings__family__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiTestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiTestOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Familia desconocida (``ai_family_not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campo ajeno o valor no válido (``ai_setting_invalid``), falta un obligatorio (``ai_not_configured``) u otra URL sin escribir la clave (``secret_required``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Otra prueba de la familia hace menos de 10 s (``ai_test_too_soon``) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

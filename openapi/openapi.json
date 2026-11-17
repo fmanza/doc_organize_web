@@ -174,6 +174,100 @@
         "title": "AiStatusOut",
         "type": "object"
       },
+      "AiTestIn": {
+        "additionalProperties": false,
+        "description": "«Probar conexión»: valores del formulario que sustituyen a los efectivos (ausente = el efectivo; ``null`` o ``\"\"``\n= sin valor). No se guarda nada.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 8,
+            "propertyNames": {
+              "maxLength": 32
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "model_check": {
+            "default": false,
+            "description": "Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
+            "title": "Model Check",
+            "type": "boolean"
+          }
+        },
+        "title": "AiTestIn",
+        "type": "object"
+      },
+      "AiTestOut": {
+        "description": "Resultado de «Probar conexión»: solo un código, nunca el cuerpo de lo que respondió el servidor.",
+        "properties": {
+          "elapsed_ms": {
+            "title": "Elapsed Ms",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ai_auth",
+                  "ai_connection",
+                  "ai_error",
+                  "ai_model"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Credencial rechazada, sin conexión o timeout, otro error, o el modelo no respondió",
+            "title": "Error"
+          },
+          "model_access": {
+            "description": "Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)",
+            "enum": [
+              "ok",
+              "denied",
+              "unknown"
+            ],
+            "title": "Model Access",
+            "type": "string"
+          },
+          "model_checked": {
+            "description": "Si se envió la petición al modelo",
+            "title": "Model Checked",
+            "type": "boolean"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "tested_at": {
+            "format": "date-time",
+            "title": "Tested At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "error",
+          "model_access",
+          "model_checked",
+          "elapsed_ms",
+          "tested_at"
+        ],
+        "title": "AiTestOut",
+        "type": "object"
+      },
       "AiUsageItemOut": {
         "properties": {
           "cost_usd": {
@@ -5582,6 +5676,64 @@
           }
         },
         "summary": "Cambiar una familia de IA",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/admin/ai-settings/{family}/test": {
+      "post": {
+        "description": "Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.\n\nCon LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una\nclasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.",
+        "operationId": "probe_ai_family_api_v1_admin_ai_settings__family__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "family",
+            "required": true,
+            "schema": {
+              "title": "Family",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiTestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "Familia desconocida (``ai_family_not_found``)"
+          },
+          "422": {
+            "description": "Campo ajeno o valor no válido (``ai_setting_invalid``), falta un obligatorio (``ai_not_configured``) u otra URL sin escribir la clave (``secret_required``)"
+          },
+          "429": {
+            "description": "Otra prueba de la familia hace menos de 10 s (``ai_test_too_soon``)"
+          }
+        },
+        "summary": "Probar la conexión de una familia de IA",
         "tags": [
           "ai"
         ]

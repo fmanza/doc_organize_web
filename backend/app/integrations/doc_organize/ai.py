@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path, PurePosixPath
@@ -53,6 +54,19 @@ FamilyKey = Literal[
     "github_copilot_usage",
 ]
 AiErrorCode = Literal["ai_auth", "ai_connection", "ai_error"]
+#: Resultado de «Probar conexión»: los de ``AiErrorCode`` y ``ai_model`` (el modelo no respondió: alias inexistente o no
+#: permitido para la clave).
+TestErrorCode = Literal["ai_auth", "ai_connection", "ai_error", "ai_model"]
+ModelAccess = Literal["ok", "denied", "unknown"]
+#: Familias que llaman a un modelo (las que admiten «Probar el modelo»).
+MODEL_FAMILIES: Final[frozenset[str]] = frozenset(
+    {
+        "litellm_classification",
+        "litellm_taxonomy_classification",
+        "litellm_taxonomy_manifest_draft",
+        "litellm_enrichment",
+    }
+)
 UsageSourceKey = Literal["litellm", "github_copilot"]
 
 logger = logging.getLogger(__name__)
@@ -414,3 +428,114 @@ async def fetch_usage(source: UsageSourceKey, connection: AiConnection) -> Usage
             for item in snapshot.items
         ],
     )
+
+
+# --- probar la conexión (API, «Probar conexión» de Configuración IA) ---------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ConnectionCheck:
+    """Resultado de una prueba: sin URL, clave ni cuerpo de la respuesta, solo un código.
+
+    Attributes:
+        error: ``None`` si fue bien.
+        model_access: Si la clave de LiteLLM tiene acceso al modelo según ``/key/info`` (``unknown`` si no lo dice o la
+            familia no tiene modelo).
+        model_checked: Si se envió una petición al modelo.
+        elapsed_ms: Duración de la prueba.
+    """
+
+    error: TestErrorCode | None
+    model_access: ModelAccess
+    model_checked: bool
+    elapsed_ms: int
+
+
+#: Texto de la petición mínima al modelo: no es un documento real y no pide nada que se guarde.
+_PROBE_TEXT: Final = "Prueba de conexión de doc_organize_web."
+_PROBE_DOMAIN: Final = "prueba"
+
+
+def _model_access(raw: dict[str, Any], model: str | None) -> ModelAccess:
+    """Lo que dice ``/key/info`` de ``model``: ``models`` vacío (o ausente) es «todos»; con lista, tiene que estar."""
+    info = raw.get("info", raw) if isinstance(raw, dict) else {}
+    models = info.get("models") if isinstance(info, dict) else None
+    if not model or not isinstance(models, list):
+        return "unknown"
+    if not models or "all-proxy-models" in models:
+        return "ok"
+    return "ok" if model in models else "denied"
+
+
+async def _check_key(connection: AiConnection) -> tuple[TestErrorCode | None, ModelAccess]:
+    """``GET /key/info`` (LiteLLM) o el uso del mes (GitHub Copilot): servidor alcanzable y credencial válida."""
+    from doc_organize.ai import GitHubCopilotUsageClient, LiteLLMUsageClient
+    from doc_organize.core.exceptions import UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
+    from doc_organize.core.models import LiteLLMUsageConfig
+
+    try:
+        if connection.family == "github_copilot_usage":
+            today = date.today()
+            async with GitHubCopilotUsageClient(config_for(connection), transport=_transport(connection)) as client:
+                await client.get_usage(year=today.year, month=today.month)
+            return None, "unknown"
+        kwargs = _litellm_kwargs(connection)
+        model = config_for(connection).model if connection.family in MODEL_FAMILIES else None
+        kwargs.pop("model", None)
+        async with LiteLLMUsageClient(LiteLLMUsageConfig(**kwargs), transport=_transport(connection)) as client:
+            snapshot = await client.get_usage()
+    except UsageSourceError as exc:
+        return _ai_error(exc, UsageSourceAuthError, UsageSourceConnectionError).code, "unknown"
+    except (ValueError, TypeError, AttributeError):  # respuesta que no es el JSON esperado
+        return "ai_error", "unknown"
+    return None, _model_access(snapshot.raw, model)
+
+
+async def _check_model(connection: AiConnection) -> TestErrorCode | None:
+    """Una clasificación mínima con la URL, la clave y el modelo de la familia (gasta unos pocos tokens)."""
+    from doc_organize.ai import DomainClassificationClient
+    from doc_organize.core.exceptions import (
+        DomainClassificationAuthError,
+        DomainClassificationConnectionError,
+        DomainClassificationError,
+    )
+    from doc_organize.core.models import LiteLLMClassificationConfig
+
+    kwargs = _litellm_kwargs(connection)
+    kwargs["model"] = config_for(connection).model  # el de la familia o, si no hay, su valor por defecto
+    try:
+        async with DomainClassificationClient(
+            LiteLLMClassificationConfig(**kwargs), transport=_transport(connection)
+        ) as client:
+            await client.classify(chunks_text=_PROBE_TEXT, title=None, candidate_domains=[_PROBE_DOMAIN])
+    except DomainClassificationError as exc:
+        code = _ai_error(exc, DomainClassificationAuthError, DomainClassificationConnectionError).code
+        # El resto (HTTP 400/404 de un alias que no existe, o una respuesta que no es JSON) es cosa del modelo.
+        return "ai_model" if code == "ai_error" else code
+    return None
+
+
+def check_connection(connection: AiConnection, *, model_check: bool = False) -> ConnectionCheck:
+    """Prueba ``connection`` sin guardar nada: primero la credencial y, si se pide y la familia tiene modelo, el modelo.
+
+    No lanza excepciones del servicio: el resultado lleva el código del error. Nunca registra la URL ni la clave.
+    """
+    if model_check and connection.family not in MODEL_FAMILIES:
+        raise ValueError(f"{connection.family} no llama a un modelo")
+    started = time.monotonic()
+
+    async def _run() -> tuple[TestErrorCode | None, ModelAccess, bool]:
+        error, access = await _check_key(connection)
+        if error is not None and not (model_check and error == "ai_auth"):
+            return error, access, False
+        if not model_check:
+            return error, access, False
+        # Un 401/403 en ``/key/info`` puede ser política del proxy: la prueba del modelo es la que decide.
+        return await _check_model(connection), access, True
+
+    error, access, checked = asyncio.run(_run())
+    elapsed = int((time.monotonic() - started) * 1000)
+    logger.info(
+        "Prueba de conexión de IA", extra={"family": connection.family, "error": error, "model_checked": checked}
+    )
+    return ConnectionCheck(error=error, model_access=access, model_checked=checked, elapsed_ms=elapsed)

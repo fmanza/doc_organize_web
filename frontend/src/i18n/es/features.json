@@ -1235,7 +1235,18 @@
       "clear": "Borrar valor guardado",
       "clearLabel": "Borrar el valor guardado de {{label}}",
       "saveLabel": "Guardar {{label}}",
-      "saved": "Guardado."
+      "saved": "Guardado.",
+      "test": "Probar conexión",
+      "testLabel": "Probar la conexión de {{label}}",
+      "testModel": "Probar el modelo",
+      "testModelLabel": "Probar el modelo de {{label}}",
+      "testModelHint": "Envía una petición mínima al modelo: gasta unos pocos tokens.",
+      "testOk": "Conexión correcta ({{ms}} ms)",
+      "testOkKey": "El servidor responde y la clave es válida (con los valores del formulario, sin guardar). El modelo no se ha probado.",
+      "testOkModel": "El servidor, la clave y el modelo responden (con los valores del formulario, sin guardar).",
+      "testFailed": "La prueba falló",
+      "testAuthHint": "Algunos proxies no dejan a la clave consultar sus datos: prueba el modelo para confirmarlo.",
+      "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado."
     },
     "families": {
       "litellm_classification": {
@@ -1297,7 +1308,8 @@
     "errors": {
       "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",
       "ai_connection": "No se pudo conectar con el servicio (o no respondió a tiempo).",
-      "ai_error": "El servicio devolvió un error o una respuesta inesperada."
+      "ai_error": "El servicio devolvió un error o una respuesta inesperada.",
+      "ai_model": "El modelo no respondió: revisa el nombre del modelo o si la clave puede usarlo."
     },
     "parameters": {
       "title": "Parámetros de la IA",

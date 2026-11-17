@@ -8,6 +8,7 @@ export type AiFamily = components['schemas']['AiFamilyOut'];
 export type AiField = components['schemas']['AiFieldOut'];
 export type AiFamilyKey = AiFamily['key'];
 export type AiUsageSource = components['schemas']['AiUsageSourceOut'];
+export type AiTestResult = components['schemas']['AiTestOut'];
 
 /** Configuración de IA de la instancia (solo admin; nunca trae secretos). */
 export function useAiSettings() {
@@ -42,6 +43,30 @@ export function useUpdateAiFamily() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'ai-usage'] }),
       ]);
     },
+  });
+}
+
+/**
+ * «Probar conexión»: prueba una familia con los valores del formulario encima de los guardados, sin guardar nada.
+ * `modelCheck` envía además una petición mínima al modelo (gasta unos pocos tokens).
+ */
+export function useTestAiFamily() {
+  return useMutation({
+    mutationFn: async ({
+      family,
+      fields,
+      modelCheck,
+    }: {
+      family: AiFamilyKey;
+      fields: Record<string, string>;
+      modelCheck: boolean;
+    }) =>
+      unwrap(
+        await api.POST('/api/v1/admin/ai-settings/{family}/test', {
+          params: { path: { family } },
+          body: { fields, model_check: modelCheck },
+        }),
+      ),
   });
 }
 
