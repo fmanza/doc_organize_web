@@ -23,6 +23,22 @@ export default defineConfig(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // Los iconos se eligen en un solo sitio (src/components/icons.ts): tamaño, trazo y significado coherentes.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@tabler/icons-react', '@tabler/icons-react/*'],
+              message: 'Importa los iconos desde components/icons.',
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    files: ['src/components/icons.ts'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 );

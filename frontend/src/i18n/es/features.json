@@ -166,7 +166,7 @@
     "introAdmin": "Carpetas montadas bajo /mnt que la aplicación puede usar como origen o destino. Las carpetas de red se montan en el servidor (ver la guía «Montar carpetas de red»).",
     "empty": "Todavía no hay ubicaciones. Pide a un administrador que registre una.",
     "emptyAdmin": "Todavía no hay ubicaciones. Registra la primera con «Nueva ubicación».",
-    "back": "← Volver a ubicaciones",
+    "back": "Volver a ubicaciones",
     "browse": "Carpetas",
     "probe": "Comprobar",
     "probeLabel": "Comprobar {{name}}",
@@ -378,7 +378,7 @@
     "empty": "Todavía no participas en ningún proyecto. Crea uno o pide a su propietario que te invite.",
     "noMatches": "Ningún proyecto coincide con la búsqueda.",
     "noRuns": "Sin ejecuciones",
-    "back": "← Proyectos",
+    "back": "Proyectos",
     "yourRole": "Tu rol: {{role}}",
     "recentRuns": "Últimas ejecuciones",
     "allRuns": "Ver todas",
@@ -499,7 +499,7 @@
     "empty": "No hay ejecuciones.",
     "all": "Todas",
     "preview": "(vista previa)",
-    "backToProject": "← {{name}}",
+    "backToProject": "{{name}}",
     "queuedHint": "En cola: empezará cuando haya un worker libre.",
     "failed": "La ejecución ha fallado",
     "cancel": "Cancelar ejecución",
@@ -834,8 +834,8 @@
   },
   "scanErrors": {
     "title": "Documentos con errores",
-    "backToScan": "← Escaneo",
-    "backToRun": "← Ejecución",
+    "backToScan": "Escaneo",
+    "backToRun": "Ejecución",
     "ofRun": "Escaneo terminado el {{date}}.",
     "openRun": "Ver la ejecución",
     "noScan": "Aún no se ha escaneado este proyecto.",
@@ -852,7 +852,7 @@
   },
   "documents": {
     "title": "Documentos",
-    "backToProject": "← {{name}}",
+    "backToProject": "{{name}}",
     "searchContent": "Buscar en el contenido",
     "search": "Buscar por nombre o subcarpeta",
     "folder": "Carpeta",
@@ -887,7 +887,7 @@
       "contextHistoryXlsx": "Excel del historial del contexto"
     },
     "viewer": {
-      "back": "← Documentos",
+      "back": "Documentos",
       "markdown": "Markdown",
       "json": "JSON",
       "downloadMarkdown": "Descargar Markdown",
@@ -896,7 +896,7 @@
     },
     "contentSearch": {
       "title": "Buscar en el contenido",
-      "back": "← Documentos",
+      "back": "Documentos",
       "words": "Buscar",
       "hint": "Busca documentos convertidos que contengan todas las palabras (sin distinguir mayúsculas ni tildes).",
       "prompt": "Escribe una o varias palabras.",
@@ -926,7 +926,7 @@
   },
   "duplicates": {
     "title": "Duplicados",
-    "back": "← {{name}}",
+    "back": "{{name}}",
     "intro": "Busca documentos repetidos en todas las carpetas de origen, revisa cada grupo y aplica solo lo que confirmes. Buscar no toca ningún fichero.",
     "search": {
       "title": "Buscar duplicados",
@@ -1008,7 +1008,7 @@
     "groupSearch": "Buscar en los grupos"
   },
   "context": {
-    "back": "← Volver a «{{name}}»",
+    "back": "Volver a «{{name}}»",
     "title": "Contexto",
     "intro": "Clasifica los documentos convertidos por dominios, los copia a una carpeta reorganizada del proyecto y genera un sitio navegable.",
     "empty": "El proyecto aún no tiene contexto.",
@@ -1139,7 +1139,7 @@
     "site": {
       "open": "Ver el sitio",
       "title": "Sitio del contexto",
-      "back": "← Volver al contexto de «{{name}}»",
+      "back": "Volver al contexto de «{{name}}»",
       "isolated": "El sitio se muestra aislado: sus scripts no pueden usar tu sesión ni leer datos de la aplicación.",
       "expires": "El acceso caduca el {{date}}",
       "renew": "Renovar acceso",

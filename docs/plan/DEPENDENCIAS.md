@@ -65,6 +65,7 @@ Nota: `python-multipart` solo si se aprueba la subida de documentos desde el nav
 | `marked` + `dompurify` | Visor Markdown **saneado** de documentos convertidos | 5 |
 | `highlight.js` | JSON / YAML del manifiesto | 5/7 |
 | `diff` | Comparar duplicados difusos lado a lado | 6 |
+| `@tabler/icons-react` (MIT, versión exacta) | Iconos del menú, estados, carpetas, orden y «Volver»; solo se importa en `src/components/icons.ts` (regla de ESLint) | 1.7 |
 | dev: `typescript` 5.9, `vite`, `@vitejs/plugin-react`, `eslint` + `typescript-eslint` + plugins React, `prettier`, `vitest`, `jsdom`, `@testing-library/*`, `@playwright/test` | Calidad | 0 |
 
 ## Sistema (Dockerfile)

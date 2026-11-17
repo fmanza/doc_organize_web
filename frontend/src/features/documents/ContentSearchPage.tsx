@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
 import { ClearSection } from '../../components/listing';
@@ -56,9 +57,7 @@ export function ContentSearchPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to={`/projects/${projectId}/documents`} size="sm">
-        {t('documents.contentSearch.back')}
-      </Anchor>
+      <BackLink to={`/projects/${projectId}/documents`}>{t('documents.contentSearch.back')}</BackLink>
       <Group justify="space-between" align="flex-end">
         <Title order={2}>{t('documents.contentSearch.title')}</Title>
         {canDo(project.data, 'editor') && (

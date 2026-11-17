@@ -1,13 +1,16 @@
 import { Badge, Tooltip, VisuallyHidden } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 
+import { Icon } from './Icon';
+import { LIGHT_ICONS } from './icons';
+
 export type LightStatus = 'unknown' | 'ok' | 'degraded' | 'unavailable';
 
-const STYLE: Record<LightStatus, { color: string; icon: string }> = {
-  ok: { color: 'green', icon: '●' },
-  degraded: { color: 'orange', icon: '▲' },
-  unavailable: { color: 'red', icon: '■' },
-  unknown: { color: 'gray', icon: '?' },
+const COLOR: Record<LightStatus, string> = {
+  ok: 'green',
+  degraded: 'orange',
+  unavailable: 'red',
+  unknown: 'gray',
 };
 
 interface StatusLightProps {
@@ -22,9 +25,8 @@ interface StatusLightProps {
  */
 export function StatusLight({ status, reasons }: StatusLightProps) {
   const { t } = useTranslation();
-  const { color, icon } = STYLE[status];
   const badge = (
-    <Badge color={color} variant="light" leftSection={<span aria-hidden="true">{icon}</span>}>
+    <Badge color={COLOR[status]} variant="light" leftSection={<Icon of={LIGHT_ICONS[status]} />}>
       {t(`status.${status}`)}
     </Badge>
   );

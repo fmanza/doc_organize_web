@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { StatusLight } from '../../components/StatusLight';
 import { useMe } from '../auth/useAuth';
@@ -110,9 +111,7 @@ export function ProjectDetailPage() {
   const isOwner = canDo(project, 'owner');
   return (
     <Stack>
-      <Anchor component={Link} to="/projects" size="sm">
-        {t('projects.back')}
-      </Anchor>
+      <BackLink to="/projects">{t('projects.back')}</BackLink>
       <Group justify="space-between">
         <div>
           <Title order={2}>{project.name}</Title>

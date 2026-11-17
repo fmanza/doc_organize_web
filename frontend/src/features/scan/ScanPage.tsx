@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
@@ -342,9 +343,7 @@ export function ScanPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to={`/projects/${data.id}`} size="sm">
-        {t('runs.backToProject', { name: data.name })}
-      </Anchor>
+      <BackLink to={`/projects/${data.id}`}>{t('runs.backToProject', { name: data.name })}</BackLink>
       <Group justify="space-between">
         <Title order={2}>{t('scan.title', { name: data.name })}</Title>
         <Anchor component={Link} to={`/projects/${data.id}/scan-errors`} size="sm">

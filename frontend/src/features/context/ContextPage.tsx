@@ -25,6 +25,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
@@ -90,9 +91,7 @@ export function ContextPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to={`/projects/${projectId}`} size="sm">
-        {t('context.back', { name: project.data.name })}
-      </Anchor>
+      <BackLink to={`/projects/${projectId}`}>{t('context.back', { name: project.data.name })}</BackLink>
       <Title order={2}>{t('context.title')}</Title>
       <Text c="dimmed">{t('context.intro')}</Text>
 

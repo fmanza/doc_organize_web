@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatBytes, formatCount, formatDateTime, formatDuration } from '../../components/format';
 import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
@@ -100,9 +101,9 @@ export function RunDetailPage() {
   return (
     <Stack>
       {run.project_id !== null && (
-        <Anchor component={Link} to={`/projects/${run.project_id}`} size="sm">
+        <BackLink to={`/projects/${run.project_id}`}>
           {t('runs.backToProject', { name: run.project_name })}
-        </Anchor>
+        </BackLink>
       )}
       <Group justify="space-between">
         <Title order={2}>
