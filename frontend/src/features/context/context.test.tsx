@@ -9,7 +9,15 @@ import { nameFromFile } from './useContext';
 import { SITE_SANDBOX } from './SiteViewerPage';
 
 const RUN_ID = '55555555-5555-4555-8555-555555555555';
-const NO_MANIFEST = { markdown: null, error: null, domains: [], material_types: [] };
+const NO_MANIFEST = {
+  markdown: null,
+  error: null,
+  domains: [],
+  material_types: [],
+  etag: 'none',
+  last_changed_at: null,
+};
+const NO_VERSIONS = { items: [], limit: 5 };
 const CONTEXT = {
   output_folder_name: 'organizado',
   catalog_kind: 'template',
@@ -61,7 +69,6 @@ describe('ContextPage', () => {
       ...session(USER),
       'GET /api/v1/projects/7': { body: PROJECT },
       'GET /api/v1/projects/7/context': NOT_BUILT,
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
       'POST /api/v1/projects/7/runs': {
         status: 202,
@@ -98,7 +105,6 @@ describe('ContextPage', () => {
       'GET /api/v1/projects/7': { body: PROJECT },
       'GET /api/v1/projects/7/context': { body: CONTEXT },
       'GET /api/v1/projects/7/context/documents': { body: { items: [DOCUMENT], total: 1 } },
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
     });
 
@@ -143,7 +149,6 @@ describe('ContextPage', () => {
           total: 1,
         },
       },
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
     });
     const user = userEvent.setup();
@@ -208,7 +213,6 @@ describe('ContextPage', () => {
                 total: 2,
               },
             },
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
     });
     const user = userEvent.setup();
@@ -234,7 +238,6 @@ describe('ContextPage', () => {
       'GET /api/v1/projects/7/context/documents': {
         body: { items: [{ ...DOCUMENT, domain_slug: null, organized_path: null }], total: 1 },
       },
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
     });
 
@@ -248,7 +251,6 @@ describe('ContextPage', () => {
       ...session(USER),
       'GET /api/v1/projects/7': { body: PROJECT },
       'GET /api/v1/projects/7/context': NOT_BUILT,
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
       'GET /api/v1/projects/7/context/history': {
         body: {
@@ -309,7 +311,6 @@ describe('ContextPage', () => {
       ...session(USER),
       'GET /api/v1/projects/7': { body: PROJECT },
       'GET /api/v1/projects/7/context': NOT_BUILT,
-      'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
       'GET /api/v1/projects/7/context/history': {
         body: { items: [], total: 0, error: 'history_too_large' },
@@ -328,12 +329,16 @@ describe('ContextPage', () => {
       'GET /api/v1/projects/7': { body: { ...PROJECT, role: 'viewer' } },
       'GET /api/v1/projects/7/context': NOT_BUILT,
       'GET /api/v1/projects/7/context/taxonomy-manifest': { body: NO_MANIFEST },
+      'GET /api/v1/projects/7/context/taxonomy-manifest/versions': { body: NO_VERSIONS },
     });
+    const user = userEvent.setup();
 
     renderRoute('/projects/7/context');
 
     expect(await screen.findByText('El proyecto aún no tiene contexto.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Construir' })).not.toBeInTheDocument();
+    // Sin contexto construido con el manifiesto, se ve con un enlace.
+    await user.click(screen.getByRole('button', { name: 'Ver el manifiesto del proyecto' }));
     expect(await screen.findByRole('textbox', { name: /Markdown/ })).toHaveAttribute('readonly');
     expect(screen.queryByRole('button', { name: 'Guardar manifiesto' })).not.toBeInTheDocument();
   });

@@ -477,7 +477,8 @@ def delete_manifest(
     _, version = _mutate_manifest(
         db, settings, project, if_match=if_match, action="delete", actor=actor, change=_change
     )
-    assert version is not None  # noqa: S101 (borrar siempre cambia: sin fichero, ``_delete_change`` lanza)
+    if version is None:  # no ocurre: sin fichero, la comprobación ya lanza ``ManifestNotFoundError``
+        raise ManifestNotFoundError("El proyecto no tiene manifiesto de taxonomía.")
     audit.record(
         db,
         action=AuditAction.PROJECT_TAXONOMY_MANIFEST_DELETE,

@@ -15,7 +15,7 @@ Los editores y propietarios eligen el **catálogo de dominios**:
 
 | Catálogo | Qué hace |
 |---|---|
-| **Descubrir dominios** | doc_organize propone los dominios a partir del contenido |
+| **Descubrir dominios** | Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido |
 | **Catálogo propio** | Solo los dominios que escribas (un eje: dominio) |
 | **Plantilla** | Dominios y tipos de material de una [plantilla de taxonomía](#plantillas-de-taxonomía) (dos ejes) |
 | **Manifiesto del proyecto** | Los del [manifiesto](#manifiesto-del-proyecto) del proyecto (dos ejes) |
@@ -24,7 +24,8 @@ También eligen:
 
 - **Carpeta reorganizada** (`organizado` por defecto), solo la primera vez. Para cambiarla, borra antes el contexto.
   No puede ser una carpeta que ya use el proyecto (`Conversión`, `duplicados`, `site`…).
-- **Umbral de clasificación**: con uno más alto quedan más documentos sin clasificar.
+- **Umbral de clasificación**: con uno más alto quedan más documentos sin clasificar. No afecta a «Descubrir
+  dominios»: ahí todo documento con carpeta puntúa 1,0.
 - **Construir el sitio**: si lo desmarcas, se borra el sitio anterior.
 
 **Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar, copiar a la carpeta
@@ -33,6 +34,20 @@ medias. Reconstruir sustituye el contexto anterior.
 
 Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
 clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
+
+### ¿Descubrir dominios o manifiesto?
+
+| | Descubrir dominios | Manifiesto del proyecto |
+|---|---|---|
+| Dominios | Uno por carpeta (nombre de la carpeta inmediata) | Lista cerrada del manifiesto |
+| Ejes | Dominio | Dominio y tipo de material |
+| Asignación | Por carpeta, sin puntuación (los de la raíz, al dominio de la carpeta escaneada) | Palabras del dominio y sus palabras clave (`keywords`) en el título y el contenido, más la carpeta, con umbral; el tipo de material, igual por separado |
+| Dominios nuevos | Sí, uno por carpeta | No |
+| Estado | Borrador | Confirmado |
+| Cuándo | Carpetas ya temáticas; primer contexto rápido | Vocabulario propio, independiente de las carpetas |
+
+Con «Descubrir dominios» solo quedan sin clasificar los documentos que no están bien convertidos o cuya carpeta no
+tiene letras ni números.
 
 ## Ver el contexto
 
@@ -109,9 +124,46 @@ material_types:
 Notas libres.
 ```
 
+**Solo se usa al construir con el catálogo «Manifiesto del proyecto»**, y por eso el bloque del manifiesto solo
+aparece al elegir ese catálogo (el borrador sin guardar se conserva si cambias de catálogo y vuelves). Quien no
+construye (lectores, o destino de solo lectura) lo ve si el contexto se construyó con él y, si no, con el enlace «Ver el
+manifiesto del proyecto».
+
 Los editores lo editan en la página. Se valida al guardar y no se puede guardar mientras haya otra escritura en el
-proyecto (un escaneo, otra construcción…). Con la IA configurada, «Pedir borrador» propone uno a partir de una muestra
-de documentos y lo carga en el editor sin guardarlo ([borrador de manifiesto](ia.md#borrador-de-manifiesto)).
+proyecto (un escaneo, otra construcción…). «Construir» usa el manifiesto **guardado**: con cambios sin guardar y este
+catálogo, «Construir» se desactiva hasta que guardes. Hay tres formas de partir de algo:
+
+- **Escribirlo** en el editor.
+- **Partir de una plantilla**: con el catálogo «Plantilla» y una elegida, «Personalizar para este proyecto» copia su
+  Markdown al editor y cambia al catálogo «Manifiesto del proyecto». No se guarda hasta que pulses «Guardar
+  manifiesto»; «Deshacer» vuelve a lo que había. Es una copia: si la plantilla cambia después, el manifiesto no, y el
+  contexto construido con él dice «Manifiesto del proyecto», no el nombre de la plantilla.
+- **Pedir un borrador a la IA** («Pedir borrador»): propone uno a partir de una muestra de documentos y lo carga en el
+  editor sin guardarlo ([borrador de manifiesto](ia.md#borrador-de-manifiesto)).
+
+Si el editor ya tiene otro texto, cualquiera de las tres pide confirmación antes de sustituirlo.
+
+### Versiones, restaurar y borrar (1.8.0)
+
+Cada cambio del manifiesto guarda antes **lo que había**, para poder deshacerlo: al guardar, al borrar, al restaurar
+una versión y al [vaciar el histórico](proyectos.md) del proyecto. Se conservan las **5 últimas** por proyecto.
+
+- **Restaurar la versión anterior** recupera la más reciente, con confirmación. El texto actual se guarda a su vez como
+  versión: restaurar también se puede deshacer. También funciona tras recargar la página, así que deshace una copia de
+  plantilla ya guardada.
+- **Versiones** lista fecha, quién hizo el cambio, qué cambio fue y el catálogo de cada una. «Ver» muestra su texto;
+  «Restaurar» la recupera. Una versión «Sin manifiesto» borra el manifiesto al restaurarla; una «No válida» no se
+  restaura: «Cargar en el editor» la lleva al editor para arreglarla.
+- **Borrar manifiesto** lo borra, con confirmación; se puede recuperar desde «Versiones».
+
+Si dos personas lo cambian a la vez (o alguien lo edita en la carpeta compartida), la segunda recibe «Otro usuario lo
+ha cambiado: recarga para ver su versión»: la página vuelve a leerlo y conserva tu borrador.
+
+Restaurar o borrar no cambia el contexto ya construido: si se construyó con el manifiesto antes del último cambio, la
+página avisa de que hay que reconstruir.
+
+Las versiones viven en la base de datos de la aplicación (`config.db`) y viajan en sus copias de seguridad; restaurar
+una copia trae las versiones de ese momento, que pueden no coincidir con el manifiesto actual del destino.
 
 ## Plantillas de taxonomía
 
@@ -136,8 +188,8 @@ ficheros:
 2. Escribir el nombre del proyecto y confirmar.
 
 Se borran la carpeta reorganizada, el sitio, `context.json` y `domains/`. Las conversiones, los originales, el
-manifiesto y el [historial](#historial) se conservan. Vaciar el histórico del proyecto también borra el contexto y su
-historial.
+manifiesto y el [historial](#historial) se conservan. Vaciar el histórico del proyecto también borra el contexto, su
+historial y el manifiesto (este se puede restaurar desde [Versiones](#versiones-restaurar-y-borrar-180)).
 
 ## Historial
 

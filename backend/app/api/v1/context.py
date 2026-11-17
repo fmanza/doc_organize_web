@@ -410,9 +410,8 @@ def list_manifest_versions(project_id: int, user: CurrentUser, db: DbSession) ->
 )
 def get_manifest_version(project_id: int, version_id: int, user: CurrentUser, db: DbSession) -> ManifestVersionDetail:
     projects.get_access(db, project_id, user)
-    manifest_versions.get_version(db, project_id, version_id)  # 404 si no es de este proyecto
-    summary = next(v for v in manifest_versions.list_versions(db, project_id) if v.id == version_id)
-    stored = manifest_versions.get_version(db, project_id, version_id)
+    stored = manifest_versions.get_version(db, project_id, version_id)  # 404 si no es de este proyecto
+    summary = next(v for v in manifest_versions.list_versions(db, project_id) if v.id == stored.id)
     return ManifestVersionDetail(**_version_fields(summary), markdown=stored.markdown)
 
 

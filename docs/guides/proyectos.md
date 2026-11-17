@@ -57,7 +57,7 @@ Solo propietarios, y solo si no hay otra ejecución en marcha en el proyecto. La
 | Operación | Qué hace |
 |---|---|
 | **Mover salidas** | Lleva la carpeta de salidas a una carpeta nueva de otra ubicación de destino (o de la misma). En el mismo disco es instantáneo; entre ubicaciones distintas se copia y después se borra la carpeta anterior. Si la copia falla o la cancelas, se deshace y el proyecto no cambia |
-| **Vaciar histórico** | Borra las salidas y la caché; el proyecto, sus miembros y su configuración se conservan, listo para volver a procesar desde cero |
+| **Vaciar histórico** | Borra las salidas (también el manifiesto de taxonomía, que antes se guarda como [versión](contexto.md#versiones-restaurar-y-borrar-180)) y la caché; el proyecto, sus miembros y su configuración se conservan, listo para volver a procesar desde cero |
 | **Borrar proyecto** | El proyecto desaparece de la lista y su caché se borra. Con «Borrar también la carpeta de salidas» se borra esa carpeta; si no, se queda en el destino. El historial de ejecuciones se conserva |
 
 Todas quedan en la auditoría con quién, cuándo y cuántos ficheros.
