@@ -46,5 +46,8 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // Un test encadena varias esperas de hasta 5 s (`asyncUtilTimeout` en src/test/setup.ts): el límite por defecto,
+    // 5 s, lo cortaría antes que la propia espera.
+    testTimeout: 20_000,
   },
 });
