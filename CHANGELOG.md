@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-17
+
+Probar la conexión de la IA antes de guardarla, iconos en toda la interfaz y un menú que se puede plegar en móvil. Sin
+migraciones ni cambios en doc_organize (sigue la 1.6.0); dependencia nueva en el frontend: `@tabler/icons-react`.
+
 ### Added
 
 - **Menú plegable en pantallas estrechas**: un botón en la cabecera (`Abrir el menú` / `Cerrar el menú`, con
@@ -22,6 +27,11 @@ ROADMAP (`0.<fase+1>.0`).
   - «Probar el modelo» envía además una clasificación mínima al modelo (código `ai_model` si no responde).
   - La clave guardada nunca se envía a otra URL (`secret_required`). Como mucho una prueba por familia cada 10 s
     (`ai_test_too_soon`). La respuesta solo trae un código, y la auditoría (`ai_settings.test`) no guarda valores.
+
+### Changed
+
+- Tests del frontend estables con la máquina cargada: Mantine en modo test (sin transiciones ni portales) y esperas de
+  hasta 5 s en `findBy*`/`waitFor`. Antes fallaban tests distintos en cada ejecución.
 
 ## [1.6.0] - 2026-11-17
 
