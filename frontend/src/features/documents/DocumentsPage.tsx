@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount, formatDateTime } from '../../components/format';
 import { PageControls } from '../../components/Paging';
@@ -93,9 +94,9 @@ export function DocumentsPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to={`/projects/${projectId}`} size="sm">
+      <BackLink to={`/projects/${projectId}`}>
         {t('documents.backToProject', { name: project.data.name })}
-      </Anchor>
+      </BackLink>
       <Group justify="space-between" align="flex-end">
         <Title order={2}>{t('documents.title')}</Title>
         <Button component={Link} to={`/projects/${projectId}/search`} variant="light">

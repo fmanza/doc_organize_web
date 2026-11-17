@@ -2,6 +2,8 @@ import { Button, CloseButton, Group, Select, Table, TextInput, UnstyledButton } 
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Icon } from './Icon';
+import { SORT_ICONS } from './icons';
 import type { ListState } from './useListState';
 
 /** Cabecera de columna ordenable: botón con flecha y `aria-sort` (accesible con teclado y lector de pantalla). */
@@ -16,7 +18,7 @@ export function SortableTh<K extends string>({
 }) {
   const { t } = useTranslation();
   const active = state.sort === sortKey;
-  const arrow = active ? (state.order === 'asc' ? '↑' : '↓') : '↕';
+  const arrow = SORT_ICONS[active ? state.order : 'none'];
   return (
     <Table.Th aria-sort={active ? (state.order === 'asc' ? 'ascending' : 'descending') : 'none'}>
       <UnstyledButton
@@ -27,8 +29,8 @@ export function SortableTh<K extends string>({
         style={{ whiteSpace: 'nowrap' }}
       >
         {children}{' '}
-        <span aria-hidden="true" style={{ opacity: active ? 1 : 0.35 }}>
-          {arrow}
+        <span style={{ opacity: active ? 1 : 0.35, verticalAlign: 'middle' }}>
+          <Icon of={arrow} />
         </span>
       </UnstyledButton>
     </Table.Th>
@@ -141,7 +143,7 @@ export function SortSelect<K extends string>({
         aria-label={t(state.order === 'asc' ? 'listing.ascending' : 'listing.descending')}
         title={t(state.order === 'asc' ? 'listing.ascending' : 'listing.descending')}
       >
-        <span aria-hidden="true">{state.order === 'asc' ? '↑' : '↓'}</span>
+        <Icon of={SORT_ICONS[state.order]} />
       </Button>
     </Group>
   );

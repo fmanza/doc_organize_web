@@ -1,15 +1,17 @@
+import type { NavIconKey } from '../components/icons';
 import { can, type Me, type Permission } from '../features/auth/useAuth';
 
 /** Página de administración con lo que exige (las mismas guardas que el router). */
 export interface AdminPage {
-  key: string;
+  /** Clave de `nav.<clave>` y de `NAV_ICONS`: cada página tiene su icono por construcción. */
+  key: NavIconKey;
   to: string;
   permission?: Permission;
   instance?: boolean;
 }
 
 /** Entrada del menú de administración: una página o un grupo de páginas (W1). */
-export type AdminEntry = AdminPage | { group: string; pages: AdminPage[] };
+export type AdminEntry = AdminPage | { group: NavIconKey; pages: AdminPage[] };
 
 const ADMIN_MENU: AdminEntry[] = [
   {

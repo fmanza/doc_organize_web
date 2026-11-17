@@ -1,8 +1,9 @@
-import { Alert, Anchor, Button, Center, Group, Loader, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Center, Group, Loader, Stack, Text, Title } from '@mantine/core';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { useProject } from '../projects/useProjects';
@@ -38,9 +39,9 @@ export function SiteViewerPage() {
   }
   return (
     <Stack h="calc(100dvh - 120px)">
-      <Anchor component={Link} to={`/projects/${projectId}/context`} size="sm">
+      <BackLink to={`/projects/${projectId}/context`}>
         {t('context.site.back', { name: project.data.name })}
-      </Anchor>
+      </BackLink>
       <Group justify="space-between">
         <Title order={2}>{t('context.site.title')}</Title>
         {open.data && (

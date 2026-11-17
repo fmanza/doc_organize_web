@@ -1,9 +1,10 @@
 import { Alert, Anchor, Center, Code, Group, Loader, Stack, Tabs, Title, Typography } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 
 import { ApiError } from '../../api/client';
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { joinRelative, renderMarkdown } from './renderMarkdown';
 import { outputUrl, useOutputText } from './useDocuments';
@@ -59,11 +60,7 @@ export function DocumentViewerPage() {
     }
   }, [json.data]);
 
-  const back = (
-    <Anchor component={Link} to={`/projects/${projectId}/documents`} size="sm">
-      {t('documents.viewer.back')}
-    </Anchor>
-  );
+  const back = <BackLink to={`/projects/${projectId}/documents`}>{t('documents.viewer.back')}</BackLink>;
   if (!path) {
     return (
       <Stack>

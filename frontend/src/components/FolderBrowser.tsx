@@ -17,6 +17,8 @@ import { useTranslation } from 'react-i18next';
 
 import { FOLDER_PAGE_SIZE, useFolders } from '../features/locations/useLocations';
 import { ErrorAlert } from './ErrorAlert';
+import { Icon } from './Icon';
+import { FolderIcon, ParentFolderIcon } from './icons';
 
 interface FolderBrowserProps {
   /** Ubicación a explorar; `null` explora la raíz de montajes (`/mnt`, solo admin). */
@@ -137,7 +139,7 @@ export function FolderBrowser({
               component="button"
               type="button"
               label={t('folders.up')}
-              leftSection={<span aria-hidden="true">↑</span>}
+              leftSection={<Icon of={ParentFolderIcon} />}
               onClick={() => go(data.parent ?? '')}
             />
           )}
@@ -153,7 +155,7 @@ export function FolderBrowser({
                 component="button"
                 type="button"
                 label={item.name}
-                leftSection={<span aria-hidden="true">📁</span>}
+                leftSection={<Icon of={FolderIcon} />}
                 onClick={() => go(item.path)}
               />
             );
@@ -185,7 +187,7 @@ export function FolderBrowser({
                       )}
                     </Group>
                   }
-                  leftSection={<span aria-hidden="true">📁</span>}
+                  leftSection={<Icon of={FolderIcon} />}
                   onClick={() => go(item.path)}
                 />
               </Group>

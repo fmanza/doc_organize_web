@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh, SortSelect } from '../../components/listing';
@@ -112,9 +113,7 @@ export function DuplicatesPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to={`/projects/${projectId}`} size="sm">
-        {t('duplicates.back', { name: project.data.name })}
-      </Anchor>
+      <BackLink to={`/projects/${projectId}`}>{t('duplicates.back', { name: project.data.name })}</BackLink>
       <Title order={2}>{t('duplicates.title')}</Title>
       <Text c="dimmed">{t('duplicates.intro')}</Text>
 

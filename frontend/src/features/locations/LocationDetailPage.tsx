@@ -1,6 +1,5 @@
 import {
   Alert,
-  Anchor,
   Badge,
   Button,
   Card,
@@ -15,8 +14,9 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
@@ -124,9 +124,7 @@ export function LocationDetailPage() {
 
   return (
     <Stack>
-      <Anchor component={Link} to="/locations" size="sm">
-        {t('locations.back')}
-      </Anchor>
+      <BackLink to="/locations">{t('locations.back')}</BackLink>
       <Group justify="space-between">
         <Title order={2}>{location.name}</Title>
         <StatusLight status={location.status} reasons={location.status_reasons} />

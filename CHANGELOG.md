@@ -7,6 +7,14 @@ ROADMAP (`0.<fase+1>.0`).
 
 ### Added
 
+- **Menú plegable en pantallas estrechas**: un botón en la cabecera (`Abrir el menú` / `Cerrar el menú`, con
+  `aria-expanded`) abre el menú lateral, que se pliega solo al navegar. Hasta ahora, por debajo de 768 px el menú
+  ocupaba toda la pantalla y no se podía cerrar. En pantallas anchas no cambia.
+- **Iconos en el menú lateral**, en todas las entradas, también en las páginas de cada grupo (`@tabler/icons-react`
+  3.50.0, nueva dependencia). Los emojis y símbolos que hacían de icono (📁 y ↑ del explorador de carpetas, las flechas
+  de ordenar, el semáforo de ubicaciones, los estados de las ejecuciones y la «←» de los enlaces «Volver») pasan a
+  iconos de la misma librería. Todos son decorativos: el texto sigue siendo el nombre accesible y los estados no
+  dependen solo del icono ni del color.
 - **Probar la conexión en IA › Configuración**: cada tarjeta prueba su servicio con los valores del formulario, sin
   guardarlos (`POST /admin/ai-settings/{family}/test`, solo admin de instancia).
   - «Probar conexión» consulta `/key/info` en LiteLLM (servidor y clave, sin gastar tokens, con aviso si la clave no

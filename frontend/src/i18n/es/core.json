@@ -76,7 +76,9 @@
     "ai-settings": "Configuración",
     "ai-parameters": "Parámetros",
     "ai-usage": "Uso",
-    "info": "Información"
+    "info": "Información",
+    "open": "Abrir el menú",
+    "close": "Cerrar el menú"
   },
   "auth": {
     "loginIntro": "Inicia sesión con tu usuario.",

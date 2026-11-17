@@ -2,6 +2,7 @@ import { Alert, Anchor, Badge, Center, Group, Loader, Stack, Table, Text, Title 
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { formatCount, formatDateTime } from '../../components/format';
@@ -35,13 +36,9 @@ export function ScanErrorsPage() {
   return (
     <Stack>
       {'projectId' in target ? (
-        <Anchor component={Link} to={`/projects/${target.projectId}/scan`} size="sm">
-          {t('scanErrors.backToScan')}
-        </Anchor>
+        <BackLink to={`/projects/${target.projectId}/scan`}>{t('scanErrors.backToScan')}</BackLink>
       ) : (
-        <Anchor component={Link} to={`/runs/${target.runId}`} size="sm">
-          {t('scanErrors.backToRun')}
-        </Anchor>
+        <BackLink to={`/runs/${target.runId}`}>{t('scanErrors.backToRun')}</BackLink>
       )}
       <Title order={2}>{t('scanErrors.title')}</Title>
       {data.run ? (
