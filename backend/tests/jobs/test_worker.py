@@ -219,6 +219,36 @@ def test_history_clear_empties_outputs_and_state(
     assert db.scalar(select(AuditEntry).where(AuditEntry.action == "project.history_clear")) is not None
 
 
+MANIFEST = """---
+title: Obras
+domains:
+  - slug: obras
+    name: Obras
+material_types:
+  - slug: original
+    name: Original
+---
+"""
+
+
+def test_history_clear_keeps_the_manifest_as_a_version(
+    worker: JobWorker, user_client: TestClient, project_id: int, db: Session, migrated: Settings
+) -> None:
+    """B1 (1.8.0): vaciar borra ``taxonomy_manifest.md``, así que antes se guarda como versión para restaurarlo."""
+    manifest = migrated.locations_root / "salidas" / "Proyecto A" / "taxonomy_manifest.md"
+    manifest.write_text(MANIFEST, encoding="utf-8")
+
+    _confirm(worker, user_client, db, project_id, "history_clear")
+
+    assert not manifest.exists()
+    url = f"/api/v1/projects/{project_id}/context/taxonomy-manifest"
+    [version] = user_client.get(f"{url}/versions").json()["items"]
+    assert (version["action"], version["valid"], version["domains"]) == ("history_clear", True, 1)
+    restored = user_client.post(f"{url}/versions/{version['id']}/restore", headers={"If-Match": "none"})
+    assert restored.status_code == 200, restored.text
+    assert manifest.read_text(encoding="utf-8") == MANIFEST
+
+
 def test_project_delete_with_outputs(
     worker: JobWorker, user_client: TestClient, project_id: int, db: Session, migrated: Settings
 ) -> None:

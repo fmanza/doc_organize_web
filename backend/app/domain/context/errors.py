@@ -61,6 +61,46 @@ class ManifestReplacedError(AppError):
     code = "manifest_replaced"
 
 
+class ManifestNotFoundError(AppError):
+    """El proyecto no tiene ``taxonomy_manifest.md`` (al borrarlo)."""
+
+    status = 404
+    title = "El proyecto no tiene manifiesto"
+    code = "manifest_not_found"
+
+
+class ManifestVersionNotFoundError(AppError):
+    """No existe esa versión del manifiesto en el proyecto (o es de otro proyecto: mismo error)."""
+
+    status = 404
+    title = "Versión del manifiesto no encontrada"
+    code = "manifest_version_not_found"
+
+
+class ManifestVersionInvalidError(AppError):
+    """La versión no es un manifiesto válido: no se restaura (se puede cargar en el editor para arreglarla)."""
+
+    status = 422
+    title = "La versión del manifiesto no es válida"
+    code = "manifest_version_invalid"
+
+
+class ManifestChangedError(AppError):
+    """El manifiesto cambió desde que se leyó (``If-Match`` no coincide): otro usuario, un job o una edición fuera."""
+
+    status = 409
+    title = "El manifiesto ha cambiado"
+    code = "manifest_changed"
+
+
+class ManifestEtagRequiredError(AppError):
+    """Guardar, borrar o restaurar el manifiesto exige la cabecera ``If-Match`` con el ``etag`` leído."""
+
+    status = 428
+    title = "Falta If-Match"
+    code = "etag_required"
+
+
 class SiteNotFoundError(AppError):
     """Sitio no construido, token no válido o caducado, o fichero inexistente (mismo error en todos los casos)."""
 
