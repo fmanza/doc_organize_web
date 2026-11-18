@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-11-18
+
+Adopta doc_organize 1.7.1: el sitio del contexto ocupa mucho menos en proyectos grandes. Sin migraciones ni cambios en
+la API HTTP.
+
 ### Changed
 
 - **doc_organize 1.7.1** (antes 1.7.0, ADR-006): el sitio del contexto activa `navigation.prune` y cada página lleva
