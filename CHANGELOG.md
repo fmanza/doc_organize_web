@@ -5,6 +5,14 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **doc_organize 1.7.0** (antes 1.6.0, ADR-006): redacción de credenciales (M3b del plan de 2.0.0). Sin cambios en la
+  integración: está activada por defecto en la librería, así que el título y el extracto que se envían a la IA
+  (clasificar, completar descripciones y borrador de manifiesto) llevan `«REDACTADO»` en lugar de contraseñas, tokens y
+  claves, y el sitio del contexto y la carpeta reorganizada se publican igual de redactados (también los títulos del
+  menú). Guías de IA y de contexto actualizadas.
+
 ## [1.8.0] - 2026-11-17
 
 El manifiesto de taxonomía solo con su catálogo, «Personalizar para este proyecto» desde una plantilla y versiones del
