@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-18
+
+Adopta doc_organize 1.7.0: lo que se envía a la IA y lo que publica el sitio del contexto salen con las credenciales
+redactadas (`«REDACTADO»`). Sin migraciones ni cambios en la API HTTP.
+
 ### Changed
 
 - **doc_organize 1.7.0** (antes 1.6.0, ADR-006): redacción de credenciales (M3b del plan de 2.0.0). Sin cambios en la
