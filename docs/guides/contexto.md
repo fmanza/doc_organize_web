@@ -105,6 +105,10 @@ puede traer HTML o scripts, así que se muestra **aislado** ([ADR-010](../adr/AD
 - La dirección lleva un acceso temporal que caduca en una hora o al cerrar tu sesión. **Renovar acceso** pide otro.
 - **Abrir en otra pestaña** mantiene el mismo aislamiento.
 
+Desde la 1.9.0 (doc_organize 1.7.0), el sitio y la carpeta reorganizada se publican con las **credenciales**
+(contraseñas, tokens, claves) sustituidas por `«REDACTADO»`, también en los títulos del menú. `Conversión/` y los
+originales no cambian.
+
 ## Manifiesto del proyecto
 
 El **manifiesto de taxonomía** (`taxonomy_manifest.md` en la carpeta del proyecto) es el catálogo propio del

@@ -15,6 +15,10 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
     No se envían rutas del servidor. Nunca se hace por defecto: cada ejecución lo pide de forma explícita y la
     pantalla lo avisa. No lo actives con documentos que no puedan salir de tu organización.
 
+    Desde la 1.9.0 (doc_organize 1.7.0), las **credenciales** que aparezcan en ese título o extracto (contraseñas,
+    tokens, claves de API, claves privadas, usuario y contraseña en una URL) se envían como `«REDACTADO»`. Es una red de
+    seguridad, no una garantía: una contraseña solo de letras, por ejemplo, no se detecta.
+
 ## Configuración IA (administradores)
 
 **Administración → IA → Configuración** tiene una tarjeta por servicio:
