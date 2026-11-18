@@ -5,6 +5,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **doc_organize 1.7.1** (antes 1.7.0, ADR-006): el sitio del contexto activa `navigation.prune` y cada página lleva
+  solo la sección abierta del menú. Un proyecto de ~2600 documentos pasa de ~1,9 GB a ~170 MB de sitio en el destino;
+  se aplica al reconstruir el contexto. Sin cambios en la integración.
+
 ## [1.9.0] - 2026-11-18
 
 Adopta doc_organize 1.7.0: lo que se envía a la IA y lo que publica el sitio del contexto salen con las credenciales
