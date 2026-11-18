@@ -22,3 +22,10 @@
 
 ## Pendiente
 - Mostrar en la web `Context.credential_findings` (qué documentos se redactaron), si se quiere.
+
+## Continuación: doc_organize 1.7.1 → web 1.9.1 (2026-11-18)
+- Prompt: «sube el pin de la web a 1.7.1» y «fusiona el PR del pin y cierra la web 1.9.1».
+- PR #74: pin 1.7.0 → 1.7.1 (`uv.lock` con `7079210ec91950e50d966311f4105927ab50491ad1958139958381a05fbd66d5`).
+  doc_organize 1.7.1 activa `navigation.prune` en el sitio del contexto (hallazgo del spike de M0: ~1,9 GB → ~170 MB
+  con ~2600 documentos). Sin cambios en la integración. Release **1.9.1** (PATCH: sin cambios de API HTTP).
+- Verificación: CI de #74 en verde (backend 607 passed, frontend, docs, imagen con E2E).
