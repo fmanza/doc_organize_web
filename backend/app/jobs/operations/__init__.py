@@ -20,6 +20,7 @@ from app.jobs.operations import (
     noop,
     project_delete,
     project_move,
+    quality,
     scan,
     search_index,
 )
@@ -40,4 +41,6 @@ REGISTRY: Final[dict[str, Operation]] = {
     "context_build": context.run_build,
     "context_delete": context.run_delete,
     "taxonomy_draft": ai.run,
+    "context_evaluate": quality.run_evaluate,
+    "context_dry_run": quality.run_dry_run,
 }

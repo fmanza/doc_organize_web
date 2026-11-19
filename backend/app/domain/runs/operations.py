@@ -230,6 +230,40 @@ class TaxonomyDraftParams(_Params):
     sample_size: int = Field(default=25, ge=1, le=60)
 
 
+class ContextEvaluateParams(_Params):
+    """Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.
+
+    No escribe nada: el informe (por eje: exactitud, cobertura, precisión, *recall*, confusiones y desglose por quién
+    clasificó) va en el resultado del run.
+    """
+
+    operation: Literal["context_evaluate"] = "context_evaluate"
+    gold: Literal["xlsx", "decisions"] = "xlsx"
+
+
+class ContextDryRunParams(_Params):
+    """Comparar cambios (W5, G3): clasificar los documentos de la referencia con otra configuración (plantilla o
+    manifiesto, modelo de clasificar, alcance de la IA o perfil), **sin guardar nada**, y compararlo con el contexto
+    actual. ``template_markdown`` lo fija la API al encolar (como en ``context_build``); con IA, ``max_documents`` es el
+    presupuesto de documentos enviados."""
+
+    operation: Literal["context_dry_run"] = "context_dry_run"
+    gold: Literal["xlsx", "decisions"] = "xlsx"
+    catalog: Literal["template", "manifest"] = "manifest"
+    template_name: TemplateName | None = None
+    ai_scope: Literal["off", "unclassified", "missing_axes"] = "off"
+    model_classify: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$")] | None = None
+    profile_markdown: str | None = Field(default=None, max_length=32_768)
+    max_documents: int = Field(default=50, ge=1, le=5000)
+    template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
+
+    @model_validator(mode="after")
+    def _catalog_fields(self) -> ContextDryRunParams:
+        if (self.catalog == "template") != (self.template_name is not None):
+            raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        return self
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -243,7 +277,9 @@ RunParams = Annotated[
     | DedupApplyParams
     | ContextBuildParams
     | ContextDeleteParams
-    | TaxonomyDraftParams,
+    | TaxonomyDraftParams
+    | ContextEvaluateParams
+    | ContextDryRunParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -295,6 +331,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     "context_delete": OperationSpec(min_role="owner", destructive=True),
     # IA (Fase 8): el borrador no escribe en el proyecto, pero envía su contenido fuera (decisión D4: editor).
     "taxonomy_draft": OperationSpec(min_role="editor"),
+    # Calidad (W5): no escriben en el proyecto; la clasificación de prueba puede enviar contenido a la IA (editor).
+    "context_evaluate": OperationSpec(min_role="editor"),
+    "context_dry_run": OperationSpec(min_role="editor"),
 }
 
 
@@ -352,4 +391,7 @@ def stored_params(params: RunParams) -> dict[str, object]:
 
 
 #: Parámetros guardados que no se devuelven en la API (``public_params``).
-HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {"context_build": ("template_markdown",)}
+HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {
+    "context_build": ("template_markdown",),
+    "context_dry_run": ("template_markdown", "profile_markdown"),
+}

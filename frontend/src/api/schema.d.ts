@@ -738,6 +738,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calidad de la clasificación
+         * @description La referencia subida, si hay decisiones con las que hacer una, y la última evaluación y comparación terminadas
+         *     (``context_evaluate`` y ``context_dry_run``).
+         */
+        get: operations["get_quality_api_v1_projects__project_id__context_quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/quality/gold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Subir la referencia en Excel
+         * @description Referencia etiquetada a mano (``.xlsx``, como mucho 5 MB): una fila por documento con su clave
+         *     (``<carpeta>/<ruta>``) y, por eje, el valor correcto (varios separados por coma; ``ninguno`` si ninguno). Se
+         *     comprueba con ``load_gold_xlsx`` y sustituye a la anterior; propietario o editor, auditado sin el contenido.
+         */
+        put: operations["put_gold_api_v1_projects__project_id__context_quality_gold_put"];
+        post?: never;
+        /**
+         * Borrar la referencia en Excel
+         * @description Borra la referencia subida.
+         */
+        delete: operations["delete_gold_api_v1_projects__project_id__context_quality_gold_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/review": {
         parameters: {
             query?: never;
@@ -2182,6 +2229,73 @@ export interface components {
             status: string;
         };
         /**
+         * ContextDryRunParams
+         * @description Comparar cambios (W5, G3): clasificar los documentos de la referencia con otra configuración (plantilla o
+         *     manifiesto, modelo de clasificar, alcance de la IA o perfil), **sin guardar nada**, y compararlo con el contexto
+         *     actual. ``template_markdown`` lo fija la API al encolar (como en ``context_build``); con IA, ``max_documents`` es el
+         *     presupuesto de documentos enviados.
+         */
+        ContextDryRunParams: {
+            /**
+             * Ai Scope
+             * @default off
+             * @enum {string}
+             */
+            ai_scope: "off" | "unclassified" | "missing_axes";
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "template" | "manifest";
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Max Documents
+             * @default 50
+             */
+            max_documents: number;
+            /** Model Classify */
+            model_classify?: string | null;
+            /**
+             * Operation
+             * @default context_dry_run
+             * @constant
+             */
+            operation: "context_dry_run";
+            /** Profile Markdown */
+            profile_markdown?: string | null;
+            /** Template Markdown */
+            template_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
+         * ContextEvaluateParams
+         * @description Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.
+         *
+         *     No escribe nada: el informe (por eje: exactitud, cobertura, precisión, *recall*, confusiones y desglose por quién
+         *     clasificó) va en el resultado del run.
+         */
+        ContextEvaluateParams: {
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Operation
+             * @default context_evaluate
+             * @constant
+             */
+            operation: "context_evaluate";
+        };
+        /**
          * ContextFreshnessOut
          * @description Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).
          *
@@ -2709,6 +2823,36 @@ export interface components {
              * @default false
              */
             legacy_format: boolean;
+        };
+        /**
+         * GoldOut
+         * @description Referencia en Excel del proyecto (sin el contenido): de dónde se leyó y qué tiene.
+         */
+        GoldOut: {
+            /**
+             * Axes
+             * @description Ejes con etiquetas
+             */
+            axes: string[];
+            /** Columns */
+            columns: {
+                [key: string]: string;
+            };
+            /** Document Column */
+            document_column: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Labels
+             * @description Documentos etiquetados
+             */
+            labels: number;
+            /** Sheet */
+            sheet: string;
+            /** Uploaded At */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3480,6 +3624,34 @@ export interface components {
             version: string;
         };
         /**
+         * QualityOut
+         * @description Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.
+         */
+        QualityOut: {
+            /**
+             * Decisions Available
+             * @description Hay decisiones de personas con las que hacer una referencia
+             */
+            decisions_available: boolean;
+            dry_run?: components["schemas"]["QualityRunOut"] | null;
+            evaluation?: components["schemas"]["QualityRunOut"] | null;
+            gold?: components["schemas"]["GoldOut"] | null;
+        };
+        /**
+         * QualityRunOut
+         * @description El último run terminado de una comprobación de calidad, con su resultado.
+         */
+        QualityRunOut: {
+            /** Finished At */
+            finished_at: string | null;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /** Run Id */
+            run_id: string;
+        };
+        /**
          * ReviewDocumentOut
          * @description El documento de un motivo de revisión, con sus valores por eje y su versión.
          */
@@ -3621,7 +3793,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run";
             /**
              * Status
              * @enum {string}
@@ -3660,7 +3832,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -6639,6 +6811,161 @@ export interface operations {
             };
         };
     };
+    get_quality_api_v1_projects__project_id__context_quality_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_gold_api_v1_projects__project_id__context_quality_gold_put: {
+        parameters: {
+            query?: {
+                filename?: string;
+                sheet?: string;
+                document_column?: string;
+                /** @description Eje y columna, ``eje:columna`` (repetible); sin ninguno, ``dominio_ok`` y ``tipo_ok`` */
+                columns?: string[] | null;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description gold_invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_gold_api_v1_projects__project_id__context_quality_gold_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_review_api_v1_projects__project_id__context_review_get: {
         parameters: {
             query?: {
@@ -7586,7 +7913,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"];
             };
         };
         responses: {
@@ -8286,7 +8613,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

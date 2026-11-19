@@ -217,6 +217,25 @@ a la cola como «Decisión desfasada»; si el documento desaparece o el valor ya
 «Decisiones» lo avisa. «Revocar» la retira (pasa al historial). Las decisiones solo se aplican con plantilla o
 manifiesto.
 
+## Calidad (2.0)
+
+«Calidad» (botón del resumen del contexto) mide cuánto acierta la clasificación contra una **referencia**:
+
+- **Excel etiquetado a mano** (hasta 5 MB): una fila por documento, con su clave en la columna `documento` (carpeta y
+  ruta, como en «Revisar clasificación») y, por eje, el valor correcto en su columna (por defecto `dominio_ok` para el
+  dominio y `tipo_ok` para el tipo de material; se pueden indicar otras, `eje:columna`). Varios valores separados por
+  coma; `ninguno` si ninguno encaja; vacía = sin etiquetar. Se guarda en la app, no en el destino.
+- **Decisiones del proyecto**: cada «Confirmar» y «Cambiar eje» cuenta como etiqueta.
+
+**Evaluar** compara el contexto construido con la referencia: por eje, exactitud, cobertura, precisión y *recall*, la
+exactitud según quién clasificó (reglas, IA, semántica, persona) y las confusiones más frecuentes.
+
+**Comparar cambios** clasifica los documentos de la referencia con otra configuración (otra plantilla o el
+manifiesto, la IA con otro modelo o alcance, o un perfil sin guardar) **sin guardar nada**, y enseña la exactitud de
+cada eje frente a la del contexto actual. Con IA, el contenido de esos documentos sale hacia el servicio y el máximo de
+documentos acota el gasto. Ambas son ejecuciones (con progreso y cancelación) que pueden lanzar el propietario y los
+editores; la comparación queda en la auditoría.
+
 ## Perfil del proyecto y vista previa del prompt (2.0)
 
 El **perfil** es lo que el modelo debe saber del proyecto al clasificar con IA: contexto, reglas de desempate,
