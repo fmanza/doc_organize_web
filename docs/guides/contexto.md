@@ -189,6 +189,36 @@ página avisa de que hay que reconstruir.
 Las versiones viven en la base de datos de la aplicación (`config.db`) y viajan en sus copias de seguridad; restaurar
 una copia trae las versiones de ese momento, que pueden no coincidir con el manifiesto actual del destino.
 
+## Perfil del proyecto y vista previa del prompt (2.0)
+
+El **perfil** es lo que el modelo debe saber del proyecto al clasificar con IA: contexto, reglas de desempate,
+glosario y ejemplos, cada uno en su sección:
+
+```markdown
+## Contexto del proyecto
+Documentación de calidad y seguridad de una empresa de servicios.
+
+## Reglas de desempate
+- Una norma publicada es normativa aunque hable de procedimientos.
+
+## Glosario
+- SoA: declaración de aplicabilidad.
+
+## Ejemplos
+- «Política de seguridad» → gobernanza, política
+```
+
+- El de la **plantilla** o el **manifiesto** va en su cuerpo, tras el front matter; el de una plantilla lo editan quienes
+  gestionan plantillas.
+- El del **proyecto** («Perfil del proyecto» en la página Contexto) se guarda en `.doc_organize/profile.md` de la
+  carpeta del proyecto y se **añade** detrás del de la plantilla o el manifiesto. Lo pueden cambiar el propietario y
+  los editores, con el destino de lectura y escritura; queda en la auditoría sin el texto.
+- **Vista previa del prompt** muestra lo que recibiría el modelo (instrucciones, perfil compuesto y catálogo con sus
+  descripciones) con la plantilla elegida o el manifiesto, y con el perfil que hay en el editor aunque no esté guardado.
+  **No llama al modelo** ni gasta nada. En el editor de plantillas hay la misma vista previa, con el perfil de la
+  plantilla solo.
+- Doc_organize envía como mucho 8000 caracteres y 20 ejemplos del perfil compuesto.
+
 ## Plantillas de taxonomía
 
 **Administración → Plantillas de taxonomía** (solo administradores):

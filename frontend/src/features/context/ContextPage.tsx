@@ -59,6 +59,7 @@ import {
 } from './useContext';
 import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
 import { ManifestCard } from './ManifestCard';
+import { ProfileCard } from './ProfileCard';
 
 /**
  * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
@@ -218,6 +219,8 @@ export function ContextPage() {
             {t('context.manifest.show')}
           </Anchor>
         ))}
+
+      <ProfileCard projectId={projectId} editable={canBuild} selection={selection} />
 
       {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
 
