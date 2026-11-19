@@ -249,6 +249,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         ai_scope="unclassified" if params.ai_classification else "off",
         enrich=params.ai_enrichment,
         versions=project.context_versions,
+        redact_credentials=project.ai_redact_credentials,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:

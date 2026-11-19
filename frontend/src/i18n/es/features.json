@@ -491,7 +491,17 @@
     "scanView": "Ver escaneo",
     "documents": "Documentos",
     "duplicates": "Duplicados",
-    "context": "Contexto"
+    "context": "Contexto",
+    "ai": {
+      "title": "IA del proyecto",
+      "redact": "Redactar credenciales",
+      "redactHelp": "Antes de enviar texto a la IA y de publicar el sitio del contexto, las contraseñas, tokens y claves que aparezcan se sustituyen por «REDACTADO». Activado por defecto. Se aplica desde la siguiente construcción.",
+      "redactOff": "Desactivado: las credenciales que haya en los documentos se envían tal cual a la IA y se publican en el sitio.",
+      "readOnly": "El destino es de solo lectura: este ajuste no se puede cambiar.",
+      "confirmTitle": "¿Desactivar la redacción?",
+      "confirm": "Las contraseñas, tokens y claves de los documentos se enviarán tal cual al servicio de IA y aparecerán en el sitio del contexto. Hazlo solo si el servicio de IA y el sitio son de confianza para esos datos.",
+      "confirmButton": "Desactivar"
+    }
   },
   "runs": {
     "title": "Ejecuciones",

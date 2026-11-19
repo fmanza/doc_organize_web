@@ -32,6 +32,11 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Redacción de credenciales por proyecto** (W4, D7): «IA del proyecto» en la página del proyecto, con
+  `PUT /projects/{id}/ai-settings` (propietario o editor, destino `rw`, auditoría `project.ai_settings_update` con el
+  valor anterior y el nuevo) y `ai_redact_credentials` en `ProjectOut`. Llega a lo que sale hacia la IA (construcción y
+  borrador: `AiSettings.redact_credentials`) y al sitio (`SiteGenerator.generate(redact_credentials=)`). Desactivarla
+  pide confirmación.
 - **Perfil del proyecto y vista previa del prompt** (W3, D11): `GET`/`PUT`/`DELETE …/context/profile`
   (`.doc_organize/profile.md` en el destino; propietario o editor con destino `rw`, `If-Match`, sin seguir enlaces,
   escritura atómica, auditoría `project.profile_save`/`project.profile_delete` sin el texto) y

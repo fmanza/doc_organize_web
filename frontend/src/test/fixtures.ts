@@ -17,6 +17,7 @@ export const PROJECT = {
   last_run: null,
   active_run: false,
   capture_owner: false,
+  ai_redact_credentials: true,
 };
 
 export function runOut(overrides: Record<string, unknown> = {}) {

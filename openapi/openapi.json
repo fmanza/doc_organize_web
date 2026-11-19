@@ -3662,6 +3662,22 @@
         "title": "ProfileSectionsOut",
         "type": "object"
       },
+      "ProjectAiSettingsIn": {
+        "additionalProperties": false,
+        "description": "Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura.",
+        "properties": {
+          "ai_redact_credentials": {
+            "description": "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA",
+            "title": "Ai Redact Credentials",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ai_redact_credentials"
+        ],
+        "title": "ProjectAiSettingsIn",
+        "type": "object"
+      },
       "ProjectCreate": {
         "additionalProperties": false,
         "description": "Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,\n``destination_parent`` (que debe estar vacía).",
@@ -3853,6 +3869,12 @@
           "active_run": {
             "default": false,
             "title": "Active Run",
+            "type": "boolean"
+          },
+          "ai_redact_credentials": {
+            "default": true,
+            "description": "Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
+            "title": "Ai Redact Credentials",
             "type": "boolean"
           },
           "capture_owner": {
@@ -8181,6 +8203,61 @@
           }
         },
         "summary": "Editar proyecto",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/ai-settings": {
+      "put": {
+        "description": "Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o\neditor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo.",
+        "operationId": "put_ai_settings_api_v1_projects__project_id__ai_settings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectAiSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Destino de solo lectura (location_read_only)"
+          }
+        },
+        "summary": "Ajustes de IA del proyecto",
         "tags": [
           "projects"
         ]

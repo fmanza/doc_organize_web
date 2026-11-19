@@ -557,6 +557,27 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/ai-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ajustes de IA del proyecto
+         * @description Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o
+         *     editor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo.
+         */
+        put: operations["put_ai_settings_api_v1_projects__project_id__ai_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context": {
         parameters: {
             query?: never;
@@ -2982,6 +3003,17 @@ export interface components {
             tie_breakers?: string | null;
         };
         /**
+         * ProjectAiSettingsIn
+         * @description Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura.
+         */
+        ProjectAiSettingsIn: {
+            /**
+             * Ai Redact Credentials
+             * @description Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA
+             */
+            ai_redact_credentials: boolean;
+        };
+        /**
          * ProjectCreate
          * @description Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,
          *     ``destination_parent`` (que debe estar vacía).
@@ -3072,6 +3104,12 @@ export interface components {
              * @default false
              */
             active_run: boolean;
+            /**
+             * Ai Redact Credentials
+             * @description Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)
+             * @default true
+             */
+            ai_redact_credentials: boolean;
             /**
              * Capture Owner
              * @description Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)
@@ -5650,6 +5688,60 @@ export interface operations {
             };
             /** @description Ubicación no disponible */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_ai_settings_api_v1_projects__project_id__ai_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectAiSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Destino de solo lectura (location_read_only) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

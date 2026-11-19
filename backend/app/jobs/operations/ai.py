@@ -9,6 +9,7 @@ de los documentos sale de la app.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Final
 
 from app.db.models import Project
@@ -30,7 +31,8 @@ AI_ERRORS: Final[dict[str, str]] = {
 def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -> dict[str, Any]:
     """Pide el borrador y lo devuelve como resultado del run (Markdown + resumen del catálogo)."""
     project = require_project(project)
-    connection = ai_connection(ctx, "litellm", draft=True)
+    # Redacción por proyecto (D7, W4): también en la muestra del borrador.
+    connection = replace(ai_connection(ctx, "litellm", draft=True), redact_credentials=project.ai_redact_credentials)
     output, folders, _ = context_folders(ctx, project)
     ctx.progress("ai_sample", 0, None)
     ctx.check_cancelled()
