@@ -34,6 +34,7 @@ const ADMIN_MENU: AdminEntry[] = [
   },
   { key: 'settings', to: '/admin/settings', instance: true },
   { key: 'info', to: '/admin/info', instance: true },
+  { key: 'diagnostics', to: '/admin/diagnostics', instance: true },
   { key: 'audit', to: '/admin/audit', permission: 'audit.read' },
 ];
 

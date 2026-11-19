@@ -1585,5 +1585,25 @@
     "current": "Contexto actual",
     "candidate": "Prueba",
     "aiUsed": "IA: {{calls}} llamadas, {{tokens}} tokens, modelo {{model}}"
+  },
+  "diagnostics": {
+    "title": "Diagnóstico",
+    "intro": "Comprueba el entorno del servidor web con doc_organize: Python, docling y sus modelos, los extras (Excel, sitio con un build de prueba, audio y vídeo), la GPU y LibreOffice. La conversión la hacen los workers: sus capacidades están en Información.",
+    "checkAi": "Probar también los modelos de IA",
+    "checkAiHelp": "Envía un texto sintético a los modelos de clasificar, describir y diseñar la taxonomía (y agentes, si tiene modelo): gasta unos pocos tokens.",
+    "run": "Ejecutar diagnóstico",
+    "running": "Comprobando… puede tardar un minuto.",
+    "result": "Resultado del diagnóstico",
+    "ok": "Sin errores",
+    "failed": "Hay comprobaciones con error",
+    "checkedAt": "Comprobado el {{date}}.",
+    "check": "Comprobación",
+    "status": "Estado",
+    "detail": "Detalle",
+    "statuses": {
+      "ok": "Correcto",
+      "warning": "Aviso",
+      "error": "Error"
+    }
   }
 }

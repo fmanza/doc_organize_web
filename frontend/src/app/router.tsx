@@ -126,6 +126,10 @@ export const routes: RouteObject[] = [
                     ...page(async () => (await import('../features/admin/InfoPage')).InfoPage),
                   },
                   {
+                    path: 'diagnostics',
+                    ...page(async () => (await import('../features/admin/DiagnosticsPage')).DiagnosticsPage),
+                  },
+                  {
                     path: 'ai/settings',
                     ...page(async () => (await import('../features/admin/AiSettingsPage')).AiSettingsPage),
                   },

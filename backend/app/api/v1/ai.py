@@ -22,9 +22,13 @@ from app.api.v1.schemas import (
     AiUsageItemOut,
     AiUsageOut,
     AiUsageSourceOut,
+    DiagnosticCheckOut,
+    DiagnosticsIn,
+    DiagnosticsOut,
 )
 from app.core import crypto
 from app.domain.ai import connection_test
+from app.domain.ai import diagnostics as ai_diagnostics
 from app.domain.ai import settings as ai_settings
 from app.domain.ai import usage as ai_usage
 from app.domain.ai.settings import FamilyView
@@ -169,3 +173,27 @@ def get_ai_usage(
             )
         )
     return AiUsageOut(sources=sources)
+
+
+@router.post(
+    "/admin/diagnostics",
+    response_model=DiagnosticsOut,
+    summary="Diagnóstico del entorno",
+    responses={
+        **_ERRORS,
+        429: {"description": "Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon)"},
+        503: {"description": "No terminó a tiempo o falló (diagnostics_failed)"},
+    },
+)
+def run_diagnostics(
+    body: DiagnosticsIn, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
+) -> DiagnosticsOut:
+    """``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,
+    GPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un
+    minuto; se audita sin detalles."""
+    report = ai_diagnostics.run(db, settings, check_ai=body.check_ai, actor=admin, ctx=ctx)
+    return DiagnosticsOut(
+        ok=report.ok,
+        checked_at=report.checked_at,
+        checks=[DiagnosticCheckOut.model_validate(check, from_attributes=True) for check in report.checks],
+    )

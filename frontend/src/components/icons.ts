@@ -26,6 +26,7 @@ import {
   IconHelpCircle,
   IconHome,
   IconInfoCircle,
+  IconStethoscope,
   IconListSearch,
   IconPlayerPlay,
   IconPlayerStop,
@@ -75,6 +76,7 @@ export const NAV_ICONS = {
   'ai-usage': IconChartBar,
   settings: IconSettings,
   info: IconInfoCircle,
+  diagnostics: IconStethoscope,
   audit: IconListSearch,
 } as const satisfies Record<string, AppIcon>;
 
