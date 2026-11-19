@@ -832,10 +832,11 @@ def _taxonomy_axes(context: Any) -> list[dict[str, Any]]:
     ]
 
 
-def _unclassified(context: Any, keys: dict[str, str]) -> list[ContextDoc]:
+def _unclassified(context: Any, keys: dict[str, str] | None = None) -> list[ContextDoc]:
     """Documentos sin clasificar (G42, doc_organize 1.6.0): con su motivo, lo que propusieron las reglas y sus
     propiedades si ``unclassified_details`` los trae (uno por ruta, en el mismo orden); si no (contexto de 1.5.0 o
     detalle dañado), solo el nombre y la extensión, como hasta 1.5.0."""
+    keys = keys or {}
     details = list(getattr(context, "unclassified_details", None) or [])
     paths = list(context.unclassified_documents)
     if [detail.source_path for detail in details] == paths:

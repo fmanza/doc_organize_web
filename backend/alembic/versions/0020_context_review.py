@@ -60,7 +60,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_context_review_items")),
     )
-    op.create_index("ix_context_review_items_project_priority", "context_review_items", ["project_id", "priority", "id"])
+    op.create_index(
+        "ix_context_review_items_project_priority", "context_review_items", ["project_id", "priority", "id"]
+    )
 
 
 def downgrade() -> None:
