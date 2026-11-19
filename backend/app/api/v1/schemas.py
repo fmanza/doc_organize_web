@@ -796,12 +796,36 @@ class TaxonomyTemplateList(BaseModel):
     items: list[TaxonomyTemplateOut]
 
 
+class TaxonomyAxisSummaryOut(BaseModel):
+    """Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores."""
+
+    key: str
+    name: str
+    organizes: Literal["folder", "subfolder"] | None
+    multiple: bool
+    values: int
+
+
+class FrontMatterReportOut(BaseModel):
+    """Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
+
+    ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
+    ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+    """
+
+    axes: list[TaxonomyAxisSummaryOut] = []
+    implicit_axes: list[str] = []
+    ignored_keys: list[str] = []
+    legacy_format: bool = False
+
+
 class TaxonomyTemplateDetail(TaxonomyTemplateOut):
-    """Plantilla con su Markdown y su catálogo."""
+    """Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3)."""
 
     markdown: str
     domains: list[CatalogEntryOut]
     material_types: list[CatalogEntryOut]
+    front_matter: FrontMatterReportOut = FrontMatterReportOut()
 
 
 class TaxonomyMarkdownIn(BaseModel):
@@ -823,6 +847,7 @@ class TaxonomyManifestOut(BaseModel):
     error: str | None = None
     domains: list[CatalogEntryOut] = []
     material_types: list[CatalogEntryOut] = []
+    front_matter: FrontMatterReportOut = FrontMatterReportOut()
     etag: str
     last_changed_at: datetime | None = None
 
@@ -861,6 +886,35 @@ class ContextDomainOut(BaseModel):
     documents: int
 
 
+class ContextAxisValueOut(BaseModel):
+    """Un valor de un eje del contexto y cuántos documentos lo tienen."""
+
+    slug: str
+    name: str
+    documents: int
+
+
+class ContextAxisOut(BaseModel):
+    """Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos."""
+
+    key: str
+    name: str
+    description: str | None = None
+    multiple: bool = False
+    organizes: Literal["folder", "subfolder"] | None = None
+    values: list[ContextAxisValueOut]
+
+
+class PromptProvenanceOut(BaseModel):
+    """Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``)."""
+
+    task: str
+    prompt_id: str
+    version: str
+    source: str = Field(description="builtin (empaquetado) o project (prompt propio del proyecto)")
+    model: str
+
+
 class ContextOut(BaseModel):
     """Resumen del contexto construido del proyecto (proyección del último ``context_build``)."""
 
@@ -878,8 +932,23 @@ class ContextOut(BaseModel):
     ai_classification_model: str | None = None
     ai_enrichment_model: str | None = None
     domains: list[ContextDomainOut]
+    #: W3 (doc_organize 2.0): ejes con recuentos por valor y procedencia de la IA; vacíos en contextos anteriores.
+    taxonomy_axes: list[ContextAxisOut] = []
+    ai_provenance: list[PromptProvenanceOut] = []
     built_by_run_id: str | None
     built_at: datetime
+
+
+class AxisValueOut(_Out):
+    """Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio
+    la IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral)."""
+
+    slug: str
+    name: str
+    confidence: float | None = None
+    classified_by: Literal["rules", "semantic", "ai", "human"] | None = None
+    evidence: str | None = None
+    evidence_verified: bool | None = None
 
 
 class ContextDocumentOut(_Out):
@@ -913,13 +982,16 @@ class ContextDocumentOut(_Out):
     # 1.6.0 (G42): por qué no se clasificó; los sin clasificar traen también sus propiedades y lo que propusieron las
     # reglas por debajo del umbral (``rules_domain``, ``rules_confidence``). Nulo en contextos anteriores.
     unclassified_reason: Literal["incomplete_artifacts", "below_threshold"] | None = None
+    #: W3 (doc_organize 2.0): valores de cada eje, por clave de eje; vacío en contextos anteriores a 2.0.
+    axes: dict[str, list[AxisValueOut]] = {}
 
 
 class ContextChangeOut(BaseModel):
     """Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0)."""
 
     path: str = Field(description="Original relativo a la carpeta de origen (``<carpeta>/<ruta>``)")
-    change: Literal["added", "removed", "reclassified"]
+    #: doc_organize 2.0: ``superseded`` (versión antigua fuera del contexto) y ``excluded`` (lo sacó una persona).
+    change: Literal["added", "removed", "reclassified", "superseded", "excluded"]
     previous_domain: str | None
     domain: str | None
     previous_material_type: str | None

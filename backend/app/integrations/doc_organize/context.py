@@ -68,13 +68,31 @@ class TemplateInvalidError(Exception):
 
 
 @dataclass(frozen=True)
+class AxisInfo:
+    """Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas, si admite varios
+    valores y cuántos valores tiene."""
+
+    key: str
+    name: str
+    organizes: str | None
+    multiple: bool
+    values: int
+
+
+@dataclass(frozen=True)
 class TemplateInfo:
-    """Resumen de una plantilla: catálogo de dominios y tipos de material ``(slug, nombre)``."""
+    """Resumen de una plantilla: catálogo de dominios y tipos de material ``(slug, nombre)`` y, desde doc_organize 2.0,
+    sus ejes y lo que avisa ``inspect_taxonomy_front_matter``: ejes implícitos (formato de 1.x), claves que no se usan
+    y si el texto es de 1.x."""
 
     title: str | None
     description: str | None
     domains: list[tuple[str, str]]
     material_types: list[tuple[str, str]]
+    axes: list[AxisInfo] = field(default_factory=list)
+    implicit_axes: list[str] = field(default_factory=list)
+    ignored_keys: list[str] = field(default_factory=list)
+    legacy_format: bool = False
 
 
 @dataclass(frozen=True)
@@ -138,6 +156,8 @@ class AxisValueDoc:
     confidence: float | None
     classified_by: str | None
     evidence_verified: bool | None = None
+    #: Cita literal del documento que dio la IA (2.0, D10); ``None`` sin cita.
+    evidence: str | None = None
 
 
 @dataclass(frozen=True)
@@ -207,18 +227,46 @@ class ContextOutcome:
     ai_enrichment_model: str | None = None
     #: Ejes del contexto (``Context.taxonomy_axes``) sin palabras clave ni ejemplos (doc_organize 2.0).
     taxonomy_axes: list[dict[str, Any]] = field(default_factory=list)
+    #: Con qué prompt y modelo se hizo cada tarea de IA (``Context.ai_provenance``, 2.0): ``task``, ``prompt_id``,
+    #: ``version``, ``source``, ``sha256`` y ``model``.
+    ai_provenance: list[dict[str, Any]] = field(default_factory=list)
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
 
 
-def _info(manifest: Any) -> TemplateInfo:
+def _info(manifest: Any, text: str | None = None) -> TemplateInfo:
+    report = _front_matter_report(text) if text is not None else None
     return TemplateInfo(
         title=manifest.title,
         description=manifest.description,
         domains=[(entry.slug, entry.name) for entry in manifest.folder_axis.entries],
         material_types=[(entry.slug, entry.name) for entry in manifest.subfolder_axis.entries],
+        axes=[
+            AxisInfo(
+                key=axis.key,
+                name=axis.name,
+                organizes=axis.organizes,
+                multiple=bool(axis.multiple),
+                values=len(axis.entries),
+            )
+            for axis in manifest.axes
+        ],
+        implicit_axes=list(report.implicit_axes) if report else [],
+        ignored_keys=list(report.ignored_keys) if report else [],
+        legacy_format=bool(report.legacy_format) if report else False,
     )
+
+
+def _front_matter_report(text: str) -> Any:
+    """``inspect_taxonomy_front_matter`` de ``text``, o ``None`` si no se puede leer (``parse_template`` ya da el error)."""
+    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter
+    from doc_organize.core.exceptions import DocOrganizeError
+
+    try:
+        return inspect_taxonomy_front_matter(text)
+    except (DocOrganizeError, ValueError):
+        return None
 
 
 def parse_template(text: str) -> TemplateInfo:
@@ -231,7 +279,7 @@ def parse_template(text: str) -> TemplateInfo:
     from doc_organize.core.exceptions import TaxonomyTemplateError
 
     try:
-        return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE))
+        return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE), text)
     except TaxonomyTemplateError as exc:
         raise TemplateInvalidError(str(exc)) from None
 
@@ -525,6 +573,7 @@ def _axes(classification: Any) -> list[AxisValueDoc]:
             confidence=value.confidence,
             classified_by=str(value.classified_by) if value.classified_by else None,
             evidence_verified=value.evidence_verified,
+            evidence=value.evidence,
         )
         for key, values in classification.axes.items()
         for value in values
@@ -630,6 +679,17 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         ai_classification_model=context.model_for_task("classify") if context.ai_stats.scope != "off" else None,
         ai_enrichment_model=context.model_for_task("enrich") if context.ai_stats.enrich else None,
         taxonomy_axes=_taxonomy_axes(context),
+        ai_provenance=[
+            {
+                "task": str(item.task),
+                "prompt_id": str(item.prompt_id),
+                "version": str(item.version),
+                "source": str(item.source),
+                "sha256": str(item.sha256),
+                "model": str(item.model),
+            }
+            for item in context.ai_provenance
+        ],
     )
 
 
