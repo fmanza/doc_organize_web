@@ -29,6 +29,9 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
 | Uso de LiteLLM | Panel de uso | URL, clave virtual |
 | Uso de GitHub Copilot | Panel de uso | Usuario de GitHub, token personal (PAT) |
 
+- La tarjeta «Modelos de IA» tiene arriba la URL y la clave general y, debajo, un bloque por tarea (clasificar,
+  describir, diseñar la taxonomía, agentes y embeddings) con su modelo (vacío: el alias recomendado, que se ve en el
+  campo), su clave propia y, en clasificar y describir, su máximo de documentos por ejecución.
 - Desde la 2.0 (doc_organize 2.0) un **cliente único** hace todas las tareas con el mismo LiteLLM Proxy. Cada tarea
   usa su modelo o, si no se configura, el alias recomendado del proxy (`doc-organize-classify`,
   `doc-organize-enrich`, `doc-organize-taxonomy-design`…), y su clave propia o, si no tiene, la general. Sin máximo
@@ -41,7 +44,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
   `_VIRTUAL_KEY`, `_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`: los mismos nombres que doc_organize 2.0) o **Sin valor**.
   Lo guardado aquí tiene prioridad.
 - Las variables de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`, `_ENRICHMENT_*`,
-  `_TAXONOMY_MANIFEST_DRAFT_*`) **ya no se leen**. Si siguen definidas y la IA queda sin configurar, al encolar una
+  `_TAXONOMY_MANIFEST_DRAFT_*`) **ya no se leen**; si siguen definidas, la página lo avisa con la equivalente de cada una. Si siguen definidas y la IA queda sin configurar, al encolar una
   ejecución con IA el error dice qué variable usar en su lugar (la API de configuración las lista, sin valores).
 - Las **claves y tokens** se guardan cifrados y nunca se vuelven a mostrar: solo «Guardada: …ab12» (los 4 últimos
   caracteres, o `***` si son muy cortos). Para cambiar una, escribe la nueva. Para volver a la variable del servidor,
@@ -60,8 +63,8 @@ se toma de lo guardado o de la variable del servidor. Así puedes comprobar un c
   - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
     configurado, lo avisa.
   - GitHub Copilot: consulta el uso del mes, como el panel de uso. El token necesita permiso de facturación.
-- **Probar el modelo** (solo en «Modelos de IA») envía además una petición mínima al modelo de clasificar, con salida
-  `json_schema` estricta, que gasta unos pocos tokens. Es la prueba que detecta un nombre de modelo mal escrito, y dice
+- **Probar el modelo** (en cada tarea de «Modelos de IA») envía además una petición mínima al modelo de esa tarea, con
+  su clave, y con salida `json_schema` estricta (en embeddings, un embedding), que gasta unos pocos tokens. Es la prueba que detecta un nombre de modelo mal escrito, y dice
   si el modelo admite `json_schema` (si no, doc_organize usa `json_object` y valida la respuesta igualmente). Si «Probar conexión» dice que la clave fue
   rechazada, prueba el modelo: algunos proxies no dejan a la clave consultar sus propios datos.
 - El resultado dice el tiempo que tardó o el tipo de error: clave rechazada, sin conexión (o sin respuesta a tiempo), el

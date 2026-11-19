@@ -7,6 +7,8 @@ export type AiSettings = components['schemas']['AiSettingsOut'];
 export type AiFamily = components['schemas']['AiFamilyOut'];
 export type AiField = components['schemas']['AiFieldOut'];
 export type AiFamilyKey = AiFamily['key'];
+/** Tarea de IA de doc_organize 2.0 (`classify`, `enrich`, `taxonomy_design`, `agent`, `embed`). */
+export type AiTask = NonNullable<components['schemas']['AiTestIn']['task']>;
 export type AiUsageSource = components['schemas']['AiUsageSourceOut'];
 export type AiTestResult = components['schemas']['AiTestOut'];
 
@@ -56,16 +58,18 @@ export function useTestAiFamily() {
       family,
       fields,
       modelCheck,
+      task = 'classify',
     }: {
       family: AiFamilyKey;
       fields: Record<string, string>;
       modelCheck: boolean;
+      /** Tarea cuyo modelo y clave se prueban (familia `litellm`, doc_organize 2.0). */
+      task?: AiTask | undefined;
     }) =>
       unwrap(
         await api.POST('/api/v1/admin/ai-settings/{family}/test', {
           params: { path: { family } },
-          // doc_organize 2.0: «Probar el modelo» prueba el de clasificar (la elección por tarea llega con W3).
-          body: { fields, model_check: modelCheck, task: 'classify' },
+          body: { fields, model_check: modelCheck, task },
         }),
       ),
   });

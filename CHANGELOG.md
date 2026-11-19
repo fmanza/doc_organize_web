@@ -38,6 +38,9 @@ doc_organize 2.0.0.
   `POST …/context/prompt-preview` (plantilla o manifiesto, con el perfil guardado o un borrador; `render_prompt_preview`,
   sin llamar al modelo). `POST /taxonomy-templates/prompt-preview` para la plantilla (`templates.manage`). Página:
   tarjeta «Perfil del proyecto» con su vista previa, y vista previa en el editor de plantillas.
+- **Ajustes de IA por tarea** (W3): la tarjeta «Modelos de IA» agrupa por tarea el modelo (con el alias recomendado a
+  la vista), la clave propia y el presupuesto, y cada tarea tiene su «Probar el modelo», que dice si el modelo admite
+  `json_schema`. La página avisa de las variables de entorno de 1.x que siguen definidas, con su equivalente.
 - **Contexto por ejes** (W3): `GET …/context/documents?axis=clave:slug` (repetible hasta 20; O dentro del eje, Y entre
   ejes; patrón validado, 422 si no) y `axes` en cada documento (valor, confianza, quién lo asignó, cita y si se
   verificó); `GET …/context` añade `taxonomy_axes` con el recuento de cada valor y `ai_provenance` (prompt, versión,

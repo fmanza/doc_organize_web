@@ -185,6 +185,78 @@ describe('AiSettingsPage', () => {
     ).toBeDisabled();
   });
 
+  it('agrupa los campos por tarea y prueba el modelo de la tarea elegida (W3)', async () => {
+    const tasks = family(
+      'litellm',
+      ['base_url', 'virtual_key', 'model_classify', 'model_enrich', 'virtual_key_enrich', 'budget_enrich'],
+      {
+        base_url: { source: 'db', value: 'https://litellm.example.internal' },
+        virtual_key: { source: 'db', hint: '…ab12' },
+        model_classify: { task: 'classify' },
+        model_enrich: { task: 'enrich', source: 'db', value: 'descriptor' },
+        virtual_key_enrich: { task: 'enrich' },
+        budget_enrich: { task: 'enrich', env_var: null },
+      },
+      true,
+    );
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-settings': {
+        body: {
+          ...SETTINGS,
+          families: [tasks],
+          legacy_variables: [
+            {
+              name: 'DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL',
+              replacement: 'DOC_ORGANIZE_LITELLM_MODEL_ENRICH',
+            },
+          ],
+        },
+      },
+      'POST /api/v1/admin/ai-settings/litellm/test': {
+        body: {
+          ok: true,
+          error: null,
+          model_access: 'unknown',
+          model_checked: true,
+          task: 'enrich',
+          response_format: 'json_object',
+          elapsed_ms: 300,
+          tested_at: '2026-11-20T09:00:00Z',
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/settings');
+
+    const card = await screen.findByRole('region', { name: 'Modelos de IA' });
+    expect(
+      screen.getByText(/DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL → DOC_ORGANIZE_LITELLM_MODEL_ENRICH/),
+    ).toBeInTheDocument();
+    const enrich = within(card).getByRole('group', { name: 'Describir (descripción y palabras clave)' });
+    expect(within(enrich).getByLabelText(/Modelo para describir/, { selector: 'input' })).toHaveValue(
+      'descriptor',
+    );
+    expect(within(card).getByLabelText(/Modelo para clasificar/, { selector: 'input' })).toHaveAttribute(
+      'placeholder',
+      'doc-organize-classify',
+    );
+    expect(
+      within(card).queryByRole('button', { name: 'Probar el modelo de Modelos de IA' }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(card).getByRole('button', {
+        name: 'Probar el modelo de la tarea Describir (descripción y palabras clave)',
+      }),
+    );
+
+    expect(await within(card).findByText(/Tarea probada: Describir/)).toBeInTheDocument();
+    expect(within(card).getByText(/no admite json_schema/)).toBeInTheDocument();
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm/test');
+    expect(await request?.clone().json()).toEqual({ fields: {}, model_check: true, task: 'enrich' });
+  });
+
   it('borra un valor guardado', async () => {
     const fetchMock = stubApi({
       ...session(ADMIN),

@@ -1335,7 +1335,16 @@
       "testOkModel": "El servidor, la clave y el modelo responden (con los valores del formulario, sin guardar).",
       "testFailed": "La prueba falló",
       "testAuthHint": "Algunos proxies no dejan a la clave consultar sus datos: prueba el modelo para confirmarlo.",
-      "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado."
+      "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado.",
+      "testTaskLabel": "Probar el modelo de la tarea {{task}}",
+      "testedTask": "Tarea probada: {{task}}.",
+      "format": {
+        "json_schema": "El modelo admite la salida json_schema estricta.",
+        "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
+      },
+      "budgetPlaceholder": "El general de Parámetros",
+      "legacyTitle": "Variables de entorno de la 1.x",
+      "legacy": "Estas variables siguen definidas en el servidor y doc_organize 2.0 ya no las lee. Cámbialas por su equivalente:"
     },
     "families": {
       "litellm": {
@@ -1404,6 +1413,13 @@
       "title": "Parámetros de la IA",
       "intro": "Tiempos, reintentos y tope de documentos por ejecución. Se aplican sin reiniciar. Los servicios, modelos y claves están en",
       "configure": "IA › Configuración"
+    },
+    "tasks": {
+      "classify": "Clasificar",
+      "enrich": "Describir (descripción y palabras clave)",
+      "taxonomy_design": "Diseñar la taxonomía (borrador de manifiesto)",
+      "agent": "Agentes",
+      "embed": "Embeddings (semántica)"
     }
   },
   "info": {
