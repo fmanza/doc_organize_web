@@ -298,6 +298,91 @@ def migrate_markdown_v1(text: str) -> str | None:
         return None
 
 
+@dataclass(frozen=True)
+class ProfileSections:
+    """Secciones de un perfil de proyecto (``ProjectProfile`` de doc_organize 2.0, G2): lo que se envía al modelo."""
+
+    context: str | None = None
+    tie_breakers: str | None = None
+    glossary: str | None = None
+    examples: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PromptPreview:
+    """Lo que recibiría el modelo al clasificar (``render_prompt_preview``), sin llamar a nadie.
+
+    Attributes:
+        messages: ``(rol, texto)`` de cada mensaje.
+        template_profile: Perfil del cuerpo de la plantilla o el manifiesto.
+        project_profile: Perfil propio del proyecto (``profile.md``), que se añade detrás (D11).
+        profile: El perfil compuesto que va en el prompt.
+    """
+
+    messages: list[tuple[str, str]]
+    template_profile: ProfileSections | None
+    project_profile: ProfileSections | None
+    profile: ProfileSections | None
+
+
+def profile_file(output_root: Path) -> Path:
+    """``<raíz>/.doc_organize/profile.md``: perfil propio del proyecto (``PROJECT_PROFILE_FILE``, D11)."""
+    from doc_organize.context.project_profile import PROJECT_PROFILE_FILE
+
+    return Path(Path(output_root) / Path(str(PROJECT_PROFILE_FILE)))
+
+
+def _sections(profile: Any) -> ProfileSections | None:
+    if profile is None or profile.is_empty:
+        return None
+    return ProfileSections(
+        context=profile.context,
+        tie_breakers=profile.tie_breakers,
+        glossary=profile.glossary,
+        examples=list(profile.examples),
+    )
+
+
+def parse_profile_text(text: str) -> ProfileSections | None:
+    """Secciones de perfil de ``text`` (``parse_profile``); ``None`` si no tiene ninguna reconocida."""
+    from doc_organize.context.project_profile import parse_profile
+
+    return _sections(parse_profile(text))
+
+
+def prompt_preview(
+    manifest_markdown: str, *, project_profile: str | None = None, project_root: Path | None = None
+) -> PromptPreview:
+    """Mensajes de la clasificación con ``manifest_markdown`` y el perfil del proyecto ``project_profile`` añadido
+    detrás del de la plantilla (``render_prompt_preview``, sin llamar al modelo). Con ``project_root`` se usan los
+    prompts propios del proyecto si los tiene.
+
+    Raises:
+        TemplateInvalidError: El Markdown no es una plantilla o manifiesto válido.
+    """
+    from doc_organize.ai import PromptRegistry
+    from doc_organize.ai.services import render_prompt_preview
+    from doc_organize.context.project_profile import parse_profile
+    from doc_organize.context.taxonomy_templates import parse_taxonomy_template
+    from doc_organize.core.exceptions import TaxonomyTemplateError
+
+    try:
+        manifest = parse_taxonomy_template(manifest_markdown, source=TEMPLATE_SOURCE)
+    except TaxonomyTemplateError as exc:
+        raise TemplateInvalidError(str(exc)) from None
+    project = parse_profile(project_profile) if project_profile else None
+    template = manifest.profile
+    composed = template.merged(project) if template is not None else project
+    prompts = PromptRegistry(str(project_root)) if project_root is not None else PromptRegistry()
+    messages = render_prompt_preview(manifest, prompts=prompts, profile=composed)
+    return PromptPreview(
+        messages=[(str(m["role"]), str(m["content"])) for m in messages],
+        template_profile=_sections(template),
+        project_profile=_sections(project),
+        profile=_sections(composed),
+    )
+
+
 def builtin_templates() -> dict[str, TemplateInfo]:
     """Plantillas incluidas en doc_organize por nombre (``list_builtin_templates`` + ``load_builtin_template``)."""
     from doc_organize.context.taxonomy_templates import list_builtin_templates, load_builtin_template

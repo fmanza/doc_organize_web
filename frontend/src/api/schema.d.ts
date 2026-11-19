@@ -621,6 +621,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Perfil del proyecto
+         * @description ``.doc_organize/profile.md`` del proyecto y las secciones que reconoce doc_organize.
+         */
+        get: operations["get_profile_api_v1_projects__project_id__context_profile_get"];
+        /**
+         * Guardar el perfil del proyecto
+         * @description Escribe el perfil propio del proyecto (D11: se añade al de la plantilla o el manifiesto). Propietario o editor,
+         *     con el destino ``rw``; auditado sin el texto.
+         */
+        put: operations["put_profile_api_v1_projects__project_id__context_profile_put"];
+        post?: never;
+        /**
+         * Borrar el perfil del proyecto
+         * @description Borra ``profile.md`` (queda solo el perfil de la plantilla o el manifiesto).
+         */
+        delete: operations["delete_profile_api_v1_projects__project_id__context_profile_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/prompt-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del prompt de clasificación
+         * @description Los mensajes que recibiría el modelo al clasificar con la plantilla o el manifiesto y el perfil (el borrador
+         *     del formulario o el guardado), **sin llamarlo**.
+         */
+        post: operations["preview_prompt_api_v1_projects__project_id__context_prompt_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/site-session": {
         parameters: {
             query?: never;
@@ -1206,6 +1256,26 @@ export interface paths {
         get: operations["list_templates_api_v1_taxonomy_templates_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/taxonomy-templates/prompt-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del prompt de una plantilla
+         * @description Los mensajes que recibiría el modelo con esta plantilla y su perfil (``templates.manage``), sin llamarlo.
+         */
+        post: operations["preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2895,6 +2965,23 @@ export interface components {
             items: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
         };
         /**
+         * ProfileSectionsOut
+         * @description Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar.
+         */
+        ProfileSectionsOut: {
+            /** Context */
+            context?: string | null;
+            /**
+             * Examples
+             * @default []
+             */
+            examples: string[];
+            /** Glossary */
+            glossary?: string | null;
+            /** Tie Breakers */
+            tie_breakers?: string | null;
+        };
+        /**
          * ProjectCreate
          * @description Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,
          *     ``destination_parent`` (que debe estar vacía).
@@ -3031,6 +3118,29 @@ export interface components {
             total: number;
         };
         /**
+         * ProjectProfileIn
+         * @description Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de
+         *     desempate``, ``## Glosario`` y ``## Ejemplos``.
+         */
+        ProjectProfileIn: {
+            /** Markdown */
+            markdown: string;
+        };
+        /**
+         * ProjectProfileOut
+         * @description ``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).
+         *
+         *     ``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se
+         *     envía en ``If-Match`` al guardar o borrar (``"none"`` si no hay perfil).
+         */
+        ProjectProfileOut: {
+            /** Etag */
+            etag: string;
+            /** Markdown */
+            markdown: string | null;
+            sections?: components["schemas"]["ProfileSectionsOut"] | null;
+        };
+        /**
          * ProjectUpdate
          * @description Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.
          */
@@ -3046,6 +3156,42 @@ export interface components {
             name?: string | null;
             /** Source Subpaths */
             source_subpaths?: string[] | null;
+        };
+        /** PromptMessageOut */
+        PromptMessageOut: {
+            /** Content */
+            content: string;
+            /** Role */
+            role: string;
+        };
+        /**
+         * PromptPreviewIn
+         * @description Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y
+         *     con ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado.
+         */
+        PromptPreviewIn: {
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "template" | "manifest";
+            /** Profile Markdown */
+            profile_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
+         * PromptPreviewOut
+         * @description Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del
+         *     proyecto y el compuesto que va en el prompt.
+         */
+        PromptPreviewOut: {
+            /** Messages */
+            messages: components["schemas"]["PromptMessageOut"][];
+            profile?: components["schemas"]["ProfileSectionsOut"] | null;
+            project_profile?: components["schemas"]["ProfileSectionsOut"] | null;
+            template_profile?: components["schemas"]["ProfileSectionsOut"] | null;
         };
         /**
          * PromptProvenanceOut
@@ -3673,6 +3819,14 @@ export interface components {
             title: string | null;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * TemplatePromptPreviewIn
+         * @description Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto).
+         */
+        TemplatePromptPreviewIn: {
+            /** Markdown */
+            markdown: string;
         };
         /** TenantCreate */
         TenantCreate: {
@@ -5660,6 +5814,250 @@ export interface operations {
             };
             /** @description Ubicación de destino no disponible */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_profile_api_v1_projects__project_id__context_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_profile_api_v1_projects__project_id__context_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Demasiado grande (profile_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_profile_api_v1_projects__project_id__context_profile_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Demasiado grande (profile_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_prompt_api_v1_projects__project_id__context_prompt_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromptPreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreviewOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin manifiesto o no válido (prompt_preview_invalid) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7753,6 +8151,51 @@ export interface operations {
             };
             /** @description No autenticado */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplatePromptPreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreviewOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plantilla no válida (template_invalid) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

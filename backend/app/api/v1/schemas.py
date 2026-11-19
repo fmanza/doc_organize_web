@@ -852,6 +852,70 @@ class TaxonomyManifestOut(BaseModel):
     last_changed_at: datetime | None = None
 
 
+class ProfileSectionsOut(BaseModel):
+    """Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar."""
+
+    context: str | None = None
+    tie_breakers: str | None = None
+    glossary: str | None = None
+    examples: list[str] = []
+
+
+class ProjectProfileOut(BaseModel):
+    """``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).
+
+    ``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se
+    envía en ``If-Match`` al guardar o borrar (``"none"`` si no hay perfil).
+    """
+
+    markdown: str | None
+    sections: ProfileSectionsOut | None = None
+    etag: str
+
+
+class ProjectProfileIn(BaseModel):
+    """Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de
+    desempate``, ``## Glosario`` y ``## Ejemplos``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str = Field(min_length=1, max_length=32_768)
+
+
+class PromptPreviewIn(BaseModel):
+    """Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y
+    con ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    catalog: Literal["template", "manifest"] = "manifest"
+    template_name: str | None = Field(default=None, max_length=64)
+    profile_markdown: str | None = Field(default=None, max_length=32_768)
+
+
+class TemplatePromptPreviewIn(BaseModel):
+    """Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str = Field(min_length=1, max_length=262_144)
+
+
+class PromptMessageOut(BaseModel):
+    role: str
+    content: str
+
+
+class PromptPreviewOut(BaseModel):
+    """Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del
+    proyecto y el compuesto que va en el prompt."""
+
+    messages: list[PromptMessageOut]
+    template_profile: ProfileSectionsOut | None = None
+    project_profile: ProfileSectionsOut | None = None
+    profile: ProfileSectionsOut | None = None
+
+
 class ManifestVersionOut(BaseModel):
     """Versión anterior del manifiesto (sin el texto): lo que había antes de ``action``.
 

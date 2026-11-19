@@ -107,3 +107,43 @@ class SiteNotFoundError(AppError):
     status = 404
     title = "No encontrado"
     code = "site_not_found"
+
+
+class ProfileReplacedError(AppError):
+    """``.doc_organize/profile.md`` (o su carpeta) no es un fichero (carpeta) normal: no se lee ni se sobrescribe."""
+
+    status = 409
+    title = "El perfil no es un fichero normal"
+    code = "profile_replaced"
+
+
+class ProfileChangedError(AppError):
+    """El perfil del proyecto cambió desde que se leyó (``If-Match`` distinto)."""
+
+    status = 409
+    title = "El perfil ha cambiado"
+    code = "profile_changed"
+
+
+class ProfileEtagRequiredError(AppError):
+    """Falta ``If-Match`` al cambiar el perfil del proyecto."""
+
+    status = 428
+    title = "Falta If-Match"
+    code = "etag_required"
+
+
+class ProfileTooLargeError(AppError):
+    """El perfil del proyecto pasa del tamaño máximo."""
+
+    status = 422
+    title = "Perfil demasiado grande"
+    code = "profile_invalid"
+
+
+class PromptPreviewError(AppError):
+    """No hay catálogo con el que componer la vista previa del prompt (sin manifiesto, o no es válido)."""
+
+    status = 422
+    title = "Vista previa del prompt no disponible"
+    code = "prompt_preview_invalid"

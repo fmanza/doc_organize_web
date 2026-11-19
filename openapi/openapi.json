@@ -3614,6 +3614,54 @@
         "title": "PermissionList",
         "type": "object"
       },
+      "ProfileSectionsOut": {
+        "description": "Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar.",
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "examples": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "glossary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary"
+          },
+          "tie_breakers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tie Breakers"
+          }
+        },
+        "title": "ProfileSectionsOut",
+        "type": "object"
+      },
       "ProjectCreate": {
         "additionalProperties": false,
         "description": "Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,\n``destination_parent`` (que debe estar vacía).",
@@ -3916,6 +3964,59 @@
         "title": "ProjectPage",
         "type": "object"
       },
+      "ProjectProfileIn": {
+        "additionalProperties": false,
+        "description": "Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de\ndesempate``, ``## Glosario`` y ``## Ejemplos``.",
+        "properties": {
+          "markdown": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "ProjectProfileIn",
+        "type": "object"
+      },
+      "ProjectProfileOut": {
+        "description": "``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).\n\n``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se\nenvía en ``If-Match`` al guardar o borrar (``\"none\"`` si no hay perfil).",
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "sections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "markdown",
+          "etag"
+        ],
+        "title": "ProjectProfileOut",
+        "type": "object"
+      },
       "ProjectUpdate": {
         "additionalProperties": false,
         "description": "Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.",
@@ -3977,6 +4078,112 @@
           }
         },
         "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "PromptMessageOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "PromptMessageOut",
+        "type": "object"
+      },
+      "PromptPreviewIn": {
+        "additionalProperties": false,
+        "description": "Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y\ncon ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado.",
+        "properties": {
+          "catalog": {
+            "default": "manifest",
+            "enum": [
+              "template",
+              "manifest"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "profile_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          }
+        },
+        "title": "PromptPreviewIn",
+        "type": "object"
+      },
+      "PromptPreviewOut": {
+        "description": "Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del\nproyecto y el compuesto que va en el prompt.",
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/PromptMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "template_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "PromptPreviewOut",
         "type": "object"
       },
       "PromptProvenanceOut": {
@@ -5472,6 +5679,23 @@
           "builtin"
         ],
         "title": "TaxonomyTemplateOut",
+        "type": "object"
+      },
+      "TemplatePromptPreviewIn": {
+        "additionalProperties": false,
+        "description": "Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto).",
+        "properties": {
+          "markdown": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TemplatePromptPreviewIn",
         "type": "object"
       },
       "TenantCreate": {
@@ -8307,6 +8531,257 @@
           }
         },
         "summary": "Historial del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/profile": {
+      "delete": {
+        "description": "Borra ``profile.md`` (queda solo el perfil de la plantilla o el manifiesto).",
+        "operationId": "delete_profile_api_v1_projects__project_id__context_profile_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced)"
+          },
+          "422": {
+            "description": "Demasiado grande (profile_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Borrar el perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      },
+      "get": {
+        "description": "``.doc_organize/profile.md`` del proyecto y las secciones que reconoce doc_organize.",
+        "operationId": "get_profile_api_v1_projects__project_id__context_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      },
+      "put": {
+        "description": "Escribe el perfil propio del proyecto (D11: se añade al de la plantilla o el manifiesto). Propietario o editor,\ncon el destino ``rw``; auditado sin el texto.",
+        "operationId": "put_profile_api_v1_projects__project_id__context_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced)"
+          },
+          "422": {
+            "description": "Demasiado grande (profile_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Guardar el perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/prompt-preview": {
+      "post": {
+        "description": "Los mensajes que recibiría el modelo al clasificar con la plantilla o el manifiesto y el perfil (el borrador\ndel formulario o el guardado), **sin llamarlo**.",
+        "operationId": "preview_prompt_api_v1_projects__project_id__context_prompt_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptPreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Sin manifiesto o no válido (prompt_preview_invalid)"
+          }
+        },
+        "summary": "Vista previa del prompt de clasificación",
         "tags": [
           "context"
         ]
@@ -11159,6 +11634,47 @@
           }
         },
         "summary": "Plantillas de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/taxonomy-templates/prompt-preview": {
+      "post": {
+        "description": "Los mensajes que recibiría el modelo con esta plantilla y su perfil (``templates.manage``), sin llamarlo.",
+        "operationId": "preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplatePromptPreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Plantilla no válida (template_invalid)"
+          }
+        },
+        "summary": "Vista previa del prompt de una plantilla",
         "tags": [
           "context"
         ]

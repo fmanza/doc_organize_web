@@ -36,6 +36,8 @@ import {
   useTemplates,
 } from '../context/useContext';
 import { FrontMatterNotices } from '../context/Axes';
+import { PromptPreview } from '../context/ProfileCard';
+import { useTemplatePromptPreview } from './useTemplatePreview';
 
 /** Lo que se edita: plantilla nueva (con su nombre) o existente (nombre fijo); `source` para duplicar o importar. */
 interface Editing {
@@ -276,6 +278,7 @@ function TemplateEditor({
 }) {
   const { t } = useTranslation();
   const save = useSaveTemplate();
+  const preview = useTemplatePromptPreview();
   // Al editar o duplicar se parte del Markdown guardado; al crear o importar, del que trae `editing`.
   const loaded = useTemplate(editing.markdown === undefined ? (editing.source ?? editing.name) : null);
   const [name, setName] = useState(editing.name);
@@ -334,8 +337,19 @@ function TemplateEditor({
             {t('templates.savedWithNotices')}
           </Text>
         )}
+        {preview.isError && <ErrorAlert error={preview.error} />}
+        {preview.data && <PromptPreview preview={preview.data} />}
         {save.isError && <ErrorAlert error={save.error} />}
         <Group justify="flex-end">
+          <Button
+            variant="default"
+            mr="auto"
+            loading={preview.isPending}
+            disabled={!markdown.trim() || tooLarge}
+            onClick={() => preview.mutate(markdown)}
+          >
+            {t('context.profile.preview')}
+          </Button>
           <Button variant="default" onClick={onClose}>
             {t(savedReport ? 'common.close' : 'common.cancel')}
           </Button>

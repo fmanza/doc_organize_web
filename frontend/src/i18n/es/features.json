@@ -1241,6 +1241,31 @@
       "ignored": "Estas claves no se usan al clasificar: {{keys}}.",
       "implicitTitle": "Ejes implícitos",
       "implicit": "Se leen como ejes: {{keys}}. Puedes declararlos en «axes:» con su nombre y descripción."
+    },
+    "profile": {
+      "title": "Perfil del proyecto",
+      "intro": "Lo que el modelo debe saber de este proyecto al clasificar: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo se usa al clasificar con IA.",
+      "markdown": "Perfil (Markdown con las secciones «## Contexto del proyecto», «## Reglas de desempate», «## Glosario» y «## Ejemplos»)",
+      "noSections": "El perfil guardado no tiene ninguna de las secciones que lee doc_organize: no se envía nada al modelo.",
+      "tooLarge": "El perfil pasa de 32 KiB.",
+      "save": "Guardar perfil",
+      "delete": "Borrar perfil",
+      "saved": "Perfil guardado.",
+      "deleted": "Perfil borrado.",
+      "preview": "Vista previa del prompt",
+      "previewNeedsCatalog": "La vista previa necesita una plantilla elegida o el manifiesto del proyecto.",
+      "previewTitle": "Vista previa del prompt",
+      "previewHelp": "Lo que recibiría el modelo al clasificar un documento, sin llamarlo. El extracto de cada documento va en el último mensaje.",
+      "fromTemplate": "Con perfil de la plantilla",
+      "noTemplateProfile": "Sin perfil en la plantilla",
+      "fromProject": "Con perfil del proyecto",
+      "noProjectProfile": "Sin perfil del proyecto",
+      "examples_one": "{{count}} ejemplo",
+      "examples_other": "{{count}} ejemplos",
+      "roles": {
+        "system": "Mensaje de sistema (instrucciones, perfil y catálogo)",
+        "user": "Mensaje del documento"
+      }
     }
   },
   "templates": {
