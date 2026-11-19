@@ -36,7 +36,7 @@ import { useAiStatus } from '../admin/useAi';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
 import {
-  aiFamily,
+  aiTask,
   buildParams,
   type Catalog,
   CONTEXT_HISTORY_XLSX,
@@ -391,8 +391,8 @@ function BuildCard({
   const status = useAiStatus();
   const [withAi, setWithAi] = useState(false);
   const [withEnrichment, setWithEnrichment] = useState(false);
-  const aiAvailable = status.data?.[aiFamily(catalog)] === true;
-  const enrichmentAvailable = status.data?.litellm_enrichment === true;
+  const aiAvailable = status.data?.[aiTask(catalog)] === true;
+  const enrichmentAvailable = status.data?.enrich === true;
 
   const blockedByDraft = catalog === 'manifest' && manifestDirty;
   const ready =
@@ -499,7 +499,7 @@ function BuildCard({
         <Switch
           label={t('context.ai.classify')}
           description={t(
-            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiFamily(catalog)}`,
+            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiTask(catalog)}`,
           )}
           checked={withAi && aiAvailable}
           disabled={!aiAvailable}
@@ -512,9 +512,7 @@ function BuildCard({
         )}
         <Switch
           label={t('context.ai.enrich')}
-          description={t(
-            enrichmentAvailable ? 'context.ai.enrichHelp' : 'context.ai.notConfigured.litellm_enrichment',
-          )}
+          description={t(enrichmentAvailable ? 'context.ai.enrichHelp' : 'context.ai.notConfigured.enrich')}
           checked={withEnrichment && enrichmentAvailable}
           disabled={!enrichmentAvailable}
           onChange={(event) => setWithEnrichment(event.currentTarget.checked)}

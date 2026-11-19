@@ -47,11 +47,10 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
   };
 }
 
-/** Familia de IA que usa `catalog`: con plantilla o manifiesto clasifica en dos ejes (taxonomía). */
-export function aiFamily(catalog: Catalog): 'litellm_classification' | 'litellm_taxonomy_classification' {
-  return catalog === 'template' || catalog === 'manifest'
-    ? 'litellm_taxonomy_classification'
-    : 'litellm_classification';
+/** Tarea de IA que clasifica (doc_organize 2.0): la misma con cualquier catálogo (`litellm`, modelo por tarea). */
+export function aiTask(catalog: Catalog): 'classify' {
+  void catalog;
+  return 'classify';
 }
 
 /** Resultado del run `taxonomy_draft` (lo que devuelve el job). */

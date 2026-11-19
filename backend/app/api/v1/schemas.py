@@ -966,27 +966,32 @@ class SiteSessionOut(BaseModel):
 
 # --- ai (Fase 8) -------------------------------------------------------------------------------------------------
 
-AiFamilyKey = Literal[
-    "litellm_classification",
-    "litellm_taxonomy_classification",
-    "litellm_taxonomy_manifest_draft",
-    "litellm_enrichment",
-    "litellm_usage",
-    "github_copilot_usage",
-]
+#: doc_organize 2.0 (W2): una familia ``litellm`` para todas las tareas de IA (migración ``0016``) y las dos de uso.
+AiFamilyKey = Literal["litellm", "litellm_usage", "github_copilot_usage"]
+AiTaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
 
 
 class AiFieldOut(BaseModel):
     """Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos."""
 
     name: str
-    env_var: str
+    env_var: str | None = Field(description="Variable de entorno equivalente; null si el campo no tiene")
     secret: bool
     required: bool
     source: Literal["db", "env", "none"]
     value: str | None
     hint: str | None
     undecryptable: bool = Field(description="Hay un valor guardado que no se descifra con las claves actuales")
+    task: AiTaskKey | None = Field(
+        default=None, description="Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas"
+    )
+
+
+class AiLegacyVariableOut(BaseModel):
+    """Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye."""
+
+    name: str
+    replacement: str
 
 
 class AiFamilyOut(BaseModel):
@@ -1000,6 +1005,10 @@ class AiSettingsOut(BaseModel):
 
     encryption_configured: bool
     families: list[AiFamilyOut]
+    legacy_variables: list[AiLegacyVariableOut] = Field(
+        default_factory=list,
+        description="Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+    )
 
 
 class AiFamilyUpdate(BaseModel):
@@ -1008,7 +1017,7 @@ class AiFamilyUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
-        max_length=8
+        max_length=16
     )
 
 
@@ -1019,12 +1028,13 @@ class AiTestIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
-        default_factory=dict, max_length=8
+        default_factory=dict, max_length=16
     )
     model_check: bool = Field(
         default=False,
         description="Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
     )
+    task: AiTaskKey = Field(default="classify", description="Tarea cuyo modelo se prueba (familia litellm)")
 
 
 class AiTestOut(BaseModel):
@@ -1038,14 +1048,21 @@ class AiTestOut(BaseModel):
         description="Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)"
     )
     model_checked: bool = Field(description="Si se envió la petición al modelo")
+    task: AiTaskKey | None = Field(default=None, description="Tarea cuyo modelo se probó (familia litellm)")
+    response_format: Literal["json_schema", "json_object"] | None = Field(
+        default=None, description="Formato con el que respondió el modelo: json_schema si admite la salida estricta"
+    )
     elapsed_ms: int
     tested_at: AwareDatetime
 
 
 class AiStatusOut(BaseModel):
-    """Qué familias de IA están configuradas (para cualquier usuario, sin valores)."""
+    """Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores)."""
 
     families: dict[str, bool]
+    tasks: dict[str, bool] = Field(
+        default_factory=dict, description="Tarea de IA (doc_organize 2.0) → si se puede usar"
+    )
 
 
 class AiUsageItemOut(BaseModel):

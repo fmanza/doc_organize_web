@@ -25,15 +25,24 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
 
 | Servicio | Para qué | Campos |
 |---|---|---|
-| Clasificación de dominios (un eje) | Contexto con dominios descubiertos o catálogo propio | URL, clave virtual, modelo |
-| Clasificación por taxonomía (dos ejes) | Contexto con plantilla o manifiesto | URL, clave virtual, modelo |
-| Borrador de manifiesto | Botón «Pedir borrador» | URL, clave virtual, modelo |
-| Descripciones y palabras clave (1.5.0) | [Completar con IA](#completar-descripciones-con-ia) al construir el contexto | URL, clave virtual, modelo |
+| Modelos de IA (2.0) | Todas las tareas: clasificar, completar descripciones, borrador de manifiesto, agentes y embeddings | URL y clave virtual generales; por tarea, modelo, clave propia y (clasificar y describir) máximo de documentos por ejecución, todos opcionales |
 | Uso de LiteLLM | Panel de uso | URL, clave virtual |
 | Uso de GitHub Copilot | Panel de uso | Usuario de GitHub, token personal (PAT) |
 
-- Cada campo indica de dónde sale su valor: **Guardado aquí**, **Variable del servidor** (`DOC_ORGANIZE_*`, los mismos
-  nombres que la web integrada de doc_organize) o **Sin valor**. Lo guardado aquí tiene prioridad.
+- Desde la 2.0 (doc_organize 2.0) un **cliente único** hace todas las tareas con el mismo LiteLLM Proxy. Cada tarea
+  usa su modelo o, si no se configura, el alias recomendado del proxy (`doc-organize-classify`,
+  `doc-organize-enrich`, `doc-organize-taxonomy-design`…), y su clave propia o, si no tiene, la general. Sin máximo
+  propio, una tarea usa «Documentos con IA por ejecución» de los parámetros.
+- Al actualizar desde la 1.x, la migración pasa las cuatro tarjetas antiguas a «Modelos de IA»: la clasificación (con
+  plantilla o manifiesto manda la de taxonomía), las descripciones y el borrador conservan cada una su clave y su
+  modelo. Si usaban URL distintas, queda la de la clasificación por taxonomía (el aviso queda en el log de la
+  migración).
+- Cada campo indica de dónde sale su valor: **Guardado aquí**, **Variable del servidor** (`DOC_ORGANIZE_LITELLM_BASE_URL`,
+  `_VIRTUAL_KEY`, `_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`: los mismos nombres que doc_organize 2.0) o **Sin valor**.
+  Lo guardado aquí tiene prioridad.
+- Las variables de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`, `_ENRICHMENT_*`,
+  `_TAXONOMY_MANIFEST_DRAFT_*`) **ya no se leen**. Si siguen definidas y la IA queda sin configurar, al encolar una
+  ejecución con IA el error dice qué variable usar en su lugar (la API de configuración las lista, sin valores).
 - Las **claves y tokens** se guardan cifrados y nunca se vuelven a mostrar: solo «Guardada: …ab12» (los 4 últimos
   caracteres, o `***` si son muy cortos). Para cambiar una, escribe la nueva. Para volver a la variable del servidor,
   pulsa «Borrar valor guardado».
@@ -51,12 +60,14 @@ se toma de lo guardado o de la variable del servidor. Así puedes comprobar un c
   - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
     configurado, lo avisa.
   - GitHub Copilot: consulta el uso del mes, como el panel de uso. El token necesita permiso de facturación.
-- **Probar el modelo** (solo en las tarjetas con modelo) envía además una petición mínima al modelo, que gasta unos
-  pocos tokens. Es la prueba que detecta un nombre de modelo mal escrito. Si «Probar conexión» dice que la clave fue
+- **Probar el modelo** (solo en «Modelos de IA») envía además una petición mínima al modelo de clasificar, con salida
+  `json_schema` estricta, que gasta unos pocos tokens. Es la prueba que detecta un nombre de modelo mal escrito, y dice
+  si el modelo admite `json_schema` (si no, doc_organize usa `json_object` y valida la respuesta igualmente). Si «Probar conexión» dice que la clave fue
   rechazada, prueba el modelo: algunos proxies no dejan a la clave consultar sus propios datos.
 - El resultado dice el tiempo que tardó o el tipo de error: clave rechazada, sin conexión (o sin respuesta a tiempo), el
   modelo no respondió u otro error. Nunca muestra lo que contestó el servidor.
-- Si cambias la URL, escribe también la clave: la guardada nunca se envía a otro servidor.
+- Si cambias la URL, escribe también la clave general: la guardada nunca se envía a otro servidor, y las claves propias
+  de cada tarea guardadas tampoco (la prueba usa la general).
 - Como mucho una prueba por tarjeta cada 10 segundos. Cada prueba queda en la auditoría, sin URL ni claves.
 
 En **Administración → IA → Parámetros** hay cinco ajustes más (hasta la 1.5 estaban en Ajustes):
@@ -65,15 +76,19 @@ En **Administración → IA → Parámetros** hay cinco ajustes más (hasta la 1
 |---|---|---|
 | Tiempo máximo por petición de IA | 30 s | Para clasificar documentos (el panel de uso espera como mucho 10 s) |
 | Reintentos de conexión con la IA | 2 | Solo ante fallos de conexión |
-| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por servicio: clasificar y completar descripciones cuentan cada uno el suyo |
+| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea: clasificar y completar descripciones cuentan cada uno el suyo. Una tarea con máximo propio en «Modelos de IA» usa el suyo (con las dos tareas marcadas, doc_organize 2.0.0a2 aplica el menor de los dos a cada una) |
 | Tiempo máximo del borrador de IA | 300 s | La petición del borrador es una sola y larga; con un modelo local puede tardar minutos (5–900) |
 | Reintentos del borrador de IA | 0 | Ante un fallo de conexión o de tiempo. Reintentar un timeout vuelve a pedir la misma generación al modelo |
 
 ## Clasificar con IA
 
 En la página **Contexto**, marca «Clasificar con IA lo que las reglas dejen sin clasificar» antes de construir.
-Solo está disponible si el servicio que toca está configurado. Con dominios descubiertos o con un catálogo propio se
-usa el de un eje. Con plantilla o manifiesto se usa el de dos ejes, que asigna dominio y tipo de material.
+Solo está disponible si «Modelos de IA» está configurado. Con dominios descubiertos o con un catálogo propio la IA
+asigna el dominio; con plantilla o manifiesto, los ejes que las reglas dejaron vacíos (dominio, tipo de material...).
+
+- El modelo responde con salida `json_schema` estricta: solo puede elegir valores del catálogo.
+- Desde la 2.0, las respuestas se guardan en la caché de IA del proyecto: **reconstruir sin cambios no vuelve a llamar
+  al modelo**. El resultado de la ejecución dice cuántos documentos se resolvieron con la caché.
 
 - La IA solo recibe los documentos que las reglas no supieron clasificar y solo elige entre los dominios del catálogo.
   Nunca inventa dominios nuevos.
@@ -86,8 +101,8 @@ usa el de un eje. Con plantilla o manifiesto se usa el de dos ejes, que asigna d
 ## Completar descripciones con IA
 
 Desde la 1.5.0, en la página **Contexto** se puede marcar «Completar descripción y palabras clave con IA» antes de
-construir. Solo está disponible si el servicio «Descripciones y palabras clave» está configurado (variables
-`DOC_ORGANIZE_LITELLM_ENRICHMENT_*`).
+construir. Solo está disponible si «Modelos de IA» está configurado (tarea `enrich`: variables
+`DOC_ORGANIZE_LITELLM_MODEL_ENRICH` y, si quiere clave propia, `DOC_ORGANIZE_LITELLM_VIRTUAL_KEY_ENRICH`).
 
 - Solo se envían los documentos **clasificados** a los que les falta la descripción o las palabras clave en sus
   propiedades. Lo que declara el documento nunca se sustituye, y el autor nunca lo pone la IA.
@@ -134,6 +149,10 @@ falla o no está configurada, la otra se sigue mostrando.
     ```
 
 3. Cuando termine sin errores, ya puedes quitar la clave antigua.
+
+La copia de la configuración de IA de la 1.x que guarda la migración de la 2.0 (`ai_settings_v1`, solo para poder
+volver atrás) no se vuelve a cifrar: con la clave antigua retirada, una vuelta atrás dejaría esas claves sin descifrar
+y habría que volver a escribirlas.
 
 Si se pierde la clave, las credenciales guardadas no se pueden recuperar: la página las marca como «no se descifra» y
 hay que volver a introducirlas. La copia de `config.db` no incluye `secrets/`: guárdalos aparte.

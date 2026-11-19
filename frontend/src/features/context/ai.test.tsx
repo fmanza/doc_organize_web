@@ -28,18 +28,20 @@ const BASE = {
   'GET /api/v1/taxonomy-templates': { body: { items: [] } },
 };
 
-function status(families: Record<string, boolean>) {
+/** Estado de la IA de doc_organize 2.0: una familia (`litellm`) y lo que se puede usar por tarea. */
+function status(tasks: Record<string, boolean>) {
+  const configured = Object.values(tasks).some(Boolean);
   return {
     'GET /api/v1/ai/status': {
       body: {
-        families: {
-          litellm_classification: false,
-          litellm_taxonomy_classification: false,
-          litellm_taxonomy_manifest_draft: false,
-          litellm_enrichment: false,
-          litellm_usage: false,
-          github_copilot_usage: false,
-          ...families,
+        families: { litellm: configured, litellm_usage: false, github_copilot_usage: false },
+        tasks: {
+          classify: false,
+          enrich: false,
+          taxonomy_design: false,
+          agent: false,
+          embed: false,
+          ...tasks,
         },
       },
     },
@@ -54,7 +56,7 @@ describe('ContextPage con IA', () => {
 
     const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
     expect(toggle).toBeDisabled();
-    expect(screen.getByText(/configurar la «Clasificación de dominios»/)).toBeInTheDocument();
+    expect(screen.getAllByText(/configurar los «Modelos de IA»/).length).toBeGreaterThan(0);
     // «Pedir borrador» está con el manifiesto, que solo se ve con su catálogo (A5).
     expect(screen.queryByRole('button', { name: 'Pedir borrador' })).not.toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole('radio', { name: 'Manifiesto del proyecto' }));
@@ -64,7 +66,7 @@ describe('ContextPage con IA', () => {
   it('con IA avisa de la salida de datos y la pide al construir', async () => {
     const fetchMock = stubApi({
       ...BASE,
-      ...status({ litellm_classification: true }),
+      ...status({ classify: true }),
       'POST /api/v1/projects/7/runs': {
         status: 202,
         body: runOut({ id: RUN_ID, operation: 'context_build' }),
@@ -79,9 +81,9 @@ describe('ContextPage con IA', () => {
     await waitFor(() => expect(toggle).toBeEnabled());
     await user.click(toggle);
     expect(screen.getByText('El contenido sale de la aplicación')).toBeInTheDocument();
-    // Con plantilla se usaría otra familia (sin configurar): se desactiva.
+    // doc_organize 2.0: con plantilla clasifica la misma tarea (`classify`): sigue disponible.
     await user.click(screen.getByRole('radio', { name: 'Plantilla' }));
-    expect(screen.getByRole('switch', { name: /Clasificar con IA/ })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: /Clasificar con IA/ })).toBeEnabled();
     await user.click(screen.getByRole('radio', { name: 'Descubrir dominios' }));
     await user.click(screen.getByRole('button', { name: 'Construir' }));
 
@@ -97,7 +99,7 @@ describe('ContextPage con IA', () => {
   it('completar descripciones con IA va aparte de clasificar (1.5.0)', async () => {
     const fetchMock = stubApi({
       ...BASE,
-      ...status({ litellm_enrichment: true }),
+      ...status({ enrich: true }),
       'POST /api/v1/projects/7/runs': {
         status: 202,
         body: runOut({ id: RUN_ID, operation: 'context_build' }),
@@ -132,7 +134,7 @@ describe('ContextPage con IA', () => {
     expect(
       await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ }),
     ).toBeDisabled();
-    expect(screen.getByText(/configurar «Descripciones y palabras clave»/)).toBeInTheDocument();
+    expect(screen.getAllByText(/configurar los «Modelos de IA»/).length).toBeGreaterThan(0);
   });
 
   it('el borrador se carga en el editor sin guardarse', async () => {
@@ -140,7 +142,7 @@ describe('ContextPage con IA', () => {
     const markdown = '---\ndomains:\n- slug: facturas\n  name: Facturas\n---\n';
     const fetchMock = stubApi({
       ...BASE,
-      ...status({ litellm_taxonomy_manifest_draft: true }),
+      ...status({ taxonomy_design: true }),
       'POST /api/v1/projects/7/runs': {
         status: 202,
         body: runOut({ id: RUN_ID, operation: 'taxonomy_draft' }),
@@ -190,7 +192,7 @@ describe('ContextPage con IA', () => {
   it('si el borrador falla, muestra el motivo', async () => {
     stubApi({
       ...BASE,
-      ...status({ litellm_taxonomy_manifest_draft: true }),
+      ...status({ taxonomy_design: true }),
       'POST /api/v1/projects/7/runs': {
         status: 202,
         body: runOut({ id: RUN_ID, operation: 'taxonomy_draft' }),

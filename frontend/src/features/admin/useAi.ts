@@ -64,7 +64,8 @@ export function useTestAiFamily() {
       unwrap(
         await api.POST('/api/v1/admin/ai-settings/{family}/test', {
           params: { path: { family } },
-          body: { fields, model_check: modelCheck },
+          // doc_organize 2.0: «Probar el modelo» prueba el de clasificar (la elección por tarea llega con W3).
+          body: { fields, model_check: modelCheck, task: 'classify' },
         }),
       ),
   });
@@ -74,7 +75,8 @@ export function useTestAiFamily() {
 export function useAiStatus() {
   return useQuery({
     queryKey: ['ai', 'status'],
-    queryFn: async () => unwrap(await api.GET('/api/v1/ai/status')).families,
+    // doc_organize 2.0: una familia (`litellm`) para todas las tareas; la página pregunta por tarea.
+    queryFn: async () => unwrap(await api.GET('/api/v1/ai/status')).tasks ?? {},
   });
 }
 

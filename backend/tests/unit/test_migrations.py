@@ -98,3 +98,102 @@ def test_0011_adds_empty_exclusions_and_drops_them(settings: Settings) -> None:
     assert "excluded_subpaths" not in {c["name"] for c in inspect(get_engine()).get_columns("scanned_folders")}
     with get_engine().connect() as conn:
         assert conn.exec_driver_sql("SELECT name FROM locations").scalar() == "Origen"
+
+
+# --- 0016: ai_settings de doc_organize 2.0 (W2) ------------------------------------------------------------------------
+
+#: Filas sintéticas de 1.x: cuatro familias, con claves (cifradas, opacas para la migración) y modelos distintos, y una
+#: URL distinta en la familia de un eje (que 2.0 no puede representar).
+LEGACY_ROWS = [
+    ("litellm_classification", "base_url", "https://proxy-uno.example", None),
+    ("litellm_classification", "virtual_key", None, "gAAAA-clasificacion"),
+    ("litellm_classification", "model", "modelo-un-eje", None),
+    ("litellm_taxonomy_classification", "base_url", "https://proxy.example", None),
+    ("litellm_taxonomy_classification", "virtual_key", None, "gAAAA-taxonomia"),
+    ("litellm_taxonomy_classification", "model", "modelo-taxonomia", None),
+    ("litellm_enrichment", "base_url", "https://proxy.example", None),
+    ("litellm_enrichment", "virtual_key", None, "gAAAA-descripciones"),
+    ("litellm_taxonomy_manifest_draft", "base_url", "https://proxy.example", None),
+    ("litellm_taxonomy_manifest_draft", "virtual_key", None, "gAAAA-borrador"),
+    ("litellm_taxonomy_manifest_draft", "model", "modelo-borrador", None),
+    ("litellm_usage", "base_url", "https://proxy.example", None),
+    ("litellm_usage", "virtual_key", None, "gAAAA-uso"),
+    ("github_copilot_usage", "username", "octo-cat", None),
+]
+
+
+def _ai_rows(conn: object) -> set[tuple[str, str, str | None, str | None]]:
+    rows = conn.exec_driver_sql("SELECT family, field, value, ciphertext FROM ai_settings")  # type: ignore[attr-defined]
+    return {tuple(row) for row in rows}
+
+
+def _insert_ai_rows(
+    rows: list[tuple[str, str, str | None, str | None]], updated_at: str = "2026-01-01 00:00:00"
+) -> None:
+    with get_engine().begin() as conn:
+        for family, field, value, ciphertext in rows:
+            conn.exec_driver_sql(
+                "INSERT INTO ai_settings (family, field, value, ciphertext, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (family, field, value, ciphertext, updated_at),
+            )
+
+
+def test_0016_moves_the_four_families_to_one_with_tasks_and_back(settings: Settings) -> None:
+    """Ida y vuelta: cada tarea conserva su clave y su modelo; bajar sin cambios deja exactamente las filas de 1.x."""
+    config = _config()
+    command.upgrade(config, "0015")
+    _insert_ai_rows(LEGACY_ROWS)
+
+    command.upgrade(config, "0016")
+
+    with get_engine().connect() as conn:
+        migrated = _ai_rows(conn)
+        assert conn.exec_driver_sql("SELECT count(*) FROM ai_settings_v1").scalar() == 11
+    assert migrated == {
+        ("litellm", "base_url", "https://proxy.example", None),  # la de taxonomía manda
+        ("litellm", "virtual_key", None, "gAAAA-taxonomia"),
+        ("litellm", "model_classify", "modelo-taxonomia", None),
+        ("litellm", "virtual_key_enrich", None, "gAAAA-descripciones"),
+        ("litellm", "virtual_key_taxonomy_design", None, "gAAAA-borrador"),
+        ("litellm", "model_taxonomy_design", "modelo-borrador", None),
+        ("litellm_usage", "base_url", "https://proxy.example", None),  # las de uso no cambian
+        ("litellm_usage", "virtual_key", None, "gAAAA-uso"),
+        ("github_copilot_usage", "username", "octo-cat", None),
+    }
+
+    command.downgrade(config, "0015")
+
+    with get_engine().connect() as conn:
+        assert _ai_rows(conn) == set(LEGACY_ROWS)
+    assert "ai_settings_v1" not in inspect(get_engine()).get_table_names()
+
+
+def test_0016_downgrade_rebuilds_from_what_changed_after_upgrading(settings: Settings) -> None:
+    """Si se cambió la familia ``litellm`` tras subir, bajar rehace las cuatro familias desde ella (no restaura la copia)."""
+    config = _config()
+    command.upgrade(config, "0015")
+    _insert_ai_rows([row for row in LEGACY_ROWS if row[0] == "litellm_enrichment"])
+    command.upgrade(config, "0016")
+    with get_engine().begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO ai_settings (family, field, value, updated_at) VALUES"
+            " ('litellm', 'model_classify', 'modelo-nuevo', '2099-01-01 00:00:00')"
+        )
+
+    command.downgrade(config, "0015")
+
+    with get_engine().connect() as conn:
+        rows = _ai_rows(conn)
+    for family in ("litellm_classification", "litellm_taxonomy_classification"):
+        assert (family, "model", "modelo-nuevo", None) in rows
+        assert (family, "virtual_key", None, "gAAAA-descripciones") in rows  # la general tras subir
+    assert ("litellm_enrichment", "base_url", "https://proxy.example", None) in rows
+    assert not any(family == "litellm" for family, *_ in rows)
+
+
+def test_0016_without_ai_settings_is_a_no_op(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0016")
+    command.downgrade(config, "0015")
+    with get_engine().connect() as conn:
+        assert _ai_rows(conn) == set()

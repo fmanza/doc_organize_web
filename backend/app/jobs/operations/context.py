@@ -23,7 +23,7 @@ from app.domain.ai.errors import AiNotConfiguredError
 from app.domain.documents.paths import DocumentNamer
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
-from app.domain.runs.operations import ContextBuildParams, ContextDeleteParams, context_ai_family
+from app.domain.runs.operations import ContextBuildParams, ContextDeleteParams, context_ai_tasks
 from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.ai import AiConnection, FamilyKey
@@ -134,15 +134,16 @@ def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[Sourc
     )
 
 
-def ai_connection(ctx: JobContext, family: FamilyKey) -> AiConnection:
-    """Configuración de la familia ``family``, descifrada aquí, en el subproceso (ADR-004 §5).
+def ai_connection(ctx: JobContext, family: FamilyKey, *, draft: bool = False) -> AiConnection:
+    """Configuración de la familia ``family``, descifrada aquí, en el subproceso (ADR-004 §5). ``draft``: con el plazo
+    y los reintentos del borrador de manifiesto.
 
     Raises:
         JobFailed: ``ai_not_configured`` si se quitó la configuración después de encolar.
     """
     with ctx.session_factory() as db:
         try:
-            return ai_settings.connection(db, ctx.settings, family)
+            return ai_settings.connection(db, ctx.settings, family, draft=draft)
         except AiNotConfiguredError:
             raise JobFailed("ai_not_configured", "La IA de esta operación ya no está configurada.") from None
 
@@ -151,13 +152,19 @@ def ai_connection(ctx: JobContext, family: FamilyKey) -> AiConnection:
 AI_STOPPED: Final[dict[str, str]] = {
     "auth": "El servicio de IA rechazó la clave: no se clasificó nada más con IA. Revisa la configuración.",
     "connection": "No se pudo conectar con el servicio de IA varias veces seguidas: no se clasificó nada más con IA.",
-    "budget": "Se llegó al máximo de documentos con IA por ejecución (ajuste ai_max_documents_per_run).",
+    "budget": (
+        "Se llegó al máximo de documentos con IA por ejecución (presupuesto de la tarea o ajuste"
+        " ai_max_documents_per_run)."
+    ),
 }
 #: Lo mismo para las descripciones con IA (1.5.0): el resto se queda con lo que declara el documento.
 ENRICHMENT_STOPPED: Final[dict[str, str]] = {
     "auth": "El servicio de IA rechazó la clave de las descripciones: no se completó nada más con IA.",
     "connection": "No se pudo conectar varias veces seguidas con la IA de las descripciones: no se completó nada más.",
-    "budget": "Las descripciones con IA llegaron al máximo de documentos por ejecución (ai_max_documents_per_run).",
+    "budget": (
+        "Las descripciones con IA llegaron al máximo de documentos por ejecución (presupuesto de la tarea o"
+        " ai_max_documents_per_run)."
+    ),
 }
 
 
@@ -169,6 +176,8 @@ def _log_ai(ctx: JobContext, outcome: ContextOutcome) -> None:
             f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados (los que las reglas no "
             f"clasificaron); {outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
         )
+        if outcome.ai.get("cached"):  # doc_organize 2.0: caché de resultados de IA, sin llamar al modelo
+            ctx.log(f"IA: {outcome.ai['cached']} documentos resueltos con la caché de IA, sin llamar al modelo.")
         if outcome.ai["stopped"]:
             ctx.log(AI_STOPPED[outcome.ai["stopped"]], level="warning")
     if outcome.enrichment is not None:
@@ -186,8 +195,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     project = require_project(project)
     require_rw(project.destination_location)
     output, request_folders, namer = context_folders(ctx, project)
-    ai = ai_connection(ctx, context_ai_family(params)) if params.ai_classification else None
-    enrichment = ai_connection(ctx, "litellm_enrichment") if params.ai_enrichment else None
+    ai = ai_connection(ctx, "litellm") if context_ai_tasks(params) else None
     folder_name = params.output_folder_name or "organizado"
     existing = _existing_folder(output, project)
     if existing and existing != folder_name:
@@ -207,7 +215,8 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         build_site=params.build_site,
         site_timeout=float(ctx.settings.context_site_timeout_seconds),
         ai=ai,
-        enrichment=enrichment,
+        ai_scope="unclassified" if params.ai_classification else "off",
+        enrich=params.ai_enrichment,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:

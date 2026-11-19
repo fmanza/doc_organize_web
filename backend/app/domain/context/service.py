@@ -52,7 +52,7 @@ from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import FolderNotFoundError, LocationUnavailableError
 from app.domain.locations.paths import resolve_within, run_with_timeout
 from app.domain.runs.errors import WriteLockedError
-from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, context_ai_family
+from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, context_ai_tasks
 from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
@@ -593,8 +593,6 @@ def validate_build(
         if manifest.error:
             raise InvalidContextBuildError(f"El manifiesto del proyecto no es válido: {manifest.error}")
         markdown = manifest.markdown
-    if params.ai_classification:
-        ai_settings.require_configured(db, settings, context_ai_family(params))
-    if params.ai_enrichment:
-        ai_settings.require_configured(db, settings, "litellm_enrichment")
+    if context_ai_tasks(params):  # doc_organize 2.0: todas las tareas usan la familia ``litellm``
+        ai_settings.require_configured(db, settings, "litellm")
     return params.model_copy(update={"output_folder_name": folder, "template_markdown": markdown})
