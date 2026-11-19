@@ -32,6 +32,11 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Diagnóstico** (W4, F2): «Administración → Diagnóstico» (admin de instancia) y `POST /admin/diagnostics` ejecutan
+  `check_environment` en un subproceso (la API no carga docling) y, con `check_ai`, prueban los modelos de clasificar,
+  describir, diseñar la taxonomía y agentes de la familia `litellm`, con la clave de cada tarea (que le llega por la
+  entrada estándar). La respuesta se limpia de claves, URL del proxy y rutas del contenedor; uno cada 30 s y auditado
+  (`admin.diagnostics`, sin detalles).
 - **Redacción de credenciales por proyecto** (W4, D7): «IA del proyecto» en la página del proyecto, con
   `PUT /projects/{id}/ai-settings` (propietario o editor, destino `rw`, auditoría `project.ai_settings_update` con el
   valor anterior y el nuevo) y `ai_redact_credentials` en `ProjectOut`. Llega a lo que sale hacia la IA (construcción y

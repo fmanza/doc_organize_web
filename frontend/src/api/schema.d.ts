@@ -128,6 +128,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diagnóstico del entorno
+         * @description ``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,
+         *     GPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un
+         *     minuto; se audita sin detalles.
+         */
+        post: operations["run_diagnostics_api_v1_admin_diagnostics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/mounts": {
         parameters: {
             query?: never;
@@ -2287,6 +2309,46 @@ export interface components {
              * @constant
              */
             operation: "dedup_preview";
+        };
+        /**
+         * DiagnosticCheckOut
+         * @description Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``.
+         */
+        DiagnosticCheckOut: {
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+            /** Remedy */
+            remedy?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "warning" | "error";
+        };
+        /**
+         * DiagnosticsIn
+         * @description Diagnóstico del entorno (W4): ``check_ai`` prueba también los modelos de IA configurados (gasta unos tokens).
+         */
+        DiagnosticsIn: {
+            /**
+             * Check Ai
+             * @default false
+             */
+            check_ai: boolean;
+        };
+        /**
+         * DiagnosticsOut
+         * @description Resultado del diagnóstico del entorno, sin claves, URL del proxy ni rutas del contenedor.
+         */
+        DiagnosticsOut: {
+            /** Checked At */
+            checked_at: string;
+            /** Checks */
+            checks: components["schemas"]["DiagnosticCheckOut"][];
+            /** Ok */
+            ok: boolean;
         };
         /**
          * DocumentOut
@@ -4470,6 +4532,67 @@ export interface operations {
             };
             /** @description Sin rol de administrador o token CSRF no válido */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run_diagnostics_api_v1_admin_diagnostics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagnosticsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosticsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No terminó a tiempo o falló (diagnostics_failed) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
