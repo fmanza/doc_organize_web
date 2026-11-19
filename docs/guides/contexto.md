@@ -197,6 +197,26 @@ página avisa de que hay que reconstruir.
 Las versiones viven en la base de datos de la aplicación (`config.db`) y viajan en sus copias de seguridad; restaurar
 una copia trae las versiones de ese momento, que pueden no coincidir con el manifiesto actual del destino.
 
+## Revisar clasificación (2.0)
+
+«Revisar clasificación» (botón del resumen del contexto) lista lo que conviene mirar tras la última construcción, de lo
+más urgente a lo menos: decisiones desfasadas, documentos sin clasificar, reglas e IA que no coinciden en el dominio,
+citas de la IA no encontradas en el texto, valores con confianza baja y versiones cuya vigente no se ha confirmado.
+
+Sobre cada documento, el propietario y los editores (con el destino de lectura y escritura) pueden **decidir**:
+
+- **Confirmar** la clasificación que tiene (todos sus ejes).
+- **Cambiar…** los valores de un eje, solo entre los del catálogo (uno en el dominio y el tipo de material).
+- **Excluir** el documento del contexto.
+- **Marcar como vigente** una versión de un grupo de versiones.
+
+Las decisiones se guardan en `.doc_organize/decisions.json` de la carpeta del proyecto, con quién decidió y cuándo, y
+quedan en la auditoría. Se aplican en la **siguiente construcción**, antes de la IA, y ni las reglas ni la IA las
+cambian (en el contexto aparecen con la marca «Persona»). Si el original cambia, la decisión deja de aplicarse y vuelve
+a la cola como «Decisión desfasada»; si el documento desaparece o el valor ya no está en el catálogo, la tarjeta
+«Decisiones» lo avisa. «Revocar» la retira (pasa al historial). Las decisiones solo se aplican con plantilla o
+manifiesto.
+
 ## Perfil del proyecto y vista previa del prompt (2.0)
 
 El **perfil** es lo que el modelo debe saber del proyecto al clasificar con IA: contexto, reglas de desempate,

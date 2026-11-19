@@ -331,6 +331,9 @@ function Summary({
         </Alert>
       )}
       <Group mt="sm">
+        <Button component={Link} to={`/projects/${projectId}/context/review`} variant="light">
+          {t('review.open')}
+        </Button>
         {context.site_built && (
           <Button component={Link} to={`/projects/${projectId}/context/site`}>
             {t('context.site.open')}

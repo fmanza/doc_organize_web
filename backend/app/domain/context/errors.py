@@ -147,3 +147,27 @@ class PromptPreviewError(AppError):
     status = 422
     title = "Vista previa del prompt no disponible"
     code = "prompt_preview_invalid"
+
+
+class DecisionDocumentNotFoundError(AppError):
+    """El documento de la decisión no está en el contexto construido."""
+
+    status = 404
+    title = "Documento no encontrado en el contexto"
+    code = "decision_document_not_found"
+
+
+class DecisionInvalidError(AppError):
+    """La decisión no es válida (eje o valor fuera del catálogo, varios valores en un eje que no los admite…)."""
+
+    status = 422
+    title = "Decisión no válida"
+    code = "decision_invalid"
+
+
+class DecisionNotFoundError(AppError):
+    """No hay ninguna decisión vigente con ese identificador."""
+
+    status = 404
+    title = "Decisión no encontrada"
+    code = "decision_not_found"

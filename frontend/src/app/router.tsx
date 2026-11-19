@@ -83,6 +83,10 @@ export const routes: RouteObject[] = [
             ...page(async () => (await import('../features/context/ContextPage')).ContextPage),
           },
           {
+            path: 'projects/:projectId/context/review',
+            ...page(async () => (await import('../features/context/ReviewPage')).ReviewPage),
+          },
+          {
             path: 'projects/:projectId/context/site',
             ...page(async () => (await import('../features/context/SiteViewerPage')).SiteViewerPage),
           },

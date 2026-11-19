@@ -59,6 +59,8 @@ class AuditAction:
     PROJECT_TAXONOMY_MANIFEST_RESTORE: Final = "project.taxonomy_manifest_restore"
     PROJECT_PROFILE_SAVE: Final = "project.profile_save"
     PROJECT_PROFILE_DELETE: Final = "project.profile_delete"
+    PROJECT_DECISION_ADD: Final = "project.decision_add"
+    PROJECT_DECISION_REVOKE: Final = "project.decision_revoke"
     PROJECT_CONTEXT_BUILD: Final = "project.context_build"
     PROJECT_CONTEXT_DELETE: Final = "project.context_delete"
     PROJECT_TAXONOMY_DRAFT: Final = "project.taxonomy_draft"

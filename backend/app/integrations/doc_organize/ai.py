@@ -34,10 +34,10 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, Literal
 
-from app.integrations.doc_organize.context import SourceFolder, converted_documents
+from app.integrations.doc_organize.context import SourceFolder, converted_documents, location_root
 
 if TYPE_CHECKING:
     import httpx
@@ -290,15 +290,6 @@ class DraftOutcome:
     total_documents: int
     domains: list[tuple[str, str]]
     material_types: list[tuple[str, str]]
-
-
-def location_root(folder: SourceFolder) -> Path:
-    """Raíz de la ubicación de origen de ``folder`` (``folder.root`` sin los niveles de ``folder.folder``).
-
-    La muestra del borrador muestra las carpetas relativas a ella (``2024/obras``), nunca por encima (G36).
-    """
-    levels = len(PurePosixPath(folder.folder).parts)
-    return folder.root.parents[levels - 1] if levels else folder.root
 
 
 def _ai_error(exc: Exception) -> AiServiceError:

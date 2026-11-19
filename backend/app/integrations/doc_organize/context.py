@@ -112,6 +112,21 @@ class SourceFolder:
     conversion_dir: Path
 
 
+def location_root(folder: SourceFolder) -> Path:
+    """Raíz de la ubicación de origen de ``folder`` (``folder.root`` sin los niveles de ``folder.folder``).
+
+    La muestra del borrador muestra las carpetas relativas a ella (``2024/obras``), nunca por encima (G36), y es la raíz
+    de escaneo de las decisiones (W5): ``document_key`` = ``<carpeta>/<ruta>``, la misma que ve el usuario.
+    """
+    levels = len(PurePosixPath(folder.folder).parts)
+    return folder.root.parents[levels - 1] if levels else folder.root
+
+
+def scan_roots(folders: list[SourceFolder]) -> list[str]:
+    """Raíces de escaneo de un proyecto para las claves de los documentos (``scan_roots``/``roots`` de doc_organize)."""
+    return sorted({str(location_root(folder)) for folder in folders})
+
+
 @dataclass(frozen=True)
 class ContextRequest:
     """Una construcción del contexto.
@@ -194,6 +209,12 @@ class ContextDoc:
     unclassified_reason: str | None = None
     #: Valores de todos los ejes (doc_organize 2.0, ``classification``): organizadores y los que solo etiquetan.
     axes: list[AxisValueDoc] = field(default_factory=list)
+    # W5: clave de las decisiones, huella del original y versión del documento.
+    document_key: str | None = None
+    source_sha256: str | None = None
+    version: str | None = None
+    version_group: str | None = None
+    is_current: bool | None = None
 
 
 @dataclass
@@ -233,6 +254,11 @@ class ContextOutcome:
     #: Con qué prompt y modelo se hizo cada tarea de IA (``Context.ai_provenance``, 2.0): ``task``, ``prompt_id``,
     #: ``version``, ``source``, ``sha256`` y ``model``.
     ai_provenance: list[dict[str, Any]] = field(default_factory=list)
+    #: W5: cola de revisión (``review_queue``) y decisiones aplicadas y no aplicadas de la construcción.
+    review: list[dict[str, Any]] = field(default_factory=list)
+    decisions_applied: int = 0
+    stale_decisions: list[dict[str, Any]] = field(default_factory=list)
+    orphan_decisions: list[dict[str, Any]] = field(default_factory=list)
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
@@ -384,6 +410,72 @@ def prompt_preview(
         project_profile=_sections(project),
         profile=_sections(composed),
     )
+
+
+class DecisionInvalidError(Exception):
+    """La decisión no es válida para doc_organize (``ClassificationDecision``); el mensaje dice por qué."""
+
+
+def decisions_file(output_root: Path) -> Path:
+    """``<raíz>/.doc_organize/decisions.json``: decisiones de personas del proyecto (``DECISIONS_FILE``, F6)."""
+    from doc_organize.context.decisions import DECISIONS_FILE
+
+    return Path(Path(output_root) / Path(str(DECISIONS_FILE)))
+
+
+def _decision_dict(decision: Any) -> dict[str, Any]:
+    return dict(decision.model_dump(mode="json"))
+
+
+def load_decisions(output_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Decisiones vigentes y el historial de revocadas (``ClassificationDecisionStore``)."""
+    from doc_organize.context.decisions import ClassificationDecisionStore
+
+    store = ClassificationDecisionStore(output_root)
+    active = asyncio.run(store.load())
+    revoked = asyncio.run(store.revoked())
+    return [_decision_dict(d) for d in active], [_decision_dict(d) for d in revoked]
+
+
+def add_decision(
+    output_root: Path,
+    *,
+    document_key: str,
+    action: str,
+    axes: dict[str, list[str]],
+    author: str,
+    reason: str | None,
+    source_sha256: str | None,
+) -> dict[str, Any]:
+    """Guarda una decisión (``ClassificationDecisionStore.add``: escritura atómica y con bloqueo; sustituye a las que
+    decidían lo mismo, que pasan al historial).
+
+    Raises:
+        DecisionInvalidError: doc_organize no la acepta (p. ej. ``set_axis`` con más de un eje).
+    """
+    from doc_organize.context.decisions import ClassificationDecisionStore
+    from doc_organize.core.models import ClassificationDecision
+    from pydantic import ValidationError
+
+    try:
+        decision = ClassificationDecision(
+            document_key=document_key,
+            action=action,
+            axes=axes,
+            author=author,
+            reason=reason,
+            source_sha256=source_sha256,
+        )
+    except ValidationError as exc:
+        raise DecisionInvalidError(str(exc.errors()[0].get("msg", "decisión no válida"))) from None
+    return _decision_dict(asyncio.run(ClassificationDecisionStore(output_root).add(decision)))
+
+
+def revoke_decision(output_root: Path, decision_id: str, *, author: str, reason: str | None) -> bool:
+    """Revoca una decisión vigente (pasa al historial); ``False`` si no existe."""
+    from doc_organize.context.decisions import ClassificationDecisionStore
+
+    return bool(asyncio.run(ClassificationDecisionStore(output_root).revoke(decision_id, author=author, reason=reason)))
 
 
 def builtin_templates() -> dict[str, TemplateInfo]:
@@ -740,10 +832,11 @@ def _taxonomy_axes(context: Any) -> list[dict[str, Any]]:
     ]
 
 
-def _unclassified(context: Any) -> list[ContextDoc]:
+def _unclassified(context: Any, keys: dict[str, str] | None = None) -> list[ContextDoc]:
     """Documentos sin clasificar (G42, doc_organize 1.6.0): con su motivo, lo que propusieron las reglas y sus
     propiedades si ``unclassified_details`` los trae (uno por ruta, en el mismo orden); si no (contexto de 1.5.0 o
     detalle dañado), solo el nombre y la extensión, como hasta 1.5.0."""
+    keys = keys or {}
     details = list(getattr(context, "unclassified_details", None) or [])
     paths = list(context.unclassified_documents)
     if [detail.source_path for detail in details] == paths:
@@ -764,6 +857,11 @@ def _unclassified(context: Any) -> list[ContextDoc]:
                 rules_confidence=detail.rules_confidence,
                 unclassified_reason=str(detail.reason),
                 axes=_axes(getattr(detail, "classification", None)),
+                document_key=keys.get(detail.source_path),
+                source_sha256=detail.source_sha256,
+                version=detail.version,
+                version_group=detail.version_group,
+                is_current=detail.is_current,
             )
             for detail in details
         ]
@@ -776,13 +874,29 @@ def _unclassified(context: Any) -> list[ContextDoc]:
             material_type_name=None,
             source_path=path,
             organized_path=None,
+            document_key=keys.get(path),
         )
         for path in paths
     ]
 
 
-def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> ContextOutcome:
+def _issue(issue: Any) -> dict[str, Any]:
+    return {
+        "decision_id": str(issue.decision_id),
+        "document_key": str(issue.document_key),
+        "reason": str(issue.reason),
+        "detail": issue.detail,
+    }
+
+
+def _outcome(context: Any, failed: list[tuple[str, str]], missing: int, roots: list[str]) -> ContextOutcome:
+    from doc_organize.context.evaluation import document_keys
+    from doc_organize.context.review_queue import review_queue
+
     failed_paths = {path for path, _ in failed}
+    sources = [d.source_path for domain in context.domains for d in domain.documents]
+    sources += [detail.source_path for detail in context.unclassified_details] + list(context.unclassified_documents)
+    keys = document_keys(sources, roots or None)
     docs: list[ContextDoc] = []
     domains: list[dict[str, Any]] = []
     for domain in context.domains:
@@ -809,10 +923,15 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     failed=document.source_path in failed_paths,
                     classified_by=str(document.classified_by) if document.classified_by else None,
                     axes=_axes(document.classification),
+                    document_key=keys.get(document.source_path),
+                    source_sha256=document.source_sha256,
+                    version=document.version,
+                    version_group=document.version_group,
+                    is_current=document.is_current,
                     **_traceability(document),
                 )
             )
-    docs.extend(_unclassified(context))
+    docs.extend(_unclassified(context, keys))
     return ContextOutcome(
         output_folder_name=context.output_folder_name,
         domains=domains,
@@ -835,6 +954,10 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
             }
             for item in context.ai_provenance
         ],
+        review=[item.model_dump() for item in review_queue(context, roots=roots or None)],
+        decisions_applied=int(context.decisions_applied),
+        stale_decisions=[_issue(issue) for issue in context.stale_decisions],
+        orphan_decisions=[_issue(issue) for issue in context.orphan_decisions],
     )
 
 
@@ -882,6 +1005,7 @@ def build_context(
         except TaxonomyTemplateError as exc:
             raise TemplateInvalidError(str(exc)) from None
     project = _project(request.name, request.output_root, request.created_at)
+    roots = scan_roots(request.folders)  # W5: claves de las decisiones relativas a la raíz de la ubicación
     failed: list[tuple[str, str]] = []
     token = CancelToken()
     stop = threading.Event()
@@ -913,6 +1037,7 @@ def build_context(
             "taxonomy_manifest": manifest,
             "taxonomy_template_name": request.template_name if manifest is not None else None,
             "versions": request.versions,
+            "scan_roots": roots,
             "cancel_token": token,
         }
         if not uses_ai or request.ai is None:
@@ -965,7 +1090,7 @@ def build_context(
                 context.site_generated = False
                 context.site_built = False
             await ContextRegistry().save_context(project, context)
-        outcome = _outcome(context, failed, missing)
+        outcome = _outcome(context, failed, missing, roots)
         outcome.site_error = site_error
         outcome.site_search_excluded = search_excluded
         outcome.ai = classification_stats(context) if request.ai_scope != "off" else None

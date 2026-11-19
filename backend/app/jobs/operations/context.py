@@ -18,7 +18,15 @@ from typing import Any, Final
 
 from sqlalchemy import delete, insert, update
 
-from app.db.models import ContextDocument, ContextDocumentAxisValue, Project, ProjectContext, Run, utcnow
+from app.db.models import (
+    ContextDocument,
+    ContextDocumentAxisValue,
+    ContextReviewItem,
+    Project,
+    ProjectContext,
+    Run,
+    utcnow,
+)
 from app.domain.ai import settings as ai_settings
 from app.domain.ai.errors import AiNotConfiguredError
 from app.domain.documents.paths import DocumentNamer
@@ -69,6 +77,12 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "ai_reasoning": _cut(doc.ai_reasoning, 500),
         "material_type_confidence": doc.material_type_confidence,
         "unclassified_reason": doc.unclassified_reason if doc.domain_slug is None else None,
+        # W5: clave de las decisiones, huella del original y versión.
+        "document_key": doc.document_key,
+        "source_sha256": _cut(doc.source_sha256, 64),
+        "version": _cut(doc.version, 64),
+        "version_group": doc.version_group,
+        "is_current": doc.is_current,
     }
 
 
@@ -107,8 +121,24 @@ def _project_rows(
     escritura en ``config.db`` dura poco y no bloquea al resto (eventos de otros runs, sesiones).
     """
     rows = [_row(project.id, seq, doc, namer) for seq, doc in enumerate(outcome.documents)]
+    seq_by_key = {doc.document_key: seq for seq, doc in enumerate(outcome.documents) if doc.document_key}
+    review_rows = [
+        {
+            "project_id": project.id,
+            "seq": seq_by_key.get(item["document_key"]),
+            "document_key": str(item["document_key"])[:4096],
+            "reason": item["reason"],
+            "priority": int(item["priority"]),
+            "axis": _cut(item.get("axis"), 41),
+            "value": _cut(item.get("value"), 128),
+            "confidence": item.get("confidence"),
+            "detail": _cut(namer.text(item["detail"]) if item.get("detail") else None, 1000),
+        }
+        for item in outcome.review
+    ]
     axis_rows = [row for seq, doc in enumerate(outcome.documents) for row in _axis_rows(project.id, seq, doc)]
     with ctx.session_factory() as db:
+        db.execute(delete(ContextReviewItem).where(ContextReviewItem.project_id == project.id))
         db.execute(delete(ContextDocumentAxisValue).where(ContextDocumentAxisValue.project_id == project.id))
         db.execute(delete(ContextDocument).where(ContextDocument.project_id == project.id))
         db.execute(delete(ProjectContext).where(ProjectContext.project_id == project.id))
@@ -130,6 +160,9 @@ def _project_rows(
                 domains=outcome.domains,
                 taxonomy_axes=outcome.taxonomy_axes,
                 ai_provenance=outcome.ai_provenance,
+                decisions_applied=outcome.decisions_applied,
+                stale_decisions=outcome.stale_decisions,
+                orphan_decisions=outcome.orphan_decisions,
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),
             )
@@ -139,6 +172,8 @@ def _project_rows(
             db.execute(insert(ContextDocument), rows[start : start + BATCH])
         for start in range(0, len(axis_rows), BATCH):
             db.execute(insert(ContextDocumentAxisValue), axis_rows[start : start + BATCH])
+        for start in range(0, len(review_rows), BATCH):
+            db.execute(insert(ContextReviewItem), review_rows[start : start + BATCH])
         db.commit()
 
 
@@ -408,6 +443,7 @@ def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | 
         except library.DocOrganizeOperationError as exc:
             raise JobFailed("context_delete_failed", str(exc)) from None
         with ctx.session_factory() as db:
+            db.execute(delete(ContextReviewItem).where(ContextReviewItem.project_id == project.id))
             db.execute(delete(ContextDocumentAxisValue).where(ContextDocumentAxisValue.project_id == project.id))
             db.execute(delete(ContextDocument).where(ContextDocument.project_id == project.id))
             db.execute(delete(ProjectContext).where(ProjectContext.project_id == project.id))

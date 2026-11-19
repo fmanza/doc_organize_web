@@ -578,6 +578,11 @@ class ProjectContext(Base):
     #: ``up_to_date``, recuentos de ``changed``/``added``/``removed``/``unknown``, ``stale_site`` y unos pocos
     #: ejemplos con rutas relativas. Nula si aún no se ha comprobado.
     freshness: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    #: Decisiones de personas de la construcción (W5, ``0020``): cuántas se aplicaron y las que no, con su motivo
+    #: (``decision_id``, ``document_key``, ``reason``, ``detail``).
+    decisions_applied: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    stale_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    orphan_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -623,6 +628,7 @@ class ContextDocument(Base):
     __table_args__ = (
         Index("ix_context_documents_project_domain", "project_id", "domain_slug", "seq"),
         Index("ix_context_documents_project_language", "project_id", "language"),
+        Index("ix_context_documents_project_key", "project_id", "document_key"),
     )
 
     project_id: Mapped[int] = mapped_column(
@@ -658,6 +664,13 @@ class ContextDocument(Base):
     #: Por qué no se clasificó (1.6.0, G42): ``incomplete_artifacts`` (sin ``.md`` o ``.json``) o ``below_threshold``
     #: (las reglas no llegan al umbral y la IA no lo asignó). Nulo si está clasificado o en contextos anteriores.
     unclassified_reason: Mapped[str | None] = mapped_column(String(32), default=None)
+    # W5 (doc_organize 2.0, F6; migración ``0020``): clave de las decisiones (``<carpeta>/<ruta>`` relativa a la raíz de
+    # la ubicación de origen), huella del original y versión del documento. Nulos en contextos anteriores.
+    document_key: Mapped[str | None] = mapped_column(String(4096), default=None)
+    source_sha256: Mapped[str | None] = mapped_column(String(64), default=None)
+    version: Mapped[str | None] = mapped_column(String(64), default=None)
+    version_group: Mapped[str | None] = mapped_column(String(4096), default=None)
+    is_current: Mapped[bool | None] = mapped_column(default=None)
 
 
 class ContextDocumentAxisValue(Base):
@@ -689,3 +702,26 @@ class ContextDocumentAxisValue(Base):
     evidence_verified: Mapped[bool | None] = mapped_column(default=None)
     #: Cita literal que dio la IA para el valor (2.0, D10; migración ``0018``); nula sin cita o en contextos anteriores.
     evidence: Mapped[str | None] = mapped_column(String(500), default=None)
+
+
+class ContextReviewItem(Base):
+    """Un motivo para revisar un documento (``review_queue`` de la última construcción, W5; migración ``0020``).
+
+    ``seq`` apunta al documento del contexto (nulo en una decisión desfasada de un documento que ya no está).
+    ``reason``: ``stale_decision``, ``unclassified``, ``rules_ai_disagreement``, ``unverified_evidence``,
+    ``low_confidence`` o ``unconfirmed_version``; ``priority`` es la de la librería (0 = lo más urgente).
+    """
+
+    __tablename__ = "context_review_items"
+    __table_args__ = (Index("ix_context_review_items_project_priority", "project_id", "priority", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project_contexts.project_id", ondelete="CASCADE"))
+    seq: Mapped[int | None] = mapped_column(Integer, default=None)
+    document_key: Mapped[str] = mapped_column(String(4096))
+    reason: Mapped[str] = mapped_column(String(32))
+    priority: Mapped[int] = mapped_column(Integer)
+    axis: Mapped[str | None] = mapped_column(String(41), default=None)
+    value: Mapped[str | None] = mapped_column(String(128), default=None)
+    confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    detail: Mapped[str | None] = mapped_column(String(1000), default=None)

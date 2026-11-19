@@ -32,6 +32,15 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Revisar clasificación** (W5, F6): la construcción guarda la cola de `review_queue` en `context_review_items` y las
+  decisiones aplicadas y no aplicadas (`decisions_applied`, `stale_decisions`, `orphan_decisions`), y cada documento su
+  `document_key`, huella y versión (migración `0020`, aditiva). Las claves de las decisiones son la ruta relativa a la
+  raíz de la ubicación de origen (`scan_roots`). API: `GET …/context/review` (por prioridad y motivo, con el documento
+  y su decisión vigente), `GET …/context/decisions`, `POST …/context/decisions` (`confirm`, `set_axis`, `exclude`,
+  `set_current_version`; validadas contra el catálogo; propietario o editor con destino `rw`; auditoría
+  `project.decision_add`) y `POST …/decisions/{id}/revoke` (`project.decision_revoke`). Las decisiones se guardan con
+  `ClassificationDecisionStore` en `.doc_organize/decisions.json` y se aplican al reconstruir. Página «Revisar
+  clasificación».
 - **Diagnóstico** (W4, F2): «Administración → Diagnóstico» (admin de instancia) y `POST /admin/diagnostics` ejecutan
   `check_environment` en un subproceso (la API no carga docling) y, con `check_ai`, prueban los modelos de clasificar,
   describir, diseñar la taxonomía y agentes de la familia `litellm`, con la clave de cada tarea (que le llega por la

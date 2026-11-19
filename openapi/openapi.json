@@ -1888,6 +1888,274 @@
         "title": "CsrfToken",
         "type": "object"
       },
+      "DecisionIn": {
+        "additionalProperties": false,
+        "description": "Una decisión sobre un documento del contexto (se aplica en la siguiente construcción).\n\n``confirm``: los valores de los ejes que se confirman. ``set_axis``: un eje y sus valores. ``exclude`` y\n``set_current_version``: sin ejes.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "maxProperties": 10,
+            "propertyNames": {
+              "maxLength": 41
+            },
+            "title": "Axes",
+            "type": "object"
+          },
+          "document_key": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Document Key",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "document_key",
+          "action"
+        ],
+        "title": "DecisionIn",
+        "type": "object"
+      },
+      "DecisionIssueOut": {
+        "description": "Una decisión que la última construcción no aplicó, y por qué.",
+        "properties": {
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "document_key",
+          "reason"
+        ],
+        "title": "DecisionIssueOut",
+        "type": "object"
+      },
+      "DecisionOut": {
+        "description": "Una decisión de una persona (``ClassificationDecision``): vigente o, con ``revoked_at``, del historial.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": "string"
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "revoke_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoke Reason"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By"
+          },
+          "source_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Sha256"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "action",
+          "decided_at"
+        ],
+        "title": "DecisionOut",
+        "type": "object"
+      },
+      "DecisionRevokeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "DecisionRevokeIn",
+        "type": "object"
+      },
+      "DecisionsOut": {
+        "description": "Decisiones del proyecto: vigentes, historial y las no aplicadas en la última construcción.",
+        "properties": {
+          "applied": {
+            "default": 0,
+            "title": "Applied",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "orphan": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DecisionIssueOut"
+            },
+            "title": "Orphan",
+            "type": "array"
+          },
+          "revoked": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "Revoked",
+            "type": "array"
+          },
+          "stale": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DecisionIssueOut"
+            },
+            "title": "Stale",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decisions",
+          "revoked"
+        ],
+        "title": "DecisionsOut",
+        "type": "object"
+      },
       "DedupApplyParams": {
         "additionalProperties": false,
         "description": "Aplicar los grupos confirmados de una vista previa de duplicados (``groups_run_id``).\n\n``mode``: ``move`` (saca los descartados del origen a ``duplicados/``), ``copy`` (los copia, sin tocar el origen) o\n``report_only`` (solo el informe). La ejecución real exige su propia vista previa (``dry_run``) y el nombre del\nproyecto, como el resto de operaciones que escriben ficheros (regla 7).",
@@ -4423,6 +4691,233 @@
           "model"
         ],
         "title": "PromptProvenanceOut",
+        "type": "object"
+      },
+      "ReviewDocumentOut": {
+        "description": "El documento de un motivo de revisión, con sus valores por eje y su versión.",
+        "properties": {
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/AxisValueOut"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "domain_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Slug"
+          },
+          "folder": {
+            "title": "Folder",
+            "type": "string"
+          },
+          "is_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Current"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "version_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Group"
+          }
+        },
+        "required": [
+          "seq",
+          "title",
+          "folder",
+          "path",
+          "domain_slug"
+        ],
+        "title": "ReviewDocumentOut",
+        "type": "object"
+      },
+      "ReviewItemOut": {
+        "description": "Un motivo para revisar un documento (``review_queue``), con el documento y su decisión vigente, si la hay.",
+        "properties": {
+          "axis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Axis"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decisión vigente del documento (se aplica en la siguiente construcción)"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDocumentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "stale_decision",
+              "unclassified",
+              "rules_ai_disagreement",
+              "unverified_evidence",
+              "low_confidence",
+              "unconfirmed_version"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "reason",
+          "priority"
+        ],
+        "title": "ReviewItemOut",
+        "type": "object"
+      },
+      "ReviewPage": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Motivos de revisión → cuántos hay",
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ReviewPage",
         "type": "object"
       },
       "RoleCreate": {
@@ -8548,6 +9043,179 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/context/decisions": {
+      "get": {
+        "description": "Vigentes (``.doc_organize/decisions.json``), historial de revocadas y las que la última construcción no aplicó\n(desfasadas y huérfanas).",
+        "operationId": "get_decisions_api_v1_projects__project_id__context_decisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decisiones de personas",
+        "tags": [
+          "context"
+        ]
+      },
+      "post": {
+        "description": "Confirmar la clasificación, fijar los valores de un eje (del catálogo), sacar el documento del contexto o\nmarcarlo como versión vigente. Se aplica en la siguiente construcción; propietario o editor; auditado.",
+        "operationId": "post_decision_api_v1_projects__project_id__context_decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin contexto, sin el documento o sin la decisión"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Decidir sobre un documento",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/decisions/{decision_id}/revoke": {
+      "post": {
+        "description": "La decisión deja de aplicarse en la siguiente construcción y pasa al historial.",
+        "operationId": "revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Decision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRevokeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin contexto, sin el documento o sin la decisión"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Revocar una decisión",
+        "tags": [
+          "context"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/context/documents": {
       "get": {
         "description": "Documentos de un dominio o sin clasificar; ``q`` busca en título, rutas, tipo, autor y descripción.",
@@ -9095,6 +9763,104 @@
           }
         },
         "summary": "Vista previa del prompt de clasificación",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review": {
+      "get": {
+        "description": "Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,\nsi la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).",
+        "operationId": "get_review_api_v1_projects__project_id__context_review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Solo este motivo",
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "stale_decision",
+                    "unclassified",
+                    "rules_ai_disagreement",
+                    "unverified_evidence",
+                    "low_confidence",
+                    "unconfirmed_version"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo este motivo",
+              "title": "Reason"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cola de revisión de la clasificación",
         "tags": [
           "context"
         ]
