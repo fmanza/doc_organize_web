@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.db.models import AuditEntry, Location, Project, Run, RunEvent, Worker, utcnow
+from app.integrations.doc_organize.context import migrate_markdown_v1
 from app.jobs import queue
 from app.jobs.context import RECYCLE_EXIT
 from app.jobs.worker import JobWorker, Slot, purge_workspace
@@ -246,7 +247,7 @@ def test_history_clear_keeps_the_manifest_as_a_version(
     assert (version["action"], version["valid"], version["domains"]) == ("history_clear", True, 1)
     restored = user_client.post(f"{url}/versions/{version['id']}/restore", headers={"If-Match": "none"})
     assert restored.status_code == 200, restored.text
-    assert manifest.read_text(encoding="utf-8") == MANIFEST
+    assert manifest.read_text(encoding="utf-8") == migrate_markdown_v1(MANIFEST)  # U4: se restaura en formato 2.0
 
 
 def test_project_delete_with_outputs(

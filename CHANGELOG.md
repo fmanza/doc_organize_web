@@ -32,6 +32,18 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Ejes del contexto en la BD** (migración `0017`, con bajada; U3): tabla genérica `context_document_axis_values`
+  (`project_id`, `seq`, `axis`, `slug`, `name`, `confidence`, `classified_by`, `evidence_verified`; índice
+  `(project_id, axis, slug)` y clave primaria que empieza por `(project_id, seq)`, `ON DELETE CASCADE` desde
+  `context_documents`) y `project_contexts.taxonomy_axes`. `context_build` proyecta los valores de todos los ejes en la
+  misma transacción y por lotes; los contextos ya construidos se rellenan con sus ejes de 1.x (`domains` y, con
+  plantilla o manifiesto, `material_types`). `domain_slug` y `material_type` siguen como columnas derivadas.
+- **Plantillas al formato 2.0** (`0017`): `taxonomy_templates.markdown` se migra con `migrate_manifest_v1` y el texto
+  de 1.x queda en `markdown_v1` (la bajada lo devuelve).
+- **Restaurar una versión del manifiesto de 1.x la guarda migrada a 2.0** (U4); la versión conserva el texto original.
+- **Ajustes de IA por proyecto** (`0017`): `projects.ai_redact_credentials` (D7, por defecto sí; se aplica ya a lo que
+  sale hacia la IA), `context_versions` (D8, por defecto `mark`; se pasa a `ContextBuilder.build(versions=)`) y
+  `context_semantic` (D13, por defecto no; se usará en W6). Sin pantalla todavía (W4/W6).
 - `backend/scripts/migration_roundtrip.py`: prueba de ida y vuelta de las migraciones sobre una **copia** de
   `config.db` (sube a `head`, lee todos los modelos, baja y compara las filas tabla a tabla sin imprimir valores).
 - LiteLLM falso para los tests (`backend/tests/fake_litellm.py`): exige `json_schema` estricto y valida cada

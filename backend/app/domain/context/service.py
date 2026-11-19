@@ -519,6 +519,9 @@ def restore_manifest(
             info = templates.validate_markdown(markdown)
         except TemplateInvalidError as exc:
             raise ManifestVersionInvalidError(exc.detail) from None
+        # U4 (doc_organize 2.0): una versión guardada en formato 1.x se restaura migrada a 2.0; la versión conserva
+        # el texto original.
+        markdown = library.migrate_markdown_v1(markdown) or markdown
         change = _write_change(project, markdown)
     else:
 

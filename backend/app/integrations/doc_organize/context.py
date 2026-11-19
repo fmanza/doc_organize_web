@@ -125,6 +125,19 @@ class ContextRequest:
     ai: AiConnection | None = None
     ai_scope: str = "off"
     enrich: bool = False
+    versions: str = "all"
+
+
+@dataclass(frozen=True)
+class AxisValueDoc:
+    """Un valor de un eje de un documento (``AxisValue`` de doc_organize 2.0), sin la cita (solo si se verificó)."""
+
+    axis: str
+    slug: str
+    name: str
+    confidence: float | None
+    classified_by: str | None
+    evidence_verified: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -156,6 +169,8 @@ class ContextDoc:
     #: Sin clasificar (1.6.0): ``incomplete_artifacts`` o ``below_threshold``; nulo si está clasificado o el contexto es
     #: anterior a 1.6.0.
     unclassified_reason: str | None = None
+    #: Valores de todos los ejes (doc_organize 2.0, ``classification``): organizadores y los que solo etiquetan.
+    axes: list[AxisValueDoc] = field(default_factory=list)
 
 
 @dataclass
@@ -190,6 +205,8 @@ class ContextOutcome:
     built_with_version: str | None = None
     ai_classification_model: str | None = None
     ai_enrichment_model: str | None = None
+    #: Ejes del contexto (``Context.taxonomy_axes``) sin palabras clave ni ejemplos (doc_organize 2.0).
+    taxonomy_axes: list[dict[str, Any]] = field(default_factory=list)
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
@@ -217,6 +234,20 @@ def parse_template(text: str) -> TemplateInfo:
         return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE))
     except TaxonomyTemplateError as exc:
         raise TemplateInvalidError(str(exc)) from None
+
+
+def migrate_markdown_v1(text: str) -> str | None:
+    """``text`` en el formato 2.0 (``migrate_manifest_v1``) si es un manifiesto o plantilla de 1.x; ``None`` si ya es
+    2.0 o no se puede migrar (doc_organize lo seguirá intentando leer y dará su error al validarlo)."""
+    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter, migrate_manifest_v1
+    from doc_organize.core.exceptions import DocOrganizeError
+
+    try:
+        if not inspect_taxonomy_front_matter(text).legacy_format:
+            return None
+        return str(migrate_manifest_v1(text))
+    except (DocOrganizeError, ValueError):
+        return None
 
 
 def builtin_templates() -> dict[str, TemplateInfo]:
@@ -482,6 +513,39 @@ def _traceability(document: Any) -> dict[str, Any]:
     }
 
 
+def _axes(classification: Any) -> list[AxisValueDoc]:
+    """Valores de ``DocumentClassification.axes`` (``AxisValue``), en el orden de la librería."""
+    if classification is None:
+        return []
+    return [
+        AxisValueDoc(
+            axis=str(key),
+            slug=str(value.slug),
+            name=str(value.name),
+            confidence=value.confidence,
+            classified_by=str(value.classified_by) if value.classified_by else None,
+            evidence_verified=value.evidence_verified,
+        )
+        for key, values in classification.axes.items()
+        for value in values
+    ]
+
+
+def _taxonomy_axes(context: Any) -> list[dict[str, Any]]:
+    """``Context.taxonomy_axes`` para ``project_contexts.taxonomy_axes`` (sin palabras clave ni ejemplos)."""
+    return [
+        {
+            "key": axis.key,
+            "name": axis.name,
+            "description": axis.description,
+            "multiple": bool(axis.multiple),
+            "organizes": axis.organizes,
+            "values": [{"slug": entry.slug, "name": entry.name} for entry in axis.entries],
+        }
+        for axis in context.taxonomy_axes
+    ]
+
+
 def _unclassified(context: Any) -> list[ContextDoc]:
     """Documentos sin clasificar (G42, doc_organize 1.6.0): con su motivo, lo que propusieron las reglas y sus
     propiedades si ``unclassified_details`` los trae (uno por ruta, en el mismo orden); si no (contexto de 1.5.0 o
@@ -505,6 +569,7 @@ def _unclassified(context: Any) -> list[ContextDoc]:
                 rules_domain=detail.rules_domain,
                 rules_confidence=detail.rules_confidence,
                 unclassified_reason=str(detail.reason),
+                axes=_axes(getattr(detail, "classification", None)),
             )
             for detail in details
         ]
@@ -549,6 +614,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     organized_path=None if document.source_path in failed_paths else organized,
                     failed=document.source_path in failed_paths,
                     classified_by=str(document.classified_by) if document.classified_by else None,
+                    axes=_axes(document.classification),
                     **_traceability(document),
                 )
             )
@@ -563,6 +629,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         built_with_version=context.built_with_version,
         ai_classification_model=context.model_for_task("classify") if context.ai_stats.scope != "off" else None,
         ai_enrichment_model=context.model_for_task("enrich") if context.ai_stats.enrich else None,
+        taxonomy_axes=_taxonomy_axes(context),
     )
 
 
@@ -640,6 +707,7 @@ def build_context(
             "output_folder_name": request.output_folder_name,
             "taxonomy_manifest": manifest,
             "taxonomy_template_name": request.template_name if manifest is not None else None,
+            "versions": request.versions,
             "cancel_token": token,
         }
         if not uses_ai or request.ai is None:

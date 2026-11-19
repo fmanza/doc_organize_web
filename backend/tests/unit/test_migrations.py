@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from app.core.config import Settings
 from app.db.session import get_engine
@@ -197,3 +198,112 @@ def test_0016_without_ai_settings_is_a_no_op(settings: Settings) -> None:
     command.downgrade(config, "0015")
     with get_engine().connect() as conn:
         assert _ai_rows(conn) == set()
+
+
+# --- 0017: ejes del contexto, plantillas 2.0 y ajustes por proyecto (W2) ---------------------------------------------
+
+TEMPLATE_V1 = """---
+title: Sintética
+domains:
+  - slug: facturas
+    name: Facturas
+material_types:
+  - slug: original
+    name: Original
+normative_frameworks:
+  - slug: marco-a
+    name: Marco A
+---
+# Notas
+"""
+
+
+def _seed_0016() -> None:
+    """Un proyecto con un contexto de 1.x proyectado (plantilla, dos ejes) y una plantilla de 1.x: datos sintéticos."""
+    with get_engine().begin() as conn:
+        run = conn.exec_driver_sql
+        run(
+            "INSERT INTO users (id, tenant_id, username, display_name, password_hash, role_id, is_instance_admin,"
+            " is_active, failed_attempts, password_changed_at, created_at, updated_at)"
+            " SELECT 1, 1, 'ana', 'Ana', 'x', id, 0, 1, 0, '2026-01-01', '2026-01-01', '2026-01-01' FROM roles"
+            " WHERE builtin = 'user' AND tenant_id = 1"
+        )
+        for id_, usage in ((1, "source"), (2, "destination")):
+            run(
+                "INSERT INTO locations (id, tenant_id, name, container_path, kind, usage, access, visibility, status,"
+                " ignore_patterns, created_at, updated_at) VALUES (?, 1, ?, ?, 'local', ?, 'rw', 'global', 'ok', '[]',"
+                " '2026-01-01', '2026-01-01')",
+                (id_, f"L{id_}", f"/mnt/l{id_}", usage),
+            )
+        run(
+            "INSERT INTO projects (id, tenant_id, name, source_location_id, source_subpaths, destination_location_id,"
+            " destination_subpath, capture_owner, status, created_at, updated_at)"
+            " VALUES (1, 1, 'P', 1, '[\"a\"]', 2, 'p', 0, 'active', '2026-01-01', '2026-01-01')"
+        )
+        run(
+            "INSERT INTO project_contexts (project_id, output_folder_name, catalog_kind, documents_count,"
+            " unclassified_count, failed_count, collisions_count, site_built, ai_classification, domains, built_at)"
+            " VALUES (1, 'organizado', 'template', 1, 1, 0, 0, 0, 1,"
+            ' \'[{"slug": "facturas", "name": "Facturas"}]\', \'2026-01-01\')'
+        )
+        run(
+            "INSERT INTO context_documents (project_id, seq, domain_slug, title, material_type, material_type_name,"
+            " folder, path, failed, collision, classified_by, keywords, ai_filled, rules_confidence, ai_confidence,"
+            " material_type_confidence) VALUES"
+            " (1, 0, 'facturas', 'Factura', 'original', 'Original', 'a', 'f.txt', 0, 0, 'ai', '[]', '[]', 0.2, 0.9, 0.7),"
+            " (1, 1, NULL, 'Otro', NULL, NULL, 'a', 'o.txt', 0, 0, NULL, '[]', '[]', NULL, NULL, NULL)"
+        )
+        conn.execute(
+            text(
+                "INSERT INTO taxonomy_templates (tenant_id, name, markdown, created_at, updated_at)"
+                " VALUES (1, 'sintetica', :m, '2026-01-01', '2026-01-01')"
+            ),
+            {"m": TEMPLATE_V1},
+        )
+
+
+def test_0017_backfills_axes_migrates_templates_and_goes_back(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0016")
+    _seed_0016()
+    with get_engine().connect() as conn:
+        before = {
+            table: sorted(tuple(r) for r in conn.exec_driver_sql(f"SELECT * FROM {table}"))  # noqa: S608
+            for table in ("projects", "project_contexts", "context_documents", "taxonomy_templates")
+        }
+
+    command.upgrade(config, "0017")
+
+    with get_engine().connect() as conn:
+        values = conn.exec_driver_sql(
+            "SELECT seq, axis, slug, name, confidence, classified_by FROM context_document_axis_values ORDER BY axis"
+        ).all()
+        assert [tuple(v) for v in values] == [
+            (0, "domains", "facturas", "Facturas", 0.9, "ai"),  # de la IA: su confianza
+            (0, "material_types", "original", "Original", 0.7, "ai"),
+        ]
+        axes = json.loads(conn.exec_driver_sql("SELECT taxonomy_axes FROM project_contexts").scalar())
+        assert [(a["key"], a["organizes"], [v["slug"] for v in a["values"]]) for a in axes] == [
+            ("domains", "folder", ["facturas"]),
+            ("material_types", "subfolder", ["original"]),
+        ]
+        markdown, original = conn.exec_driver_sql("SELECT markdown, markdown_v1 FROM taxonomy_templates").one()
+        assert original == TEMPLATE_V1 and markdown.startswith("---\nschema: 2\n") and "marco-a" in markdown
+        assert "# Notas" in markdown
+        project = conn.exec_driver_sql(
+            "SELECT ai_redact_credentials, context_versions, context_semantic FROM projects"
+        ).one()
+        assert tuple(project) == (1, "mark", 0)  # D7, D8 y D13
+        conn.exec_driver_sql("DELETE FROM context_documents WHERE seq = 0")
+        assert conn.exec_driver_sql("SELECT count(*) FROM context_document_axis_values").scalar() == 0  # CASCADE
+        conn.rollback()
+
+    command.downgrade(config, "0016")
+
+    with get_engine().connect() as conn:
+        after = {
+            table: sorted(tuple(r) for r in conn.exec_driver_sql(f"SELECT * FROM {table}"))  # noqa: S608
+            for table in before
+        }
+    assert after == before
+    assert "context_document_axis_values" not in inspect(get_engine()).get_table_names()
