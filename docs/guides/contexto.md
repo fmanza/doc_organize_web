@@ -84,6 +84,26 @@ contiene) o por **La IA propuso otro**. La búsqueda también mira el autor y la
 
 Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen.
 
+### Ejes: filtros, insignias y evidencia (2.0)
+
+Con doc_organize 2.0 la taxonomía es una lista de **ejes**: el dominio (organiza las carpetas), el tipo de material y
+los que solo etiquetan (marcos normativos, sistema de gestión...). En la lista de documentos:
+
+- Hay un **filtro por eje** (salvo el dominio, que se elige en la tabla) con el número de documentos de cada valor.
+  Valores del mismo eje se combinan con O («Marco A o Marco B») y ejes distintos con Y. Como mucho 20 valores a la vez.
+- Cada documento muestra sus valores como insignias. Las que no salen de las reglas llevan quién las puso: **IA**,
+  **Semántica** (embeddings) o **Persona** (una decisión).
+- En «Cómo se clasificó», los valores de la IA traen su **cita** del documento y si se encontró en el texto enviado
+  («Cita no encontrada»: su confianza queda bajo el umbral y conviene revisarlo), y el **prompt y el modelo** con los
+  que se clasificó.
+
+Los contextos construidos antes de la 2.0 solo tienen dominio y tipo de material; la cita y la procedencia aparecen al
+reconstruir.
+
+Al guardar un manifiesto o una plantilla se avisa de las **claves que no se usan** al clasificar y de los **ejes
+implícitos** (listas de valores de nivel superior, formato de 1.x): conviene declararlos en `axes:` con su nombre y
+descripción.
+
 ### Por qué no se clasificó un documento (1.6.0)
 
 En **Sin clasificar**, la columna **Motivo** dice por qué cada documento se quedó fuera:

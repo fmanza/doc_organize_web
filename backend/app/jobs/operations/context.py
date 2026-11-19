@@ -88,6 +88,7 @@ def _axis_rows(project_id: int, seq: int, doc: ContextDoc) -> list[dict[str, Any
                 "confidence": value.confidence,
                 "classified_by": _cut(value.classified_by, 8),
                 "evidence_verified": value.evidence_verified,
+                "evidence": _cut(value.evidence, 500),
             },
         )
     return list(rows.values())
@@ -128,6 +129,7 @@ def _project_rows(
                 ai_enrichment_model=_cut(outcome.ai_enrichment_model, 128),
                 domains=outcome.domains,
                 taxonomy_axes=outcome.taxonomy_axes,
+                ai_provenance=outcome.ai_provenance,
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),
             )

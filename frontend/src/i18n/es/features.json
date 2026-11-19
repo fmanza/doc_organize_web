@@ -1221,6 +1221,26 @@
       "below_threshold": "Por debajo del umbral",
       "below_thresholdHelp": "Las reglas no llegaron al umbral y la IA no le asignó dominio. «Cómo se clasificó» dice qué propusieron.",
       "rebuild": "Reconstruye el contexto para ver por qué no se clasificaron y sus propiedades (contexto anterior a la 1.6)."
+    },
+    "axes": {
+      "option": "{{name}} ({{count}})",
+      "byAi": "IA",
+      "bySemantic": "Semántica",
+      "byHuman": "Persona",
+      "evidence": "{{axis}} · {{value}}: «{{evidence}}»",
+      "verified": "Cita verificada",
+      "notVerified": "Cita no encontrada en el texto",
+      "provenance": "Clasificado con el prompt {{prompt}} (versión {{version}}, {{source}}) y el modelo {{model}}.",
+      "sources": {
+        "builtin": "incluido en doc_organize",
+        "project": "propio del proyecto"
+      }
+    },
+    "frontMatter": {
+      "ignoredTitle": "Claves que no se usan",
+      "ignored": "Estas claves no se usan al clasificar: {{keys}}.",
+      "implicitTitle": "Ejes implícitos",
+      "implicit": "Se leen como ejes: {{keys}}. Puedes declararlos en «axes:» con su nombre y descripción."
     }
   },
   "templates": {
@@ -1256,7 +1276,8 @@
       "confirm": "Borrar plantilla"
     },
     "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista).",
-    "search": "Buscar plantillas"
+    "search": "Buscar plantillas",
+    "savedWithNotices": "Plantilla guardada. Revisa los avisos antes de cerrar."
   },
   "ai": {
     "settings": {

@@ -1710,6 +1710,25 @@ export interface components {
             matched: number;
         };
         /**
+         * AxisValueOut
+         * @description Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio
+         *     la IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral).
+         */
+        AxisValueOut: {
+            /** Classified By */
+            classified_by?: ("rules" | "semantic" | "ai" | "human") | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Evidence Verified */
+            evidence_verified?: boolean | null;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
          * CapabilitiesOut
          * @description Capacidades de la instancia para convertir documentos.
          */
@@ -1747,6 +1766,39 @@ export interface components {
          * @description Dominio o tipo de material de una plantilla o manifiesto.
          */
         CatalogEntryOut: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ContextAxisOut
+         * @description Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.
+         */
+        ContextAxisOut: {
+            /** Description */
+            description?: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Multiple
+             * @default false
+             */
+            multiple: boolean;
+            /** Name */
+            name: string;
+            /** Organizes */
+            organizes?: ("folder" | "subfolder") | null;
+            /** Values */
+            values: components["schemas"]["ContextAxisValueOut"][];
+        };
+        /**
+         * ContextAxisValueOut
+         * @description Un valor de un eje del contexto y cuántos documentos lo tienen.
+         */
+        ContextAxisValueOut: {
+            /** Documents */
+            documents: number;
             /** Name */
             name: string;
             /** Slug */
@@ -1846,7 +1898,7 @@ export interface components {
              * Change
              * @enum {string}
              */
-            change: "added" | "removed" | "reclassified";
+            change: "added" | "removed" | "reclassified" | "superseded" | "excluded";
             /** Classified By */
             classified_by: string | null;
             /** Domain */
@@ -1902,6 +1954,13 @@ export interface components {
             ai_reasoning?: string | null;
             /** Author */
             author?: string | null;
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: components["schemas"]["AxisValueOut"][];
+            };
             /** Classified By */
             classified_by?: ("rules" | "ai") | null;
             /** Collision */
@@ -1994,6 +2053,11 @@ export interface components {
             /** Ai Enrichment Model */
             ai_enrichment_model?: string | null;
             /**
+             * Ai Provenance
+             * @default []
+             */
+            ai_provenance: components["schemas"]["PromptProvenanceOut"][];
+            /**
              * Built At
              * Format: date-time
              */
@@ -2016,6 +2080,11 @@ export interface components {
             output_folder_name: string;
             /** Site Built */
             site_built: boolean;
+            /**
+             * Taxonomy Axes
+             * @default []
+             */
+            taxonomy_axes: components["schemas"]["ContextAxisOut"][];
             /** Taxonomy Template Name */
             taxonomy_template_name: string | null;
             /** Unclassified Count */
@@ -2291,6 +2360,35 @@ export interface components {
             path: string;
             /** Total */
             total: number;
+        };
+        /**
+         * FrontMatterReportOut
+         * @description Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
+         *
+         *     ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
+         *     ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+         */
+        FrontMatterReportOut: {
+            /**
+             * Axes
+             * @default []
+             */
+            axes: components["schemas"]["TaxonomyAxisSummaryOut"][];
+            /**
+             * Ignored Keys
+             * @default []
+             */
+            ignored_keys: string[];
+            /**
+             * Implicit Axes
+             * @default []
+             */
+            implicit_axes: string[];
+            /**
+             * Legacy Format
+             * @default false
+             */
+            legacy_format: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2949,6 +3047,25 @@ export interface components {
             /** Source Subpaths */
             source_subpaths?: string[] | null;
         };
+        /**
+         * PromptProvenanceOut
+         * @description Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``).
+         */
+        PromptProvenanceOut: {
+            /** Model */
+            model: string;
+            /** Prompt Id */
+            prompt_id: string;
+            /**
+             * Source
+             * @description builtin (empaquetado) o project (prompt propio del proyecto)
+             */
+            source: string;
+            /** Task */
+            task: string;
+            /** Version */
+            version: string;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Name */
@@ -3427,6 +3544,22 @@ export interface components {
             url: string;
         };
         /**
+         * TaxonomyAxisSummaryOut
+         * @description Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.
+         */
+        TaxonomyAxisSummaryOut: {
+            /** Key */
+            key: string;
+            /** Multiple */
+            multiple: boolean;
+            /** Name */
+            name: string;
+            /** Organizes */
+            organizes: ("folder" | "subfolder") | null;
+            /** Values */
+            values: number;
+        };
+        /**
          * TaxonomyDraftParams
          * @description Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.
          *
@@ -3462,6 +3595,15 @@ export interface components {
             error?: string | null;
             /** Etag */
             etag: string;
+            /**
+             * @default {
+             *       "axes": [],
+             *       "ignored_keys": [],
+             *       "implicit_axes": [],
+             *       "legacy_format": false
+             *     }
+             */
+            front_matter: components["schemas"]["FrontMatterReportOut"];
             /** Last Changed At */
             last_changed_at?: string | null;
             /** Markdown */
@@ -3482,7 +3624,7 @@ export interface components {
         };
         /**
          * TaxonomyTemplateDetail
-         * @description Plantilla con su Markdown y su catálogo.
+         * @description Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3).
          */
         TaxonomyTemplateDetail: {
             /** Builtin */
@@ -3491,6 +3633,15 @@ export interface components {
             description: string | null;
             /** Domains */
             domains: components["schemas"]["CatalogEntryOut"][];
+            /**
+             * @default {
+             *       "axes": [],
+             *       "ignored_keys": [],
+             *       "implicit_axes": [],
+             *       "legacy_format": false
+             *     }
+             */
+            front_matter: components["schemas"]["FrontMatterReportOut"];
             /** Markdown */
             markdown: string;
             /** Material Types */
@@ -5408,6 +5559,8 @@ export interface operations {
                 language?: string | null;
                 /** @description Solo si alguna palabra clave contiene este texto (1.5.0) */
                 keyword?: string | null;
+                /** @description Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía */
+                axis?: string[] | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

@@ -10,12 +10,16 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Header, Query, Response, status
+from pydantic import StringConstraints
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
 from app.api.v1.listing import ContextDocumentSort, OrderQuery, SearchQuery, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
+    AxisValueOut,
     CatalogEntryOut,
+    ContextAxisOut,
+    ContextAxisValueOut,
     ContextBuildOut,
     ContextChangeOut,
     ContextDocumentOut,
@@ -23,17 +27,20 @@ from app.api.v1.schemas import (
     ContextDomainOut,
     ContextHistoryOut,
     ContextOut,
+    FrontMatterReportOut,
     ManifestVersionDetail,
     ManifestVersionList,
     ManifestVersionOut,
+    PromptProvenanceOut,
     SiteSessionOut,
+    TaxonomyAxisSummaryOut,
     TaxonomyManifestOut,
     TaxonomyMarkdownIn,
     TaxonomyTemplateDetail,
     TaxonomyTemplateList,
     TaxonomyTemplateOut,
 )
-from app.db.models import ContextDocument
+from app.db.models import ContextDocument, ContextDocumentAxisValue
 from app.domain.context import manifest_versions, site, templates
 from app.domain.context import service as context
 from app.domain.context.errors import SiteNotFoundError
@@ -70,12 +77,30 @@ def _template_out(view: TemplateView) -> TaxonomyTemplateOut:
     )
 
 
+def _front_matter(info: Any) -> FrontMatterReportOut:
+    """Ejes y avisos del front matter (``TemplateInfo``, W3); vacío sin catálogo válido."""
+    if info is None:
+        return FrontMatterReportOut()
+    return FrontMatterReportOut(
+        axes=[
+            TaxonomyAxisSummaryOut(
+                key=axis.key, name=axis.name, organizes=axis.organizes, multiple=axis.multiple, values=axis.values
+            )
+            for axis in info.axes
+        ],
+        implicit_axes=info.implicit_axes,
+        ignored_keys=info.ignored_keys,
+        legacy_format=info.legacy_format,
+    )
+
+
 def _template_detail(view: TemplateView) -> TaxonomyTemplateDetail:
     return TaxonomyTemplateDetail(
         **_template_out(view).model_dump(),
         markdown=view.markdown or "",
         domains=_catalog(view.domains),
         material_types=_catalog(view.material_types),
+        front_matter=_front_matter(view.info),
     )
 
 
@@ -172,15 +197,46 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         ai_classification_model=row.ai_classification_model,
         ai_enrichment_model=row.ai_enrichment_model,
         domains=[ContextDomainOut.model_validate(d) for d in row.domains],
+        taxonomy_axes=_axes_out(row.taxonomy_axes, context.axis_counts(db, row.project_id)),
+        ai_provenance=[PromptProvenanceOut.model_validate(item) for item in row.ai_provenance],
         built_by_run_id=row.built_by_run_id,
         built_at=row.built_at,
     )
 
 
-def _document_out(row: ContextDocument) -> ContextDocumentOut:
+def _axes_out(axes: list[dict[str, Any]], counts: dict[tuple[str, str], int]) -> list[ContextAxisOut]:
+    """Ejes de ``project_contexts.taxonomy_axes`` con cuántos documentos tiene cada valor."""
+    return [
+        ContextAxisOut(
+            key=axis["key"],
+            name=axis["name"],
+            description=axis.get("description"),
+            multiple=bool(axis.get("multiple")),
+            organizes=axis.get("organizes"),
+            values=[
+                ContextAxisValueOut(
+                    slug=value["slug"], name=value["name"], documents=counts.get((axis["key"], value["slug"]), 0)
+                )
+                for value in axis.get("values", [])
+            ],
+        )
+        for axis in axes
+    ]
+
+
+def _document_out(row: ContextDocument, axes: list[ContextDocumentAxisValue] | None = None) -> ContextDocumentOut:
     out = ContextDocumentOut.model_validate(row)
     out.output_path = output_paths(row.folder, row.path).markdown
+    grouped: dict[str, list[AxisValueOut]] = {}
+    for value in axes or []:
+        grouped.setdefault(value.axis, []).append(AxisValueOut.model_validate(value))
+    out.axes = grouped
     return out
+
+
+#: ``clave:slug`` de un filtro por eje (P10 del plan web): clave de eje de doc_organize y slug en kebab-case.
+AXIS_FILTER_PATTERN = r"^[a-z][a-z0-9_]{0,40}:[a-z0-9-]{1,128}$"
+AxisFilter = Annotated[str, StringConstraints(pattern=AXIS_FILTER_PATTERN)]
 
 
 @router.get(
@@ -211,6 +267,16 @@ def list_context_documents(
     keyword: Annotated[
         str | None, Query(max_length=100, description="Solo si alguna palabra clave contiene este texto (1.5.0)")
     ] = None,
+    axis: Annotated[
+        list[AxisFilter] | None,
+        Query(
+            max_length=context.MAX_AXIS_FILTERS,
+            description=(
+                "Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos "
+                "con Y. Un eje o valor que no existe da una lista vacía"
+            ),
+        ),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     q: SearchQuery = None,
@@ -226,11 +292,13 @@ def list_context_documents(
         only=only,
         language=language,
         keyword=keyword,
+        axes=context.parse_axis_filters(axis or []),
         limit=limit,
         offset=offset,
         listing=listing(q, sort, order),
     )
-    return ContextDocumentPage(items=[_document_out(r) for r in rows], total=total)
+    axes = context.document_axes(db, access.project.id, [r.seq for r in rows])
+    return ContextDocumentPage(items=[_document_out(r, axes.get(r.seq)) for r in rows], total=total)
 
 
 #: Cambios por construcción que devuelve el historial (todos van en «Historial del contexto (Excel)»).
@@ -298,6 +366,7 @@ def _manifest_out(manifest: context.Manifest, db: DbSession, project_id: int) ->
         error=manifest.error,
         domains=_catalog(manifest.info.domains) if manifest.info else [],
         material_types=_catalog(manifest.info.material_types) if manifest.info else [],
+        front_matter=_front_matter(manifest.info),
         etag=manifest.etag,
         last_changed_at=manifest_versions.latest_version_at(db, project_id),
     )

@@ -23,6 +23,8 @@ export interface ContextDocumentFilters {
   only: DocumentFilter | null;
   language: string | null;
   keyword: string;
+  /** Filtros por eje `clave:slug` (W3): O dentro del eje, Y entre ejes. */
+  axis?: string[];
 }
 
 /** Tamaño máximo de una plantilla o manifiesto (`MAX_TEMPLATE_BYTES` de la API). */
@@ -134,15 +136,22 @@ export function useContextDocuments(
 ) {
   const { only, language } = filters;
   const keyword = filters.keyword.trim() || null;
+  const axis = filters.axis?.length ? filters.axis : null;
   return useQuery({
-    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, language, keyword, ...list }],
+    queryKey: [
+      'projects',
+      projectId,
+      'context',
+      'documents',
+      { domain, only, language, keyword, axis, ...list },
+    ],
     enabled,
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/documents', {
           params: {
             path: { project_id: projectId },
-            query: { domain, only, language, keyword, ...list },
+            query: { domain, only, language, keyword, axis, ...list },
           },
         }),
       ),
