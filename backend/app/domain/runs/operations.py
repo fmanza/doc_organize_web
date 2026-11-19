@@ -176,10 +176,10 @@ class ContextBuildParams(_Params):
     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
     descarta) y no se devuelve en el run.
-    ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
-    ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
-    ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
-    documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
+    ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
+    ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+    ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
+    clasificados que no las declaran; tiene su propio presupuesto de documentos.
     """
 
     operation: Literal["context_build"] = "context_build"
@@ -210,11 +210,14 @@ class ContextDeleteParams(_Destructive):
     operation: Literal["context_delete"] = "context_delete"
 
 
-def context_ai_family(
-    params: ContextBuildParams,
-) -> Literal["litellm_classification", "litellm_taxonomy_classification"]:
-    """Familia de IA que usa ``params``: la de taxonomía (dos ejes) si hay plantilla o manifiesto."""
-    return "litellm_taxonomy_classification" if params.catalog in ("template", "manifest") else "litellm_classification"
+def context_ai_tasks(params: ContextBuildParams) -> list[Literal["classify", "enrich"]]:
+    """Tareas de IA (doc_organize 2.0) que usa ``params``: clasificar y describir, cada una si se pidió."""
+    tasks: list[Literal["classify", "enrich"]] = []
+    if params.ai_classification:
+        tasks.append("classify")
+    if params.ai_enrichment:
+        tasks.append("enrich")
+    return tasks
 
 
 class TaxonomyDraftParams(_Params):

@@ -217,7 +217,7 @@ def enqueue(
     if isinstance(params, ContextBuildParams):
         params = context.validate_build(db, settings, project, params, actor=actor)
     if isinstance(params, TaxonomyDraftParams):
-        ai_settings.require_configured(db, settings, "litellm_taxonomy_manifest_draft")
+        ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

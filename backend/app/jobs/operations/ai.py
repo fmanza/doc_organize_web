@@ -30,14 +30,19 @@ AI_ERRORS: Final[dict[str, str]] = {
 def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -> dict[str, Any]:
     """Pide el borrador y lo devuelve como resultado del run (Markdown + resumen del catálogo)."""
     project = require_project(project)
-    connection = ai_connection(ctx, "litellm_taxonomy_manifest_draft")
-    _, folders, _ = context_folders(ctx, project)
+    connection = ai_connection(ctx, "litellm", draft=True)
+    output, folders, _ = context_folders(ctx, project)
     ctx.progress("ai_sample", 0, None)
     ctx.check_cancelled()
     ctx.progress("ai_request", 0, None)
     try:
         draft = library_ai.draft_manifest(
-            connection, folders, params.sample_size, name=project.name, created_at=project.created_at
+            connection,
+            folders,
+            params.sample_size,
+            name=project.name,
+            created_at=project.created_at,
+            project_root=output,
         )
     except library_ai.NoConvertedDocumentsError:
         raise JobFailed(

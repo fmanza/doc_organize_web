@@ -33,7 +33,8 @@ export interface paths {
         };
         /**
          * Ver la configuración de IA
-         * @description Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
+         * @description Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de
+         *     entorno de doc_organize 1.x que siguen definidas y ya no se leen.
          */
         get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
         put?: never;
@@ -200,7 +201,8 @@ export interface paths {
         };
         /**
          * Familias de IA configuradas
-         * @description Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto.
+         * @description Si cada familia tiene sus campos obligatorios y si cada tarea se puede usar: activa la IA en la página de
+         *     contexto.
          */
         get: operations["get_ai_status_api_v1_ai_status_get"];
         put?: never;
@@ -1400,7 +1402,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "litellm_classification" | "litellm_taxonomy_classification" | "litellm_taxonomy_manifest_draft" | "litellm_enrichment" | "litellm_usage" | "github_copilot_usage";
+            key: "litellm" | "litellm_usage" | "github_copilot_usage";
         };
         /**
          * AiFamilyUpdate
@@ -1417,8 +1419,11 @@ export interface components {
          * @description Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos.
          */
         AiFieldOut: {
-            /** Env Var */
-            env_var: string;
+            /**
+             * Env Var
+             * @description Variable de entorno equivalente; null si el campo no tiene
+             */
+            env_var: string | null;
             /** Hint */
             hint: string | null;
             /** Name */
@@ -1433,12 +1438,27 @@ export interface components {
              */
             source: "db" | "env" | "none";
             /**
+             * Task
+             * @description Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas
+             */
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
+            /**
              * Undecryptable
              * @description Hay un valor guardado que no se descifra con las claves actuales
              */
             undecryptable: boolean;
             /** Value */
             value: string | null;
+        };
+        /**
+         * AiLegacyVariableOut
+         * @description Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.
+         */
+        AiLegacyVariableOut: {
+            /** Name */
+            name: string;
+            /** Replacement */
+            replacement: string;
         };
         /**
          * AiSettingsOut
@@ -1449,14 +1469,26 @@ export interface components {
             encryption_configured: boolean;
             /** Families */
             families: components["schemas"]["AiFamilyOut"][];
+            /**
+             * Legacy Variables
+             * @description Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)
+             */
+            legacy_variables?: components["schemas"]["AiLegacyVariableOut"][];
         };
         /**
          * AiStatusOut
-         * @description Qué familias de IA están configuradas (para cualquier usuario, sin valores).
+         * @description Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores).
          */
         AiStatusOut: {
             /** Families */
             families: {
+                [key: string]: boolean;
+            };
+            /**
+             * Tasks
+             * @description Tarea de IA (doc_organize 2.0) → si se puede usar
+             */
+            tasks?: {
                 [key: string]: boolean;
             };
         };
@@ -1476,6 +1508,13 @@ export interface components {
              * @default false
              */
             model_check: boolean;
+            /**
+             * Task
+             * @description Tarea cuyo modelo se prueba (familia litellm)
+             * @default classify
+             * @enum {string}
+             */
+            task: "classify" | "enrich" | "taxonomy_design" | "agent" | "embed";
         };
         /**
          * AiTestOut
@@ -1502,6 +1541,16 @@ export interface components {
             model_checked: boolean;
             /** Ok */
             ok: boolean;
+            /**
+             * Response Format
+             * @description Formato con el que respondió el modelo: json_schema si admite la salida estricta
+             */
+            response_format?: ("json_schema" | "json_object") | null;
+            /**
+             * Task
+             * @description Tarea cuyo modelo se probó (familia litellm)
+             */
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
             /**
              * Tested At
              * Format: date-time
@@ -1741,10 +1790,10 @@ export interface components {
          *     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
          *     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
          *     descarta) y no se devuelve en el run.
-         *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
-         *     ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
-         *     ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
-         *     documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
+         *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
+         *     ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+         *     ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
+         *     clasificados que no las declaran; tiene su propio presupuesto de documentos.
          */
         ContextBuildParams: {
             /**

@@ -112,7 +112,8 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
   const testable = family.fields.every(
     (field) => !field.required || field.name in changes || field.source !== 'none',
   );
-  const hasModel = family.fields.some((field) => field.name === 'model');
+  // doc_organize 2.0: la familia `litellm` tiene un modelo por tarea (`model_classify`…); se prueba el de clasificar.
+  const hasModel = family.fields.some((field) => field.name.startsWith('model'));
   const test = (modelCheck: boolean) => probe.mutate({ family: family.key, fields: changes, modelCheck });
   const save = () =>
     update.mutate(

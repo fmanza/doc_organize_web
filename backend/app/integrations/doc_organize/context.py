@@ -1,15 +1,17 @@
-"""Contexto, sitio y plantillas de taxonomía de doc_organize 0.14.0 (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8f).
+"""Contexto, sitio y plantillas de taxonomía de doc_organize (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8f; 2.0 en W2).
 
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v0.14.0``, sin cambios en ``v1.0.0rc2`` (que solo retira la web, ``auth`` y lo
-obsoleto)::
+Firmas verificadas en el tag ``v2.0.0a2``::
 
-    ContextBuilder().build(project, documents: list[ConversionResult], candidate_domains=None, threshold=0.5,
-        ai_classification_enabled=False, ai_classification_client=None, output_folder_name="organizado", ...,
-        taxonomy_manifest=None, taxonomy_classification_client=None, taxonomy_template_name=None, *,
-        on_progress=None, cancel_token=None, ai_max_failures=None, ai_max_documents=None) -> Context
+    ContextBuilder().build(project, documents: list[ConversionResult], *, candidate_domains=None, threshold=0.5,
+        taxonomy_manifest=None, taxonomy_template_name=None, output_folder_name="organizado", llm=None,
+        ai_scope="off", enrich=False, prompts=None, ai_cache=True, profile=None, decisions=True, scan_roots=None,
+        versions="all", semantic=False, ..., on_progress=None, cancel_token=None, ai_max_failures=None,
+        ai_max_documents=None, persist=True) -> Context
+    Context.ai_stats (AiStats), Context.model_for_task(task), Context.taxonomy_axes, DomainDocument.classification
+    TaxonomyManifest.axes / .folder_axis / .subfolder_axis / .tag_axes  # sin .domains ni .material_types (2.0)
     DomainDocument.organized_path    # .md copiado, relativo a la carpeta reorganizada (L-8d)
     Reorganizer().reorganize(project, context, on_document_copied=None, *, on_document_failed=None) -> Path
     Reorganizer().delete_output(project, context)
@@ -26,10 +28,11 @@ resolvedor de ubicaciones, ya resueltas. Desde 0.14.0 tampoco se sobrescriben do
 las escrituras atómicas no siguen enlaces (G31) y ``Context`` valida ``output_folder_name`` al leer ``context.json``
 (G32): la web ya no necesita sus rodeos.
 
-Con doc_organize 1.5.0 (firmas de arriba sin cambios), ``ContextBuilder.build`` lee el ``context.json`` anterior y añade
-una línea a ``historial_contexto/CONTEXT_HISTORY.jsonl`` en ``output_root`` (nombre que ya no admite la carpeta
-reorganizada), abre cada original para sus propiedades (autor, descripción, palabras clave) y clasifica sin distinguir
-tildes. ``ContextRegistry.load_context`` lanza ``ContextError`` ante cualquier ``context.json`` dañado.
+Con doc_organize 1.5.0, ``ContextBuilder.build`` lee el ``context.json`` anterior y añade una línea a
+``historial_contexto/CONTEXT_HISTORY.jsonl`` en ``output_root``, abre cada original para sus propiedades (autor,
+descripción, palabras clave) y clasifica sin distinguir tildes. ``ContextRegistry.load_context`` lanza ``ContextError``
+ante cualquier ``context.json`` dañado. Con 2.0 lee también los ``context.json`` y manifiestos de 1.x (los migra en
+memoria) y escribe los de 2.0.
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ import os
 import stat as stat_mode
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager, AsyncExitStack
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -102,10 +105,10 @@ class ContextRequest:
         template_name: Plantilla de la que viene ``manifest_markdown`` (solo informativo en ``context.json``).
         build_site: Generar y construir el sitio Zensical; si no, se borra el que hubiera.
         site_timeout: Segundos máximos de ``zensical build``.
-        ai: Clasificación con IA de lo que las reglas dejan sin clasificar (Fase 8): familia de un eje o de
-            taxonomía según haya manifiesto. ``None`` = sin IA.
-        enrichment: Descripción y palabras clave con IA de los documentos que no las declaran (1.5.0, familia
-            ``litellm_enrichment``), con su propio presupuesto. ``None`` = sin IA.
+        ai: Conexión de la familia ``litellm`` (doc_organize 2.0, cliente único), o ``None`` = sin IA.
+        ai_scope: Qué clasifica la IA (``ContextBuilder.build(ai_scope=)``): ``off``, ``unclassified`` (lo que las
+            reglas dejan sin clasificar, la Sub-fase B de 1.x) o ``missing_axes``.
+        enrich: Descripción y palabras clave con IA de los documentos que no las declaran (1.5.0, tarea ``enrich``).
     """
 
     name: str
@@ -120,7 +123,8 @@ class ContextRequest:
     build_site: bool = True
     site_timeout: float | None = None
     ai: AiConnection | None = None
-    enrichment: AiConnection | None = None
+    ai_scope: str = "off"
+    enrich: bool = False
 
 
 @dataclass(frozen=True)
@@ -195,8 +199,8 @@ def _info(manifest: Any) -> TemplateInfo:
     return TemplateInfo(
         title=manifest.title,
         description=manifest.description,
-        domains=[(entry.slug, entry.name) for entry in manifest.domains],
-        material_types=[(entry.slug, entry.name) for entry in manifest.material_types],
+        domains=[(entry.slug, entry.name) for entry in manifest.folder_axis.entries],
+        material_types=[(entry.slug, entry.name) for entry in manifest.subfolder_axis.entries],
     )
 
 
@@ -557,8 +561,8 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         missing=missing,
         site_built=bool(context.site_built),
         built_with_version=context.built_with_version,
-        ai_classification_model=context.ai_classification_model,
-        ai_enrichment_model=context.ai_enrichment_model,
+        ai_classification_model=context.model_for_task("classify") if context.ai_stats.scope != "off" else None,
+        ai_enrichment_model=context.model_for_task("enrich") if context.ai_stats.enrich else None,
     )
 
 
@@ -590,20 +594,11 @@ def build_context(
     )
     from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
-    from app.integrations.doc_organize.ai import (
-        classification_client,
-        classification_limits,
-        classification_stats,
-        enrichment_client,
-        enrichment_stats,
-    )
+    from app.integrations.doc_organize.ai import build_limits, classification_stats, enrichment_stats, llm_client
 
-    if request.ai is not None:
-        expected = (
-            "litellm_taxonomy_classification" if request.manifest_markdown is not None else "litellm_classification"
-        )
-        if request.ai.family != expected:
-            raise ValueError(f"La clasificación con IA de este catálogo usa {expected}")
+    uses_ai = request.ai_scope != "off" or request.enrich
+    if uses_ai and request.ai is None:
+        raise ValueError("La clasificación o las descripciones con IA necesitan la conexión de la familia litellm")
     if is_cancelled():
         return None
     on_progress("context_gather", 0, None, None)
@@ -647,20 +642,18 @@ def build_context(
             "taxonomy_template_name": request.template_name if manifest is not None else None,
             "cancel_token": token,
         }
-        ai = request.ai or request.enrichment
-        if ai is None:
+        if not uses_ai or request.ai is None:
             return await ContextBuilder().build(project, documents, **kwargs)
-        # Los límites son argumentos comunes de build(), pero cada fase cuenta su propio presupuesto (doc_organize 1.5.0).
-        kwargs |= {"on_progress": _ai_progress, **classification_limits(ai)}
-        async with AsyncExitStack() as stack:
-            if request.ai is not None:
-                client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
-                kwargs[client_arg] = await stack.enter_async_context(classification_client(request.ai))
-                kwargs["ai_classification_enabled"] = True
-            if request.enrichment is not None:
-                kwargs["ai_enrichment_client"] = await stack.enter_async_context(enrichment_client(request.enrichment))
-                kwargs["ai_enrichment_enabled"] = True
-            return await ContextBuilder().build(project, documents, **kwargs)
+        tasks: list[Any] = (["classify"] if request.ai_scope != "off" else []) + (["enrich"] if request.enrich else [])
+        # Los límites son argumentos comunes de build(); cada fase cuenta su propio presupuesto (doc_organize 1.5.0).
+        kwargs |= {
+            "on_progress": _ai_progress,
+            "ai_scope": request.ai_scope,
+            "enrich": request.enrich,
+            **build_limits(request.ai, tasks),
+        }
+        async with llm_client(request.ai) as llm:
+            return await ContextBuilder().build(project, documents, llm=llm, **kwargs)
 
     async def _run() -> ContextOutcome | None:
         on_progress("context_classify", 0, len(documents), None)
@@ -700,8 +693,8 @@ def build_context(
         outcome = _outcome(context, failed, missing)
         outcome.site_error = site_error
         outcome.site_search_excluded = search_excluded
-        outcome.ai = classification_stats(context) if request.ai is not None else None
-        outcome.enrichment = enrichment_stats(context) if request.enrichment is not None else None
+        outcome.ai = classification_stats(context) if request.ai_scope != "off" else None
+        outcome.enrichment = enrichment_stats(context) if request.enrich else None
         return outcome
 
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)

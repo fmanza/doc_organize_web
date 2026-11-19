@@ -1196,10 +1196,9 @@
       "classify": "Clasificar con IA lo que las reglas dejen sin clasificar",
       "classifyHelp": "Solo se envían los documentos pendientes, hasta el máximo por ejecución de los ajustes. Si la clave se rechaza, se deja de llamar al servicio.",
       "notConfigured": {
-        "litellm_classification": "Un administrador tiene que configurar la «Clasificación de dominios» en Configuración IA.",
-        "litellm_taxonomy_classification": "Con plantilla o manifiesto, un administrador tiene que configurar la «Clasificación por taxonomía».",
-        "litellm_taxonomy_manifest_draft": "Un administrador tiene que configurar el «Borrador de manifiesto» en Configuración IA.",
-        "litellm_enrichment": "Un administrador tiene que configurar «Descripciones y palabras clave» en Configuración IA."
+        "classify": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
+        "enrich": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
+        "taxonomy_design": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA."
       },
       "enrich": "Completar descripción y palabras clave con IA",
       "enrichHelp": "Solo los documentos clasificados que no las declaran, con su propio máximo por ejecución. Lo que declara el documento no se sustituye.",
@@ -1293,21 +1292,9 @@
       "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado."
     },
     "families": {
-      "litellm_classification": {
-        "title": "Clasificación de dominios (un eje)",
-        "intro": "LiteLLM Proxy que clasifica, al construir el contexto, los documentos que las reglas dejan sin dominio (catálogo descubierto o propio)."
-      },
-      "litellm_taxonomy_classification": {
-        "title": "Clasificación por taxonomía (dos ejes)",
-        "intro": "LiteLLM Proxy que asigna dominio y tipo de material cuando el contexto usa una plantilla o el manifiesto del proyecto."
-      },
-      "litellm_taxonomy_manifest_draft": {
-        "title": "Borrador de manifiesto",
-        "intro": "LiteLLM Proxy que propone un manifiesto de taxonomía a partir de una muestra de documentos."
-      },
-      "litellm_enrichment": {
-        "title": "Descripciones y palabras clave",
-        "intro": "LiteLLM Proxy que, al construir el contexto, propone descripción y palabras clave de los documentos que no las declaran."
+      "litellm": {
+        "title": "Modelos de IA",
+        "intro": "LiteLLM Proxy de todas las tareas de IA: clasificar, describir, diseñar la taxonomía, agentes y embeddings. Cada tarea puede tener su modelo, su clave y su máximo de documentos por ejecución; sin modelo usa el alias recomendado «doc-organize-<tarea>» del proxy y sin clave, la general."
       },
       "litellm_usage": {
         "title": "Uso de LiteLLM",
@@ -1322,6 +1309,18 @@
       "base_url": "URL del servicio",
       "virtual_key": "Clave virtual",
       "model": "Modelo (alias en el proxy)",
+      "model_classify": "Modelo para clasificar",
+      "model_enrich": "Modelo para describir",
+      "model_taxonomy_design": "Modelo para diseñar la taxonomía",
+      "model_agent": "Modelo de los agentes",
+      "model_embed": "Modelo de embeddings",
+      "virtual_key_classify": "Clave propia para clasificar",
+      "virtual_key_enrich": "Clave propia para describir",
+      "virtual_key_taxonomy_design": "Clave propia para diseñar la taxonomía",
+      "virtual_key_agent": "Clave propia de los agentes",
+      "virtual_key_embed": "Clave propia de embeddings",
+      "budget_classify": "Máximo de documentos a clasificar por ejecución",
+      "budget_enrich": "Máximo de documentos a describir por ejecución",
       "username": "Usuario de GitHub",
       "pat": "Token personal (PAT)"
     },

@@ -456,7 +456,7 @@ function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markd
   const status = useAiStatus();
   const [sampleSize, setSampleSize] = useState(25);
   const draft = useTaxonomyDraft(projectId, onDraft);
-  const available = status.data?.litellm_taxonomy_manifest_draft === true;
+  const available = status.data?.taxonomy_design === true;
 
   return (
     <Card withBorder mb="sm" component="section" aria-label={t('context.ai.draftTitle')}>
@@ -464,7 +464,7 @@ function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markd
         {t('context.ai.draftTitle')}
       </Text>
       <Text size="xs" c="dimmed" mb="xs">
-        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.litellm_taxonomy_manifest_draft')}
+        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.taxonomy_design')}
       </Text>
       <Group align="flex-end">
         <NumberInput

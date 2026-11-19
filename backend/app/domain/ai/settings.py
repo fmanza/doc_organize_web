@@ -1,7 +1,13 @@
-"""Configuración de las 6 familias de IA (WB-8.1, ADR-004).
+"""Configuración de las 3 familias de IA (WB-8.1, ADR-004; doc_organize 2.0, W2).
+
+Desde 2.0 una sola familia, ``litellm``, configura todas las tareas de IA (clasificar, describir, diseñar la taxonomía,
+agentes y embeddings): URL y clave general obligatorias y, por tarea, modelo, clave propia y presupuesto opcionales. La
+migración ``0016`` pasó a ella las cuatro familias de 1.x. ``litellm_usage`` y ``github_copilot_usage`` no cambian.
 
 Precedencia: valor guardado por un admin en ``ai_settings`` > variable ``DOC_ORGANIZE_*`` del entorno (los mismos
-nombres que la web integrada y que la librería). Los campos secretos se guardan cifrados con MultiFernet. Nunca se
+nombres que la librería: ``DOC_ORGANIZE_LITELLM_BASE_URL``, ``_VIRTUAL_KEY``, ``_MODEL_<TAREA>``,
+``_VIRTUAL_KEY_<TAREA>``). Las variables de 1.x (``DOC_ORGANIZE_LITELLM_<CLIENTE>_*``) ya no se leen (D15): si la
+familia queda sin configurar y alguna sigue definida, el error lo dice con la equivalente (U17). Los campos secretos se guardan cifrados con MultiFernet. Nunca se
 devuelven, ni se auditan, ni se escriben en un log: solo se muestra que están configurados y su ``hint``
 («…ab12» o, si miden 4 caracteres o menos, «***»). Un token que no se descifra (porque se retiró la clave con la que se
 cifró) cuenta como «sin valor» y se marca ``undecryptable``.
@@ -30,7 +36,16 @@ from app.domain.ai.errors import (
 )
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
-from app.integrations.doc_organize.ai import FAMILIES, FAMILIES_BY_KEY, AiConnection, FamilyKey, FamilySpec, FieldSpec
+from app.integrations.doc_organize.ai import (
+    FAMILIES,
+    FAMILIES_BY_KEY,
+    TASKS,
+    AiConnection,
+    FamilyKey,
+    FamilySpec,
+    FieldSpec,
+    legacy_env,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,20 +58,24 @@ MAX_SECRET_LENGTH: Final = 4096
 _MODEL_RE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$")
 _GITHUB_USER_RE: Final = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 _CONTROL_RE: Final = re.compile(r"[\x00-\x20\x7f]")
+#: Presupuesto de documentos por tarea (mismos límites que ``ai_max_documents_per_run``).
+MAX_BUDGET: Final = 100_000
 
 
 @dataclass(frozen=True)
 class FieldView:
-    """Estado de un campo. ``value`` solo en los no secretos; ``hint`` solo en los secretos."""
+    """Estado de un campo. ``value`` solo en los no secretos; ``hint`` solo en los secretos. ``task`` es la tarea del
+    campo en la familia ``litellm`` (``None`` = de todas)."""
 
     name: str
-    env_var: str
+    env_var: str | None
     secret: bool
     required: bool
     source: Source
     value: str | None
     hint: str | None
     undecryptable: bool = False
+    task: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,7 +89,7 @@ def family_spec(key: str) -> FamilySpec:
     """La familia ``key``.
 
     Raises:
-        AiFamilyNotFoundError: No es una de las 6.
+        AiFamilyNotFoundError: No es una de las 3.
     """
     spec = FAMILIES_BY_KEY.get(key)
     if spec is None:
@@ -105,7 +124,7 @@ def _stored(settings: Settings, row: AiSetting | None) -> tuple[str | None, bool
 
 def _field_view(settings: Settings, spec: FieldSpec, row: AiSetting | None) -> tuple[FieldView, str | None]:
     stored, undecryptable = _stored(settings, row)
-    env = os.environ.get(spec.env_var) or None
+    env = (os.environ.get(spec.env_var) or None) if spec.env_var else None
     value = stored or env
     source: Source = "db" if stored else "env" if env else "none"
     view = FieldView(
@@ -117,6 +136,7 @@ def _field_view(settings: Settings, spec: FieldSpec, row: AiSetting | None) -> t
         value=None if spec.secret else value,
         hint=hint(value) if spec.secret and value else None,
         undecryptable=undecryptable,
+        task=spec.task,
     )
     return view, value
 
@@ -128,7 +148,7 @@ def _family_view(settings: Settings, spec: FamilySpec, rows: dict[tuple[str, str
 
 
 def list_families(db: Session, settings: Settings) -> list[FamilyView]:
-    """Las 6 familias con el estado de cada campo (sin ningún secreto)."""
+    """Las 3 familias con el estado de cada campo (sin ningún secreto)."""
     rows = _rows(db)
     return [_family_view(settings, spec, rows) for spec in FAMILIES]
 
@@ -136,6 +156,17 @@ def list_families(db: Session, settings: Settings) -> list[FamilyView]:
 def configured_families(db: Session, settings: Settings) -> dict[str, bool]:
     """Familia → si tiene todos sus campos obligatorios (para cualquier usuario: sin valores)."""
     return {view.key: view.configured for view in list_families(db, settings)}
+
+
+def legacy_variables() -> dict[str, str]:
+    """Variables de entorno de 1.x que siguen definidas, con su equivalente de 2.0 (solo nombres, nunca valores)."""
+    return legacy_env()
+
+
+def configured_tasks(db: Session, settings: Settings) -> dict[str, bool]:
+    """Tarea de IA → si se puede usar: todas dependen de la familia ``litellm`` (sin modelo, el alias recomendado)."""
+    configured = configured_families(db, settings).get("litellm", False)
+    return dict.fromkeys(TASKS, configured)
 
 
 def resolve(db: Session, settings: Settings, key: FamilyKey) -> dict[str, str]:
@@ -150,8 +181,11 @@ def resolve(db: Session, settings: Settings, key: FamilyKey) -> dict[str, str]:
     return values
 
 
-def connection(db: Session, settings: Settings, key: FamilyKey) -> AiConnection:
+def connection(db: Session, settings: Settings, key: FamilyKey, *, draft: bool = False) -> AiConnection:
     """Conexión de la familia ``key`` con los ajustes de timeout, reintentos y presupuesto vigentes.
+
+    ``draft``: para el borrador de manifiesto (tarea ``taxonomy_design``), una sola petición larga con su propio plazo y
+    sus reintentos.
 
     Raises:
         AiNotConfiguredError: Le falta algún campo obligatorio.
@@ -160,8 +194,12 @@ def connection(db: Session, settings: Settings, key: FamilyKey) -> AiConnection:
     values = resolve(db, settings, key)
     missing = [field.name for field in spec.fields if field.required and field.name not in values]
     if missing:
-        raise AiNotConfiguredError(f"Falta configurar {key}: {', '.join(missing)}")
-    draft = key == "litellm_taxonomy_manifest_draft"  # una sola petición larga: sus propios plazo y reintentos
+        message = f"Falta configurar {key}: {', '.join(missing)}"
+        legacy = legacy_env() if key == "litellm" else {}
+        if legacy:  # U17: la actualización no deja la IA desactivada en silencio
+            pairs = "; ".join(f"{old} → {new}" for old, new in sorted(legacy.items()))
+            message += f". Las variables de doc_organize 1.x ya no se leen; usa las de 2.0: {pairs}"
+        raise AiNotConfiguredError(message)
     return AiConnection(
         family=key,
         values=values,
@@ -226,8 +264,12 @@ def _validate(spec: FieldSpec, value: str) -> str:
         if len(value) > MAX_SECRET_LENGTH or _CONTROL_RE.search(value):
             raise InvalidAiSettingError(f"{spec.name}: demasiado largo o con espacios")
         return value
-    if spec.name == "model" and not _MODEL_RE.fullmatch(value):
-        raise InvalidAiSettingError("model: alias de modelo no válido")
+    if spec.name.startswith("model") and not _MODEL_RE.fullmatch(value):
+        raise InvalidAiSettingError(f"{spec.name}: alias de modelo no válido")
+    if spec.name.startswith("budget_"):
+        if not value.isdigit() or not 1 <= int(value) <= MAX_BUDGET:
+            raise InvalidAiSettingError(f"{spec.name}: número de documentos entre 1 y {MAX_BUDGET}")
+        return str(int(value))
     if spec.name == "username" and not _GITHUB_USER_RE.fullmatch(value):
         raise InvalidAiSettingError("username: usuario de GitHub no válido")
     return value

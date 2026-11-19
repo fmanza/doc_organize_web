@@ -5,6 +5,38 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+Rama `feature/2.0` (doc_organize_web 2.0.0, plan único de 2.0, hito W2). Sin publicar: la 2.0.0 sale a la vez que
+doc_organize 2.0.0.
+
+### Changed
+
+- **doc_organize 2.0.0a2** (prerrelease, antes 1.7.1, ADR-006): la integración de IA (`integrations/doc_organize/ai.py`)
+  pasa al **cliente único** de 2.0 (`LlmClient` con `AiSettings`: modelo y clave por tarea, salida `json_schema`
+  estricta con caída a `json_object`, caché de resultados de IA en el proyecto). `ContextBuilder.build(llm=,
+  ai_scope="unclassified", enrich=)` sustituye a los clientes de clasificación y enriquecimiento; los recuentos salen
+  de `Context.ai_stats` y los modelos de `ai_provenance`. El resultado del run añade `cached`, tokens,
+  `response_format` y `scope`, y el log dice cuántos documentos se resolvieron con la caché (reconstruir sin cambios no
+  llama al modelo). El borrador de manifiesto usa `draft_taxonomy` (manifiesto v2 con perfil inicial).
+- **Configuración IA: una familia `litellm` para todas las tareas** (migración `0016`, con bajada): las cuatro
+  familias `litellm_classification`, `litellm_taxonomy_classification`, `litellm_enrichment` y
+  `litellm_taxonomy_manifest_draft` pasan a `litellm`, con URL y clave generales y, por tarea (`classify`, `enrich`,
+  `taxonomy_design`, `agent`, `embed`), modelo, clave propia y presupuesto opcionales. Cada tarea conserva la clave y
+  el modelo que tenía; la copia de 1.x queda en `ai_settings_v1` para que la bajada sea exacta. Variables de entorno
+  de doc_organize 2.0 (`DOC_ORGANIZE_LITELLM_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`); las de 1.x ya no se leen y, si
+  siguen definidas, el error al encolar dice cuál usar (D15/U17).
+- API (**cambio de contrato**): `AiFamilyKey` es `litellm`, `litellm_usage` o `github_copilot_usage`;
+  `GET /ai/status` añade `tasks`; `GET /admin/ai-settings` añade `legacy_variables` y `task` en cada campo;
+  `POST /admin/ai-settings/{family}/test` acepta `task` y devuelve `task` y `response_format`. OpenAPI y
+  `schema.d.ts` regenerados. La página de contexto y la de configuración usan la familia nueva (los ajustes por tarea
+  con su propia pantalla llegan en W3).
+
+### Added
+
+- `backend/scripts/migration_roundtrip.py`: prueba de ida y vuelta de las migraciones sobre una **copia** de
+  `config.db` (sube a `head`, lee todos los modelos, baja y compara las filas tabla a tabla sin imprimir valores).
+- LiteLLM falso para los tests (`backend/tests/fake_litellm.py`): exige `json_schema` estricto y valida cada
+  respuesta contra el esquema recibido, simula modelos sin `json_schema`, herramientas, embeddings y `/key/info`.
+
 ## [1.9.1] - 2026-11-18
 
 Adopta doc_organize 1.7.1: el sitio del contexto ocupa mucho menos en proyectos grandes. Sin migraciones ni cambios en

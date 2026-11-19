@@ -17,10 +17,7 @@
           },
           "key": {
             "enum": [
-              "litellm_classification",
-              "litellm_taxonomy_classification",
-              "litellm_taxonomy_manifest_draft",
-              "litellm_enrichment",
+              "litellm",
               "litellm_usage",
               "github_copilot_usage"
             ],
@@ -52,7 +49,7 @@
                 }
               ]
             },
-            "maxProperties": 8,
+            "maxProperties": 16,
             "propertyNames": {
               "maxLength": 32
             },
@@ -70,8 +67,16 @@
         "description": "Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos.",
         "properties": {
           "env_var": {
-            "title": "Env Var",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Variable de entorno equivalente; null si el campo no tiene",
+            "title": "Env Var"
           },
           "hint": {
             "anyOf": [
@@ -105,6 +110,25 @@
             "title": "Source",
             "type": "string"
           },
+          "task": {
+            "anyOf": [
+              {
+                "enum": [
+                  "classify",
+                  "enrich",
+                  "taxonomy_design",
+                  "agent",
+                  "embed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas",
+            "title": "Task"
+          },
           "undecryptable": {
             "description": "Hay un valor guardado que no se descifra con las claves actuales",
             "title": "Undecryptable",
@@ -135,6 +159,25 @@
         "title": "AiFieldOut",
         "type": "object"
       },
+      "AiLegacyVariableOut": {
+        "description": "Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replacement": {
+            "title": "Replacement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "replacement"
+        ],
+        "title": "AiLegacyVariableOut",
+        "type": "object"
+      },
       "AiSettingsOut": {
         "description": "Configuración de IA de la instancia, sin ningún secreto.",
         "properties": {
@@ -148,6 +191,14 @@
             },
             "title": "Families",
             "type": "array"
+          },
+          "legacy_variables": {
+            "description": "Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+            "items": {
+              "$ref": "#/components/schemas/AiLegacyVariableOut"
+            },
+            "title": "Legacy Variables",
+            "type": "array"
           }
         },
         "required": [
@@ -158,13 +209,21 @@
         "type": "object"
       },
       "AiStatusOut": {
-        "description": "Qué familias de IA están configuradas (para cualquier usuario, sin valores).",
+        "description": "Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores).",
         "properties": {
           "families": {
             "additionalProperties": {
               "type": "boolean"
             },
             "title": "Families",
+            "type": "object"
+          },
+          "tasks": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Tarea de IA (doc_organize 2.0) → si se puede usar",
+            "title": "Tasks",
             "type": "object"
           }
         },
@@ -190,7 +249,7 @@
                 }
               ]
             },
-            "maxProperties": 8,
+            "maxProperties": 16,
             "propertyNames": {
               "maxLength": 32
             },
@@ -202,6 +261,19 @@
             "description": "Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
             "title": "Model Check",
             "type": "boolean"
+          },
+          "task": {
+            "default": "classify",
+            "description": "Tarea cuyo modelo se prueba (familia litellm)",
+            "enum": [
+              "classify",
+              "enrich",
+              "taxonomy_design",
+              "agent",
+              "embed"
+            ],
+            "title": "Task",
+            "type": "string"
           }
         },
         "title": "AiTestIn",
@@ -250,6 +322,41 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "response_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "json_schema",
+                  "json_object"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Formato con el que respondió el modelo: json_schema si admite la salida estricta",
+            "title": "Response Format"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "enum": [
+                  "classify",
+                  "enrich",
+                  "taxonomy_design",
+                  "agent",
+                  "embed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tarea cuyo modelo se probó (familia litellm)",
+            "title": "Task"
           },
           "tested_at": {
             "format": "date-time",
@@ -835,7 +942,7 @@
       },
       "ContextBuildParams": {
         "additionalProperties": false,
-        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con\n``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).\n``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los\ndocumentos clasificados que no las declaran; tiene su propio presupuesto de documentos.",
+        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia\n``litellm`` desde doc_organize 2.0, ``ai_scope=\"unclassified\"``).\n``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos\nclasificados que no las declaran; tiene su propio presupuesto de documentos.",
         "properties": {
           "ai_classification": {
             "default": false,
@@ -5800,7 +5907,7 @@
     },
     "/api/v1/admin/ai-settings": {
       "get": {
-        "description": "Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.",
+        "description": "Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de\nentorno de doc_organize 1.x que siguen definidas y ya no se leen.",
         "operationId": "get_ai_settings_api_v1_admin_ai_settings_get",
         "responses": {
           "200": {
@@ -6205,7 +6312,7 @@
     },
     "/api/v1/ai/status": {
       "get": {
-        "description": "Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto.",
+        "description": "Si cada familia tiene sus campos obligatorios y si cada tarea se puede usar: activa la IA en la página de\ncontexto.",
         "operationId": "get_ai_status_api_v1_ai_status_get",
         "responses": {
           "200": {
