@@ -197,6 +197,8 @@ export function ContextPage() {
         </Text>
       )}
 
+      {built?.freshness && <FreshnessBanner freshness={built.freshness} canBuild={canBuild} />}
+
       {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
       {canBuild && (
         <BuildCard
@@ -363,6 +365,64 @@ function Traceability({ context }: { context: ContextOut }) {
   );
 }
 
+/** Ancla de la tarjeta de construcción (el aviso de frescura lleva a ella). */
+const BUILD_CARD_ID = 'construir-contexto';
+type Freshness = NonNullable<ContextOut['freshness']>;
+
+/**
+ * Aviso de frescura (W4, `check_context_freshness`): el contexto ya no refleja la caché del último escaneo. Con los
+ * recuentos, unos ejemplos y, si puede construir, el enlace para reconstruir.
+ */
+function FreshnessBanner({ freshness, canBuild }: { freshness: Freshness; canBuild: boolean }) {
+  const { t } = useTranslation();
+  if (freshness.up_to_date) {
+    return freshness.unknown > 0 ? (
+      <Alert color="gray" title={t('context.freshness.unknownTitle')}>
+        {t('context.freshness.unknown', { count: freshness.unknown })}
+      </Alert>
+    ) : null;
+  }
+  const parts = (['changed', 'added', 'removed'] as const)
+    .filter((key) => freshness[key] > 0)
+    .map((key) => t(`context.freshness.${key}`, { count: freshness[key] }));
+  if (freshness.stale_site) {
+    parts.push(t('context.freshness.staleSite'));
+  }
+  const examples = (['changed', 'added', 'removed'] as const).flatMap((key) =>
+    freshness.examples[key].map((path) => ({ key, path })),
+  );
+  return (
+    <Alert color="orange" title={t('context.freshness.title')} role="status">
+      <Text size="sm">{parts.join(' · ')}</Text>
+      {examples.length > 0 && (
+        <Text component="details" size="xs" mt={4}>
+          <summary style={{ cursor: 'pointer' }}>{t('context.freshness.examples')}</summary>
+          <Stack gap={0} mt={2}>
+            {examples.map(({ key, path }) => (
+              <Text key={`${key}:${path}`} size="xs" ff="monospace">
+                {t(`context.freshness.kinds.${key}`)}: {path}
+              </Text>
+            ))}
+          </Stack>
+        </Text>
+      )}
+      <Text size="xs" c="dimmed" mt={4}>
+        {t('context.freshness.checkedAt', { date: formatDateTime(freshness.checked_at) })}
+      </Text>
+      {canBuild && (
+        <Button
+          mt="xs"
+          size="xs"
+          variant="light"
+          onClick={() => document.getElementById(BUILD_CARD_ID)?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          {t('context.freshness.rebuild')}
+        </Button>
+      )}
+    </Alert>
+  );
+}
+
 function BuildCard({
   project,
   context,
@@ -419,7 +479,7 @@ function BuildCard({
     );
 
   return (
-    <Card withBorder>
+    <Card withBorder id={BUILD_CARD_ID}>
       <Title order={3} size="h4" mb="xs">
         {t(context ? 'context.build.rebuildTitle' : 'context.build.title')}
       </Title>

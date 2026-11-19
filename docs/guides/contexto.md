@@ -84,6 +84,14 @@ contiene) o por **La IA propuso otro**. La búsqueda también mira el autor y la
 
 Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen.
 
+### ¿Está al día? (2.0)
+
+Cada escaneo (y cada construcción) compara el contexto con la caché: si un original **cambió**, si hay documentos
+**nuevos** convertidos que el contexto no tiene, si alguno **ya no está**, o si el sitio es anterior a la última
+construcción, la página Contexto lo avisa con los recuentos, unos ejemplos y «Ir a reconstruir». No se leen los
+originales: la comparación usa la huella que guarda la caché del escaneo, así que solo es tan reciente como el último
+escaneo. Los contextos construidos antes de la 2.0 no tienen huella de los originales: reconstruye una vez.
+
 ### Ejes: filtros, insignias y evidencia (2.0)
 
 Con doc_organize 2.0 la taxonomía es una lista de **ejes**: el dominio (organiza las carpetas), el tipo de material y
