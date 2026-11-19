@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Header, Query, Response, status
+from fastapi import APIRouter, Header, Path, Query, Response, status
 from pydantic import StringConstraints
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
@@ -28,6 +28,11 @@ from app.api.v1.schemas import (
     ContextFreshnessOut,
     ContextHistoryOut,
     ContextOut,
+    DecisionIn,
+    DecisionIssueOut,
+    DecisionOut,
+    DecisionRevokeIn,
+    DecisionsOut,
     FrontMatterReportOut,
     ManifestVersionDetail,
     ManifestVersionList,
@@ -39,6 +44,10 @@ from app.api.v1.schemas import (
     PromptPreviewIn,
     PromptPreviewOut,
     PromptProvenanceOut,
+    ReviewDocumentOut,
+    ReviewItemOut,
+    ReviewPage,
+    ReviewReason,
     SiteSessionOut,
     TaxonomyAxisSummaryOut,
     TaxonomyManifestOut,
@@ -49,6 +58,7 @@ from app.api.v1.schemas import (
     TemplatePromptPreviewIn,
 )
 from app.db.models import ContextDocument, ContextDocumentAxisValue
+from app.domain.context import decisions as decisions_service
 from app.domain.context import manifest_versions, site, templates
 from app.domain.context import profile as profiles
 from app.domain.context import service as context
@@ -658,3 +668,143 @@ def preview_template_prompt(body: TemplatePromptPreviewIn, admin: TemplateManage
     """Los mensajes que recibiría el modelo con esta plantilla y su perfil (``templates.manage``), sin llamarlo."""
     del admin
     return _preview_out(profiles.template_preview(body.markdown))
+
+
+# --- revisar la clasificación (W5) -----------------------------------------------------------------------------------
+
+
+def _decision_out(item: dict[str, Any]) -> DecisionOut:
+    return DecisionOut.model_validate(item)
+
+
+_DECISION_ERRORS: dict[int | str, dict[str, Any]] = {
+    **_ERRORS,
+    403: {"description": "Rol insuficiente (editor)"},
+    404: {"description": "Sin contexto, sin el documento o sin la decisión"},
+    409: {"description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"},
+    422: {"description": "Decisión no válida (decision_invalid) o destino de solo lectura"},
+    503: {"description": "Ubicación no disponible"},
+}
+
+
+@router.get(
+    "/projects/{project_id}/context/review",
+    response_model=ReviewPage,
+    summary="Cola de revisión de la clasificación",
+    responses=_ERRORS,
+)
+def get_review(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    reason: Annotated[ReviewReason | None, Query(description="Solo este motivo")] = None,
+    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ReviewPage:
+    """Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
+    si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir)."""
+    access = projects.get_access(db, project_id, user)
+    rows, total, counts = decisions_service.review_items(db, access.project, reason=reason, limit=limit, offset=offset)
+    active = {d["document_key"]: d for d in decisions_service.load(db, settings, access.project).active}
+    axes = context.document_axes(db, access.project.id, [doc.seq for _, doc in rows if doc is not None])
+    items = []
+    for item, doc in rows:
+        document = None
+        if doc is not None:
+            out = _document_out(doc, axes.get(doc.seq))
+            document = ReviewDocumentOut(
+                seq=doc.seq,
+                title=doc.title,
+                folder=doc.folder,
+                path=doc.path,
+                domain_slug=doc.domain_slug,
+                output_path=out.output_path,
+                version=doc.version,
+                version_group=doc.version_group,
+                is_current=doc.is_current,
+                axes=out.axes,
+            )
+        decision = active.get(item.document_key)
+        items.append(
+            ReviewItemOut(
+                id=item.id,
+                document_key=item.document_key,
+                reason=item.reason,
+                priority=item.priority,
+                axis=item.axis,
+                value=item.value,
+                confidence=item.confidence,
+                detail=item.detail,
+                document=document,
+                decision=_decision_out(decision) if decision else None,
+            )
+        )
+    return ReviewPage(items=items, total=total, counts=counts)
+
+
+@router.get(
+    "/projects/{project_id}/context/decisions",
+    response_model=DecisionsOut,
+    summary="Decisiones de personas",
+    responses=_ERRORS,
+)
+def get_decisions(project_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep) -> DecisionsOut:
+    """Vigentes (``.doc_organize/decisions.json``), historial de revocadas y las que la última construcción no aplicó
+    (desfasadas y huérfanas)."""
+    access = projects.get_access(db, project_id, user)
+    found = decisions_service.load(db, settings, access.project)
+    return DecisionsOut(
+        decisions=[_decision_out(d) for d in found.active],
+        revoked=[_decision_out(d) for d in found.revoked],
+        stale=[DecisionIssueOut.model_validate(i) for i in found.stale],
+        orphan=[DecisionIssueOut.model_validate(i) for i in found.orphan],
+        applied=found.applied,
+    )
+
+
+@router.post(
+    "/projects/{project_id}/context/decisions",
+    response_model=DecisionOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Decidir sobre un documento",
+    responses=_DECISION_ERRORS,
+)
+def post_decision(
+    project_id: int, body: DecisionIn, user: CurrentUser, db: DbSession, settings: SettingsDep, ctx: Context
+) -> DecisionOut:
+    """Confirmar la clasificación, fijar los valores de un eje (del catálogo), sacar el documento del contexto o
+    marcarlo como versión vigente. Se aplica en la siguiente construcción; propietario o editor; auditado."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    saved = decisions_service.decide(
+        db,
+        settings,
+        access.project,
+        document_key=body.document_key,
+        action=body.action,
+        axes=body.axes,
+        reason=body.reason,
+        actor=user,
+        ctx=ctx,
+    )
+    return _decision_out(saved)
+
+
+@router.post(
+    "/projects/{project_id}/context/decisions/{decision_id}/revoke",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Revocar una decisión",
+    responses=_DECISION_ERRORS,
+)
+def revoke_decision(
+    project_id: int,
+    decision_id: Annotated[str, Path(min_length=1, max_length=64)],
+    body: DecisionRevokeIn,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    ctx: Context,
+) -> None:
+    """La decisión deja de aplicarse en la siguiente construcción y pasa al historial."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    decisions_service.revoke(db, settings, access.project, decision_id, reason=body.reason, actor=user, ctx=ctx)

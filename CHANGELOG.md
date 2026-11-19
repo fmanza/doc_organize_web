@@ -32,6 +32,15 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Revisar clasificación** (W5, F6): la construcción guarda la cola de `review_queue` en `context_review_items` y las
+  decisiones aplicadas y no aplicadas (`decisions_applied`, `stale_decisions`, `orphan_decisions`), y cada documento su
+  `document_key`, huella y versión (migración `0020`, aditiva). Las claves de las decisiones son la ruta relativa a la
+  raíz de la ubicación de origen (`scan_roots`). API: `GET …/context/review` (por prioridad y motivo, con el documento
+  y su decisión vigente), `GET …/context/decisions`, `POST …/context/decisions` (`confirm`, `set_axis`, `exclude`,
+  `set_current_version`; validadas contra el catálogo; propietario o editor con destino `rw`; auditoría
+  `project.decision_add`) y `POST …/decisions/{id}/revoke` (`project.decision_revoke`). Las decisiones se guardan con
+  `ClassificationDecisionStore` en `.doc_organize/decisions.json` y se aplican al reconstruir. Página «Revisar
+  clasificación».
 - **Frescura del contexto** (W4, `check_context_freshness`): la construcción y cada escaneo comparan el contexto con
   la caché (sin leer originales) y guardan el resultado en `project_contexts.freshness` (migración `0019`, aditiva):
   recuentos de cambiados, nuevos, que ya no están y sin huella, sitio desfasado y unos pocos ejemplos con rutas

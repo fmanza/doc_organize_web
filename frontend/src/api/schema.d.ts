@@ -577,6 +577,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decisiones de personas
+         * @description Vigentes (``.doc_organize/decisions.json``), historial de revocadas y las que la última construcción no aplicó
+         *     (desfasadas y huérfanas).
+         */
+        get: operations["get_decisions_api_v1_projects__project_id__context_decisions_get"];
+        put?: never;
+        /**
+         * Decidir sobre un documento
+         * @description Confirmar la clasificación, fijar los valores de un eje (del catálogo), sacar el documento del contexto o
+         *     marcarlo como versión vigente. Se aplica en la siguiente construcción; propietario o editor; auditado.
+         */
+        post: operations["post_decision_api_v1_projects__project_id__context_decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/decisions/{decision_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revocar una decisión
+         * @description La decisión deja de aplicarse en la siguiente construcción y pasa al historial.
+         */
+        post: operations["revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/documents": {
         parameters: {
             query?: never;
@@ -665,6 +711,27 @@ export interface paths {
          *     del formulario o el guardado), **sin llamarlo**.
          */
         post: operations["preview_prompt_api_v1_projects__project_id__context_prompt_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cola de revisión de la clasificación
+         * @description Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
+         *     si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).
+         */
+        get: operations["get_review_api_v1_projects__project_id__context_review_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2206,6 +2273,108 @@ export interface components {
             csrf_token: string;
         };
         /**
+         * DecisionIn
+         * @description Una decisión sobre un documento del contexto (se aplica en la siguiente construcción).
+         *
+         *     ``confirm``: los valores de los ejes que se confirman. ``set_axis``: un eje y sus valores. ``exclude`` y
+         *     ``set_current_version``: sin ejes.
+         */
+        DecisionIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /** Axes */
+            axes?: {
+                [key: string]: string[];
+            };
+            /** Document Key */
+            document_key: string;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * DecisionIssueOut
+         * @description Una decisión que la última construcción no aplicó, y por qué.
+         */
+        DecisionIssueOut: {
+            /** Decision Id */
+            decision_id: string;
+            /** Detail */
+            detail?: string | null;
+            /** Document Key */
+            document_key: string;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * DecisionOut
+         * @description Una decisión de una persona (``ClassificationDecision``): vigente o, con ``revoked_at``, del historial.
+         */
+        DecisionOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /** Author */
+            author?: string | null;
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: string[];
+            };
+            /** Decided At */
+            decided_at: string;
+            /** Document Key */
+            document_key: string;
+            /** Id */
+            id: string;
+            /** Reason */
+            reason?: string | null;
+            /** Revoke Reason */
+            revoke_reason?: string | null;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Revoked By */
+            revoked_by?: string | null;
+            /** Source Sha256 */
+            source_sha256?: string | null;
+        };
+        /** DecisionRevokeIn */
+        DecisionRevokeIn: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * DecisionsOut
+         * @description Decisiones del proyecto: vigentes, historial y las no aplicadas en la última construcción.
+         */
+        DecisionsOut: {
+            /**
+             * Applied
+             * @default 0
+             */
+            applied: number;
+            /** Decisions */
+            decisions: components["schemas"]["DecisionOut"][];
+            /**
+             * Orphan
+             * @default []
+             */
+            orphan: components["schemas"]["DecisionIssueOut"][];
+            /** Revoked */
+            revoked: components["schemas"]["DecisionOut"][];
+            /**
+             * Stale
+             * @default []
+             */
+            stale: components["schemas"]["DecisionIssueOut"][];
+        };
+        /**
          * DedupApplyParams
          * @description Aplicar los grupos confirmados de una vista previa de duplicados (``groups_run_id``).
          *
@@ -3271,6 +3440,79 @@ export interface components {
             task: string;
             /** Version */
             version: string;
+        };
+        /**
+         * ReviewDocumentOut
+         * @description El documento de un motivo de revisión, con sus valores por eje y su versión.
+         */
+        ReviewDocumentOut: {
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: components["schemas"]["AxisValueOut"][];
+            };
+            /** Domain Slug */
+            domain_slug: string | null;
+            /** Folder */
+            folder: string;
+            /** Is Current */
+            is_current?: boolean | null;
+            /** Output Path */
+            output_path?: string | null;
+            /** Path */
+            path: string;
+            /** Seq */
+            seq: number;
+            /** Title */
+            title: string;
+            /** Version */
+            version?: string | null;
+            /** Version Group */
+            version_group?: string | null;
+        };
+        /**
+         * ReviewItemOut
+         * @description Un motivo para revisar un documento (``review_queue``), con el documento y su decisión vigente, si la hay.
+         */
+        ReviewItemOut: {
+            /** Axis */
+            axis?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** @description Decisión vigente del documento (se aplica en la siguiente construcción) */
+            decision?: components["schemas"]["DecisionOut"] | null;
+            /** Detail */
+            detail?: string | null;
+            document?: components["schemas"]["ReviewDocumentOut"] | null;
+            /** Document Key */
+            document_key: string;
+            /** Id */
+            id: number;
+            /** Priority */
+            priority: number;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "stale_decision" | "unclassified" | "rules_ai_disagreement" | "unverified_evidence" | "low_confidence" | "unconfirmed_version";
+            /** Value */
+            value?: string | null;
+        };
+        /** ReviewPage */
+        ReviewPage: {
+            /**
+             * Counts
+             * @description Motivos de revisión → cuántos hay
+             */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["ReviewItemOut"][];
+            /** Total */
+            total: number;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -5762,6 +6004,186 @@ export interface operations {
             };
         };
     };
+    get_decisions_api_v1_projects__project_id__context_decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_decision_api_v1_projects__project_id__context_decisions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin contexto, sin el documento o sin la decisión */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevokeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin contexto, sin el documento o sin la decisión */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_context_documents_api_v1_projects__project_id__context_documents_get: {
         parameters: {
             query?: {
@@ -6122,6 +6544,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_review_api_v1_projects__project_id__context_review_get: {
+        parameters: {
+            query?: {
+                /** @description Solo este motivo */
+                reason?: ("stale_decision" | "unclassified" | "rules_ai_disagreement" | "unverified_evidence" | "low_confidence" | "unconfirmed_version") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
