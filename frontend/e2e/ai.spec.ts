@@ -2,7 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 import { ADMIN_PASSWORD, ADMIN_USER, createProject, login } from './helpers';
 
-// Fase 8 con el LiteLLM falso de docker-compose.e2e.yml (`litellm-fake`, clave `sk-e2e-fake`; nada sale a la red):
+// Fase 8 (doc_organize 2.0: familia única «Modelos de IA», json_schema estricto) con el LiteLLM falso de docker-compose.e2e.yml (`litellm-fake`, clave `sk-e2e-fake`; nada sale a la red):
 // configurar la IA → ver el uso → construir el contexto con IA → pedir un borrador de manifiesto y guardarlo.
 test.skip(!ADMIN_USER || !ADMIN_PASSWORD, 'Define DOW_E2E_ADMIN_USER y DOW_E2E_ADMIN_PASSWORD');
 
@@ -39,7 +39,7 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
 
   await page.goto('/admin/ai/settings');
   await expect(page.getByRole('heading', { name: 'Configuración IA' })).toBeVisible();
-  for (const family of ['Clasificación de dominios (un eje)', 'Borrador de manifiesto', 'Uso de LiteLLM']) {
+  for (const family of ['Modelos de IA', 'Uso de LiteLLM']) {
     await configure(page, family);
   }
   const settings = await page.request.get('/api/v1/admin/ai-settings');
@@ -58,7 +58,7 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
   await page.getByRole('button', { name: 'Escanear todas las carpetas' }).click();
   await expect(page.getByText('Terminada')).toBeVisible({ timeout: 180_000 });
 
-  // Construir con IA (dominios descubiertos: familia de un eje).
+  // Construir con IA (dominios descubiertos; tarea `classify` de «Modelos de IA»).
   await page.goto(`/projects/${id}/context`);
   await expect(page.getByText('El proyecto aún no tiene contexto.')).toBeVisible();
   await page.getByRole('switch', { name: /Clasificar con IA/ }).check();
