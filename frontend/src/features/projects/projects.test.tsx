@@ -304,6 +304,29 @@ describe('ProjectDetailPage', () => {
   });
 });
 
+describe('W4: IA del proyecto', () => {
+  it('desactivar la redacción pide confirmación y la guarda', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes(),
+      'PUT /api/v1/projects/7/ai-settings': { body: { ...PROJECT, ai_redact_credentials: false } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'IA del proyecto' });
+    const toggle = within(card).getByRole('switch', { name: /Redactar credenciales/ });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/se enviarán tal cual/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Desactivar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings');
+    expect(await request?.json()).toEqual({ ai_redact_credentials: false });
+  });
+});
+
 describe('Fase 10: menú del proyecto', () => {
   it('con un proyecto abierto, Duplicados va la primera', async () => {
     stubApi({

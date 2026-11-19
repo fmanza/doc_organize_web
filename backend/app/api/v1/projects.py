@@ -22,6 +22,7 @@ from app.api.v1.schemas import (
     MemberList,
     MemberOut,
     MemberUpdate,
+    ProjectAiSettingsIn,
     ProjectCreate,
     ProjectOut,
     ProjectPage,
@@ -68,6 +69,7 @@ def project_out(access: ProjectAccess, last_run: Run | None = None, *, active_ru
         destination_subpath=p.destination_subpath,
         role=access.role,
         capture_owner=p.capture_owner,
+        ai_redact_credentials=p.ai_redact_credentials,
         created_at=p.created_at,
         updated_at=p.updated_at,
         last_run=RunBrief.model_validate(last_run) if last_run else None,
@@ -153,6 +155,22 @@ def update_project(
     access = service.get_access(db, project_id, user, min_role="owner")
     changes = ProjectChanges(**body.model_dump(exclude_unset=True))
     service.update_project(db, access, changes, settings=settings, actor=user, ctx=ctx)
+    return get_project(project_id, user, db)
+
+
+@router.put(
+    "/{project_id}/ai-settings",
+    response_model=ProjectOut,
+    summary="Ajustes de IA del proyecto",
+    responses={**_ERRORS, 422: {"description": "Destino de solo lectura (location_read_only)"}},
+)
+def put_ai_settings(
+    project_id: int, body: ProjectAiSettingsIn, user: CurrentUser, db: DbSession, ctx: Context
+) -> ProjectOut:
+    """Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o
+    editor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo."""
+    access = service.get_access(db, project_id, user, min_role="editor")
+    service.update_ai_settings(db, access, redact_credentials=body.ai_redact_credentials, actor=user, ctx=ctx)
     return get_project(project_id, user, db)
 
 
