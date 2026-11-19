@@ -600,9 +600,66 @@ def converted_documents(folders: list[SourceFolder]) -> tuple[list[Any], int]:
                     json_path=str(json_path),
                     images_dir=str(images) if os.path.lexists(images) else None,
                     success=True,
+                    # doc_organize 2.0 (F4): la huella del original queda en el contexto para comprobar su frescura.
+                    source_sha256=entry.sha256_hash or None,
                 )
             )
     return documents, missing
+
+
+@dataclass(frozen=True)
+class Freshness:
+    """Si el contexto sigue al día respecto a la caché del último escaneo (``FreshnessReport``, doc_organize 2.0 F4).
+
+    Las rutas son las del contenedor: quien las muestre las hace relativas.
+    """
+
+    changed: list[str]
+    added: list[str]
+    removed: list[str]
+    unknown: list[str]
+    stale_site: bool
+
+    @property
+    def up_to_date(self) -> bool:
+        """Sin cambios, altas, bajas ni sitio desfasado (los ``unknown`` no cuentan, como en la librería)."""
+        return not (self.changed or self.added or self.removed or self.stale_site)
+
+
+def context_freshness(
+    output_root: Path, folders: list[SourceFolder], *, name: str, created_at: datetime
+) -> Freshness | None:
+    """Compara el ``context.json`` del proyecto con sus cachés (``check_context_freshness``), sin leer originales ni
+    ``.json``. ``None`` si no hay contexto (o no se puede leer: cuenta como sin contexto, G32).
+
+    Raises:
+        DocOrganizeOperationError: No se pudieron leer las cachés.
+    """
+    from doc_organize import ContextRegistry
+    from doc_organize.context.freshness import check_context_freshness
+    from doc_organize.core.exceptions import ContextError, DocOrganizeError
+    from doc_organize.export import load_cache_entries
+
+    project = _project(name, output_root, created_at)
+    try:
+        context = asyncio.run(ContextRegistry().load_context(project))
+    except (ContextError, OSError, ValueError):
+        return None
+    caches = [folder.cache_db for folder in folders if folder.cache_db.is_file()]
+    try:
+        entries = asyncio.run(load_cache_entries(caches)) if caches else []
+    except (DocOrganizeError, OSError) as exc:
+        raise DocOrganizeOperationError("No se pudieron leer las cachés del proyecto.") from exc
+    roots = [folder.root for folder in folders]
+    in_project = [e for e in entries if any(Path(e.file_path).is_relative_to(root) for root in roots)]
+    report = check_context_freshness(project, context, in_project)
+    return Freshness(
+        changed=list(report.changed),
+        added=list(report.added),
+        removed=list(report.removed),
+        unknown=list(report.unknown),
+        stale_site=bool(report.stale_site),
+    )
 
 
 def existing_folder_name(output_root: Path, *, name: str, created_at: datetime) -> str | None:

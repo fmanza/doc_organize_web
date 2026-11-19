@@ -1639,6 +1639,60 @@
         "title": "ContextDomainOut",
         "type": "object"
       },
+      "ContextFreshnessOut": {
+        "description": "Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).\n\nRecuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,\nno se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con\nrutas relativas. Se calcula al escanear y al construir, sin leer originales.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "examples": {
+            "$ref": "#/components/schemas/FreshnessExamplesOut",
+            "default": {
+              "added": [],
+              "changed": [],
+              "removed": [],
+              "unknown": []
+            }
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "stale_site": {
+            "title": "Stale Site",
+            "type": "boolean"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "checked_at",
+          "up_to_date",
+          "changed",
+          "added",
+          "removed",
+          "unknown",
+          "stale_site"
+        ],
+        "title": "ContextFreshnessOut",
+        "type": "object"
+      },
       "ContextHistoryOut": {
         "description": "Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto.",
         "properties": {
@@ -1761,6 +1815,16 @@
           "failed_count": {
             "title": "Failed Count",
             "type": "integer"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextFreshnessOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "output_folder_name": {
             "title": "Output Folder Name",
@@ -2436,6 +2500,44 @@
           "total"
         ],
         "title": "FolderListing",
+        "type": "object"
+      },
+      "FreshnessExamplesOut": {
+        "properties": {
+          "added": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "changed": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "removed": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed",
+            "type": "array"
+          },
+          "unknown": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown",
+            "type": "array"
+          }
+        },
+        "title": "FreshnessExamplesOut",
         "type": "object"
       },
       "FrontMatterReportOut": {

@@ -37,6 +37,12 @@ doc_organize 2.0.0.
   describir, diseñar la taxonomía y agentes de la familia `litellm`, con la clave de cada tarea (que le llega por la
   entrada estándar). La respuesta se limpia de claves, URL del proxy y rutas del contenedor; uno cada 30 s y auditado
   (`admin.diagnostics`, sin detalles).
+- **Frescura del contexto** (W4, `check_context_freshness`): la construcción y cada escaneo comparan el contexto con
+  la caché (sin leer originales) y guardan el resultado en `project_contexts.freshness` (migración `0019`, aditiva):
+  recuentos de cambiados, nuevos, que ya no están y sin huella, sitio desfasado y unos pocos ejemplos con rutas
+  relativas. `GET …/context` lo devuelve en `freshness` y la página avisa con «Ir a reconstruir»; el escaneo lo deja en
+  su log. La construcción pasa a la librería la huella de cada original (`ConversionResult.source_sha256`), sin la que
+  no se puede saber si cambió.
 - **Perfil del proyecto y vista previa del prompt** (W3, D11): `GET`/`PUT`/`DELETE …/context/profile`
   (`.doc_organize/profile.md` en el destino; propietario o editor con destino `rw`, `If-Match`, sin seguir enlaces,
   escritura atómica, auditoría `project.profile_save`/`project.profile_delete` sin el texto) y

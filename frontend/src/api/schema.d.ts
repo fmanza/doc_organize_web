@@ -2116,6 +2116,42 @@ export interface components {
             status: string;
         };
         /**
+         * ContextFreshnessOut
+         * @description Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).
+         *
+         *     Recuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,
+         *     no se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con
+         *     rutas relativas. Se calcula al escanear y al construir, sin leer originales.
+         */
+        ContextFreshnessOut: {
+            /** Added */
+            added: number;
+            /** Changed */
+            changed: number;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /**
+             * @default {
+             *       "added": [],
+             *       "changed": [],
+             *       "removed": [],
+             *       "unknown": []
+             *     }
+             */
+            examples: components["schemas"]["FreshnessExamplesOut"];
+            /** Removed */
+            removed: number;
+            /** Stale Site */
+            stale_site: boolean;
+            /** Unknown */
+            unknown: number;
+            /** Up To Date */
+            up_to_date: boolean;
+        };
+        /**
          * ContextHistoryOut
          * @description Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto.
          */
@@ -2168,6 +2204,7 @@ export interface components {
             domains: components["schemas"]["ContextDomainOut"][];
             /** Failed Count */
             failed_count: number;
+            freshness?: components["schemas"]["ContextFreshnessOut"] | null;
             /** Output Folder Name */
             output_folder_name: string;
             /** Site Built */
@@ -2492,6 +2529,29 @@ export interface components {
             path: string;
             /** Total */
             total: number;
+        };
+        /** FreshnessExamplesOut */
+        FreshnessExamplesOut: {
+            /**
+             * Added
+             * @default []
+             */
+            added: string[];
+            /**
+             * Changed
+             * @default []
+             */
+            changed: string[];
+            /**
+             * Removed
+             * @default []
+             */
+            removed: string[];
+            /**
+             * Unknown
+             * @default []
+             */
+            unknown: string[];
         };
         /**
          * FrontMatterReportOut
