@@ -32,6 +32,9 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Ajustes de IA por tarea** (W3): la tarjeta «Modelos de IA» agrupa por tarea el modelo (con el alias recomendado a
+  la vista), la clave propia y el presupuesto, y cada tarea tiene su «Probar el modelo», que dice si el modelo admite
+  `json_schema`. La página avisa de las variables de entorno de 1.x que siguen definidas, con su equivalente.
 - **Ejes del contexto en la BD** (migración `0017`, con bajada; U3): tabla genérica `context_document_axis_values`
   (`project_id`, `seq`, `axis`, `slug`, `name`, `confidence`, `classified_by`, `evidence_verified`; índice
   `(project_id, axis, slug)` y clave primaria que empieza por `(project_id, seq)`, `ON DELETE CASCADE` desde
