@@ -137,7 +137,11 @@ def test_delete_keeps_a_version_and_restore_brings_it_back(user_client: TestClie
     assert newest["action"] == "delete" and newest["valid"]
     restored = user_client.post(f"{url}/versions/{newest['id']}/restore", headers={"If-Match": "none"})
     assert restored.status_code == 200, restored.text
-    assert target.read_text(encoding="utf-8") == TEMPLATE
+    # U4 (doc_organize 2.0): la versión era 1.x; se restaura migrada a 2.0 y la versión conserva el original.
+    assert target.read_text(encoding="utf-8") == library.migrate_markdown_v1(TEMPLATE)
+    assert target.read_text(encoding="utf-8").startswith("---\nschema: 2\n")
+    detail = user_client.get(f"{url}/versions/{newest['id']}").json()
+    assert detail["markdown"] == TEMPLATE
     assert _versions(user_client, url)[0]["action"] == "restore"  # restaurar también se puede deshacer
 
 

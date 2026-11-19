@@ -19,6 +19,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -27,6 +28,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
     text,
+    true,
 )
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -285,7 +287,10 @@ class Project(Base):
     """
 
     __tablename__ = "projects"
-    __table_args__ = (CheckConstraint("status IN ('active', 'deleted')", name="status"),)
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'deleted')", name="status"),
+        CheckConstraint("context_versions IN ('all', 'mark', 'current_only')", name="context_versions"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
@@ -298,6 +303,11 @@ class Project(Base):
     #: Guardar la cuenta propietaria de cada fichero al escanear (1.5.0, ``ScanOptions.capture_owner``): dato personal,
     #: solo lo activa el ``owner`` y es fijo por proyecto para que un escaneo no lo borre por olvidar la opción.
     capture_owner: Mapped[bool] = mapped_column(default=False, server_default=false())
+    #: doc_organize 2.0 (migración ``0017``): redactar credenciales de lo que sale hacia la IA (D7), qué hacer con las
+    #: versiones de un documento al construir el contexto (D8: ``mark`` en la web) y sub-fase semántica (D13, opt-in).
+    ai_redact_credentials: Mapped[bool] = mapped_column(default=True, server_default=true())
+    context_versions: Mapped[str] = mapped_column(String(16), default="mark", server_default="mark")
+    context_semantic: Mapped[bool] = mapped_column(default=False, server_default=false())
     status: Mapped[str] = mapped_column(String(16), default="active")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -525,6 +535,8 @@ class TaxonomyTemplate(Base):
     title: Mapped[str | None] = mapped_column(String(256), default=None)
     description: Mapped[str | None] = mapped_column(String(1024), default=None)
     markdown: Mapped[str] = mapped_column(Text)
+    #: Texto de 1.x que la migración ``0017`` pasó al formato 2.0 (``markdown``); nulo si ya era 2.0.
+    markdown_v1: Mapped[str | None] = mapped_column(Text, default=None)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
@@ -556,6 +568,9 @@ class ProjectContext(Base):
     ai_classification_model: Mapped[str | None] = mapped_column(String(128), default=None)
     ai_enrichment_model: Mapped[str | None] = mapped_column(String(128), default=None)
     domains: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    #: Ejes del contexto (doc_organize 2.0, ``Context.taxonomy_axes``): ``key``, ``name``, ``description``,
+    #: ``multiple``, ``organizes`` y ``values`` (``slug``, ``name``), sin palabras clave ni ejemplos.
+    taxonomy_axes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -636,3 +651,32 @@ class ContextDocument(Base):
     #: Por qué no se clasificó (1.6.0, G42): ``incomplete_artifacts`` (sin ``.md`` o ``.json``) o ``below_threshold``
     #: (las reglas no llegan al umbral y la IA no lo asignó). Nulo si está clasificado o en contextos anteriores.
     unclassified_reason: Mapped[str | None] = mapped_column(String(32), default=None)
+
+
+class ContextDocumentAxisValue(Base):
+    """Un valor de un eje de un documento del contexto (doc_organize 2.0, ``AxisValue``; migración ``0017``, U3).
+
+    Tabla **genérica** para todos los ejes (dominio, tipo de material y los que solo etiquetan), indexada para filtrar y
+    contar por ``(project_id, axis, slug)``. ``context_documents.domain_slug``/``material_type`` repiten los de los ejes
+    organizadores. ``classified_by``: ``rules``, ``semantic``, ``ai`` o ``human``; ``evidence_verified`` nulo sin cita.
+    """
+
+    __tablename__ = "context_document_axis_values"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "seq"],
+            ["context_documents.project_id", "context_documents.seq"],
+            name="document",
+            ondelete="CASCADE",
+        ),
+        Index("ix_context_document_axis_values_project_axis_slug", "project_id", "axis", "slug"),
+    )
+
+    project_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    axis: Mapped[str] = mapped_column(String(41), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(256))
+    confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    classified_by: Mapped[str | None] = mapped_column(String(8), default=None)
+    evidence_verified: Mapped[bool | None] = mapped_column(default=None)

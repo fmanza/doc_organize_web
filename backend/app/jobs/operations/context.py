@@ -12,12 +12,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from sqlalchemy import delete, insert
 
-from app.db.models import ContextDocument, Project, ProjectContext, Run, utcnow
+from app.db.models import ContextDocument, ContextDocumentAxisValue, Project, ProjectContext, Run, utcnow
 from app.domain.ai import settings as ai_settings
 from app.domain.ai.errors import AiNotConfiguredError
 from app.domain.documents.paths import DocumentNamer
@@ -71,6 +72,27 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
     }
 
 
+def _axis_rows(project_id: int, seq: int, doc: ContextDoc) -> list[dict[str, Any]]:
+    """Filas de ``context_document_axis_values`` del documento (un valor repetido en un eje cuenta una vez)."""
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    for value in doc.axes:
+        key = (value.axis[:41], value.slug[:128])
+        rows.setdefault(
+            key,
+            {
+                "project_id": project_id,
+                "seq": seq,
+                "axis": key[0],
+                "slug": key[1],
+                "name": value.name[:256],
+                "confidence": value.confidence,
+                "classified_by": _cut(value.classified_by, 8),
+                "evidence_verified": value.evidence_verified,
+            },
+        )
+    return list(rows.values())
+
+
 def _cut(value: str | None, size: int) -> str | None:
     return value[:size] if value else None
 
@@ -84,7 +106,9 @@ def _project_rows(
     escritura en ``config.db`` dura poco y no bloquea al resto (eventos de otros runs, sesiones).
     """
     rows = [_row(project.id, seq, doc, namer) for seq, doc in enumerate(outcome.documents)]
+    axis_rows = [row for seq, doc in enumerate(outcome.documents) for row in _axis_rows(project.id, seq, doc)]
     with ctx.session_factory() as db:
+        db.execute(delete(ContextDocumentAxisValue).where(ContextDocumentAxisValue.project_id == project.id))
         db.execute(delete(ContextDocument).where(ContextDocument.project_id == project.id))
         db.execute(delete(ProjectContext).where(ProjectContext.project_id == project.id))
         db.add(
@@ -103,6 +127,7 @@ def _project_rows(
                 ai_classification_model=_cut(outcome.ai_classification_model, 128),
                 ai_enrichment_model=_cut(outcome.ai_enrichment_model, 128),
                 domains=outcome.domains,
+                taxonomy_axes=outcome.taxonomy_axes,
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),
             )
@@ -110,6 +135,8 @@ def _project_rows(
         db.flush()
         for start in range(0, len(rows), BATCH):
             db.execute(insert(ContextDocument), rows[start : start + BATCH])
+        for start in range(0, len(axis_rows), BATCH):
+            db.execute(insert(ContextDocumentAxisValue), axis_rows[start : start + BATCH])
         db.commit()
 
 
@@ -196,6 +223,8 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     require_rw(project.destination_location)
     output, request_folders, namer = context_folders(ctx, project)
     ai = ai_connection(ctx, "litellm") if context_ai_tasks(params) else None
+    if ai is not None:  # redacción por proyecto (D7: por defecto, sí)
+        ai = replace(ai, redact_credentials=project.ai_redact_credentials)
     folder_name = params.output_folder_name or "organizado"
     existing = _existing_folder(output, project)
     if existing and existing != folder_name:
@@ -217,6 +246,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         ai=ai,
         ai_scope="unclassified" if params.ai_classification else "off",
         enrich=params.ai_enrichment,
+        versions=project.context_versions,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:
@@ -343,6 +373,7 @@ def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | 
         except library.DocOrganizeOperationError as exc:
             raise JobFailed("context_delete_failed", str(exc)) from None
         with ctx.session_factory() as db:
+            db.execute(delete(ContextDocumentAxisValue).where(ContextDocumentAxisValue.project_id == project.id))
             db.execute(delete(ContextDocument).where(ContextDocument.project_id == project.id))
             db.execute(delete(ProjectContext).where(ProjectContext.project_id == project.id))
             audit.record(
