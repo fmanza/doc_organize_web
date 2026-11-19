@@ -38,6 +38,7 @@ import {
   sameText,
   useTaxonomyDraft,
 } from './useContext';
+import { FrontMatterNotices } from './Axes';
 
 export interface ManifestCardProps {
   projectId: number;
@@ -123,6 +124,7 @@ export function ManifestCard({
           })}
         </Text>
       )}
+      {saved.markdown !== null && !saved.error && <FrontMatterNotices report={saved.front_matter} />}
       {copiedFrom !== null && (
         <Alert color="blue" mb="xs" role="status">
           <Group justify="space-between" wrap="nowrap">

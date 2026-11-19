@@ -571,6 +571,9 @@ class ProjectContext(Base):
     #: Ejes del contexto (doc_organize 2.0, ``Context.taxonomy_axes``): ``key``, ``name``, ``description``,
     #: ``multiple``, ``organizes`` y ``values`` (``slug``, ``name``), sin palabras clave ni ejemplos.
     taxonomy_axes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Prompt (``prompt_id``, ``version``, ``source``, ``sha256``) y modelo de cada tarea de IA de la construcción
+    #: (``Context.ai_provenance``, migración ``0018``); vacío sin IA o en contextos anteriores.
+    ai_provenance: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -680,3 +683,5 @@ class ContextDocumentAxisValue(Base):
     confidence: Mapped[float | None] = mapped_column(Float, default=None)
     classified_by: Mapped[str | None] = mapped_column(String(8), default=None)
     evidence_verified: Mapped[bool | None] = mapped_column(default=None)
+    #: Cita literal que dio la IA para el valor (2.0, D10; migración ``0018``); nula sin cita o en contextos anteriores.
+    evidence: Mapped[str | None] = mapped_column(String(500), default=None)

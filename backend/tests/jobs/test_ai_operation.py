@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,7 +24,9 @@ from app.integrations.doc_organize import ai as library_ai
 from app.jobs.context import JobFailed
 from app.jobs.operations import ai as draft_operation
 from app.jobs.operations import context as operation
+from tests.conftest import ADMIN_PASSWORD, login_as
 from tests.fake_litellm import FakeLiteLLM, chat_response, classify_answer
+from tests.jobs.test_context_axes import AXES_TEMPLATE
 from tests.jobs.test_context_operation import DOMAINS, _finish
 
 KEY = "sk-job-test-secret-7q6w"
@@ -375,3 +378,37 @@ def test_taxonomy_draft_needs_converted_documents(
 def test_chat_response_helper_is_valid_json() -> None:
     """El ayudante del proxy falso responde con el formato de ``/chat/completions`` que lee doc_organize."""
     assert json.loads(chat_response({"ok": True}).json()["choices"][0]["message"]["content"]) == {"ok": True}
+
+
+def test_evidence_and_provenance_reach_the_api(
+    run: Any, project: Project, litellm: FakeLiteLLM, user_client: TestClient, admin: Any
+) -> None:
+    """W3: la cita de la IA (y si se verificó) en el valor del eje y el prompt y modelo de la tarea en el contexto.
+
+    Con plantilla o manifiesto: sin catálogo de ejes, doc_organize 2.0.0a2 no guarda la cita del dominio.
+    """
+    admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
+    assert admin_client.put("/api/v1/taxonomy-templates/ejes", json={"markdown": AXES_TEMPLATE}).status_code == 201
+    litellm.answers["classify"] = classify_answer(
+        {"domains": ["informes"], "material_types": ["original"]}, evidence="harina huevos azúcar"
+    )
+    ctx, params = run(
+        {
+            "operation": "context_build",
+            "catalog": "template",
+            "template_name": "ejes",
+            "build_site": False,
+            "ai_classification": True,
+        }
+    )
+
+    operation.run_build(ctx, params, project)
+
+    body = user_client.get(f"/api/v1/projects/{project.id}/context").json()
+    (classify,) = [p for p in body["ai_provenance"] if p["task"] == "classify"]
+    assert classify["model"] == "doc-organize-classify" and classify["source"] == "builtin" and classify["version"]
+    page = user_client.get(f"/api/v1/projects/{project.id}/context/documents", params={"domain": "informes"}).json()
+    (receta,) = [d for d in page["items"] if d["path"] == "receta.txt"]
+    (value,) = receta["axes"]["domains"]
+    assert value["classified_by"] == "ai" and value["evidence"] == "harina huevos azúcar"
+    assert value["evidence_verified"] is True

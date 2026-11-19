@@ -57,6 +57,7 @@ import {
   useProjectContext,
   useTemplates,
 } from './useContext';
+import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
 import { ManifestCard } from './ManifestCard';
 
 /**
@@ -547,6 +548,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
   const [only, setOnly] = useState<DocumentFilter | null>(null);
   const [language, setLanguage] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [axisFilters, setAxisFilters] = useState<string[]>([]);
   const [debouncedLanguage] = useDebouncedValue(language.trim().toLowerCase(), 300);
   const [debouncedKeyword] = useDebouncedValue(keyword, 300);
   const list = useListState(CONTEXT_DOCUMENT_SORT, 'doc');
@@ -558,6 +560,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
       // La API pide entre 2 y 8 caracteres: con uno solo, todavía no se filtra.
       language: debouncedLanguage.length >= 2 ? debouncedLanguage : null,
       keyword: debouncedKeyword,
+      axis: axisFilters,
     },
     list.query,
   );
@@ -672,6 +675,14 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
           }}
         />
       </Group>
+      <AxisFilters
+        axes={context.taxonomy_axes ?? []}
+        value={axisFilters}
+        onChange={(value) => {
+          setAxisFilters(value);
+          list.paging.setPage(1, true);
+        }}
+      />
       {documents.isError ? (
         <ErrorAlert error={documents.error} />
       ) : !documents.data ? (
@@ -726,7 +737,8 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                       <Table.Td>
                         <Text size="sm">{doc.title}</Text>
                         <DocumentProperties doc={doc} />
-                        <HowClassified doc={doc} />
+                        <AxisBadges axes={context.taxonomy_axes ?? []} values={doc.axes ?? {}} />
+                        <HowClassified doc={doc} context={context} />
                         {doc.output_path && (
                           <Anchor
                             component={Link}
@@ -839,10 +851,13 @@ function DocumentProperties({ doc }: { doc: ContextDocument }) {
 }
 
 /** Detalle plegable «Cómo se clasificó» (1.5.0): reglas, propuesta de la IA y su justificación. */
-function HowClassified({ doc }: { doc: ContextDocument }) {
+function HowClassified({ doc, context }: { doc: ContextDocument; context: ContextOut }) {
   const { t } = useTranslation();
   const materialConfidence = doc.material_type_confidence;
-  if (!doc.rules_domain && !doc.ai_domain && typeof materialConfidence !== 'number') {
+  const evidence = Object.values(doc.axes ?? {}).some((items) =>
+    items.some((item) => item.evidence || item.classified_by === 'ai'),
+  );
+  if (!doc.rules_domain && !doc.ai_domain && typeof materialConfidence !== 'number' && !evidence) {
     return null;
   }
   return (
@@ -875,6 +890,11 @@ function HowClassified({ doc }: { doc: ContextDocument }) {
         {typeof materialConfidence === 'number' && (
           <Text size="xs">{t('context.how.material', { confidence: percent(materialConfidence) })}</Text>
         )}
+        <AxisEvidence
+          axes={context.taxonomy_axes ?? []}
+          values={doc.axes ?? {}}
+          provenance={context.ai_provenance ?? []}
+        />
       </Stack>
     </Text>
   );

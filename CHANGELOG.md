@@ -35,6 +35,16 @@ doc_organize 2.0.0.
 - **Ajustes de IA por tarea** (W3): la tarjeta «Modelos de IA» agrupa por tarea el modelo (con el alias recomendado a
   la vista), la clave propia y el presupuesto, y cada tarea tiene su «Probar el modelo», que dice si el modelo admite
   `json_schema`. La página avisa de las variables de entorno de 1.x que siguen definidas, con su equivalente.
+- **Contexto por ejes** (W3): `GET …/context/documents?axis=clave:slug` (repetible hasta 20; O dentro del eje, Y entre
+  ejes; patrón validado, 422 si no) y `axes` en cada documento (valor, confianza, quién lo asignó, cita y si se
+  verificó); `GET …/context` añade `taxonomy_axes` con el recuento de cada valor y `ai_provenance` (prompt, versión,
+  origen y modelo por tarea). Página: filtro por eje con recuentos, insignias con la marca «IA», «Semántica» o
+  «Persona», y evidencia y procedencia en «Cómo se clasificó». Migración `0018` (aditiva):
+  `context_document_axis_values.evidence` y `project_contexts.ai_provenance`. El historial admite los cambios
+  `superseded` y `excluded` de 2.0.
+- **Avisos del front matter** (W3): plantillas y manifiesto devuelven `front_matter` (`axes`, `implicit_axes`,
+  `ignored_keys`, `legacy_format`, de `inspect_taxonomy_front_matter`); el editor de plantillas y el del manifiesto
+  avisan de las claves que no se usan y de los ejes implícitos.
 - **Ejes del contexto en la BD** (migración `0017`, con bajada; U3): tabla genérica `context_document_axis_values`
   (`project_id`, `seq`, `axis`, `slug`, `name`, `confidence`, `classified_by`, `evidence_verified`; índice
   `(project_id, axis, slug)` y clave primaria que empieza por `(project_id, seq)`, `ON DELETE CASCADE` desde

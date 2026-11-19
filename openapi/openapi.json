@@ -776,6 +776,75 @@
         "title": "AuditPurgeOut",
         "type": "object"
       },
+      "AxisValueOut": {
+        "description": "Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio\nla IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral).",
+        "properties": {
+          "classified_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "rules",
+                  "semantic",
+                  "ai",
+                  "human"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classified By"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "evidence_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Verified"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "AxisValueOut",
+        "type": "object"
+      },
       "CapabilitiesOut": {
         "description": "Capacidades de la instancia para convertir documentos.",
         "properties": {
@@ -847,6 +916,88 @@
           "name"
         ],
         "title": "CatalogEntryOut",
+        "type": "object"
+      },
+      "ContextAxisOut": {
+        "description": "Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "multiple": {
+            "default": false,
+            "title": "Multiple",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organizes": {
+            "anyOf": [
+              {
+                "enum": [
+                  "folder",
+                  "subfolder"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizes"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/ContextAxisValueOut"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "values"
+        ],
+        "title": "ContextAxisOut",
+        "type": "object"
+      },
+      "ContextAxisValueOut": {
+        "description": "Un valor de un eje del contexto y cuántos documentos lo tienen.",
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "documents"
+        ],
+        "title": "ContextAxisValueOut",
         "type": "object"
       },
       "ContextBuildOut": {
@@ -1043,7 +1194,9 @@
             "enum": [
               "added",
               "removed",
-              "reclassified"
+              "reclassified",
+              "superseded",
+              "excluded"
             ],
             "title": "Change",
             "type": "string"
@@ -1218,6 +1371,17 @@
               }
             ],
             "title": "Author"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/AxisValueOut"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
           },
           "classified_by": {
             "anyOf": [
@@ -1540,6 +1704,14 @@
             ],
             "title": "Ai Enrichment Model"
           },
+          "ai_provenance": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PromptProvenanceOut"
+            },
+            "title": "Ai Provenance",
+            "type": "array"
+          },
           "built_at": {
             "format": "date-time",
             "title": "Built At",
@@ -1597,6 +1769,14 @@
           "site_built": {
             "title": "Site Built",
             "type": "boolean"
+          },
+          "taxonomy_axes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContextAxisOut"
+            },
+            "title": "Taxonomy Axes",
+            "type": "array"
           },
           "taxonomy_template_name": {
             "anyOf": [
@@ -2176,6 +2356,42 @@
           "total"
         ],
         "title": "FolderListing",
+        "type": "object"
+      },
+      "FrontMatterReportOut": {
+        "description": "Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.\n\n``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).\n``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.",
+        "properties": {
+          "axes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyAxisSummaryOut"
+            },
+            "title": "Axes",
+            "type": "array"
+          },
+          "ignored_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignored Keys",
+            "type": "array"
+          },
+          "implicit_axes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Implicit Axes",
+            "type": "array"
+          },
+          "legacy_format": {
+            "default": false,
+            "title": "Legacy Format",
+            "type": "boolean"
+          }
+        },
+        "title": "FrontMatterReportOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3763,6 +3979,41 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
+      "PromptProvenanceOut": {
+        "description": "Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``).",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_id": {
+            "title": "Prompt Id",
+            "type": "string"
+          },
+          "source": {
+            "description": "builtin (empaquetado) o project (prompt propio del proyecto)",
+            "title": "Source",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "prompt_id",
+          "version",
+          "source",
+          "model"
+        ],
+        "title": "PromptProvenanceOut",
+        "type": "object"
+      },
       "RoleCreate": {
         "additionalProperties": false,
         "properties": {
@@ -4910,6 +5161,51 @@
         "title": "SiteSessionOut",
         "type": "object"
       },
+      "TaxonomyAxisSummaryOut": {
+        "description": "Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "multiple": {
+            "title": "Multiple",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organizes": {
+            "anyOf": [
+              {
+                "enum": [
+                  "folder",
+                  "subfolder"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizes"
+          },
+          "values": {
+            "title": "Values",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "organizes",
+          "multiple",
+          "values"
+        ],
+        "title": "TaxonomyAxisSummaryOut",
+        "type": "object"
+      },
       "TaxonomyDraftParams": {
         "additionalProperties": false,
         "description": "Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.\n\nNo escribe nada: el borrador va en el resultado del run y se guarda, si se quiere, con el ``PUT`` del manifiesto.",
@@ -4956,6 +5252,15 @@
           "etag": {
             "title": "Etag",
             "type": "string"
+          },
+          "front_matter": {
+            "$ref": "#/components/schemas/FrontMatterReportOut",
+            "default": {
+              "axes": [],
+              "ignored_keys": [],
+              "implicit_axes": [],
+              "legacy_format": false
+            }
           },
           "last_changed_at": {
             "anyOf": [
@@ -5014,7 +5319,7 @@
         "type": "object"
       },
       "TaxonomyTemplateDetail": {
-        "description": "Plantilla con su Markdown y su catálogo.",
+        "description": "Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3).",
         "properties": {
           "builtin": {
             "title": "Builtin",
@@ -5037,6 +5342,15 @@
             },
             "title": "Domains",
             "type": "array"
+          },
+          "front_matter": {
+            "$ref": "#/components/schemas/FrontMatterReportOut",
+            "default": {
+              "axes": [],
+              "ignored_keys": [],
+              "implicit_axes": [],
+              "legacy_format": false
+            }
           },
           "markdown": {
             "title": "Markdown",
@@ -7790,6 +8104,29 @@
               ],
               "description": "Solo si alguna palabra clave contiene este texto (1.5.0)",
               "title": "Keyword"
+            }
+          },
+          {
+            "description": "Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía",
+            "in": "query",
+            "name": "axis",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "pattern": "^[a-z][a-z0-9_]{0,40}:[a-z0-9-]{1,128}$",
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía",
+              "title": "Axis"
             }
           },
           {
