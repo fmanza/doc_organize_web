@@ -25,6 +25,7 @@ from app.api.v1.schemas import (
     ContextDocumentOut,
     ContextDocumentPage,
     ContextDomainOut,
+    ContextFreshnessOut,
     ContextHistoryOut,
     ContextOut,
     FrontMatterReportOut,
@@ -207,6 +208,7 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         domains=[ContextDomainOut.model_validate(d) for d in row.domains],
         taxonomy_axes=_axes_out(row.taxonomy_axes, context.axis_counts(db, row.project_id)),
         ai_provenance=[PromptProvenanceOut.model_validate(item) for item in row.ai_provenance],
+        freshness=ContextFreshnessOut.model_validate(row.freshness) if row.freshness else None,
         built_by_run_id=row.built_by_run_id,
         built_at=row.built_at,
     )

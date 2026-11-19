@@ -996,6 +996,31 @@ class PromptProvenanceOut(BaseModel):
     model: str
 
 
+class FreshnessExamplesOut(BaseModel):
+    changed: list[str] = []
+    added: list[str] = []
+    removed: list[str] = []
+    unknown: list[str] = []
+
+
+class ContextFreshnessOut(BaseModel):
+    """Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).
+
+    Recuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,
+    no se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con
+    rutas relativas. Se calcula al escanear y al construir, sin leer originales.
+    """
+
+    checked_at: datetime
+    up_to_date: bool
+    changed: int
+    added: int
+    removed: int
+    unknown: int
+    stale_site: bool
+    examples: FreshnessExamplesOut = FreshnessExamplesOut()
+
+
 class ContextOut(BaseModel):
     """Resumen del contexto construido del proyecto (proyección del último ``context_build``)."""
 
@@ -1016,6 +1041,8 @@ class ContextOut(BaseModel):
     #: W3 (doc_organize 2.0): ejes con recuentos por valor y procedencia de la IA; vacíos en contextos anteriores.
     taxonomy_axes: list[ContextAxisOut] = []
     ai_provenance: list[PromptProvenanceOut] = []
+    #: W4: frescura respecto a la caché del último escaneo; nula si aún no se ha comprobado.
+    freshness: ContextFreshnessOut | None = None
     built_by_run_id: str | None
     built_at: datetime
 

@@ -16,7 +16,7 @@ from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, insert, update
 
 from app.db.models import ContextDocument, ContextDocumentAxisValue, Project, ProjectContext, Run, utcnow
 from app.domain.ai import settings as ai_settings
@@ -140,6 +140,37 @@ def _project_rows(
         for start in range(0, len(axis_rows), BATCH):
             db.execute(insert(ContextDocumentAxisValue), axis_rows[start : start + BATCH])
         db.commit()
+
+
+#: Ejemplos de cada lista de la frescura que se guardan (el total va en el recuento).
+FRESHNESS_EXAMPLES: Final = 10
+
+
+def refresh_freshness(ctx: JobContext, project: Project) -> dict[str, Any] | None:
+    """Comprueba si el contexto sigue al día respecto a las cachés y lo guarda en ``project_contexts.freshness``.
+
+    Sin contexto proyectado no hace nada (``None``). Lo llaman la construcción (al terminar) y el escaneo (la caché
+    cambió). Las rutas se guardan relativas (``namer.display``), nunca las del contenedor.
+    """
+    with ctx.session_factory() as db:
+        if db.get(ProjectContext, project.id) is None:
+            return None
+    output, folders, namer = context_folders(ctx, project)
+    report = library.context.context_freshness(output, folders, name=project.name, created_at=project.created_at)
+    if report is None:
+        return None
+    lists = {"changed": report.changed, "added": report.added, "removed": report.removed, "unknown": report.unknown}
+    freshness: dict[str, Any] = {
+        "checked_at": utcnow().isoformat(),
+        "up_to_date": report.up_to_date,
+        "stale_site": report.stale_site,
+        **{key: len(paths) for key, paths in lists.items()},
+        "examples": {key: [namer.display(p) for p in paths[:FRESHNESS_EXAMPLES]] for key, paths in lists.items()},
+    }
+    with ctx.session_factory() as db:
+        db.execute(update(ProjectContext).where(ProjectContext.project_id == project.id).values(freshness=freshness))
+        db.commit()
+    return freshness
 
 
 def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[SourceFolder], DocumentNamer]:
@@ -276,6 +307,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     _log_ai(ctx, outcome)
     ctx.progress("context_save", 0, None)
     _project_rows(ctx, project, params, outcome, namer)
+    refresh_freshness(ctx, project)  # recién construido: al día, salvo lo que no tenga huella (``unknown``)
     result: dict[str, Any] = {
         "output_folder_name": outcome.output_folder_name,
         "domains": len(outcome.domains),
