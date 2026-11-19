@@ -1947,6 +1947,86 @@
         "title": "DedupPreviewParams",
         "type": "object"
       },
+      "DiagnosticCheckOut": {
+        "description": "Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "remedy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remedy"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "warning",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "detail"
+        ],
+        "title": "DiagnosticCheckOut",
+        "type": "object"
+      },
+      "DiagnosticsIn": {
+        "additionalProperties": false,
+        "description": "Diagnóstico del entorno (W4): ``check_ai`` prueba también los modelos de IA configurados (gasta unos tokens).",
+        "properties": {
+          "check_ai": {
+            "default": false,
+            "title": "Check Ai",
+            "type": "boolean"
+          }
+        },
+        "title": "DiagnosticsIn",
+        "type": "object"
+      },
+      "DiagnosticsOut": {
+        "description": "Resultado del diagnóstico del entorno, sin claves, URL del proxy ni rutas del contenedor.",
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "checked_at",
+          "checks"
+        ],
+        "title": "DiagnosticsOut",
+        "type": "object"
+      },
       "DocumentOut": {
         "description": "Documento de la caché del proyecto, con rutas relativas a su carpeta de origen (nunca del servidor).",
         "properties": {
@@ -6662,6 +6742,60 @@
         "summary": "Volver a comprobar las capacidades",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/diagnostics": {
+      "post": {
+        "description": "``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,\nGPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un\nminuto; se audita sin detalles.",
+        "operationId": "run_diagnostics_api_v1_admin_diagnostics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagnosticsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon)"
+          },
+          "503": {
+            "description": "No terminó a tiempo o falló (diagnostics_failed)"
+          }
+        },
+        "summary": "Diagnóstico del entorno",
+        "tags": [
+          "ai"
         ]
       }
     },

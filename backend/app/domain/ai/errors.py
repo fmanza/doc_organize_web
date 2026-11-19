@@ -51,3 +51,19 @@ class AiTestTooSoonError(AppError):
     status = 429
     title = "Espera unos segundos antes de volver a probar"
     code = "ai_test_too_soon"
+
+
+class DiagnosticsTooSoonError(AppError):
+    """Hay un diagnóstico en marcha o el último fue hace muy poco."""
+
+    status = 429
+    title = "Espera antes de volver a diagnosticar"
+    code = "diagnostics_too_soon"
+
+
+class DiagnosticsFailedError(AppError):
+    """El diagnóstico no terminó (tiempo agotado o fallo del subproceso); sin detalles."""
+
+    status = 503
+    title = "No se pudo completar el diagnóstico"
+    code = "diagnostics_failed"

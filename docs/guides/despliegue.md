@@ -41,6 +41,19 @@ Sin `worker` la aplicación funciona, pero las ejecuciones se quedan **en cola**
 capacidades (GPU, audio/vídeo, LibreOffice, modelos) y sondea las ubicaciones cada
 `location_probe_interval_minutes`.
 
+### Diagnóstico (2.0)
+
+**Administración → Diagnóstico** (admin de instancia) ejecuta `check_environment` de doc_organize en el servidor web:
+Python, docling y sus modelos, los extras (Excel, sitio con un build de prueba, audio y vídeo), la GPU y LibreOffice,
+cada uno con «Correcto», «Aviso» o «Error» y qué hacer. Con «Probar también los modelos de IA» envía además un texto
+sintético a los modelos de clasificar, describir y diseñar la taxonomía (y agentes, si tienen modelo), con la clave de
+cada tarea: gasta unos pocos tokens y detecta un alias que no existe en el proxy o un modelo sin `json_schema`. El
+resultado no lleva claves, la URL del proxy ni rutas del servidor; cada diagnóstico queda en la auditoría. Como mucho
+uno cada 30 segundos. Tras actualizar a la 2.0, es la forma rápida de comprobar la IA (U9).
+
+Comprueba el contenedor `web`; la conversión la hacen los workers, cuyas capacidades (GPU, audio y vídeo, LibreOffice,
+modelos) están en **Información**.
+
 ### Modelos de Docling
 
 Los PDF y las imágenes necesitan modelos (maquetación, tablas, OCR). El worker corre con `HF_HUB_OFFLINE=1` y los lee

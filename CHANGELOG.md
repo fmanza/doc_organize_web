@@ -32,6 +32,11 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Diagnóstico** (W4, F2): «Administración → Diagnóstico» (admin de instancia) y `POST /admin/diagnostics` ejecutan
+  `check_environment` en un subproceso (la API no carga docling) y, con `check_ai`, prueban los modelos de clasificar,
+  describir, diseñar la taxonomía y agentes de la familia `litellm`, con la clave de cada tarea (que le llega por la
+  entrada estándar). La respuesta se limpia de claves, URL del proxy y rutas del contenedor; uno cada 30 s y auditado
+  (`admin.diagnostics`, sin detalles).
 - **Perfil del proyecto y vista previa del prompt** (W3, D11): `GET`/`PUT`/`DELETE …/context/profile`
   (`.doc_organize/profile.md` en el destino; propietario o editor con destino `rw`, `If-Match`, sin seguir enlaces,
   escritura atómica, auditoría `project.profile_save`/`project.profile_delete` sin el texto) y

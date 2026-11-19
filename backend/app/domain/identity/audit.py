@@ -66,6 +66,7 @@ class AuditAction:
     RUN_ENQUEUE: Final = "run.enqueue"
     RUN_CANCEL: Final = "run.cancel"
     WORKER_CAPABILITIES_REFRESH: Final = "worker.capabilities_refresh"
+    ADMIN_DIAGNOSTICS: Final = "admin.diagnostics"
     SESSION_REVOKE: Final = "session.revoke"
     SESSION_TENANT_SWITCH: Final = "session.tenant_switch"
     TENANT_CREATE: Final = "tenant.create"
