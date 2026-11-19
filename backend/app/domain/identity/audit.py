@@ -38,6 +38,7 @@ class AuditAction:
     LOCATION_PROBE: Final = "location.probe"
     PROJECT_CREATE: Final = "project.create"
     PROJECT_UPDATE: Final = "project.update"
+    PROJECT_AI_SETTINGS_UPDATE: Final = "project.ai_settings_update"
     PROJECT_MEMBER_ADD: Final = "project.member_add"
     PROJECT_MEMBER_UPDATE: Final = "project.member_update"
     PROJECT_MEMBER_REMOVE: Final = "project.member_remove"

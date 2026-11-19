@@ -159,6 +159,9 @@ class ContextRequest:
     ai_scope: str = "off"
     enrich: bool = False
     versions: str = "all"
+    #: Redactar credenciales en el sitio publicado (``SiteGenerator.generate(redact_credentials=)``, D7); lo que va a
+    #: la IA lo redacta ``AiSettings.redact_credentials`` (``AiConnection``).
+    redact_credentials: bool = True
 
 
 @dataclass(frozen=True)
@@ -1068,7 +1071,9 @@ def build_context(
             generator = SiteGenerator()
             if request.build_site:
                 on_progress("context_site", 0, None, None)
-                site = await generator.generate(project, context, build=False)
+                site = await generator.generate(
+                    project, context, build=False, redact_credentials=request.redact_credentials
+                )
                 search_excluded = list(site.search_excluded)
                 context.site_generated = True
                 try:

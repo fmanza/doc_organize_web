@@ -503,6 +503,39 @@ def update_project(
     return project
 
 
+def update_ai_settings(
+    db: Session, access: ProjectAccess, *, redact_credentials: bool, actor: User, ctx: RequestContext
+) -> Project:
+    """Ajustes de IA del proyecto (W4): si se redactan las credenciales de lo que sale hacia la IA y del sitio (D7).
+
+    Propietario o editor (lo comprueba la API) con el destino de lectura y escritura, como construir el contexto.
+    Se audita con el valor anterior y el nuevo; se aplica desde la siguiente construcción.
+
+    Raises:
+        DestinationReadOnlyError: El destino es de solo lectura.
+    """
+    from app.domain.context.errors import DestinationReadOnlyError
+
+    project = access.project
+    if project.destination_location.access != "rw":
+        raise DestinationReadOnlyError("La ubicación de destino es de solo lectura.")
+    if redact_credentials != project.ai_redact_credentials:
+        previous = project.ai_redact_credentials
+        project.ai_redact_credentials = redact_credentials
+        project.updated_at = utcnow()
+        audit.record(
+            db,
+            action=AuditAction.PROJECT_AI_SETTINGS_UPDATE,
+            ctx=ctx,
+            actor_id=actor.id,
+            target_type="project",
+            target_id=project.id,
+            details={"ai_redact_credentials": [previous, redact_credentials]},
+        )
+    db.commit()
+    return project
+
+
 # --- miembros ----------------------------------------------------------------------------------------------------
 
 

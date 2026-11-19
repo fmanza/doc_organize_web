@@ -9,6 +9,7 @@ import {
   Modal,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
@@ -26,7 +27,15 @@ import { RunsTable } from '../runs/RunsTable';
 import { useRuns } from '../runs/useRuns';
 import { type DangerousOperation, DangerousOperationModal } from './DangerousOperationModal';
 import { MembersPanel } from './MembersPanel';
-import { canDo, NOOP_RUN, type ProjectOut, useEnqueueRun, useProject, useUpdateProject } from './useProjects';
+import {
+  canDo,
+  NOOP_RUN,
+  type ProjectOut,
+  useEnqueueRun,
+  useProject,
+  useUpdateProject,
+  useUpdateProjectAi,
+} from './useProjects';
 
 const RECENT_RUNS = 10;
 
@@ -86,6 +95,57 @@ function EditProjectModal({ project, onClose }: { project: ProjectOut; onClose: 
 
 /** Dashboard del proyecto (sustituye a `dashboard.html.j2`): origen y destino, acceso al escaneo, últimas ejecuciones,
  * miembros y zona de peligro. «Probar el motor» queda para administradores desde que existe el escaneo (Fase 4). */
+/**
+ * IA del proyecto (W4, D7): redactar las credenciales de lo que sale hacia la IA y del sitio publicado. Activado por
+ * defecto; desactivarlo pide confirmación porque envía las credenciales tal cual.
+ */
+function AiSettingsCard({ project }: { project: ProjectOut }) {
+  const { t } = useTranslation();
+  const update = useUpdateProjectAi(project.id);
+  const [confirming, setConfirming] = useState(false);
+  const writable = project.destination_location.access === 'rw';
+  const set = (value: boolean) =>
+    update.mutate({ ai_redact_credentials: value }, { onSuccess: () => setConfirming(false) });
+  return (
+    <Card withBorder component="section" aria-label={t('projects.ai.title')}>
+      <Title order={3} size="h4" mb="xs">
+        {t('projects.ai.title')}
+      </Title>
+      <Switch
+        label={t('projects.ai.redact')}
+        description={t('projects.ai.redactHelp')}
+        checked={project.ai_redact_credentials}
+        disabled={!writable || update.isPending}
+        onChange={(event) => (event.currentTarget.checked ? set(true) : setConfirming(true))}
+      />
+      {!project.ai_redact_credentials && (
+        <Text size="sm" c="orange" mt="xs">
+          {t('projects.ai.redactOff')}
+        </Text>
+      )}
+      {!writable && (
+        <Text size="xs" c="dimmed" mt="xs">
+          {t('projects.ai.readOnly')}
+        </Text>
+      )}
+      {update.isError && <ErrorAlert error={update.error} mt="xs" />}
+      <Modal opened={confirming} onClose={() => setConfirming(false)} title={t('projects.ai.confirmTitle')}>
+        <Stack>
+          <Text>{t('projects.ai.confirm')}</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirming(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button color="red" loading={update.isPending} onClick={() => set(false)}>
+              {t('projects.ai.confirmButton')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Card>
+  );
+}
+
 export function ProjectDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -202,6 +262,8 @@ export function ProjectDetailPage() {
       <Card withBorder>
         <MembersPanel project={project} />
       </Card>
+
+      {canDo(project, 'editor') && <AiSettingsCard project={project} />}
 
       {isOwner && (
         <Card withBorder style={{ borderColor: 'var(--mantine-color-red-6)' }}>

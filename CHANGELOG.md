@@ -41,6 +41,11 @@ doc_organize 2.0.0.
   `project.decision_add`) y `POST …/decisions/{id}/revoke` (`project.decision_revoke`). Las decisiones se guardan con
   `ClassificationDecisionStore` en `.doc_organize/decisions.json` y se aplican al reconstruir. Página «Revisar
   clasificación».
+- **Redacción de credenciales por proyecto** (W4, D7): «IA del proyecto» en la página del proyecto, con
+  `PUT /projects/{id}/ai-settings` (propietario o editor, destino `rw`, auditoría `project.ai_settings_update` con el
+  valor anterior y el nuevo) y `ai_redact_credentials` en `ProjectOut`. Llega a lo que sale hacia la IA (construcción y
+  borrador: `AiSettings.redact_credentials`) y al sitio (`SiteGenerator.generate(redact_credentials=)`). Desactivarla
+  pide confirmación.
 - **Frescura del contexto** (W4, `check_context_freshness`): la construcción y cada escaneo comparan el contexto con
   la caché (sin leer originales) y guardan el resultado en `project_contexts.freshness` (migración `0019`, aditiva):
   recuentos de cambiados, nuevos, que ya no están y sin huella, sitio desfasado y unos pocos ejemplos con rutas
