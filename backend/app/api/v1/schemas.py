@@ -458,10 +458,27 @@ class ProjectOut(BaseModel):
     capture_owner: bool = Field(
         default=False, description="Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)"
     )
+    ai_redact_credentials: bool = Field(
+        default=True,
+        description="Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
+    )
     created_at: datetime
     updated_at: datetime
     last_run: RunBrief | None = None
     active_run: bool = False
+
+
+class ProjectAiSettingsIn(BaseModel):
+    """Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ai_redact_credentials: bool = Field(
+        description=(
+            "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. "
+            "Desactivarlo envía las credenciales tal cual a la IA"
+        )
+    )
 
 
 class ProjectPage(BaseModel):

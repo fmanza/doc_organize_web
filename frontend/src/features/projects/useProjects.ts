@@ -81,6 +81,21 @@ export function useUpdateProject(id: number) {
   });
 }
 
+/** Ajustes de IA del proyecto (W4): redacción de credenciales; propietario o editor con destino `rw`. */
+export function useUpdateProjectAi(id: number) {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: async (body: { ai_redact_credentials: boolean }) =>
+      unwrap(
+        await api.PUT('/api/v1/projects/{project_id}/ai-settings', {
+          params: { path: { project_id: id } },
+          body,
+        }),
+      ),
+    onSuccess: invalidate,
+  });
+}
+
 export function useEnqueueRun(projectId: number) {
   const invalidate = useInvalidateProjects();
   return useMutation({
