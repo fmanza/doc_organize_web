@@ -574,6 +574,10 @@ class ProjectContext(Base):
     #: Prompt (``prompt_id``, ``version``, ``source``, ``sha256``) y modelo de cada tarea de IA de la construcción
     #: (``Context.ai_provenance``, migración ``0018``); vacío sin IA o en contextos anteriores.
     ai_provenance: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Frescura respecto a la caché del último escaneo (``check_context_freshness``, migración ``0019``): ``checked_at``,
+    #: ``up_to_date``, recuentos de ``changed``/``added``/``removed``/``unknown``, ``stale_site`` y unos pocos
+    #: ejemplos con rutas relativas. Nula si aún no se ha comprobado.
+    freshness: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 

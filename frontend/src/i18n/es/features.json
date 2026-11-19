@@ -1266,6 +1266,27 @@
         "system": "Mensaje de sistema (instrucciones, perfil y catálogo)",
         "user": "Mensaje del documento"
       }
+    },
+    "freshness": {
+      "title": "El contexto está desactualizado",
+      "changed_one": "{{count}} original cambiado",
+      "changed_other": "{{count}} originales cambiados",
+      "added_one": "{{count}} documento nuevo sin incluir",
+      "added_other": "{{count}} documentos nuevos sin incluir",
+      "removed_one": "{{count}} documento que ya no está",
+      "removed_other": "{{count}} documentos que ya no están",
+      "staleSite": "el sitio es anterior a la última construcción",
+      "examples": "Ver ejemplos",
+      "kinds": {
+        "changed": "Cambiado",
+        "added": "Nuevo",
+        "removed": "Ya no está"
+      },
+      "checkedAt": "Comparado con la caché del último escaneo ({{date}}). Reconstruye para ponerlo al día.",
+      "rebuild": "Ir a reconstruir",
+      "unknownTitle": "Sin huella de los originales",
+      "unknown_one": "{{count}} documento del contexto no tiene huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambia.",
+      "unknown_other": "{{count}} documentos del contexto no tienen huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambian."
     }
   },
   "templates": {
