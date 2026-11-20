@@ -158,6 +158,9 @@ class ContextRequest:
     ai: AiConnection | None = None
     ai_scope: str = "off"
     enrich: bool = False
+    #: Sub-fase semántica (W6, G4; ``build(semantic=, semantic_threshold=)``): embeddings con la tarea ``embed``.
+    semantic: bool = False
+    semantic_threshold: float = 0.75
     versions: str = "all"
     #: Redactar credenciales en el sitio publicado (``SiteGenerator.generate(redact_credentials=)``, D7); lo que va a
     #: la IA lo redacta ``AiSettings.redact_credentials`` (``AiConnection``).
@@ -259,6 +262,8 @@ class ContextOutcome:
     decisions_applied: int = 0
     stale_decisions: list[dict[str, Any]] = field(default_factory=list)
     orphan_decisions: list[dict[str, Any]] = field(default_factory=list)
+    #: W6 (G4): recuento de la sub-fase semántica (``ai_stats.semantic_classification``), o ``None`` sin ella.
+    semantic: dict[str, Any] | None = None
     #: W6 (F5): modo de versiones, grupos (rutas del contenedor: el job las hace relativas) y versiones antiguas fuera
     #: del contexto (``current_only``).
     versions_mode: str | None = None
@@ -1008,7 +1013,7 @@ def build_context(
 
     from app.integrations.doc_organize.ai import build_limits, classification_stats, enrichment_stats, llm_client
 
-    uses_ai = request.ai_scope != "off" or request.enrich
+    uses_ai = request.ai_scope != "off" or request.enrich or request.semantic
     if uses_ai and request.ai is None:
         raise ValueError("La clasificación o las descripciones con IA necesitan la conexión de la familia litellm")
     if is_cancelled():
@@ -1065,6 +1070,8 @@ def build_context(
             "on_progress": _ai_progress,
             "ai_scope": request.ai_scope,
             "enrich": request.enrich,
+            "semantic": request.semantic,
+            "semantic_threshold": request.semantic_threshold,
             **build_limits(request.ai, tasks),
         }
         async with llm_client(request.ai) as llm:
@@ -1112,6 +1119,15 @@ def build_context(
         outcome.site_search_excluded = search_excluded
         outcome.ai = classification_stats(context) if request.ai_scope != "off" else None
         outcome.enrichment = enrichment_stats(context) if request.enrich else None
+        if request.semantic:
+            phase = context.ai_stats.semantic_classification
+            outcome.semantic = {
+                "enabled": bool(context.ai_stats.semantic),
+                "embedded": int(phase.sent),
+                "cached": int(phase.cached),
+                "assigned": int(phase.assigned),
+                "failed": int(phase.failed),
+            }
         return outcome
 
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)

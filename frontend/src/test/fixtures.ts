@@ -18,6 +18,9 @@ export const PROJECT = {
   active_run: false,
   capture_owner: false,
   ai_redact_credentials: true,
+  context_versions: 'mark',
+  context_semantic: false,
+  context_semantic_threshold: 0.75,
 };
 
 export function runOut(overrides: Record<string, unknown> = {}) {
