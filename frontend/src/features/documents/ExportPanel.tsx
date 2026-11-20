@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { CONTEXT_HISTORY_XLSX } from '../context/useContext';
+import { CONTEXT_HISTORY_XLSX, CONTEXT_XLSX } from '../context/useContext';
 import { type RunRequest, useEnqueueRun } from '../projects/useProjects';
 
 const ZIP_SIZE: RunRequest = { operation: 'export_zip', dry_run: true };
@@ -51,6 +51,9 @@ export function ExportPanel({ projectId }: { projectId: number }) {
         </Button>
         <Button variant="light" {...state(CONTEXT_HISTORY_XLSX)} onClick={() => launch(CONTEXT_HISTORY_XLSX)}>
           {t('documents.export.contextHistoryXlsx')}
+        </Button>
+        <Button variant="light" {...state(CONTEXT_XLSX)} onClick={() => launch(CONTEXT_XLSX)}>
+          {t('documents.export.contextXlsx')}
         </Button>
       </Group>
       {enqueue.isError && <ErrorAlert error={enqueue.error} mt="sm" />}

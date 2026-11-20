@@ -358,6 +358,8 @@ export function useContextHistory(projectId: number, limit = 10) {
 
 /** Construcciones y cambios del contexto (1.5.0) en Excel; el historial se conserva al borrar el contexto. */
 export const CONTEXT_HISTORY_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_history' };
+/** Excel del contexto (2.0): documentos con sus ejes y, en otra hoja, cuántos hay de cada valor. */
+export const CONTEXT_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_documents' };
 
 // --- manifiesto en la página del contexto (1.8.0) ---------------------------------------------------------------
 

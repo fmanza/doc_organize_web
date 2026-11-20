@@ -55,6 +55,7 @@ from app.domain.runs.operations import (
     ContextDryRunParams,
     ContextEvaluateParams,
     DedupApplyParams,
+    ExportXlsxParams,
     ProjectMoveParams,
     RunParams,
     ScanParams,
@@ -219,6 +220,8 @@ def enqueue(
         params = duplicates.validate_apply(db, project, params)
     if isinstance(params, ContextBuildParams):
         params = context.validate_build(db, settings, project, params, actor=actor)
+    if isinstance(params, ExportXlsxParams) and params.kind == "context_documents":
+        context.get_context(db, project)  # ContextNotFoundError (404) sin contexto construido
     if isinstance(params, TaxonomyDraftParams):
         ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
     if isinstance(params, ContextEvaluateParams):

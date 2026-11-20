@@ -2849,13 +2849,14 @@
       },
       "ExportXlsxParams": {
         "additionalProperties": false,
-        "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios).",
+        "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con\nsus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»).",
         "properties": {
           "kind": {
             "enum": [
               "cache",
               "errors",
-              "context_history"
+              "context_history",
+              "context_documents"
             ],
             "title": "Kind",
             "type": "string"

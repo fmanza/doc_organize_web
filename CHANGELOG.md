@@ -37,6 +37,11 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Excel del contexto** (W8, D4): `export_xlsx` con `kind: "context_documents"` (`write_context_documents_xlsx`):
+  hojas «Documentos» (una columna por eje que etiqueta, quién clasificó y la confianza) y «Ejes» (documentos por valor
+  del catálogo). Las rutas de los originales van relativas a su carpeta de origen (`<carpeta>/<ruta>`), sin rutas del
+  contenedor. Sin contexto construido, el encolado responde 404 `context_not_found`. Botón «Excel del contexto» en
+  «Documentos → Exportar».
 - **Clasificación semántica** (W6, G4): `context_semantic` y `context_semantic_threshold` del proyecto llegan a
   `build(semantic=, semantic_threshold=)` con la tarea `embed` de «Modelos de IA» (el cliente se crea también sin
   alcance de IA); sin «Modelos de IA» configurado se construye sin semántica y se avisa en el log. El resultado del run
