@@ -286,6 +286,36 @@ class ContextDryRunParams(_Params):
         return self
 
 
+class TaxonomyAgentParams(_Params):
+    """Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,
+    una plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.
+
+    **No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la
+    API al encolar. ``max_steps`` es el tope de llamadas al modelo.
+    """
+
+    operation: Literal["taxonomy_agent"] = "taxonomy_agent"
+    catalog: Literal["manifest", "template", "none"] = "manifest"
+    template_name: TemplateName | None = None
+    instructions: str = Field(default="", max_length=2000)
+    max_steps: int = Field(default=30, ge=1, le=60)
+    template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
+
+    @model_validator(mode="after")
+    def _catalog_fields(self) -> TaxonomyAgentParams:
+        if (self.catalog == "template") != (self.template_name is not None):
+            raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        return self
+
+
+class TaxonomyCheckParams(_Params):
+    """Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin
+    IA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje."""
+
+    operation: Literal["taxonomy_check"] = "taxonomy_check"
+    markdown: str = Field(min_length=1, max_length=MAX_TEMPLATE_BYTES)
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -303,7 +333,9 @@ RunParams = Annotated[
     | ContextDeleteParams
     | TaxonomyDraftParams
     | ContextEvaluateParams
-    | ContextDryRunParams,
+    | ContextDryRunParams
+    | TaxonomyAgentParams
+    | TaxonomyCheckParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -361,6 +393,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Calidad (W5): no escriben en el proyecto; la clasificación de prueba puede enviar contenido a la IA (editor).
     "context_evaluate": OperationSpec(min_role="editor"),
     "context_dry_run": OperationSpec(min_role="editor"),
+    # Agentes (W7): no escriben en el proyecto; el diseñador envía contenido a la IA (editor, como el borrador).
+    "taxonomy_agent": OperationSpec(min_role="editor"),
+    "taxonomy_check": OperationSpec(min_role="editor"),
 }
 
 
@@ -421,4 +456,6 @@ def stored_params(params: RunParams) -> dict[str, object]:
 HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {
     "context_build": ("template_markdown",),
     "context_dry_run": ("template_markdown", "profile_markdown"),
+    "taxonomy_agent": ("template_markdown",),
+    "taxonomy_check": ("markdown",),
 }

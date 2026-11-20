@@ -64,6 +64,7 @@ class AuditAction:
     PROJECT_GOLD_UPLOAD: Final = "project.gold_upload"
     PROJECT_GOLD_DELETE: Final = "project.gold_delete"
     PROJECT_DRY_RUN: Final = "project.dry_run"
+    PROJECT_TAXONOMY_AGENT: Final = "project.taxonomy_agent"
     PROJECT_CONTEXT_BUILD: Final = "project.context_build"
     PROJECT_CONTEXT_DELETE: Final = "project.context_delete"
     PROJECT_TAXONOMY_DRAFT: Final = "project.taxonomy_draft"

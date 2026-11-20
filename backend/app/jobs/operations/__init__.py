@@ -12,6 +12,7 @@ from typing import Any, Final
 from app.db.models import Project
 from app.jobs.context import JobContext
 from app.jobs.operations import (
+    agents,
     ai,
     context,
     dedup,
@@ -46,4 +47,6 @@ REGISTRY: Final[dict[str, Operation]] = {
     "taxonomy_draft": ai.run,
     "context_evaluate": quality.run_evaluate,
     "context_dry_run": quality.run_dry_run,
+    "taxonomy_agent": agents.run_design,
+    "taxonomy_check": agents.run_check,
 }

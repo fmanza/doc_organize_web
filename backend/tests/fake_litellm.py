@@ -241,3 +241,12 @@ def classify_answer(choices: dict[str, list[str]], *, confidence: float = 0.9, e
         return result
 
     return _answer
+
+
+def tool_call(name: str, arguments: dict[str, Any], index: int = 0) -> dict[str, Any]:
+    """Una llamada a una herramienta, como la pide un modelo en ``tool_calls`` (para los guiones de los agentes)."""
+    return {
+        "id": f"call_{name}_{index}",
+        "type": "function",
+        "function": {"name": name, "arguments": json.dumps(arguments, ensure_ascii=False)},
+    }
