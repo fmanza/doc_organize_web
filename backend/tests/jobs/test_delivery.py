@@ -91,7 +91,7 @@ def test_offline_site_zip_with_its_sha256_without_touching_the_destination(
     assert result["sha256"] == _sha256(artifact) and result["llms_txt"] is True
     names = set(zipfile.ZipFile(artifact).namelist())
     assert {"sitio/index.html", "sitio/llms.txt", "start_server.py", "VER_SITIO.md"} <= names
-    # Ni originales ni conversión (.json): no se pueden redactar (doc_organize 2.0.0rc3).
+    # Ni originales ni conversión (.json): no se pueden redactar (doc_organize 2.0.0).
     leaked = [
         n
         for n in names

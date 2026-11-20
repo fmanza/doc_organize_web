@@ -71,7 +71,7 @@ test('entregar el contexto: Excel, sitio sin conexión y paquete para IA, con su
   const siteFiles = unzip(site.data);
   expect(siteFiles.has('sitio/index.html') && siteFiles.has('sitio/llms.txt')).toBe(true);
   expect(siteFiles.has('VER_SITIO.md') && siteFiles.has('start_server.py')).toBe(true);
-  // Ni la copia del original ni su conversión (.json), que no se pueden redactar (doc_organize 2.0.0rc3).
+  // Ni la copia del original ni su conversión (.json), que no se pueden redactar (doc_organize 2.0.0).
   const published = [...siteFiles.keys()].filter(
     (file) =>
       file.startsWith('sitio/') && !file.startsWith('sitio/assets/') && !file.startsWith('sitio/search'),

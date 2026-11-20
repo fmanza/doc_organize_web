@@ -5,10 +5,32 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
-Rama `feature/2.0` (doc_organize_web 2.0.0, plan único de 2.0, hito W2). Sin publicar: la 2.0.0 sale a la vez que
-doc_organize 2.0.0.
+## [2.0.0] - 2026-11-20
+
+Versión MAJOR, publicada a la vez que **doc_organize 2.0.0** (plan único de 2.0, hitos W2 a W9). La web pasa a la 2.0
+de la librería:
+- contexto por **ejes**, con filtros, insignias, evidencia y procedencia;
+- IA con un solo cliente y ajustes **por tarea**;
+- editor de perfil y vista previa del prompt;
+- frescura, redacción por proyecto y diagnóstico;
+- «Revisar clasificación» y «Calidad»;
+- versiones y semántica;
+- asistente de taxonomía, propuestas del revisor e informe del auditor;
+- tres entregas con su SHA-256: Excel del contexto, sitio sin conexión y paquete para IA.
+
+**Antes de actualizar**:
+- Haz una copia de seguridad: `python -m app.cli backup`.
+- Las migraciones `0015` a `0024` se aplican al arrancar.
+- Las variables de IA de la 1.x ya no se leen y dan error con su equivalente (D15). Ver la guía de IA.
+
+**Validación**:
+- E2E completos sobre la librería 2.0.
+- Preproducción con datos reales: migraciones de ida y vuelta desde la base de datos de producción, diagnóstico sin
+  errores, y contexto y entregas correctos.
 
 ### Changed
+
+- **doc_organize 2.0.0** (antes 2.0.0rc3): misma API que la rc3, fijada por URL y SHA-256 (ADR-006).
 
 - **Sin `ai_settings_v1`** (migración `0024`, cierre de la 2.0.0): se borra la copia de la configuración de IA de la
   1.x. Su bajada recrea la tabla vacía y la de la `0016` rehace entonces las familias de 1.x desde la de 2.0.
