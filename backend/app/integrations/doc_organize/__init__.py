@@ -10,7 +10,7 @@ obtienen en un subproceso y las operaciones importan la librería dentro de la f
 Lo comprueba ``tests/unit/test_architecture.py``.
 """
 
-from app.integrations.doc_organize import ai, context, dedup
+from app.integrations.doc_organize import ai, context, dedup, delivery
 from app.integrations.doc_organize.capabilities import Capabilities, run_probe
 from app.integrations.doc_organize.export import (
     ContextMissingError,
@@ -56,6 +56,7 @@ __all__ = [
     "context",
     "conversion_dir",
     "dedup",
+    "delivery",
     "library_version",
     "models_status",
     "run_probe",

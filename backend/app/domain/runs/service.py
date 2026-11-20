@@ -55,6 +55,8 @@ from app.domain.runs.operations import (
     ContextDryRunParams,
     ContextEvaluateParams,
     DedupApplyParams,
+    ExportAiBundleParams,
+    ExportSiteParams,
     ExportXlsxParams,
     ProjectMoveParams,
     RunParams,
@@ -222,6 +224,12 @@ def enqueue(
         params = context.validate_build(db, settings, project, params, actor=actor)
     if isinstance(params, ExportXlsxParams) and params.kind == "context_documents":
         context.get_context(db, project)  # ContextNotFoundError (404) sin contexto construido
+    if isinstance(params, ExportSiteParams | ExportAiBundleParams):
+        context.get_context(db, project)
+    if isinstance(params, ExportAiBundleParams) and not params.redact and not actor.is_instance_admin:
+        from app.domain.context.errors import RedactionRequiredError
+
+        raise RedactionRequiredError("Solo un administrador puede sacar el paquete para IA sin redactar credenciales.")
     if isinstance(params, TaxonomyDraftParams):
         ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
     if isinstance(params, ContextEvaluateParams):

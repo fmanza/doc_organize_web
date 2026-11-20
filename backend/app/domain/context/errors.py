@@ -187,3 +187,11 @@ class GoldNotFoundError(AppError):
     status = 422
     title = "Sin referencia"
     code = "gold_not_found"
+
+
+class RedactionRequiredError(AppError):
+    """Solo un administrador de la instancia puede sacar el paquete para IA sin redactar credenciales (S-F7-1)."""
+
+    status = 403
+    title = "Redactar credenciales es obligatorio"
+    code = "redaction_required"

@@ -168,6 +168,28 @@ Desde la 1.9.0 (doc_organize 1.7.0), el sitio y la carpeta reorganizada se publi
 (contraseñas, tokens, claves) sustituidas por `«REDACTADO»`, también en los títulos del menú. `Conversión/` y los
 originales no cambian.
 
+### Entregar el contexto (2.0)
+
+La tarjeta **Entregar el contexto** del resumen prepara el contexto para quien no tiene cuenta en la aplicación o para
+un chat de IA. Cada entrega es una ejecución (con progreso y cancelación) que puede lanzar cualquier miembro, como las
+[exportaciones](documentos.md); el fichero se descarga desde su detalle y caduca con la retención de siempre.
+
+- **Excel del contexto**: los documentos con sus ejes (también desde Documentos → Exportar).
+- **Sitio sin conexión (ZIP + SHA-256)**: el sitio para abrirlo desde el disco (doble clic en `sitio/index.html`; si el
+  navegador limita la búsqueda, `start_server.py` lo sirve en `127.0.0.1`). No pide nada a terceros y el HTML de los
+  documentos se **neutraliza** (se ve como texto), porque fuera de la aplicación no hay aislamiento. Las credenciales
+  se redactan según «Contexto e IA del proyecto». Antes de empaquetarlo se comprueba (sin recursos de terceros,
+  enlaces que existen, búsqueda sin conexión); si no pasa, la ejecución falla y el log dice por qué. Se construye sobre
+  una copia en el espacio de trabajo: **el sitio que ves aquí no cambia**. Opción: `llms.txt` en la raíz.
+- **Paquete para IA**: `llms.txt`, un `.md` por documento con su ficha (ejes, quién lo clasificó, versión, ruta del
+  original relativa a su carpeta) y `context.json`, para subirlo a un proyecto de un chat o a un agente. Opciones: sin
+  el texto, también las versiones antiguas, un tope de caracteres por documento y `llms-full.txt`. Las credenciales se
+  redactan **siempre**; solo un administrador de la instancia puede desactivarlo.
+
+El detalle de la ejecución enseña la **huella SHA-256** del ZIP (el mismo contexto da el mismo ZIP) para comprobar
+que el fichero que recibe el destinatario es el mismo, y queda en la auditoría junto con las opciones. Ambos ZIP
+llevan el texto de los documentos: sale de la aplicación y puede ser confidencial.
+
 ## Manifiesto del proyecto
 
 El **manifiesto de taxonomía** (`taxonomy_manifest.md` en la carpeta del proyecto) es el catálogo propio del

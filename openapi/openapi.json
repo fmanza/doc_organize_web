@@ -2847,6 +2847,80 @@
         "title": "DuplicatesLastOut",
         "type": "object"
       },
+      "ExportAiBundleParams": {
+        "additionalProperties": false,
+        "description": "Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con\nsu ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1).",
+        "properties": {
+          "current_only": {
+            "default": true,
+            "title": "Current Only",
+            "type": "boolean"
+          },
+          "include_text": {
+            "default": true,
+            "title": "Include Text",
+            "type": "boolean"
+          },
+          "max_file_chars": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 1000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max File Chars"
+          },
+          "max_full_chars": {
+            "anyOf": [
+              {
+                "maximum": 100000000.0,
+                "minimum": 1000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Full Chars"
+          },
+          "operation": {
+            "const": "export_ai_bundle",
+            "default": "export_ai_bundle",
+            "title": "Operation",
+            "type": "string"
+          },
+          "redact": {
+            "default": true,
+            "title": "Redact",
+            "type": "boolean"
+          }
+        },
+        "title": "ExportAiBundleParams",
+        "type": "object"
+      },
+      "ExportSiteParams": {
+        "additionalProperties": false,
+        "description": "Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en\nel workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con\n``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio.",
+        "properties": {
+          "llms_txt": {
+            "default": false,
+            "title": "Llms Txt",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "export_site",
+            "default": "export_site",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ExportSiteParams",
+        "type": "object"
+      },
       "ExportXlsxParams": {
         "additionalProperties": false,
         "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con\nsus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»).",
@@ -5530,6 +5604,8 @@
               "scan",
               "export_zip",
               "export_xlsx",
+              "export_site",
+              "export_ai_bundle",
               "search_index",
               "dedup_preview",
               "dedup_apply",
@@ -5649,6 +5725,8 @@
               "scan",
               "export_zip",
               "export_xlsx",
+              "export_site",
+              "export_ai_bundle",
               "search_index",
               "dedup_preview",
               "dedup_apply",
@@ -11672,6 +11750,12 @@
                     "$ref": "#/components/schemas/ExportXlsxParams"
                   },
                   {
+                    "$ref": "#/components/schemas/ExportSiteParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExportAiBundleParams"
+                  },
+                  {
                     "$ref": "#/components/schemas/SearchIndexParams"
                   },
                   {
@@ -12519,6 +12603,8 @@
                     "scan",
                     "export_zip",
                     "export_xlsx",
+                    "export_site",
+                    "export_ai_bundle",
                     "search_index",
                     "dedup_preview",
                     "dedup_apply",

@@ -121,6 +121,27 @@ class ExportXlsxParams(_Params):
     kind: Literal["cache", "errors", "context_history", "context_documents"]
 
 
+class ExportSiteParams(_Params):
+    """Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en
+    el workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con
+    ``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio."""
+
+    operation: Literal["export_site"] = "export_site"
+    llms_txt: bool = False
+
+
+class ExportAiBundleParams(_Params):
+    """Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con
+    su ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1)."""
+
+    operation: Literal["export_ai_bundle"] = "export_ai_bundle"
+    include_text: bool = True
+    current_only: bool = True
+    redact: bool = True
+    max_file_chars: int | None = Field(default=None, ge=1_000, le=10_000_000)
+    max_full_chars: int | None = Field(default=None, ge=1_000, le=100_000_000)
+
+
 class DedupPreviewParams(_Params):
     """Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).
 
@@ -273,6 +294,8 @@ RunParams = Annotated[
     | ScanParams
     | ExportZipParams
     | ExportXlsxParams
+    | ExportSiteParams
+    | ExportAiBundleParams
     | SearchIndexParams
     | DedupPreviewParams
     | DedupApplyParams
@@ -323,6 +346,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Exportar no cambia el proyecto: cualquier miembro, como en la web integrada (decisión del mantenedor, Fase 5).
     "export_zip": OperationSpec(min_role="viewer", produces_artifacts=True),
     "export_xlsx": OperationSpec(min_role="viewer", produces_artifacts=True),
+    # Entrega del contexto (W8): como las exportaciones; el sitio se construye sobre una copia (no escribe en el destino).
+    "export_site": OperationSpec(min_role="viewer", produces_artifacts=True),
+    "export_ai_bundle": OperationSpec(min_role="viewer", produces_artifacts=True),
     "search_index": OperationSpec(min_role="editor"),
     # Duplicados (Fase 6): mover saca ficheros del origen, así que es de owner (ver min_role).
     "dedup_preview": OperationSpec(min_role="editor", produces_artifacts=True),
