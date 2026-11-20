@@ -59,6 +59,7 @@ from app.api.v1.schemas import (
     TaxonomyTemplateList,
     TaxonomyTemplateOut,
     TemplatePromptPreviewIn,
+    VersionGroupOut,
 )
 from app.db.models import ContextDocument, ContextDocumentAxisValue
 from app.domain.context import decisions as decisions_service
@@ -222,6 +223,10 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         taxonomy_axes=_axes_out(row.taxonomy_axes, context.axis_counts(db, row.project_id)),
         ai_provenance=[PromptProvenanceOut.model_validate(item) for item in row.ai_provenance],
         freshness=ContextFreshnessOut.model_validate(row.freshness) if row.freshness else None,
+        versions_mode=row.versions_mode,
+        version_groups=[VersionGroupOut.model_validate(group) for group in row.version_groups],
+        superseded=list(row.superseded),
+        superseded_count=row.superseded_count,
         built_by_run_id=row.built_by_run_id,
         built_at=row.built_at,
     )
@@ -290,6 +295,9 @@ def list_context_documents(
     keyword: Annotated[
         str | None, Query(max_length=100, description="Solo si alguna palabra clave contiene este texto (1.5.0)")
     ] = None,
+    current: Annotated[
+        bool, Query(description="Solo las versiones vigentes (W6): fuera las marcadas como versión antigua")
+    ] = False,
     axis: Annotated[
         list[AxisFilter] | None,
         Query(
@@ -316,6 +324,7 @@ def list_context_documents(
         language=language,
         keyword=keyword,
         axes=context.parse_axis_filters(axis or []),
+        current_only=current,
         limit=limit,
         offset=offset,
         listing=listing(q, sort, order),

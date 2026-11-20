@@ -60,6 +60,7 @@ import {
 import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
 import { ManifestCard } from './ManifestCard';
 import { ProfileCard } from './ProfileCard';
+import { VersionsCard } from './Versions';
 
 /**
  * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
@@ -223,6 +224,8 @@ export function ContextPage() {
         ))}
 
       <ProfileCard projectId={projectId} editable={canBuild} selection={selection} />
+
+      {built && <VersionsCard context={built} projectId={projectId} editable={canBuild} />}
 
       {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
 
@@ -618,6 +621,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
   const [language, setLanguage] = useState('');
   const [keyword, setKeyword] = useState('');
   const [axisFilters, setAxisFilters] = useState<string[]>([]);
+  const [onlyCurrent, setOnlyCurrent] = useState(false);
   const [debouncedLanguage] = useDebouncedValue(language.trim().toLowerCase(), 300);
   const [debouncedKeyword] = useDebouncedValue(keyword, 300);
   const list = useListState(CONTEXT_DOCUMENT_SORT, 'doc');
@@ -630,6 +634,7 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
       language: debouncedLanguage.length >= 2 ? debouncedLanguage : null,
       keyword: debouncedKeyword,
       axis: axisFilters,
+      current: onlyCurrent,
     },
     list.query,
   );
@@ -744,6 +749,17 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
           }}
         />
       </Group>
+      {(context.version_groups ?? []).length > 0 && (
+        <Switch
+          mt="xs"
+          label={t('context.versions.onlyCurrent')}
+          checked={onlyCurrent}
+          onChange={(event) => {
+            setOnlyCurrent(event.currentTarget.checked);
+            list.paging.setPage(1, true);
+          }}
+        />
+      )}
       <AxisFilters
         axes={context.taxonomy_axes ?? []}
         value={axisFilters}
@@ -804,7 +820,21 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                   return (
                     <Table.Tr key={original}>
                       <Table.Td>
-                        <Text size="sm">{doc.title}</Text>
+                        <Text size="sm">
+                          {doc.title}
+                          {doc.is_current === false && (
+                            <Badge
+                              ml={6}
+                              size="xs"
+                              variant="light"
+                              color="gray"
+                              title={t('context.versions.oldTitle')}
+                            >
+                              {t('context.versions.old')}
+                              {doc.version && ` · v${doc.version}`}
+                            </Badge>
+                          )}
+                        </Text>
                         <DocumentProperties doc={doc} />
                         <AxisBadges axes={context.taxonomy_axes ?? []} values={doc.axes ?? {}} />
                         <HowClassified doc={doc} context={context} />

@@ -313,7 +313,7 @@ describe('W4: IA del proyecto', () => {
     const user = userEvent.setup();
 
     renderRoute('/projects/7');
-    const card = await screen.findByRole('region', { name: 'IA del proyecto' });
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
     const toggle = within(card).getByRole('switch', { name: /Redactar credenciales/ });
     expect(toggle).toBeChecked();
     await user.click(toggle);

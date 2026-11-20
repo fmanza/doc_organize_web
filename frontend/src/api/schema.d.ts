@@ -2202,6 +2202,8 @@ export interface components {
             failed: boolean;
             /** Folder */
             folder: string;
+            /** Is Current */
+            is_current?: boolean | null;
             /**
              * Keywords
              * @default []
@@ -2229,6 +2231,10 @@ export interface components {
             title: string;
             /** Unclassified Reason */
             unclassified_reason?: ("incomplete_artifacts" | "below_threshold") | null;
+            /** Version */
+            version?: string | null;
+            /** Version Group */
+            version_group?: string | null;
         };
         /** ContextDocumentPage */
         ContextDocumentPage: {
@@ -2412,6 +2418,16 @@ export interface components {
             /** Site Built */
             site_built: boolean;
             /**
+             * Superseded
+             * @default []
+             */
+            superseded: string[];
+            /**
+             * Superseded Count
+             * @default 0
+             */
+            superseded_count: number;
+            /**
              * Taxonomy Axes
              * @default []
              */
@@ -2420,6 +2436,13 @@ export interface components {
             taxonomy_template_name: string | null;
             /** Unclassified Count */
             unclassified_count: number;
+            /**
+             * Version Groups
+             * @default []
+             */
+            version_groups: components["schemas"]["VersionGroupOut"][];
+            /** Versions Mode */
+            versions_mode?: ("all" | "mark" | "current_only") | null;
         };
         /**
          * CsrfToken
@@ -3439,14 +3462,30 @@ export interface components {
         };
         /**
          * ProjectAiSettingsIn
-         * @description Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura.
+         * @description Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.
+         *     Ausente = no se toca; se aplican desde la siguiente construcción.
          */
         ProjectAiSettingsIn: {
             /**
              * Ai Redact Credentials
              * @description Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA
              */
-            ai_redact_credentials: boolean;
+            ai_redact_credentials?: boolean | null;
+            /**
+             * Context Semantic
+             * @description Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)
+             */
+            context_semantic?: boolean | null;
+            /**
+             * Context Semantic Threshold
+             * @description Similitud mínima para asignar un valor por semántica
+             */
+            context_semantic_threshold?: number | null;
+            /**
+             * Context Versions
+             * @description Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)
+             */
+            context_versions?: ("all" | "mark" | "current_only") | null;
         };
         /**
          * ProjectCreate
@@ -3551,6 +3590,22 @@ export interface components {
              * @default false
              */
             capture_owner: boolean;
+            /**
+             * Context Semantic
+             * @default false
+             */
+            context_semantic: boolean;
+            /**
+             * Context Semantic Threshold
+             * @default 0.75
+             */
+            context_semantic_threshold: number;
+            /**
+             * Context Versions
+             * @default mark
+             * @enum {string}
+             */
+            context_versions: "all" | "mark" | "current_only";
             /**
              * Created At
              * Format: date-time
@@ -4601,6 +4656,26 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VersionGroupOut
+         * @description Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más
+         *     alta, con rutas relativas, la vigente y si una persona la confirmó.
+         */
+        VersionGroupOut: {
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+            /** Current */
+            current: string;
+            /** Key */
+            key: string;
+            /** Members */
+            members: string[];
+            /** Versions */
+            versions: string[];
         };
         /**
          * WorkerList
@@ -6582,6 +6657,8 @@ export interface operations {
                 language?: string | null;
                 /** @description Solo si alguna palabra clave contiene este texto (1.5.0) */
                 keyword?: string | null;
+                /** @description Solo las versiones vigentes (W6): fuera las marcadas como versión antigua */
+                current?: boolean;
                 /** @description Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía */
                 axis?: string[] | null;
                 limit?: number;

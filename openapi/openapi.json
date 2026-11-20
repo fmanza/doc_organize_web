@@ -1443,6 +1443,17 @@
             "title": "Folder",
             "type": "string"
           },
+          "is_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Current"
+          },
           "keywords": {
             "default": [],
             "items": {
@@ -1561,6 +1572,28 @@
               }
             ],
             "title": "Unclassified Reason"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "version_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Group"
           }
         },
         "required": [
@@ -1956,6 +1989,19 @@
             "title": "Site Built",
             "type": "boolean"
           },
+          "superseded": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Superseded",
+            "type": "array"
+          },
+          "superseded_count": {
+            "default": 0,
+            "title": "Superseded Count",
+            "type": "integer"
+          },
           "taxonomy_axes": {
             "default": [],
             "items": {
@@ -1978,6 +2024,30 @@
           "unclassified_count": {
             "title": "Unclassified Count",
             "type": "integer"
+          },
+          "version_groups": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/VersionGroupOut"
+            },
+            "title": "Version Groups",
+            "type": "array"
+          },
+          "versions_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "all",
+                  "mark",
+                  "current_only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions Mode"
           }
         },
         "required": [
@@ -4299,17 +4369,64 @@
       },
       "ProjectAiSettingsIn": {
         "additionalProperties": false,
-        "description": "Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura.",
+        "description": "Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.\nAusente = no se toca; se aplican desde la siguiente construcción.",
         "properties": {
           "ai_redact_credentials": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA",
-            "title": "Ai Redact Credentials",
-            "type": "boolean"
+            "title": "Ai Redact Credentials"
+          },
+          "context_semantic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)",
+            "title": "Context Semantic"
+          },
+          "context_semantic_threshold": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Similitud mínima para asignar un valor por semántica",
+            "title": "Context Semantic Threshold"
+          },
+          "context_versions": {
+            "anyOf": [
+              {
+                "enum": [
+                  "all",
+                  "mark",
+                  "current_only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)",
+            "title": "Context Versions"
           }
         },
-        "required": [
-          "ai_redact_credentials"
-        ],
         "title": "ProjectAiSettingsIn",
         "type": "object"
       },
@@ -4517,6 +4634,26 @@
             "description": "Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)",
             "title": "Capture Owner",
             "type": "boolean"
+          },
+          "context_semantic": {
+            "default": false,
+            "title": "Context Semantic",
+            "type": "boolean"
+          },
+          "context_semantic_threshold": {
+            "default": 0.75,
+            "title": "Context Semantic Threshold",
+            "type": "number"
+          },
+          "context_versions": {
+            "default": "mark",
+            "enum": [
+              "all",
+              "mark",
+              "current_only"
+            ],
+            "title": "Context Versions",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -7148,6 +7285,46 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VersionGroupOut": {
+        "description": "Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más\nalta, con rutas relativas, la vigente y si una persona la confirmó.",
+        "properties": {
+          "confirmed": {
+            "default": false,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "current": {
+            "title": "Current",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "members",
+          "versions",
+          "current"
+        ],
+        "title": "VersionGroupOut",
+        "type": "object"
+      },
       "WorkerList": {
         "description": "Workers registrados.",
         "properties": {
@@ -9576,6 +9753,18 @@
               ],
               "description": "Solo si alguna palabra clave contiene este texto (1.5.0)",
               "title": "Keyword"
+            }
+          },
+          {
+            "description": "Solo las versiones vigentes (W6): fuera las marcadas como versión antigua",
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Solo las versiones vigentes (W6): fuera las marcadas como versión antigua",
+              "title": "Current",
+              "type": "boolean"
             }
           },
           {

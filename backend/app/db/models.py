@@ -308,6 +308,8 @@ class Project(Base):
     ai_redact_credentials: Mapped[bool] = mapped_column(default=True, server_default=true())
     context_versions: Mapped[str] = mapped_column(String(16), default="mark", server_default="mark")
     context_semantic: Mapped[bool] = mapped_column(default=False, server_default=false())
+    #: Similitud mínima de la sub-fase semántica (W6, migración ``0021``; ``semantic_threshold`` de la librería).
+    context_semantic_threshold: Mapped[float] = mapped_column(Float, default=0.75, server_default="0.75")
     status: Mapped[str] = mapped_column(String(16), default="active")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -583,6 +585,12 @@ class ProjectContext(Base):
     decisions_applied: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     stale_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
     orphan_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Versiones de un documento (W6, F5; ``0021``): modo de la construcción, grupos (``key``, ``members`` con ruta
+    #: relativa, ``versions``, ``current``, ``confirmed``) y versiones antiguas fuera del contexto con ``current_only``.
+    versions_mode: Mapped[str | None] = mapped_column(String(16), default=None)
+    version_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    superseded: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    superseded_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
