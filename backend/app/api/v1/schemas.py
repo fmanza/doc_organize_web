@@ -424,6 +424,8 @@ Operation = Literal[
     "taxonomy_draft",
     "context_evaluate",
     "context_dry_run",
+    "taxonomy_agent",
+    "taxonomy_check",
 ]
 
 

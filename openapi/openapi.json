@@ -5536,7 +5536,9 @@
               "context_delete",
               "taxonomy_draft",
               "context_evaluate",
-              "context_dry_run"
+              "context_dry_run",
+              "taxonomy_agent",
+              "taxonomy_check"
             ],
             "title": "Operation",
             "type": "string"
@@ -5655,7 +5657,9 @@
               "context_delete",
               "taxonomy_draft",
               "context_evaluate",
-              "context_dry_run"
+              "context_dry_run",
+              "taxonomy_agent",
+              "taxonomy_check"
             ],
             "title": "Operation",
             "type": "string"
@@ -6471,6 +6475,69 @@
         "title": "SiteSessionOut",
         "type": "object"
       },
+      "TaxonomyAgentParams": {
+        "additionalProperties": false,
+        "description": "Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,\nuna plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.\n\n**No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la\nAPI al encolar. ``max_steps`` es el tope de llamadas al modelo.",
+        "properties": {
+          "catalog": {
+            "default": "manifest",
+            "enum": [
+              "manifest",
+              "template",
+              "none"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "instructions": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "max_steps": {
+            "default": 30,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "taxonomy_agent",
+            "default": "taxonomy_agent",
+            "title": "Operation",
+            "type": "string"
+          },
+          "template_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          }
+        },
+        "title": "TaxonomyAgentParams",
+        "type": "object"
+      },
       "TaxonomyAxisSummaryOut": {
         "description": "Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.",
         "properties": {
@@ -6514,6 +6581,29 @@
           "values"
         ],
         "title": "TaxonomyAxisSummaryOut",
+        "type": "object"
+      },
+      "TaxonomyCheckParams": {
+        "additionalProperties": false,
+        "description": "Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin\nIA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje.",
+        "properties": {
+          "markdown": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          },
+          "operation": {
+            "const": "taxonomy_check",
+            "default": "taxonomy_check",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TaxonomyCheckParams",
         "type": "object"
       },
       "TaxonomyDraftParams": {
@@ -11693,6 +11783,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/ContextDryRunParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TaxonomyAgentParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TaxonomyCheckParams"
                   }
                 ],
                 "title": "Body"
@@ -12525,7 +12621,9 @@
                     "context_delete",
                     "taxonomy_draft",
                     "context_evaluate",
-                    "context_dry_run"
+                    "context_dry_run",
+                    "taxonomy_agent",
+                    "taxonomy_check"
                   ],
                   "type": "string"
                 },

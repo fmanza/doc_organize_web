@@ -26,7 +26,12 @@ from app.domain.context.errors import GoldInvalidError, GoldNotFoundError
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.projects.service import state_dir
-from app.domain.runs.operations import ContextDryRunParams, ContextEvaluateParams
+from app.domain.runs.operations import (
+    ContextDryRunParams,
+    ContextEvaluateParams,
+    TaxonomyAgentParams,
+    TaxonomyCheckParams,
+)
 from app.integrations.doc_organize import evaluation as library
 
 #: Tamaño máximo del Excel de referencia.
@@ -213,3 +218,42 @@ def validate_dry_run(
     if params.ai_scope != "off":
         ai_settings.require_configured(db, settings, "litellm")
     return params.model_copy(update={"template_markdown": markdown})
+
+
+def validate_taxonomy_agent(
+    db: Session, settings: Settings, project: Project, params: TaxonomyAgentParams, *, actor: User
+) -> TaxonomyAgentParams:
+    """Al encolar el diseñador: IA configurada y el Markdown vigente del manifiesto o la plantilla de partida.
+
+    Raises:
+        AiNotConfiguredError, InvalidContextBuildError.
+    """
+    from app.domain.ai import settings as ai_settings
+    from app.domain.context import templates
+    from app.domain.context.errors import InvalidContextBuildError, TemplateNotFoundError
+    from app.domain.context.service import read_manifest
+
+    ai_settings.require_configured(db, settings, "litellm")  # tarea ``agent``
+    markdown: str | None = None
+    if params.catalog == "template" and params.template_name is not None:
+        try:
+            markdown = templates.template_markdown(db, actor, params.template_name)
+        except TemplateNotFoundError:
+            raise InvalidContextBuildError(f"No existe la plantilla «{params.template_name}».") from None
+    elif params.catalog == "manifest":
+        manifest = read_manifest(settings, project)
+        if manifest.markdown is None or manifest.error:
+            raise InvalidContextBuildError(manifest.error or "El proyecto no tiene manifiesto de taxonomía.")
+        markdown = manifest.markdown
+    return params.model_copy(update={"template_markdown": markdown})
+
+
+def validate_taxonomy_check(params: TaxonomyCheckParams) -> None:
+    """Al encolar la comprobación por reglas: el Markdown es un manifiesto válido.
+
+    Raises:
+        TemplateInvalidError: No lo es.
+    """
+    from app.domain.context import templates
+
+    templates.validate_markdown(params.markdown)

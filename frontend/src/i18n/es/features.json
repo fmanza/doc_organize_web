@@ -1336,6 +1336,47 @@
       "old": "Versión antigua",
       "oldTitle": "Hay una versión más reciente de este documento",
       "onlyCurrent": "Solo vigentes"
+    },
+    "agent": {
+      "title": "Diseñar taxonomía con IA (agente)",
+      "intro": "Un agente explora los documentos y mejora el manifiesto (o una plantilla, o empieza de cero) con cambios pequeños que comprueba con las reglas contra todos los documentos. Propone; no guarda nada.",
+      "base": "Partir de",
+      "bases": {
+        "manifest": "El manifiesto",
+        "template": "Una plantilla",
+        "none": "Desde cero"
+      },
+      "instructions": "Indicaciones (opcional)",
+      "instructionsPlaceholder": "p. ej. separa calidad de medio ambiente",
+      "maxSteps": "Tope de pasos",
+      "maxStepsHelp": "Llamadas al modelo como mucho (1–60).",
+      "start": "Diseñar con IA",
+      "warning": "El agente lee el texto de los documentos: sale hacia el servicio de IA (tarea «Agentes»).",
+      "stop": {
+        "finished": "Terminó",
+        "max_steps": "Llegó al tope de pasos",
+        "max_tokens": "Llegó al tope de tokens",
+        "max_tool_calls": "Llegó al tope de herramientas",
+        "invalid_answer": "Respuesta no válida",
+        "cancelled": "Cancelado"
+      },
+      "improves": "Mejora el de partida",
+      "notImproves": "No mejora el de partida",
+      "usage": "{{steps}} de {{max}} pasos · {{tools}} herramientas · {{tokens}} tokens · {{edits}} cambios",
+      "load": "Cargar la propuesta en el editor",
+      "loadDraft": "Cargar el último borrador en el editor",
+      "loadBest": "Cargar el mejor borrador comprobado",
+      "saveTemplate": "Guardar como plantilla…",
+      "replaceBody": "La propuesta del agente sustituirá el texto del editor (sin guardarlo).",
+      "rules": "Informe por reglas",
+      "coverageBefore": "Cobertura antes",
+      "conflictsBefore": "Conflictos antes",
+      "conflicts": "Conflictos",
+      "empty": "Entradas vacías",
+      "check": "Comprobar manifiesto",
+      "checkHelp": "Por reglas, sin IA y sin guardar: cobertura y conflictos de cada eje con el texto del editor.",
+      "documents_one": "{{count}} documento comprobado.",
+      "documents_other": "{{count}} documentos comprobados."
     }
   },
   "templates": {
