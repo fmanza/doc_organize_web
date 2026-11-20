@@ -304,7 +304,19 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     project = require_project(project)
     require_rw(project.destination_location)
     output, request_folders, namer = context_folders(ctx, project)
+    semantic = project.context_semantic
     ai = ai_connection(ctx, "litellm") if context_ai_tasks(params) else None
+    if ai is None and semantic:  # W6 (G4): la semántica usa la tarea ``embed`` de «Modelos de IA»
+        try:
+            with ctx.session_factory() as db:
+                ai = ai_settings.connection(db, ctx.settings, "litellm")
+        except AiNotConfiguredError:
+            semantic = False
+            ctx.log(
+                "La clasificación semántica está activada en el proyecto, pero «Modelos de IA» no está configurado: "
+                "se construye sin ella.",
+                level="warning",
+            )
     if ai is not None:  # redacción por proyecto (D7: por defecto, sí)
         ai = replace(ai, redact_credentials=project.ai_redact_credentials)
     folder_name = params.output_folder_name or "organizado"
@@ -330,6 +342,8 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         enrich=params.ai_enrichment,
         versions=project.context_versions,
         redact_credentials=project.ai_redact_credentials,
+        semantic=semantic,
+        semantic_threshold=project.context_semantic_threshold,
     )
 
     def on_progress(phase: str, processed: int, total: int | None, current: str | None) -> None:
@@ -354,6 +368,11 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         ctx.log(f"No se pudo copiar «{namer.display(path)}»: {namer.text(error)}", level="warning")
     _log_site(ctx, outcome, namer)
     _log_ai(ctx, outcome)
+    if outcome.semantic is not None:
+        ctx.log(
+            f"Semántica: {outcome.semantic['assigned']} documentos con algún eje asignado por similitud; "
+            f"{outcome.semantic['embedded']} textos embebidos y {outcome.semantic['cached']} sacados del índice."
+        )
     ctx.progress("context_save", 0, None)
     _project_rows(ctx, project, params, outcome, namer)
     refresh_freshness(ctx, project)  # recién construido: al día, salvo lo que no tenga huella (``unknown``)
@@ -370,6 +389,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         "ai_enrichment": (
             {"enabled": True, **outcome.enrichment} if outcome.enrichment is not None else {"enabled": False}
         ),
+        "semantic": outcome.semantic or {"enabled": False},
     }
     with ctx.session_factory() as db:
         audit.record(

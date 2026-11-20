@@ -507,7 +507,12 @@
         "mark": "Marcar la vigente (todas entran en el contexto)",
         "current_only": "Solo la vigente (las antiguas quedan fuera)",
         "all": "Todas, sin marcar (como antes de la 2.0)"
-      }
+      },
+      "semantic": "Clasificación semántica (embeddings)",
+      "semanticHelp": "Antes de la IA, rellena los ejes vacíos comparando cada documento con la descripción de cada valor (tarea «Embeddings» de «Modelos de IA»). Los valores llevan la marca «Semántica». El texto de los documentos sale hacia el servicio de embeddings; el índice se guarda en la carpeta del proyecto.",
+      "threshold": "Similitud mínima",
+      "thresholdHelp": "Entre 0 y 1 (por defecto 0,75): cuanto más alto, menos valores y más seguros.",
+      "semanticNotConfigured": "«Modelos de IA» no está configurado: la construcción se hará sin semántica hasta que un administrador lo configure."
     }
   },
   "runs": {
