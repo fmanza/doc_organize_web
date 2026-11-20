@@ -5212,6 +5212,18 @@
             "title": "Id",
             "type": "integer"
           },
+          "proposal_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "``ReviewProposal.id`` de doc_organize",
+            "title": "Proposal Key"
+          },
           "rationale": {
             "anyOf": [
               {

@@ -615,7 +615,6 @@
       "quality_evaluate": "Evaluando contra la referencia",
       "quality_classify": "Clasificación de prueba",
       "quality_ai": "Clasificando con IA (prueba)",
-      "site_copy": "Copiando la carpeta reorganizada",
       "site_build": "Construyendo el sitio sin conexión",
       "site_check": "Comprobando el sitio",
       "agent_corpus": "Leyendo los documentos",
@@ -757,7 +756,16 @@
       "current_only": "Solo vigentes",
       "redact": "Credenciales redactadas",
       "max_file_chars": "Caracteres por documento",
-      "max_full_chars": "Caracteres de llms-full.txt"
+      "max_full_chars": "Caracteres de llms-full.txt",
+      "semantic": {
+        "enabled": "Clasificación semántica",
+        "embedded": "Documentos embebidos",
+        "cached": "Vectores del índice",
+        "assigned": "Asignados por similitud",
+        "failed": "Fallidos (semántica)",
+        "index_vectors": "Vectores en el índice",
+        "index_bytes": "Tamaño del índice"
+      }
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -1759,7 +1767,10 @@
       "unverified": "Cita sin verificar",
       "findings": "Qué revisar",
       "noFindings": "Nada que señalar."
-    }
+    },
+    "changes_one": "{{count}} cambio de valor frente al contexto actual",
+    "changes_other": "{{count}} cambios de valor frente al contexto actual",
+    "changesTitle": "Documentos que cambian"
   },
   "diagnostics": {
     "title": "Diagnóstico",

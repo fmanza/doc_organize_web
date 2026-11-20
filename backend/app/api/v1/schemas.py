@@ -1575,6 +1575,7 @@ class ProposalOut(BaseModel):
     evidence: str | None = None
     created_at: datetime
     run_id: str | None = None
+    proposal_key: str | None = Field(default=None, description="``ReviewProposal.id`` de doc_organize")
     document: ReviewDocumentOut | None = None
 
 

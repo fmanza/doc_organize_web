@@ -37,14 +37,16 @@ def test_context_excel_has_every_axis(
 ) -> None:
     book, _ = _excel(run, project, db, user_client, admin)
 
-    assert book.sheetnames == ["Documentos", "Ejes"]
+    assert book.sheetnames == ["Documentos", "Ejes", "Valores"]
     header = next(book["Documentos"].iter_rows(values_only=True))
     assert "Impuestos" in header and "Clasificado por" in header  # eje que etiqueta y quién clasificó
+    assert {"Grupo de versiones", "Versión", "Vigente"} <= set(header)  # rc2
+    values = list(book["Valores"].iter_rows(values_only=True))
+    assert len(values) > 1 and {("domains"), ("impuestos")} <= {row[1] for row in values[1:]}  # quién asignó cada valor
     axes = {(row[0], row[3]) for row in list(book["Ejes"].iter_rows(values_only=True))[1:]}
     assert {("domains", "facturas"), ("impuestos", "iva"), ("impuestos", "irpf")} <= axes
 
 
-@pytest.mark.posix_paths
 def test_context_excel_has_relative_paths(
     run: Any, project: Project, db: Session, user_client: TestClient, admin: User, migrated: Settings
 ) -> None:
@@ -52,8 +54,11 @@ def test_context_excel_has_relative_paths(
 
     header, *rows = list(book["Documentos"].iter_rows(values_only=True))
     assert RECETA in {row[header.index("Ruta completa")] for row in rows}  # <carpeta>/<ruta>
-    cells = " ".join(str(c) for row in rows for c in row if c is not None)
-    assert str(migrated.locations_root) not in cells  # sin rutas del contenedor
+    cells = " ".join(
+        str(c) for sheet in book.worksheets for row in sheet.iter_rows(values_only=True) for c in row if c is not None
+    )
+    root = migrated.locations_root
+    assert str(root) not in cells and root.as_posix() not in cells  # sin rutas del contenedor (rc2: roots=)
 
 
 def test_context_excel_needs_a_context(project: Project, user_client: TestClient) -> None:

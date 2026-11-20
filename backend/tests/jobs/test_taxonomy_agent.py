@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import AuditEntry, Project
+from app.db.models import AuditEntry, Project, RunEvent
 from app.integrations.doc_organize import ai as library_ai
 from app.jobs.context import JobFailed
 from app.jobs.operations import agents as operation
@@ -43,6 +43,7 @@ def template(user_client: TestClient, admin: Any) -> None:
 def test_the_designer_proposes_without_saving(
     run: Any, project: Project, db: Session, migrated: Settings, monkeypatch: pytest.MonkeyPatch, template: None
 ) -> None:
+    monkeypatch.setattr("app.jobs.context.PROGRESS_MIN_INTERVAL", 0.0)
     proxy = FakeLiteLLM(keys={KEY}).install(monkeypatch)
     change = {"axis": "domains", "action": "add", "slug": "cocina", "name": "Cocina", "keywords": ["harina", "huevos"]}
     proxy.tool_calls = [
@@ -67,10 +68,19 @@ def test_the_designer_proposes_without_saving(
     assert result["improves"] is True and result["edits"] == 1
     assert "cocina" in result["markdown"] and result["markdown"].startswith("---")
     assert result["rationale"] == "Añado «Cocina» para la receta sintética."
-    domains_before = result["base_report"]["coverage"]["domains"]
-    assert result["report"]["coverage"]["domains"] > domains_before
+
+    def coverage(report: dict[str, Any]) -> float:
+        return float(next(a["coverage"] for a in report["axes"] if a["axis"] == "domains"))
+
+    assert coverage(result["report"]) > coverage(result["base_report"])
     assert {r.body["model"] for r in proxy.sent("agent")} == {"agente-sintetico"}
     assert not manifest_file.exists()  # nunca se guarda solo
+    steps = [
+        e.data
+        for e in db.scalars(select(RunEvent).where(RunEvent.run_id == ctx.run_id, RunEvent.type == "progress"))
+        if e.data.get("phase") == "agent_run"
+    ]
+    assert any(d.get("processed") == 3 and d.get("total") == 10 for d in steps), steps  # progreso por paso (rc2)
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "project.taxonomy_agent")).one()
     assert entry.details["stop_reason"] == "finished"  # type: ignore[index]
 
@@ -99,7 +109,8 @@ def test_rules_check_without_ai(run: Any, project: Project, monkeypatch: pytest.
         "material_types",
         "impuestos",
     }
-    assert 0 <= report["coverage"]["domains"] <= 1 and "| " in report["markdown"]
+    domains = next(a for a in report["axes"] if a["axis"] == "domains")
+    assert 0 <= domains["coverage"] <= 1 and "| " in report["markdown"]
     assert proxy.requests == []  # sin IA
 
 

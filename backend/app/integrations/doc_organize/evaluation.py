@@ -1,6 +1,6 @@
 """Calidad de la clasificación (W5, doc_organize 2.0 G3): referencia, evaluación y clasificación de prueba.
 
-Firmas verificadas en el tag ``v2.0.0rc1``::
+Firmas verificadas en el tag ``v2.0.0rc2``::
 
     load_gold_xlsx(path, *, columns=None, sheet="Referencia", document_column="documento") -> GoldStandard
     gold_from_decisions(decisions) -> GoldStandard
@@ -151,6 +151,10 @@ class DryRunRequest:
     versions: str = "all"
 
 
+#: Cambios por documento que se guardan en el resultado del run (el total va aparte).
+MAX_CHANGES = 200
+
+
 def dry_run(
     request: DryRunRequest,
     *,
@@ -180,6 +184,7 @@ def dry_run(
     roots = scan_roots(request.folders)
     project = _project(request.name, request.output_root, request.created_at)
     baseline: dict[str, Any] | None = None
+    current: Any = None
     try:
         current = asyncio.run(ContextRegistry().load_context(project))
         baseline = _report(evaluate_classification(current, gold, roots=roots))
@@ -221,6 +226,8 @@ def dry_run(
             "cancel_token": token,
             "on_progress": _ai_progress,
         }
+        if current is not None:
+            options["baseline"] = current  # rc2: qué documentos cambian de valor y en qué eje
         if profile is not None:
             options["profile"] = profile
         if request.ai is None or request.ai_scope == "off":
@@ -241,8 +248,21 @@ def dry_run(
     finally:
         stop.set()
     stats = result.context.ai_stats.classification
+    changes = list(result.changes or [])
     return {
         "baseline": baseline,
+        "changes_total": len(changes),
+        "changes": [
+            {
+                "document_key": change.document_key,
+                "axis": change.axis,
+                "before": list(change.before),
+                "after": list(change.after),
+                "before_by": change.before_by,
+                "after_by": change.after_by,
+            }
+            for change in changes[:MAX_CHANGES]
+        ],
         "candidate": _report(result.evaluation) if result.evaluation is not None else None,
         "documents": int(result.documents),
         "ai": {

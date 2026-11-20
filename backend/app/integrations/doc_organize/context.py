@@ -3,7 +3,7 @@
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v2.0.0rc1``::
+Firmas verificadas en el tag ``v2.0.0rc2``::
 
     ContextBuilder().build(project, documents: list[ConversionResult], *, candidate_domains=None, threshold=0.5,
         taxonomy_manifest=None, taxonomy_template_name=None, output_folder_name="organizado", llm=None,
@@ -1128,6 +1128,12 @@ def build_context(
                 "assigned": int(phase.assigned),
                 "failed": int(phase.failed),
             }
+            # rc2: tamaño del índice de embeddings (``.doc_organize/embeddings/`` del destino), todos los modelos.
+            from doc_organize import embedding_index_info
+
+            indexes = await asyncio.to_thread(embedding_index_info, request.output_root)
+            outcome.semantic["index_vectors"] = sum(int(info.vectors) for info in indexes)
+            outcome.semantic["index_bytes"] = sum(int(info.size_bytes) for info in indexes)
         return outcome
 
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)

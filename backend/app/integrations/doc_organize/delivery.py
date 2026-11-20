@@ -1,21 +1,19 @@
-"""Entrega del contexto (W8, doc_organize 2.0.0rc1 F3/F7): sitio sin conexión en ZIP y paquete para IA.
+"""Entrega del contexto (W8, doc_organize 2.0 F3/F7): sitio sin conexión en ZIP y paquete para IA.
 
 Solo se llama desde el subproceso de un job (importa doc_organize **dentro** de las funciones). Firmas verificadas en
-2.0.0rc1::
+2.0.0rc2::
 
     await SiteGenerator().generate(project, context, *, build, site_dir, timeout, redact_credentials, offline,
-                                   llms_txt) -> SiteResult
+                                   llms_txt, work_dir) -> SiteResult
     check_site_offline(site_dir) -> OfflineSiteReport
     write_site_zip(destination, site_dir, *, project_name, on_progress, cancel_token) -> SiteZipResult
     write_ai_context_bundle(destination, project, context, *, include_text, current_only, redact, max_file_chars,
                             max_full_chars, roots, on_progress, cancel_token) -> AiBundleStats
 
-**El sitio sin conexión no escribe en el destino.** ``generate(offline=True)`` neutraliza las páginas de la carpeta
-reorganizada, añade ``_offline/`` y reescribe ``zensical.toml`` en la raíz del proyecto; para no tocar el sitio que
-sirve la web (ni exigir destino ``rw`` ni el bloqueo de escritura), se construye sobre una **copia** de la carpeta
-reorganizada en el workspace del run. Las rutas de los ``.md`` de conversión del contexto se trasladan a esa raíz
-(misma ruta relativa: ``resolve_organized_paths`` da las mismas carpetas, también con colisiones) y la copia se borra
-al terminar.
+**El sitio sin conexión no escribe en el destino.** ``generate(offline=True, work_dir=)`` (rc2) copia la carpeta
+reorganizada a una carpeta del workspace del run y construye ahí (``<work_dir>/site``), sin tocar la carpeta del
+proyecto, su ``zensical.toml`` ni el sitio que sirve la web; así no hace falta destino ``rw`` ni el bloqueo de escritura.
+Borrar ``work_dir`` es cosa nuestra. Los problemas de ``check_site_offline`` ya vienen relativos al sitio.
 """
 
 from __future__ import annotations
@@ -57,7 +55,8 @@ class OfflineSiteRequest:
 
     Attributes:
         export: Proyecto (carpeta de salidas, nombre, fecha) y limpieza de rutas.
-        build_root: Carpeta temporal del workspace donde se copia la carpeta reorganizada y se construye.
+        build_root: ``work_dir``: carpeta del workspace (vacía o inexistente) donde doc_organize copia la carpeta
+            reorganizada y construye el sitio.
         llms_txt: Añadir ``llms.txt`` en la raíz del sitio.
         redact: Redactar credenciales en las páginas (ajuste del proyecto).
         timeout: Segundos máximos de ``zensical build``.
@@ -71,7 +70,7 @@ class OfflineSiteRequest:
 
 
 def reorganized_size(request: ExportRequest) -> int:
-    """Bytes de la carpeta reorganizada del contexto (para comprobar la cuota antes de copiarla).
+    """Bytes de la carpeta reorganizada del contexto (para comprobar la cuota antes de que se copie).
 
     Raises:
         ContextMissingError, SiteNotReadyError.
@@ -85,34 +84,6 @@ def reorganized_size(request: ExportRequest) -> int:
     if not folder.is_dir():
         raise SiteNotReadyError()
     return sum(path.stat().st_size for path in folder.rglob("*") if path.is_file() and not path.is_symlink())
-
-
-def _moved(context: Any, old_root: Path, new_root: Path) -> Any:
-    """``context`` con cada ``markdown_path`` trasladado de ``old_root`` a ``new_root`` (misma ruta relativa)."""
-
-    def move(path: str) -> str:
-        try:
-            return str(new_root / Path(path).relative_to(old_root))
-        except ValueError:
-            return path
-
-    domains = [
-        domain.model_copy(
-            update={
-                "documents": [
-                    document.model_copy(update={"markdown_path": move(document.markdown_path)})
-                    for document in domain.documents
-                ]
-            }
-        )
-        for domain in context.domains
-    ]
-    return context.model_copy(update={"domains": domains})
-
-
-def _clean(problem: str, request: OfflineSiteRequest) -> str:
-    text = problem.replace(str(request.build_root), "").replace(request.build_root.as_posix(), "")
-    return request.export.clean(text)
 
 
 def write_offline_site(
@@ -146,18 +117,13 @@ def write_offline_site(
     context = load_context(export)
     if not context.reorganized or not context.output_folder_name:
         raise SiteNotReadyError()
-    source = Path(ProjectLayout(export.output_root).reorganized_dir(context.output_folder_name))
-    if not source.is_dir():
+    if not Path(ProjectLayout(export.output_root).reorganized_dir(context.output_folder_name)).is_dir():
         raise SiteNotReadyError()
     root = request.build_root
     shutil.rmtree(root, ignore_errors=True)
-    root.mkdir(parents=True)
+    created_at = (export.created_at or datetime.now()).isoformat()
+    project = Project(name=export.project_name, root_path=str(export.output_root), created_at=created_at)
     try:
-        on_phase("site_copy")
-        shutil.copytree(source, root / context.output_folder_name, symlinks=True)
-        moved = _moved(context, export.output_root, root)
-        created_at = (export.created_at or datetime.now()).isoformat()
-        project = Project(name=export.project_name, root_path=str(root), created_at=created_at)
         if is_cancelled():
             raise ExportCancelled()
         on_phase("site_build")
@@ -165,11 +131,12 @@ def write_offline_site(
             site = asyncio.run(
                 SiteGenerator().generate(
                     project,
-                    moved,
+                    context,
                     offline=True,
                     llms_txt=request.llms_txt,
                     redact_credentials=request.redact,
                     timeout=request.timeout,
+                    work_dir=root,
                 )
             )
         except DocOrganizeError as exc:
@@ -177,7 +144,7 @@ def write_offline_site(
         on_phase("site_check")
         report = check_site_offline(site.site_dir)
         if not report.ok:
-            raise OfflineSiteProblemsError([_clean(p, request) for p in report.problems()])
+            raise OfflineSiteProblemsError([export.clean(p) for p in report.problems()])
         on_phase("export")
         try:
             zipped = _run(
@@ -193,7 +160,7 @@ def write_offline_site(
             )
         except DocOrganizeOperationError as exc:
             if isinstance(exc.__cause__, OfflineSiteError):
-                raise OfflineSiteProblemsError([_clean(p, request) for p in exc.__cause__.problems]) from None
+                raise OfflineSiteProblemsError([export.clean(p) for p in exc.__cause__.problems]) from None
             raise
         return {
             "sha256": zipped.sha256,

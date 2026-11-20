@@ -6,11 +6,11 @@ y la API no carga doc_organize al arrancar (G15). Por eso se ejecuta en un **sub
 (con sus claves) le llegan por la entrada estándar, nunca en la línea de órdenes, y el resultado sale en JSON por la
 salida estándar.
 
-Firma verificada en el tag ``v2.0.0rc1``::
+Firma verificada en el tag ``v2.0.0rc2``::
 
     check_environment(*, check_ai=False, ai_endpoints=None, artifacts_path=None, build_site=True, transport=None)
         -> EnvironmentReport(checks=[EnvironmentCheck(name, status, detail, remedy)], checked_at)
-    AiEndpoint(name, base_url, virtual_key, model)   # la clave nunca aparece en el informe
+    AiEndpoint(name, base_url, virtual_key, model, kind)   # la clave nunca aparece en el informe; kind (rc2)
 
 doc_organize no pone claves ni rutas en el informe; aun así, el resultado se limpia aquí de las URL y claves que se le
 dieron y de las rutas del contenedor que se pasen en ``redact``.
@@ -42,6 +42,8 @@ class AiEndpointSpec:
     base_url: str
     virtual_key: str = field(repr=False)
     model: str
+    #: ``chat`` (respuesta JSON) o ``embedding`` (un vector de ``/embeddings``, doc_organize 2.0.0rc2).
+    kind: str = "chat"
 
 
 @dataclass(frozen=True)

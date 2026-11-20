@@ -11,9 +11,18 @@ const RUN_ID = '77777777-7777-4777-8777-777777777777';
 const SAVED = '---\nschema: 2\naxes: []\n---\n';
 const PROPOSAL = '---\nschema: 2\ntitle: Propuesta sintética\naxes: []\n---\n';
 const report = (coverage: number, conflicts: number) => ({
-  axes: [{ axis: 'domains', documents: 4, covered: 3, conflicts, empty_entries: [], unused_keywords: {} }],
+  axes: [
+    {
+      axis: 'domains',
+      documents: 4,
+      covered: 3,
+      coverage,
+      conflicts,
+      empty_entries: [],
+      unused_keywords: {},
+    },
+  ],
   documents: 4,
-  coverage: { domains: coverage },
   markdown: '| Eje |',
 });
 const RESULT = {

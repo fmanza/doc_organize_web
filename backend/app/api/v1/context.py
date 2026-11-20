@@ -974,6 +974,7 @@ def get_proposals(project_id: int, user: CurrentUser, db: DbSession) -> Proposal
                 evidence=proposal.evidence,
                 created_at=proposal.created_at,
                 run_id=proposal.run_id,
+                proposal_key=proposal.proposal_key,
                 document=document,
             )
         )

@@ -12,6 +12,7 @@ const BYTES = new Set([
   'size_bytes',
   'reclaimable_bytes',
   'zip_size_bytes',
+  'index_bytes',
 ]);
 const COUNTS = new Set([
   'output_files',
@@ -73,6 +74,9 @@ const COUNTS = new Set([
   'redacted_documents',
   'max_file_chars',
   'max_full_chars',
+  'embedded',
+  'assigned',
+  'index_vectors',
 ]);
 /** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
 const TRANSLATED = new Set(['mode', 'ai.stopped', 'ai_enrichment.stopped']);

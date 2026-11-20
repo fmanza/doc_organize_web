@@ -370,6 +370,8 @@ function CompareCard({
         candidate: Report | null;
         documents: number;
         ai: { calls: number; prompt_tokens: number; completion_tokens: number; model: string | null };
+        changes_total?: number;
+        changes?: { document_key: string; axis: string; before: string[]; after: string[] }[];
       }
     | undefined;
   return (
@@ -496,6 +498,39 @@ function CompareCard({
               })}
             </Table.Tbody>
           </Table>
+          {typeof result.changes_total === 'number' && (
+            <Text size="sm" fw={500}>
+              {t('quality.changes', { count: result.changes_total })}
+            </Text>
+          )}
+          {result.changes && result.changes.length > 0 && (
+            <Table.ScrollContainer minWidth={520}>
+              <Table aria-label={t('quality.changesTitle')}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{t('review.document')}</Table.Th>
+                    <Table.Th>{t('quality.axis')}</Table.Th>
+                    <Table.Th>{t('quality.current')}</Table.Th>
+                    <Table.Th>{t('quality.candidate')}</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {result.changes.slice(0, 50).map((change) => (
+                    <Table.Tr key={`${change.document_key}:${change.axis}`}>
+                      <Table.Td>
+                        <Text size="xs" ff="monospace" style={{ wordBreak: 'break-all' }}>
+                          {change.document_key}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>{change.axis}</Table.Td>
+                      <Table.Td>{change.before.join(', ') || '—'}</Table.Td>
+                      <Table.Td>{change.after.join(', ') || '—'}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          )}
         </Stack>
       )}
     </Card>
