@@ -37,6 +37,16 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Sitio sin conexión y paquete para IA** (W8, F3/F7): runs `export_site` (`SiteGenerator.generate(offline=True,
+  llms_txt=, redact_credentials=<ajuste del proyecto>)`, `check_site_offline` y `write_site_zip`, reproducible) y
+  `export_ai_bundle` (`write_ai_context_bundle` con `include_text`, `current_only`, `redact`, `max_file_chars`,
+  `max_full_chars` y las raíces de escaneo de las claves). El sitio se construye sobre una **copia** de la carpeta
+  reorganizada en el workspace del run (las rutas de conversión del contexto se trasladan a esa raíz): no escribe en el
+  destino, no toca el sitio que sirve la web ni necesita el bloqueo de escritura. Si no pasa la comprobación, falla con
+  `site_offline_invalid` y los problemas en el log. `redact=false` solo para administradores de la instancia
+  (`redaction_required`, S-F7-1). Permisos como las exportaciones; artefactos con cuota y retención; SHA-256 en el
+  resultado y en la auditoría (`project.export_site`, `project.export_ai_bundle`). Tarjeta «Entregar el contexto» en el
+  resumen y aviso con la huella en el detalle de la ejecución.
 - **Excel del contexto** (W8, D4): `export_xlsx` con `kind: "context_documents"` (`write_context_documents_xlsx`):
   hojas «Documentos» (una columna por eje que etiqueta, quién clasificó y la confianza) y «Ejes» (documentos por valor
   del catálogo). Las rutas de los originales van relativas a su carpeta de origen (`<carpeta>/<ruta>`), sin rutas del

@@ -58,6 +58,7 @@ import {
   useTemplates,
 } from './useContext';
 import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
+import { DeliveryCard } from './DeliveryCard';
 import { ManifestCard } from './ManifestCard';
 import { ProfileCard } from './ProfileCard';
 import { VersionsCard } from './Versions';
@@ -228,6 +229,8 @@ export function ContextPage() {
       {built && <VersionsCard context={built} projectId={projectId} editable={canBuild} />}
 
       {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
+
+      {built && <DeliveryCard projectId={projectId} />}
 
       <HistoryCard projectId={projectId} />
 

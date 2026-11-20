@@ -97,6 +97,8 @@
         },
         "project": {
           "taxonomy_draft": "Borrador de manifiesto con IA",
+          "export_site": "Sitio sin conexión entregado",
+          "export_ai_bundle": "Paquete para IA entregado",
           "taxonomy_agent": "Diseño de taxonomía con IA",
           "review_agent": "Propuestas del revisor (IA)",
           "proposal_accept": "Propuesta del revisor aceptada",
@@ -570,6 +572,8 @@
       "taxonomy_draft": "Borrador de manifiesto con IA",
       "context_evaluate": "Evaluar la clasificación",
       "context_dry_run": "Comparar cambios de clasificación",
+      "export_site": "Sitio sin conexión",
+      "export_ai_bundle": "Paquete para IA",
       "taxonomy_agent": "Diseñar taxonomía con IA",
       "taxonomy_check": "Comprobar manifiesto",
       "context_review_agent": "Propuestas del revisor (IA)",
@@ -611,6 +615,9 @@
       "quality_evaluate": "Evaluando contra la referencia",
       "quality_classify": "Clasificación de prueba",
       "quality_ai": "Clasificando con IA (prueba)",
+      "site_copy": "Copiando la carpeta reorganizada",
+      "site_build": "Construyendo el sitio sin conexión",
+      "site_check": "Comprobando el sitio",
       "agent_corpus": "Leyendo los documentos",
       "agent_run": "El agente está trabajando"
     },
@@ -732,7 +739,25 @@
       "material_types": "Tipos de material",
       "segments": "Tramos",
       "excluded": "Excluidos que se borrarán (subcarpeta excluida o patrón)",
-      "excluded_cached": "Documentos de la caché excluidos del escaneo"
+      "excluded_cached": "Documentos de la caché excluidos del escaneo",
+      "sha256": "SHA-256",
+      "zip_size_bytes": "Tamaño del ZIP",
+      "neutralized_items": "Contenido de terceros neutralizado",
+      "neutralized_pages": "Páginas neutralizadas",
+      "credentials_redacted": "Páginas con credenciales redactadas",
+      "search_excluded": "Páginas fuera del buscador",
+      "llms_txt": "Con llms.txt",
+      "file_name": "Fichero",
+      "redact_credentials": "Credenciales redactadas",
+      "superseded_skipped": "Versiones antiguas fuera",
+      "missing_text": "Sin texto",
+      "redacted_documents": "Documentos con credenciales redactadas",
+      "full_text_truncated": "llms-full.txt cortado",
+      "include_text": "Con el texto",
+      "current_only": "Solo vigentes",
+      "redact": "Credenciales redactadas",
+      "max_file_chars": "Caracteres por documento",
+      "max_full_chars": "Caracteres de llms-full.txt"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -779,7 +804,16 @@
       "close": "Cerrar el aviso",
       "enable": "Avisarme en el navegador cuando termine una ejecución"
     },
-    "search": "Buscar ejecuciones"
+    "search": "Buscar ejecuciones",
+    "delivery": {
+      "export_site": "Sitio sin conexión",
+      "export_ai_bundle": "Paquete para IA",
+      "sha256": "Huella SHA-256 del ZIP (compárala con la del fichero recibido):",
+      "warning": {
+        "export_site": "El contenido de terceros de las páginas está neutralizado, pero el sitio lleva el texto de los documentos: puede ser confidencial. Entrégalo solo a quien deba verlo.",
+        "export_ai_bundle": "El paquete lleva el texto de los documentos y sale de la aplicación: puede ser confidencial. Súbelo solo a servicios de IA autorizados."
+      }
+    }
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -1347,6 +1381,28 @@
       "old": "Versión antigua",
       "oldTitle": "Hay una versión más reciente de este documento",
       "onlyCurrent": "Solo vigentes"
+    },
+    "delivery": {
+      "title": "Entregar el contexto",
+      "intro": "Para quien no tiene cuenta en la aplicación o para un chat de IA. Cada entrega es una ejecución: cuando termine, descarga el fichero desde su detalle, donde verás también su huella SHA-256 (queda en la auditoría).",
+      "xlsx": "Excel del contexto",
+      "xlsxHelp": "Documentos con sus ejes y, en otra hoja, cuántos hay de cada valor.",
+      "siteTitle": "Sitio sin conexión (ZIP + SHA-256)",
+      "siteHelp": "El sitio del contexto para abrirlo desde el disco (doble clic en sitio/index.html), sin pedir nada a terceros. El contenido de terceros de las páginas se neutraliza y las credenciales se redactan según el ajuste del proyecto. No cambia el sitio que ves aquí.",
+      "llmsTxt": "Añadir llms.txt (índice para IA) en el sitio",
+      "site": "Sitio sin conexión",
+      "bundleTitle": "Paquete para IA",
+      "bundleHelp": "llms.txt, un fichero de texto por documento con su ficha (ejes, quién lo clasificó, versión) y context.json, para subirlo a un proyecto de un chat o a un agente de IA.",
+      "includeText": "Con el texto de los documentos",
+      "currentOnly": "Solo las versiones vigentes",
+      "fullText": "Añadir llms-full.txt (todo el texto en un fichero)",
+      "maxFileChars": "Caracteres por documento (opcional)",
+      "maxFileCharsHelp": "Corta el texto de cada documento (se avisa del corte). Vacío: sin tope.",
+      "redact": "Redactar credenciales",
+      "redactHelp": "Solo un administrador puede desactivarlo; queda en la auditoría.",
+      "bundleWarning": "El paquete es todo el corpus en texto: sale de la aplicación y puede ser confidencial. Trátalo como la exportación del proyecto.",
+      "notRedacted": "Sin redactar, el paquete lleva los valores de contraseñas, claves y tokens que haya en los documentos.",
+      "bundle": "Paquete para IA"
     },
     "agent": {
       "title": "Diseñar taxonomía con IA (agente)",

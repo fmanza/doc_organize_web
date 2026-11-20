@@ -416,6 +416,8 @@ Operation = Literal[
     "scan",
     "export_zip",
     "export_xlsx",
+    "export_site",
+    "export_ai_bundle",
     "search_index",
     "dedup_preview",
     "dedup_apply",

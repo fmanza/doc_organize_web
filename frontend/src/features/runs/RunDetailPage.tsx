@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Center,
+  Code,
   Group,
   List,
   Loader,
@@ -221,6 +222,20 @@ export function RunDetailPage() {
         {!run.workspace_purged && run.artifacts.length === 0 && (
           <Text c="dimmed">{t('runs.noArtifacts')}</Text>
         )}
+        {!run.workspace_purged &&
+          run.artifacts.length > 0 &&
+          (run.operation === 'export_site' || run.operation === 'export_ai_bundle') &&
+          typeof run.result?.sha256 === 'string' && (
+            <Alert color="orange" mb="sm" title={t(`runs.delivery.${run.operation}`)}>
+              <Text size="sm">{t(`runs.delivery.warning.${run.operation}`)}</Text>
+              <Text size="sm" mt={4}>
+                {t('runs.delivery.sha256')}{' '}
+                <Code style={{ wordBreak: 'break-all' }} data-testid="sha256">
+                  {run.result.sha256}
+                </Code>
+              </Text>
+            </Alert>
+          )}
         {!run.workspace_purged && run.artifacts.length > 0 && (
           <List>
             {run.artifacts.map((artifact) => (

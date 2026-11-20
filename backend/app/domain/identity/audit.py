@@ -71,6 +71,8 @@ class AuditAction:
     PROJECT_CONTEXT_BUILD: Final = "project.context_build"
     PROJECT_CONTEXT_DELETE: Final = "project.context_delete"
     PROJECT_TAXONOMY_DRAFT: Final = "project.taxonomy_draft"
+    PROJECT_EXPORT_SITE: Final = "project.export_site"
+    PROJECT_EXPORT_AI_BUNDLE: Final = "project.export_ai_bundle"
     AI_SETTINGS_UPDATE: Final = "ai_settings.update"
     AI_SETTINGS_TEST: Final = "ai_settings.test"
     RUN_ENQUEUE: Final = "run.enqueue"

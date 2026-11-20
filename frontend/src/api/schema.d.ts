@@ -2895,6 +2895,57 @@ export interface components {
             preview: components["schemas"]["RunBrief"] | null;
         };
         /**
+         * ExportAiBundleParams
+         * @description Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con
+         *     su ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1).
+         */
+        ExportAiBundleParams: {
+            /**
+             * Current Only
+             * @default true
+             */
+            current_only: boolean;
+            /**
+             * Include Text
+             * @default true
+             */
+            include_text: boolean;
+            /** Max File Chars */
+            max_file_chars?: number | null;
+            /** Max Full Chars */
+            max_full_chars?: number | null;
+            /**
+             * Operation
+             * @default export_ai_bundle
+             * @constant
+             */
+            operation: "export_ai_bundle";
+            /**
+             * Redact
+             * @default true
+             */
+            redact: boolean;
+        };
+        /**
+         * ExportSiteParams
+         * @description Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en
+         *     el workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con
+         *     ``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio.
+         */
+        ExportSiteParams: {
+            /**
+             * Llms Txt
+             * @default false
+             */
+            llms_txt: boolean;
+            /**
+             * Operation
+             * @default export_site
+             * @constant
+             */
+            operation: "export_site";
+        };
+        /**
          * ExportXlsxParams
          * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del
          *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con
@@ -4052,7 +4103,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /**
              * Status
              * @enum {string}
@@ -4091,7 +4142,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -8479,7 +8530,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"] | components["schemas"]["ContextReviewAgentParams"] | components["schemas"]["ContextAuditParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["ExportSiteParams"] | components["schemas"]["ExportAiBundleParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"] | components["schemas"]["ContextReviewAgentParams"] | components["schemas"]["ContextAuditParams"];
             };
         };
         responses: {
@@ -9179,7 +9230,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

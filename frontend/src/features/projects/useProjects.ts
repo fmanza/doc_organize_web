@@ -18,6 +18,8 @@ export type RunRequest =
   | components['schemas']['ScanParams']
   | components['schemas']['ExportZipParams']
   | components['schemas']['ExportXlsxParams']
+  | components['schemas']['ExportSiteParams']
+  | components['schemas']['ExportAiBundleParams']
   | components['schemas']['SearchIndexParams']
   | components['schemas']['DedupPreviewParams']
   | components['schemas']['DedupApplyParams']
