@@ -10,6 +10,14 @@ doc_organize 2.0.0.
 
 ### Changed
 
+- **Sin `ai_settings_v1`** (migración `0024`, cierre de la 2.0.0): se borra la copia de la configuración de IA de la
+  1.x. Su bajada recrea la tabla vacía y la de la `0016` rehace entonces las familias de 1.x desde la de 2.0.
+  `migration_roundtrip.py` da por buena esa reconstrucción (compara familias y campos de `ai_settings`, no valores).
+- **Documentación de la 2.0 final**: guía de IA (tareas y alias `doc-organize-<tarea>`, claves por tarea opcionales,
+  `embed`, semántica, agentes, plazo de 120 s, `num_ctx` de Ollama, variables de 1.x con D15, vuelta a 1.x), sección
+  «IA» del despliegue, contexto por ejes, índices (`README`, `docs/README.md`) al día y fuera las referencias a las
+  versiones candidatas. Textos de ayuda de la interfaz (plazo de IA, documentos por ejecución por tarea, catálogos por
+  ejes).
 - **Tiempo máximo por petición de IA: 120 s por defecto** (antes 30 s, `DOW_AI_TIMEOUT_SECONDS` o el ajuste de
   administración). En la preproducción de W9, con el modelo local de 14B, tres clasificaciones seguidas pasaron de 30 s
   y el corte por conexión dejó 33 de 39 documentos sin IA; con 120 s, 38 de 39 y ninguna parada. Es el valor por
@@ -45,7 +53,8 @@ doc_organize 2.0.0.
   familias `litellm_classification`, `litellm_taxonomy_classification`, `litellm_enrichment` y
   `litellm_taxonomy_manifest_draft` pasan a `litellm`, con URL y clave generales y, por tarea (`classify`, `enrich`,
   `taxonomy_design`, `agent`, `embed`), modelo, clave propia y presupuesto opcionales. Cada tarea conserva la clave y
-  el modelo que tenía; la copia de 1.x queda en `ai_settings_v1` para que la bajada sea exacta. Variables de entorno
+  el modelo que tenía. Bajar a la 1.x rehace las cuatro familias desde `litellm` (la copia de 1.x, `ai_settings_v1`,
+  se borra en la `0024`). Variables de entorno
   de doc_organize 2.0 (`DOC_ORGANIZE_LITELLM_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`); las de 1.x ya no se leen y, si
   siguen definidas, el error al encolar dice cuál usar (D15/U17).
 - API (**cambio de contrato**): `AiFamilyKey` es `litellm`, `litellm_usage` o `github_copilot_usage`;

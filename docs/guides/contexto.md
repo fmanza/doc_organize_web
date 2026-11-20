@@ -1,7 +1,8 @@
 # Contexto y taxonomías
 
-La pantalla **Contexto** (botón «Contexto» del proyecto) clasifica los documentos convertidos por **dominios**, los
-copia a una **carpeta reorganizada** del proyecto (`organizado/<dominio>/<tipo>/<documento>/`) y genera un **sitio**
+La pantalla **Contexto** (botón «Contexto» del proyecto) clasifica los documentos convertidos en los **ejes** de su
+taxonomía (el dominio, el tipo de material y los ejes que solo etiquetan, como «Impuestos»), los copia a una **carpeta
+reorganizada** del proyecto (`organizado/<dominio>/<tipo>/<documento>/`) y genera un **sitio**
 navegable con Zensical. Todo se escribe en la carpeta del proyecto, en la ubicación de destino: los originales y las
 conversiones no cambian.
 
@@ -17,8 +18,8 @@ Los editores y propietarios eligen el **catálogo de dominios**:
 |---|---|
 | **Descubrir dominios** | Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido |
 | **Catálogo propio** | Solo los dominios que escribas (un eje: dominio) |
-| **Plantilla** | Dominios y tipos de material de una [plantilla de taxonomía](#plantillas-de-taxonomía) (dos ejes) |
-| **Manifiesto del proyecto** | Los del [manifiesto](#manifiesto-del-proyecto) del proyecto (dos ejes) |
+| **Plantilla** | Los ejes de una [plantilla de taxonomía](#plantillas-de-taxonomía): dominio, tipo de material y los que solo etiquetan |
+| **Manifiesto del proyecto** | Los ejes del [manifiesto](#manifiesto-del-proyecto) del proyecto |
 
 También eligen:
 
@@ -28,8 +29,9 @@ También eligen:
   dominios»: ahí todo documento con carpeta puntúa 1,0.
 - **Construir el sitio**: si lo desmarcas, se borra el sitio anterior.
 
-**Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar, copiar a la carpeta
-reorganizada y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia y el sitio no se cortan a
+**Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar (decisiones de
+personas, reglas, semántica si el proyecto la activa e IA si se pide, en ese orden), copiar a la carpeta reorganizada
+y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia y el sitio no se cortan a
 medias. Reconstruir sustituye el contexto anterior.
 
 Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
@@ -40,8 +42,8 @@ clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
 | | Descubrir dominios | Manifiesto del proyecto |
 |---|---|---|
 | Dominios | Uno por carpeta (nombre de la carpeta inmediata) | Lista cerrada del manifiesto |
-| Ejes | Dominio | Dominio y tipo de material |
-| Asignación | Por carpeta, sin puntuación (los de la raíz, al dominio de la carpeta escaneada) | Palabras del dominio y sus palabras clave (`keywords`) en el título y el contenido, más la carpeta, con umbral; el tipo de material, igual por separado |
+| Ejes | Dominio | Dominio, tipo de material y los ejes que solo etiquetan |
+| Asignación | Por carpeta, sin puntuación (los de la raíz, al dominio de la carpeta escaneada) | Palabras de cada valor y sus palabras clave (`keywords`) en el título y el contenido, más la carpeta, con umbral, eje por eje; lo que queda vacío, con semántica o IA si se activan |
 | Dominios nuevos | Sí, uno por carpeta | No |
 | Estado | Borrador | Confirmado |
 | Cuándo | Carpetas ya temáticas; primer contexto rápido | Vocabulario propio, independiente de las carpetas |
@@ -51,7 +53,8 @@ tiene letras ni números.
 
 ## Ver el contexto
 
-La página muestra los dominios con sus documentos y los **sin clasificar**, paginados. Cada documento enlaza a su
+La página muestra los dominios con sus documentos (con los valores de cada eje como insignias) y los **sin
+clasificar**, paginados. Cada documento enlaza a su
 conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 
 - **No copiados**: documentos que no se pudieron copiar. Por ejemplo, el original, su Markdown o sus imágenes pasan por
@@ -191,7 +194,7 @@ que el fichero que recibe el destinatario es el mismo, y queda en la auditoría 
 llevan el texto de los documentos: sale de la aplicación y puede ser confidencial.
 
 El sitio sin conexión lleva solo las páginas (redactadas y neutralizadas), sus imágenes, `llms.txt` y los recursos
-del tema: ni la copia de cada original ni su conversión (`.json`), que no se pueden redactar (doc_organize 2.0.0rc3).
+del tema: ni la copia de cada original ni su conversión (`.json`), que no se pueden redactar.
 Las imágenes de los documentos sí van tal cual.
 
 ## Manifiesto del proyecto

@@ -256,7 +256,8 @@ class AiSetting(Base):
 
     Desde doc_organize 2.0 (migración ``0016``) las familias son ``litellm`` (todas las tareas: URL y clave generales y,
     por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``), ``litellm_usage`` y
-    ``github_copilot_usage``. Las filas de 1.x quedan en ``ai_settings_v1`` solo para la bajada.
+    ``github_copilot_usage``. Bajar a la 1.x rehace las cuatro familias ``litellm_*`` desde la familia ``litellm``
+    (la copia de 1.x, ``ai_settings_v1``, se borra en la ``0024``).
 
     De instancia (como en la web integrada): los tenants llegan en la Fase 9. Un campo secreto solo se guarda cifrado
     con MultiFernet en ``ciphertext``; uno no secreto, en claro en ``value``. Nunca los dos.
