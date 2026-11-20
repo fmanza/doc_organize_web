@@ -1,6 +1,6 @@
 # Preproducción de la 2.0
 
-Runbook para probar la 2.0 (doc_organize 2.0.0rc2) con datos reales **antes** de actualizar producción, sin tocar
+Runbook para probar la 2.0 (doc_organize 2.0.0rc3) con datos reales **antes** de actualizar producción, sin tocar
 producción ni los documentos. Tres pruebas, cada una con su script:
 
 1. **Migraciones de ida y vuelta** sobre una copia de la base de datos de producción.
@@ -78,9 +78,8 @@ Sin `--ai-url`, la instancia no tiene IA y se construye solo por reglas. Con él
 `LiteLLM` (o la de `--ai-key-env`) y no aparece en ninguna salida. Solo se imprimen recuentos, estados y huellas.
 
 **Correcto** si termina con «Todo correcto.» y código 0. Después revisa en la web aislada
-(`http://127.0.0.1:18090`) el contexto, «Revisar clasificación» y «Calidad». Antes de entregar a nadie el sitio sin
-conexión, revisa también lo que lleva: con la rc2 incluye los originales y su conversión sin redactar (ver
-[Contexto](contexto.md#entregar-el-contexto-20)).
+(`http://127.0.0.1:18090`) el contexto, «Revisar clasificación» y «Calidad». Comprueba también que el ZIP del sitio sin
+conexión no lleva ningún original ni `.json` de conversión (desde la rc3 no los publica).
 
 ## Limpieza
 

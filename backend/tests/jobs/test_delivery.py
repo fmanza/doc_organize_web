@@ -91,6 +91,15 @@ def test_offline_site_zip_with_its_sha256_without_touching_the_destination(
     assert result["sha256"] == _sha256(artifact) and result["llms_txt"] is True
     names = set(zipfile.ZipFile(artifact).namelist())
     assert {"sitio/index.html", "sitio/llms.txt", "start_server.py", "VER_SITIO.md"} <= names
+    # Ni originales ni conversión (.json): no se pueden redactar (doc_organize 2.0.0rc3).
+    leaked = [
+        n
+        for n in names
+        if n.startswith("sitio/")
+        and not n.startswith(("sitio/assets/", "sitio/search"))
+        and n.endswith((".pdf", ".docx", ".json"))
+    ]
+    assert leaked == []
     assert not (ctx.workdir / delivery.SITE_BUILD_DIR).exists()  # la copia se borra
     after = {p.relative_to(destination): p.stat().st_mtime_ns for p in destination.rglob("*") if p.is_file()}
     assert after == before  # el destino (y el sitio que sirve la web) no cambia

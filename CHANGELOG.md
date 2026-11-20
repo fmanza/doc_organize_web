@@ -10,6 +10,8 @@ doc_organize 2.0.0.
 
 ### Changed
 
+- **doc_organize 2.0.0rc3** (antes 2.0.0rc2): el sitio sin conexión ya no lleva la copia de cada original ni su
+  conversión (`.json`) sin redactar, la fuga que encontraron los E2E de W9. Los tests de entrega lo comprueban.
 - **doc_organize 2.0.0rc2** (antes 2.0.0rc1), con lo que pidió la web en W4–W8 y sin los apaños de la rc1:
   - Excel del contexto con `write_context_documents_xlsx(roots=)`: claves relativas sin copiar el contexto, columnas
     «Grupo de versiones», «Versión» y «Vigente» y hoja «Valores» (quién asignó cada valor, confianza y cita).
