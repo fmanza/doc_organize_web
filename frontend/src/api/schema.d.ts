@@ -2896,15 +2896,16 @@ export interface components {
         };
         /**
          * ExportXlsxParams
-         * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del
-         *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios).
+         * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del
+         *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con
+         *     sus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»).
          */
         ExportXlsxParams: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "cache" | "errors" | "context_history";
+            kind: "cache" | "errors" | "context_history" | "context_documents";
             /**
              * Operation
              * @default export_xlsx

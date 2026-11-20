@@ -37,6 +37,11 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Excel del contexto** (W8, D4): `export_xlsx` con `kind: "context_documents"` (`write_context_documents_xlsx`):
+  hojas «Documentos» (una columna por eje que etiqueta, quién clasificó y la confianza) y «Ejes» (documentos por valor
+  del catálogo). Las rutas de los originales van relativas a su carpeta de origen (`<carpeta>/<ruta>`), sin rutas del
+  contenedor. Sin contexto construido, el encolado responde 404 `context_not_found`. Botón «Excel del contexto» en
+  «Documentos → Exportar».
 - **Propuestas del revisor e informe del auditor** (W7, M9): run `context_review_agent` con `ReviewAgent` (tarea
   `agent`, primeros 1–100 documentos de la cola, tope de pasos de 1 a 80, indicaciones, cancelación); las propuestas
   se guardan en la BD (tabla `context_review_proposals`, migración `0022`) **sin aplicarse** (D14) y sustituyen a las

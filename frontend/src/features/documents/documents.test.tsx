@@ -107,6 +107,24 @@ describe('DocumentsPage', () => {
     expect(body).toEqual({ operation: 'export_xlsx', kind: 'errors' });
   });
 
+  it('lanza el Excel del contexto (2.0)', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      ...PROJECT_ROUTES,
+      'GET /api/v1/projects/7/documents': { body: { items: [], total: 0 } },
+      'POST /api/v1/projects/7/runs': { status: 202, body: runOut({ operation: 'export_xlsx' }) },
+      'GET /api/v1/runs/11111111-1111-4111-8111-111111111111': { body: runOut({ operation: 'export_xlsx' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/documents');
+    await user.click(await screen.findByRole('button', { name: 'Excel del contexto' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const body: unknown = await callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')[0]?.json();
+    expect(body).toEqual({ operation: 'export_xlsx', kind: 'context_documents' });
+  });
+
   it('filtra por tipo con sus recuentos y ordena por propietario si es owner (web 1.6.0, G43)', async () => {
     const fetchMock = stubApi({
       ...session(USER),

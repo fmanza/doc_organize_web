@@ -59,6 +59,7 @@ workspace y se borra según la retención de ejecuciones.
 | **Excel de la caché** | Una fila por documento: ruta, hash, estado y errores |
 | **Excel de errores** | Hoja «Estado actual» (documentos que fallan ahora) e «Histórico» (los errores de cada escaneo) |
 | **Excel del historial del contexto** (1.5.0) | Hoja «Construcciones» (una fila por construcción del contexto) y «Cambios» (documentos que entraron, salieron o cambiaron de dominio). Ver [Historial](contexto.md#historial) |
+| **Excel del contexto** (2.0) | Hoja «Documentos» (una fila por documento con su dominio, tipo de material, quién lo clasificó y su confianza, y una columna por cada eje que solo etiqueta; los sin clasificar al final, con el motivo) y «Ejes» (cada valor del catálogo y cuántos documentos lo tienen). Rutas relativas a la carpeta de origen. Ver [Contexto](contexto.md) |
 
 Las rutas de los documentos van relativas a su carpeta de origen y los mensajes de error, sin rutas del servidor. Los
 JSON que van dentro del ZIP son los que escribió doc_organize: desde la versión 0.6.x de la aplicación llevan la ruta

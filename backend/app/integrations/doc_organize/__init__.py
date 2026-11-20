@@ -13,10 +13,12 @@ Lo comprueba ``tests/unit/test_architecture.py``.
 from app.integrations.doc_organize import ai, context, dedup
 from app.integrations.doc_organize.capabilities import Capabilities, run_probe
 from app.integrations.doc_organize.export import (
+    ContextMissingError,
     ExportCancelled,
     ExportRequest,
     ExportSize,
     write_cache_xlsx,
+    write_context_documents_xlsx,
     write_context_history_xlsx,
     write_errors_xlsx,
     write_zip,
@@ -38,6 +40,7 @@ from app.integrations.doc_organize.version import library_version
 
 __all__ = [
     "Capabilities",
+    "ContextMissingError",
     "DocOrganizeOperationError",
     "ExportCancelled",
     "ExportRequest",
@@ -58,6 +61,7 @@ __all__ = [
     "run_probe",
     "run_scan",
     "write_cache_xlsx",
+    "write_context_documents_xlsx",
     "write_context_history_xlsx",
     "write_errors_xlsx",
     "write_zip",

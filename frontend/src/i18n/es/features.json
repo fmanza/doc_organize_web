@@ -921,7 +921,8 @@
       "zip": "Exportar ZIP",
       "cacheXlsx": "Excel de la caché",
       "errorsXlsx": "Excel de errores",
-      "contextHistoryXlsx": "Excel del historial del contexto"
+      "contextHistoryXlsx": "Excel del historial del contexto",
+      "contextXlsx": "Excel del contexto"
     },
     "viewer": {
       "back": "Documentos",
