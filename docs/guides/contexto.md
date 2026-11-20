@@ -108,6 +108,21 @@ reconstruir):
 La vigente es la versión más alta, salvo que una persona elija otra con «Marcar como vigente» (en la tarjeta de
 versiones o en «Revisar clasificación»), que se guarda como decisión y se aplica al reconstruir.
 
+### Clasificación semántica (2.0)
+
+Con «Clasificación semántica» activada en «Contexto e IA del proyecto» (propietario o editor; desactivada por
+defecto), cada construcción rellena, **antes de la IA**, los ejes que las reglas y las decisiones dejaron vacíos
+comparando el texto de cada documento con el nombre, la descripción y las palabras clave de cada valor (embeddings).
+Los valores que asigna llevan la marca «Semántica» y la «Similitud mínima» (0,75 por defecto) decide cuándo se
+asigna. Con la IA activada, además, los documentos parecidos ya clasificados con fiabilidad le sirven de ejemplo.
+
+Necesita «Modelos de IA» configurado (tarea «Embeddings»; sin modelo propio, el alias `doc-organize-embed`): si no lo
+está, la construcción se hace sin semántica y lo avisa. El texto de los documentos sale hacia el servicio de
+embeddings (redactado si la redacción está activada). Los vectores se guardan en `.doc_organize/embeddings/` de la
+carpeta del proyecto, como `Conversión/`: reconstruir no vuelve a pedir los que no han cambiado, y borrar el contexto
+no los borra. El resultado de la construcción dice cuántos textos se embebieron, cuántos salieron del índice y cuántos
+documentos recibieron algún valor.
+
 ### Ejes: filtros, insignias y evidencia (2.0)
 
 Con doc_organize 2.0 la taxonomía es una lista de **ejes**: el dominio (organiza las carpetas), el tipo de material y
