@@ -31,6 +31,7 @@ nav = [
   ] },
   { "Operación" = [
     "guides/despliegue.md",
+    "guides/preproduccion_2_0.md",
     "guides/carpetas_de_red.md",
     "guides/publicar_version.md",
     "security/ASVS_L2.md",

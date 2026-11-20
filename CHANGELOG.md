@@ -50,6 +50,12 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Preproducción de la 2.0** (W9, guía `preproduccion_2_0.md`): `scripts/preprod/roundtrip.sh` (ida y vuelta de
+  las migraciones sobre una copia de producción hecha con `app.cli backup`, sin escribir en su volumen),
+  `scripts/preprod/up.sh`/`down.sh` (instancia aislada `dow-preprod` con `docker-compose.preprod.yml`: documentos de
+  solo lectura y salidas en una carpeta vacía) y `backend/scripts/preprod_smoke.py` (diagnóstico, escaneo, contexto y
+  las tres entregas por la API, con su SHA-256, sin imprimir nombres ni claves). `migration_roundtrip.py` reintenta
+  borrar su copia temporal y avisa si no puede.
 - **E2E de la 2.0** (W9, Playwright, LiteLLM falso con `json_schema`, herramientas y embeddings) sobre la carpeta
   sintética `w9` (`scripts/e2e_data.sh`, la misma en CI y en local): migración de un manifiesto 1.x al restaurarlo,
   ajustes de IA por tarea, diagnóstico de los modelos (también embeddings), perfil y vista previa, contexto por ejes
