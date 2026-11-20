@@ -828,6 +828,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/review/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Propuestas pendientes del revisor
+         * @description Las propuestas del revisor (``context_review_agent``) que nadie ha aceptado ni descartado, con su documento.
+         */
+        get: operations["get_proposals_api_v1_projects__project_id__context_review_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aceptar una propuesta del revisor
+         * @description La propuesta se guarda como decisión de quien la acepta (se aplica al reconstruir). Propietario o editor.
+         */
+        post: operations["accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar una propuesta del revisor
+         * @description No se aplica nada; la propuesta deja de estar pendiente. Propietario o editor.
+         */
+        post: operations["discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/site-session": {
         parameters: {
             query?: never;
@@ -1999,6 +2059,18 @@ export interface components {
             slug: string;
         };
         /**
+         * ContextAuditParams
+         * @description Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas.
+         */
+        ContextAuditParams: {
+            /**
+             * Operation
+             * @default context_audit
+             * @constant
+             */
+            operation: "context_audit";
+        };
+        /**
          * ContextAxisOut
          * @description Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.
          */
@@ -2443,6 +2515,34 @@ export interface components {
             version_groups: components["schemas"]["VersionGroupOut"][];
             /** Versions Mode */
             versions_mode?: ("all" | "mark" | "current_only") | null;
+        };
+        /**
+         * ContextReviewAgentParams
+         * @description Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de
+         *     la cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14).
+         */
+        ContextReviewAgentParams: {
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Items
+             * @default 20
+             */
+            max_items: number;
+            /**
+             * Max Steps
+             * @default 40
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default context_review_agent
+             * @constant
+             */
+            operation: "context_review_agent";
         };
         /**
          * CsrfToken
@@ -3792,11 +3892,52 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** ProposalList */
+        ProposalList: {
+            /** Items */
+            items: components["schemas"]["ProposalOut"][];
+        };
+        /**
+         * ProposalOut
+         * @description Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta.
+         */
+        ProposalOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: string[];
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            document?: components["schemas"]["ReviewDocumentOut"] | null;
+            /** Document Key */
+            document_key: string;
+            /** Evidence */
+            evidence?: string | null;
+            /** Id */
+            id: number;
+            /** Rationale */
+            rationale?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+        };
         /**
          * QualityOut
          * @description Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.
          */
         QualityOut: {
+            /** @description Último informe del auditor (W7) */
+            audit?: components["schemas"]["QualityRunOut"] | null;
             /**
              * Decisions Available
              * @description Hay decisiones de personas con las que hacer una referencia
@@ -3962,7 +4103,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /**
              * Status
              * @enum {string}
@@ -4001,7 +4142,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -7319,6 +7460,179 @@ export interface operations {
             };
         };
     };
+    get_proposals_api_v1_projects__project_id__context_review_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin la propuesta (proposal_not_found) o sin el documento */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin la propuesta (proposal_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     open_site_api_v1_projects__project_id__context_site_session_post: {
         parameters: {
             query?: never;
@@ -8216,7 +8530,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["ExportSiteParams"] | components["schemas"]["ExportAiBundleParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["ExportSiteParams"] | components["schemas"]["ExportAiBundleParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"] | components["schemas"]["ContextReviewAgentParams"] | components["schemas"]["ContextAuditParams"];
             };
         };
         responses: {
@@ -8916,7 +9230,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

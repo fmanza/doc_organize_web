@@ -29,7 +29,9 @@ export type RunRequest =
   | components['schemas']['ContextEvaluateParams']
   | components['schemas']['ContextDryRunParams']
   | components['schemas']['TaxonomyAgentParams']
-  | components['schemas']['TaxonomyCheckParams'];
+  | components['schemas']['TaxonomyCheckParams']
+  | components['schemas']['ContextReviewAgentParams']
+  | components['schemas']['ContextAuditParams'];
 
 /** Lanzar la prueba del motor con sus valores por defecto (el cliente generado exige todos los campos). */
 export const NOOP_RUN: RunRequest = { operation: 'noop', steps: 5, step_seconds: 1, fail_at_step: null };

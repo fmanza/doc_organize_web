@@ -98,7 +98,11 @@
         "project": {
           "taxonomy_draft": "Borrador de manifiesto con IA",
           "export_site": "Sitio sin conexión entregado",
-          "export_ai_bundle": "Paquete para IA entregado"
+          "export_ai_bundle": "Paquete para IA entregado",
+          "taxonomy_agent": "Diseño de taxonomía con IA",
+          "review_agent": "Propuestas del revisor (IA)",
+          "proposal_accept": "Propuesta del revisor aceptada",
+          "proposal_discard": "Propuesta del revisor descartada"
         },
         "ai_settings": {
           "update": "Cambio de configuración IA"
@@ -569,7 +573,11 @@
       "context_evaluate": "Evaluar la clasificación",
       "context_dry_run": "Comparar cambios de clasificación",
       "export_site": "Sitio sin conexión",
-      "export_ai_bundle": "Paquete para IA"
+      "export_ai_bundle": "Paquete para IA",
+      "taxonomy_agent": "Diseñar taxonomía con IA",
+      "taxonomy_check": "Comprobar manifiesto",
+      "context_review_agent": "Propuestas del revisor (IA)",
+      "context_audit": "Informe del auditor"
     },
     "phases": {
       "noop": "Prueba",
@@ -609,7 +617,9 @@
       "quality_ai": "Clasificando con IA (prueba)",
       "site_copy": "Copiando la carpeta reorganizada",
       "site_build": "Construyendo el sitio sin conexión",
-      "site_check": "Comprobando el sitio"
+      "site_check": "Comprobando el sitio",
+      "agent_corpus": "Leyendo los documentos",
+      "agent_run": "El agente está trabajando"
     },
     "fields": {
       "operation": "Operación",
@@ -1619,7 +1629,8 @@
       "rules_ai_disagreement": "Reglas e IA no coinciden",
       "unverified_evidence": "Cita no verificada",
       "low_confidence": "Confianza baja",
-      "unconfirmed_version": "Versión vigente sin confirmar"
+      "unconfirmed_version": "Versión vigente sin confirmar",
+      "reviewer_proposal": "Propuesta del revisor"
     },
     "version": "Versión {{version}}",
     "current": "vigente",
@@ -1653,7 +1664,26 @@
     "revokeLabel": "Revocar la decisión de {{key}}",
     "history_one": "Historial: {{count}} decisión revocada o sustituida",
     "history_other": "Historial: {{count}} decisiones revocadas o sustituidas",
-    "revokedBy": "revocada por {{author}} el {{date}}"
+    "revokedBy": "revocada por {{author}} el {{date}}",
+    "proposals": {
+      "title": "Propuestas del revisor (IA)",
+      "intro": "Un agente repasa la cola de revisión y propone decisiones con su motivo y una cita. No se aplica ninguna: cada propuesta la aceptas (se guarda como decisión tuya) o la descartas. Una nueva pasada sustituye las propuestas pendientes.",
+      "maxItems": "Documentos a revisar",
+      "maxItemsHelp": "Los primeros de la cola (1–100).",
+      "maxSteps": "Tope de pasos",
+      "maxStepsHelp": "Llamadas al modelo como mucho (1–80).",
+      "instructions": "Indicaciones (opcional)",
+      "start": "Pedir propuestas",
+      "warning": "El revisor lee el texto de los documentos de la cola: sale hacia el servicio de IA (tarea «Agentes»).",
+      "usage": "{{steps}} de {{max}} pasos · {{tools}} herramientas · {{tokens}} tokens · {{proposals}} propuestas de {{reviewed}} documentos",
+      "empty": "No hay propuestas pendientes.",
+      "accept": "Aceptar",
+      "discard": "Descartar",
+      "acceptLabel": "Aceptar la propuesta para {{key}}",
+      "discardLabel": "Descartar la propuesta para {{key}}",
+      "evidence": "Cita: «{{evidence}}»",
+      "noDocument": "El documento ya no está en el contexto."
+    }
   },
   "quality": {
     "open": "Calidad",
@@ -1716,7 +1746,20 @@
     "comparison": "Comparación",
     "current": "Contexto actual",
     "candidate": "Prueba",
-    "aiUsed": "IA: {{calls}} llamadas, {{tokens}} tokens, modelo {{model}}"
+    "aiUsed": "IA: {{calls}} llamadas, {{tokens}} tokens, modelo {{model}}",
+    "audit": {
+      "title": "Informe del auditor",
+      "intro": "Estadísticas por eje de la última construcción y lo que conviene revisar en el catálogo (valores sin documentos, muy cargados, poca confianza…). Sin IA.",
+      "start": "Auditar",
+      "none": "Todavía no hay informe.",
+      "documents": "{{documents}} documentos · {{unclassified}} sin clasificar",
+      "withValue": "Con valor",
+      "values": "Valores",
+      "lowConfidence": "Confianza baja",
+      "unverified": "Cita sin verificar",
+      "findings": "Qué revisar",
+      "noFindings": "Nada que señalar."
+    }
   },
   "diagnostics": {
     "title": "Diagnóstico",

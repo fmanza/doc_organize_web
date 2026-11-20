@@ -316,6 +316,22 @@ class TaxonomyCheckParams(_Params):
     markdown: str = Field(min_length=1, max_length=MAX_TEMPLATE_BYTES)
 
 
+class ContextReviewAgentParams(_Params):
+    """Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de
+    la cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14)."""
+
+    operation: Literal["context_review_agent"] = "context_review_agent"
+    max_items: int = Field(default=20, ge=1, le=100)
+    max_steps: int = Field(default=40, ge=1, le=80)
+    instructions: str = Field(default="", max_length=2000)
+
+
+class ContextAuditParams(_Params):
+    """Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas."""
+
+    operation: Literal["context_audit"] = "context_audit"
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -335,7 +351,9 @@ RunParams = Annotated[
     | ContextEvaluateParams
     | ContextDryRunParams
     | TaxonomyAgentParams
-    | TaxonomyCheckParams,
+    | TaxonomyCheckParams
+    | ContextReviewAgentParams
+    | ContextAuditParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -396,6 +414,8 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Agentes (W7): no escriben en el proyecto; el diseñador envía contenido a la IA (editor, como el borrador).
     "taxonomy_agent": OperationSpec(min_role="editor"),
     "taxonomy_check": OperationSpec(min_role="editor"),
+    "context_review_agent": OperationSpec(min_role="editor"),
+    "context_audit": OperationSpec(min_role="viewer"),
 }
 
 

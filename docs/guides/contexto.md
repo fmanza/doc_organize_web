@@ -286,6 +286,19 @@ a la cola como «Decisión desfasada»; si el documento desaparece o el valor ya
 «Decisiones» lo avisa. «Revocar» la retira (pasa al historial). Las decisiones solo se aplican con plantilla o
 manifiesto.
 
+### Propuestas del revisor (2.0)
+
+La tarjeta **Propuestas del revisor (IA)** pide a un agente (tarea «Agentes» de «Modelos de IA») que repase los
+primeros documentos de la cola (20 por defecto, hasta 100) y proponga una decisión para cada uno, con su motivo y una
+cita del texto. Es una ejecución con progreso y cancelación; el **tope de pasos** (llamadas al modelo, 40 por defecto)
+acota el gasto y el resultado dice cuántos pasos, herramientas y tokens usó. El texto de esos documentos sale hacia el
+servicio de IA.
+
+Las propuestas **no se aplican**: cada una se **acepta** (se guarda como decisión de quien la acepta, con las mismas
+comprobaciones que una decisión hecha a mano, y se aplica al reconstruir) o se **descarta**. Una nueva pasada sustituye
+las propuestas pendientes. Lanzar el revisor, aceptar y descartar: propietario o editor con el destino de lectura y
+escritura; todo queda en la auditoría.
+
 ## Calidad (2.0)
 
 «Calidad» (botón del resumen del contexto) mide cuánto acierta la clasificación contra una **referencia**:
@@ -304,6 +317,10 @@ manifiesto, la IA con otro modelo o alcance, o un perfil sin guardar) **sin guar
 cada eje frente a la del contexto actual. Con IA, el contenido de esos documentos sale hacia el servicio y el máximo de
 documentos acota el gasto. Ambas son ejecuciones (con progreso y cancelación) que pueden lanzar el propietario y los
 editores; la comparación queda en la auditoría.
+
+**Informe del auditor** (sin IA, cualquier miembro): por eje, cuántos documentos tienen valor, cuántos hay de cada valor,
+cuántos con confianza baja o con la cita sin verificar, y lo que conviene revisar en el catálogo (valores sin
+documentos, valores que acaparan casi todo…). Se calcula sobre el último contexto construido.
 
 ## Perfil del proyecto y vista previa del prompt (2.0)
 
