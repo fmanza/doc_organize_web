@@ -171,3 +171,19 @@ class DecisionNotFoundError(AppError):
     status = 404
     title = "Decisión no encontrada"
     code = "decision_not_found"
+
+
+class GoldInvalidError(AppError):
+    """La referencia no sirve: no es un Excel, falta la hoja o la columna, o no tiene documentos etiquetados."""
+
+    status = 422
+    title = "Referencia no válida"
+    code = "gold_invalid"
+
+
+class GoldNotFoundError(AppError):
+    """No hay referencia en Excel subida (o no hay decisiones con las que hacer una)."""
+
+    status = 422
+    title = "Sin referencia"
+    code = "gold_not_found"

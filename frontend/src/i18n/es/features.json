@@ -551,7 +551,9 @@
       "dedup_apply": "Aplicar duplicados",
       "context_build": "Construir contexto",
       "context_delete": "Borrar contexto",
-      "taxonomy_draft": "Borrador de manifiesto con IA"
+      "taxonomy_draft": "Borrador de manifiesto con IA",
+      "context_evaluate": "Evaluar la clasificación",
+      "context_dry_run": "Comparar cambios de clasificación"
     },
     "phases": {
       "noop": "Prueba",
@@ -585,7 +587,10 @@
       "context_ai": "Clasificando con IA",
       "context_enrichment": "Completando descripciones con IA",
       "ai_sample": "Eligiendo la muestra",
-      "ai_request": "Esperando al servicio de IA"
+      "ai_request": "Esperando al servicio de IA",
+      "quality_evaluate": "Evaluando contra la referencia",
+      "quality_classify": "Clasificación de prueba",
+      "quality_ai": "Clasificando con IA (prueba)"
     },
     "fields": {
       "operation": "Operación",
@@ -1517,6 +1522,69 @@
     "history_one": "Historial: {{count}} decisión revocada o sustituida",
     "history_other": "Historial: {{count}} decisiones revocadas o sustituidas",
     "revokedBy": "revocada por {{author}} el {{date}}"
+  },
+  "quality": {
+    "open": "Calidad",
+    "title": "Calidad de la clasificación",
+    "intro": "Cuánto acierta la clasificación contra una referencia: un Excel etiquetado a mano o las decisiones del proyecto. «Comparar cambios» prueba otra configuración sin guardar nada.",
+    "source": "Referencia",
+    "sources": {
+      "xlsx": "Excel subido",
+      "decisions": "Decisiones del proyecto"
+    },
+    "noGold": "Sin referencia en Excel: súbela abajo o usa las decisiones del proyecto.",
+    "noDecisions": "El proyecto no tiene decisiones vigentes con las que hacer una referencia.",
+    "goldTitle": "Referencia en Excel",
+    "goldIntro": "Una fila por documento: su clave (carpeta/ruta, como en «Revisar clasificación») y, por eje, el valor correcto (varios separados por coma; «ninguno» si ninguno encaja; vacía = sin etiquetar).",
+    "goldInfo": "{{file}}: {{labels}} documentos etiquetados ({{axes}}), subida el {{date}} por {{author}}.",
+    "file": "Excel (.xlsx, hasta 5 MB)",
+    "sheet": "Hoja",
+    "documentColumn": "Columna del documento",
+    "columns": "Columnas por eje",
+    "columnsHelp": "eje:columna, separadas por comas (p. ej. domains:dominio_ok, material_types:tipo_ok).",
+    "upload": "Subir referencia",
+    "evaluationTitle": "Evaluación del contexto",
+    "evaluate": "Evaluar",
+    "noEvaluation": "Todavía no hay ninguna evaluación.",
+    "lastRun": "Última: {{date}}",
+    "matched": "{{matched}} documentos de la referencia en el contexto (de {{documents}}).",
+    "missing_one": "{{count}} de la referencia no está en el contexto.",
+    "missing_other": "{{count}} de la referencia no están en el contexto.",
+    "axis": "Eje",
+    "labelled": "Etiquetados",
+    "accuracy": "Exactitud",
+    "coverage": "Cobertura",
+    "precision": "Precisión",
+    "recall": "Recall",
+    "detail": "Detalle de {{axis}}",
+    "by": {
+      "rules": "Reglas",
+      "ai": "IA",
+      "semantic": "Semántica",
+      "human": "Persona",
+      "unclassified": "Sin clasificar"
+    },
+    "confusion": "«{{label}}» clasificado como «{{assigned}}»: {{count}}",
+    "compareTitle": "Comparar cambios",
+    "compareIntro": "Clasifica los documentos de la referencia con otra plantilla (o el manifiesto), otro modelo, otro alcance de la IA o un perfil sin guardar, sin tocar el contexto, y compara la exactitud con la del contexto actual.",
+    "catalog": "Plantilla",
+    "manifest": "Manifiesto del proyecto",
+    "scope": "Clasificar con IA",
+    "scopes": {
+      "off": "Sin IA",
+      "unclassified": "Lo que las reglas no clasifican",
+      "missing_axes": "También los ejes vacíos"
+    },
+    "model": "Modelo para clasificar",
+    "budget": "Máximo de documentos con IA",
+    "profile": "Perfil del proyecto (opcional)",
+    "profileHelp": "Sustituye al guardado solo en esta prueba.",
+    "aiWarning": "El contenido de los documentos de la referencia sale de la aplicación hacia el servicio de IA.",
+    "compare": "Comparar",
+    "comparison": "Comparación",
+    "current": "Contexto actual",
+    "candidate": "Prueba",
+    "aiUsed": "IA: {{calls}} llamadas, {{tokens}} tokens, modelo {{model}}"
   },
   "diagnostics": {
     "title": "Diagnóstico",

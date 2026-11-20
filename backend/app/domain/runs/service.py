@@ -27,6 +27,7 @@ from app.db.models import (
     utcnow,
 )
 from app.domain.ai import settings as ai_settings
+from app.domain.context import quality
 from app.domain.context import service as context
 from app.domain.duplicates import service as duplicates
 from app.domain.identity import audit
@@ -51,6 +52,8 @@ from app.domain.runs.errors import (
 from app.domain.runs.operations import (
     OPERATIONS,
     ContextBuildParams,
+    ContextDryRunParams,
+    ContextEvaluateParams,
     DedupApplyParams,
     ProjectMoveParams,
     RunParams,
@@ -218,6 +221,10 @@ def enqueue(
         params = context.validate_build(db, settings, project, params, actor=actor)
     if isinstance(params, TaxonomyDraftParams):
         ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
+    if isinstance(params, ContextEvaluateParams):
+        quality.validate_evaluate(db, settings, project, params)
+    if isinstance(params, ContextDryRunParams):
+        params = quality.validate_dry_run(db, settings, project, params, actor=actor)
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

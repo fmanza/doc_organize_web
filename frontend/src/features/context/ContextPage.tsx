@@ -334,6 +334,9 @@ function Summary({
         <Button component={Link} to={`/projects/${projectId}/context/review`} variant="light">
           {t('review.open')}
         </Button>
+        <Button component={Link} to={`/projects/${projectId}/context/quality`} variant="light">
+          {t('quality.open')}
+        </Button>
         {context.site_built && (
           <Button component={Link} to={`/projects/${projectId}/context/site`}>
             {t('context.site.open')}

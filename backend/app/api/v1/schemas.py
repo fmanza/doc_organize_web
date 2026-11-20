@@ -422,6 +422,8 @@ Operation = Literal[
     "context_build",
     "context_delete",
     "taxonomy_draft",
+    "context_evaluate",
+    "context_dry_run",
 ]
 
 
@@ -1454,6 +1456,39 @@ class DecisionRevokeIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reason: str | None = Field(default=None, max_length=500)
+
+
+# --- W5: calidad -----------------------------------------------------------------------------------------------------
+
+
+class GoldOut(BaseModel):
+    """Referencia en Excel del proyecto (sin el contenido): de dónde se leyó y qué tiene."""
+
+    filename: str
+    sheet: str
+    document_column: str
+    columns: dict[str, str]
+    labels: int = Field(description="Documentos etiquetados")
+    axes: list[str] = Field(description="Ejes con etiquetas")
+    uploaded_at: str
+    uploaded_by: str | None = None
+
+
+class QualityRunOut(BaseModel):
+    """El último run terminado de una comprobación de calidad, con su resultado."""
+
+    run_id: str
+    finished_at: AwareDatetime | None
+    result: dict[str, Any]
+
+
+class QualityOut(BaseModel):
+    """Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas."""
+
+    gold: GoldOut | None = None
+    decisions_available: bool = Field(description="Hay decisiones de personas con las que hacer una referencia")
+    evaluation: QualityRunOut | None = None
+    dry_run: QualityRunOut | None = None
 
 
 class DiagnosticsIn(BaseModel):

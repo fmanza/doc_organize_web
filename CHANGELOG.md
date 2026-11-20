@@ -32,6 +32,13 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Calidad** (W5, G3): referencia en Excel (`PUT`/`DELETE …/context/quality/gold`, cuerpo `.xlsx` de hasta 5 MB con
+  hoja, columna del documento y `eje:columna`; comprobada con `load_gold_xlsx`, guardada en el volumen de datos,
+  auditada sin el contenido) o las decisiones del proyecto (`gold_from_decisions`). Runs `context_evaluate`
+  (`evaluate_classification` del contexto guardado) y `context_dry_run` (`dry_run_classify` sin guardar, con otra
+  plantilla o el manifiesto, otro modelo de clasificar, otro alcance de la IA o un perfil sin guardar, y un máximo de
+  documentos con IA; comparado con la evaluación del contexto actual; auditado `project.dry_run`). `GET
+  …/context/quality` da la referencia y los últimos resultados. Página «Calidad».
 - **Revisar clasificación** (W5, F6): la construcción guarda la cola de `review_queue` en `context_review_items` y las
   decisiones aplicadas y no aplicadas (`decisions_applied`, `stale_decisions`, `orphan_decisions`), y cada documento su
   `document_key`, huella y versión (migración `0020`, aditiva). Las claves de las decisiones son la ruta relativa a la
