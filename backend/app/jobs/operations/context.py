@@ -244,16 +244,15 @@ def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[Sourc
     )
 
 
-def ai_connection(ctx: JobContext, family: FamilyKey, *, draft: bool = False) -> AiConnection:
-    """Configuración de la familia ``family``, descifrada aquí, en el subproceso (ADR-004 §5). ``draft``: con el plazo
-    y los reintentos del borrador de manifiesto.
+def ai_connection(ctx: JobContext, family: FamilyKey) -> AiConnection:
+    """Configuración de la familia ``family``, descifrada aquí, en el subproceso (ADR-004 §5).
 
     Raises:
         JobFailed: ``ai_not_configured`` si se quitó la configuración después de encolar.
     """
     with ctx.session_factory() as db:
         try:
-            return ai_settings.connection(db, ctx.settings, family, draft=draft)
+            return ai_settings.connection(db, ctx.settings, family)
         except AiNotConfiguredError:
             raise JobFailed("ai_not_configured", "La IA de esta operación ya no está configurada.") from None
 

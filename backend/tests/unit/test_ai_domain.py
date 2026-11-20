@@ -102,8 +102,12 @@ def test_settings_carry_timeout_retries_and_a_model_and_key_per_task() -> None:
         "ai_max_failures": library_ai.MAX_CONNECTION_FAILURES,
         "ai_max_documents": 7,
     }
-    # Con las dos fases, el menor presupuesto (doc_organize 2.0.0a2 tiene un solo tope que aplica a cada fase).
-    assert library_ai.build_limits(connection, ["classify", "enrich"])["ai_max_documents"] == 5
+    # 2.0.0rc1: el presupuesto propio de cada tarea va en TaskSettings.max_documents (la librería aplica el menor).
+    assert library_ai.build_limits(connection, ["classify", "enrich"])["ai_max_documents"] == 7
+    assert settings.max_documents_for("enrich") == 5 and settings.max_documents_for("classify") is None
+    # Las tareas largas (borrador y agentes) llevan su propio plazo y reintentos.
+    assert settings.timeout_for("taxonomy_design") == connection.long_timeout_s
+    assert settings.timeout_for("agent") == connection.long_timeout_s and settings.timeout_for("classify") == 12.0
     copilot = library_ai._usage_config(
         AiConnection(family="github_copilot_usage", values={"username": "octo", "pat": KEY}, retries=1)
     )

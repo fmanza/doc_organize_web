@@ -181,11 +181,11 @@ def resolve(db: Session, settings: Settings, key: FamilyKey) -> dict[str, str]:
     return values
 
 
-def connection(db: Session, settings: Settings, key: FamilyKey, *, draft: bool = False) -> AiConnection:
+def connection(db: Session, settings: Settings, key: FamilyKey) -> AiConnection:
     """Conexión de la familia ``key`` con los ajustes de timeout, reintentos y presupuesto vigentes.
 
-    ``draft``: para el borrador de manifiesto (tarea ``taxonomy_design``), una sola petición larga con su propio plazo y
-    sus reintentos.
+    Las tareas largas (borrador de manifiesto y agentes) llevan su propio plazo y sus reintentos
+    (``ai_draft_timeout_seconds``/``ai_draft_retries``), que doc_organize 2.0.0rc1 aplica por tarea.
 
     Raises:
         AiNotConfiguredError: Le falta algún campo obligatorio.
@@ -203,8 +203,10 @@ def connection(db: Session, settings: Settings, key: FamilyKey, *, draft: bool =
     return AiConnection(
         family=key,
         values=values,
-        timeout_s=float(settings.ai_draft_timeout_seconds if draft else settings.ai_timeout_seconds),
-        retries=settings.ai_draft_retries if draft else settings.ai_retries,
+        timeout_s=float(settings.ai_timeout_seconds),
+        retries=settings.ai_retries,
+        long_timeout_s=float(settings.ai_draft_timeout_seconds),
+        long_retries=settings.ai_draft_retries,
         budget=settings.ai_max_documents_per_run,
     )
 

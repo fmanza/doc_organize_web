@@ -7,7 +7,7 @@ migración ``0016``) y construye aquí el ``AiSettings``; nunca usa ``settings_f
 de variables de 1.x (``legacy_variables``) para avisar de las que ya no se leen (D15, U17). doc_organize se importa
 **dentro** de cada función (G15).
 
-Firmas verificadas en el tag ``v2.0.0a2``::
+Firmas verificadas en el tag ``v2.0.0rc1``::
 
     AiSettings(base_url, virtual_key, tasks: dict[AiTask, TaskSettings] = {}, timeout_s=120.0, retries=0,
         retry_backoff_s=0.5, rate_limit_retries=3, max_retry_wait_s=60.0, redact_credentials=True, tags=[])
@@ -129,9 +129,15 @@ FAMILIES: Final[tuple[FamilySpec, ...]] = (
 FAMILIES_BY_KEY: Final[dict[str, FamilySpec]] = {family.key: family for family in FAMILIES}
 
 
+#: Tareas largas (una sola petición o una conversación con herramientas): usan el plazo y los reintentos «largos».
+LONG_TASKS: Final[tuple[TaskKey, ...]] = ("taxonomy_design", "agent")
+
+
 def default_model(task: TaskKey) -> str:
-    """Alias recomendado de ``task`` en el proxy cuando no se configura su modelo (``AiSettings.model_for``, U10)."""
-    return f"doc-organize-{task.replace('_', '-')}"
+    """Alias recomendado de ``task`` en el proxy cuando no se configura su modelo (``default_model_alias``, U10)."""
+    from doc_organize.core.models import default_model_alias
+
+    return str(default_model_alias(task))
 
 
 def legacy_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
@@ -153,6 +159,8 @@ class AiConnection:
         values: Campo → valor (solo los que tienen valor).
         timeout_s: Segundos máximos de cada petición.
         retries: Reintentos de un timeout o error de transporte (``AiSettings.retries``, L-3b).
+        long_timeout_s, long_retries: Los de las tareas largas (``LONG_TASKS``: borrador y agentes), como
+            ``TaskSettings.timeout_s``/``retries`` de doc_organize 2.0.0rc1.
         budget: Documentos que se pueden enviar como mucho por construcción si la tarea no tiene presupuesto propio
             (``ai_max_documents``, L-3b).
         redact_credentials: Redactar credenciales de todo lo que sale hacia la IA (D7; por defecto, sí).
@@ -162,6 +170,8 @@ class AiConnection:
     values: dict[str, str] = field(repr=False)
     timeout_s: float = 30.0
     retries: int = 0
+    long_timeout_s: float = 300.0
+    long_retries: int = 0
     budget: int = 500
     redact_credentials: bool = True
 
@@ -203,9 +213,10 @@ def _transport(connection: AiConnection) -> httpx.AsyncBaseTransport | None:
 
 
 def ai_settings_for(connection: AiConnection) -> Any:
-    """``AiSettings`` de doc_organize con la URL, la clave general y el modelo y la clave de cada tarea.
+    """``AiSettings`` de doc_organize con la URL, la clave general y, por tarea, el modelo, la clave, el presupuesto de
+    documentos (``TaskSettings.max_documents``) y, en las tareas largas, su plazo y sus reintentos (2.0.0rc1).
 
-    Una tarea sin modelo ni clave propios no entra en ``tasks``: usa el alias recomendado y la clave general.
+    Una tarea sin nada propio no entra en ``tasks``: usa el alias recomendado, la clave general y los plazos generales.
     """
     from doc_organize.core.models import AiSettings, TaskSettings
 
@@ -216,8 +227,16 @@ def ai_settings_for(connection: AiConnection) -> Any:
     for task in TASKS:
         model = values.get(f"model_{task}")
         key = values.get(f"virtual_key_{task}")
-        if model or key:
-            tasks[task] = TaskSettings(model=model or default_model(task), virtual_key=key or None)
+        budget = values.get(f"budget_{task}")
+        long = task in LONG_TASKS
+        if model or key or budget or long:
+            tasks[task] = TaskSettings(
+                model=model or default_model(task),
+                virtual_key=key or None,
+                max_documents=int(budget) if budget else None,
+                timeout_s=connection.long_timeout_s if long else None,
+                retries=connection.long_retries if long else None,
+            )
     return AiSettings(
         base_url=values["base_url"],
         virtual_key=values["virtual_key"],
@@ -240,12 +259,12 @@ def llm_client(connection: AiConnection) -> Any:
 def build_limits(connection: AiConnection, tasks: list[TaskKey]) -> dict[str, int]:
     """Argumentos de ``ContextBuilder.build`` que acotan las fases de IA (L-3a, L-3b).
 
-    doc_organize 2.0.0a2 tiene **un** ``ai_max_documents`` que aplica a cada fase por separado: con clasificación y
-    descripciones a la vez se usa el menor de sus presupuestos (nunca se supera ninguno). Petición a la librería: un
-    tope por fase.
+    ``ai_max_documents`` es el general (``ai_max_documents_per_run``); el propio de cada tarea va en
+    ``TaskSettings.max_documents`` (``ai_settings_for``) y doc_organize 2.0.0rc1 aplica el menor a cada fase, así que
+    clasificar y describir pueden tener presupuestos distintos.
     """
-    budgets = [connection.budget_for(task) for task in tasks] or [connection.budget]
-    return {"ai_max_failures": MAX_CONNECTION_FAILURES, "ai_max_documents": min(budgets)}
+    del tasks
+    return {"ai_max_failures": MAX_CONNECTION_FAILURES, "ai_max_documents": connection.budget}
 
 
 def phase_stats(phase: Any) -> dict[str, Any]:
@@ -359,8 +378,8 @@ def draft_manifest(
                 "timed_out": error.timed_out,
                 "exc_type": type(exc).__name__,
                 "cause": type(cause).__name__ if cause is not None else None,
-                "timeout_s": connection.timeout_s,
-                "retries": connection.retries,
+                "timeout_s": connection.long_timeout_s,
+                "retries": connection.long_retries,
             },
         )
         raise error from None

@@ -3,7 +3,7 @@
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v2.0.0a2``::
+Firmas verificadas en el tag ``v2.0.0rc1``::
 
     ContextBuilder().build(project, documents: list[ConversionResult], *, candidate_domains=None, threshold=0.5,
         taxonomy_manifest=None, taxonomy_template_name=None, output_folder_name="organizado", llm=None,
@@ -401,7 +401,7 @@ def prompt_preview(
     """
     from doc_organize.ai import PromptRegistry
     from doc_organize.ai.services import render_prompt_preview
-    from doc_organize.context.project_profile import parse_profile
+    from doc_organize.context.project_profile import compose_profile_text, parse_profile
     from doc_organize.context.taxonomy_templates import parse_taxonomy_template
     from doc_organize.core.exceptions import TaxonomyTemplateError
 
@@ -411,7 +411,7 @@ def prompt_preview(
         raise TemplateInvalidError(str(exc)) from None
     project = parse_profile(project_profile) if project_profile else None
     template = manifest.profile
-    composed = template.merged(project) if template is not None else project
+    composed = compose_profile_text(template, project_profile)  # D11, doc_organize 2.0.0rc1
     prompts = PromptRegistry(str(project_root)) if project_root is not None else PromptRegistry()
     messages = render_prompt_preview(manifest, prompts=prompts, profile=composed)
     return PromptPreview(

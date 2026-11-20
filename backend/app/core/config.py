@@ -52,9 +52,9 @@ class Settings(BaseSettings):
         ai_timeout_seconds: Tiempo máximo de cada petición a un servicio de IA (Fase 8).
         ai_retries: Reintentos de un timeout o error de conexión de cada petición a un servicio de IA (Fase 8, L-3b).
         ai_max_documents_per_run: Documentos que un run puede enviar a la IA como mucho (presupuesto, Fase 8).
-        ai_draft_timeout_seconds: Tiempo máximo de la petición del borrador de manifiesto, que es una sola y mucho
-            más larga que una clasificación (un modelo local puede tardar minutos); sustituye a ``ai_timeout_seconds``
-            en esa familia.
+        ai_draft_timeout_seconds: Tiempo máximo de cada petición de las tareas largas (borrador de manifiesto y
+            agentes), mucho más largas que una clasificación (un modelo local puede tardar minutos); sustituye a
+            ``ai_timeout_seconds`` en ellas (``TaskSettings.timeout_s`` de doc_organize 2.0.0rc1).
         ai_draft_retries: Reintentos del borrador de manifiesto ante un timeout o error de conexión; 0 por defecto,
             porque reintentar un timeout vuelve a encolar la misma generación en el modelo.
         scan_recycle_documents: Documentos convertidos tras los que el escaneo sigue en un subproceso nuevo del mismo

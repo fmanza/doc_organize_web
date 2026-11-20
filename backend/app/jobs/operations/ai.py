@@ -32,7 +32,7 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
     """Pide el borrador y lo devuelve como resultado del run (Markdown + resumen del catálogo)."""
     project = require_project(project)
     # Redacción por proyecto (D7, W4): también en la muestra del borrador.
-    connection = replace(ai_connection(ctx, "litellm", draft=True), redact_credentials=project.ai_redact_credentials)
+    connection = replace(ai_connection(ctx, "litellm"), redact_credentials=project.ai_redact_credentials)
     output, folders, _ = context_folders(ctx, project)
     ctx.progress("ai_sample", 0, None)
     ctx.check_cancelled()
@@ -54,8 +54,8 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
         if exc.timed_out:  # conectó pero no respondió: no es un fallo de conexión (el modelo es lento)
             raise JobFailed(
                 "ai_timeout",
-                f"El servicio de IA no respondió a tiempo ({connection.timeout_s:g} s por intento). Sube «Tiempo"
-                " máximo del borrador de IA» en los ajustes o usa un modelo más rápido.",
+                f"El servicio de IA no respondió a tiempo ({connection.long_timeout_s:g} s por intento). Sube «Tiempo"
+                " máximo del borrador y los agentes de IA» en los ajustes o usa un modelo más rápido.",
             ) from None
         raise JobFailed(exc.code, AI_ERRORS[exc.code]) from None
     if len(draft.markdown.encode("utf-8")) > MAX_TEMPLATE_BYTES:  # va a runs.result (config.db) y al editor

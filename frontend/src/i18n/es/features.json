@@ -292,12 +292,12 @@
         "hint": "Solo ante fallos de conexión (0–5)."
       },
       "ai_draft_timeout_seconds": {
-        "label": "Tiempo máximo del borrador de IA (s)",
-        "hint": "La petición del borrador de manifiesto es larga: un modelo local puede tardar minutos (5–900)."
+        "label": "Tiempo máximo del borrador y los agentes de IA (s)",
+        "hint": "Tareas largas: la petición del borrador de manifiesto y cada llamada de los agentes; un modelo local puede tardar minutos (5–900)."
       },
       "ai_draft_retries": {
-        "label": "Reintentos del borrador de IA",
-        "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, un borrador que no responde falla sin repetir la petición."
+        "label": "Reintentos del borrador y los agentes de IA",
+        "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, una petición que no responde falla sin repetirse."
       },
       "ai_max_documents_per_run": {
         "label": "Documentos con IA por ejecución",
