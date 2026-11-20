@@ -1114,7 +1114,7 @@ class ContextDocumentOut(_Out):
     organized_path: str | None
     failed: bool
     collision: bool
-    classified_by: Literal["rules", "ai"] | None = None
+    classified_by: Literal["rules", "semantic", "ai", "human"] | None = None
     output_path: str | None = None
     # 1.5.0: propiedades declaradas en el documento (o de la IA si faltan: ``ai_filled``) e idioma detectado.
     author: str | None = None

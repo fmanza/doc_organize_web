@@ -2261,7 +2261,7 @@ export interface components {
                 [key: string]: components["schemas"]["AxisValueOut"][];
             };
             /** Classified By */
-            classified_by?: ("rules" | "ai") | null;
+            classified_by?: ("rules" | "semantic" | "ai" | "human") | null;
             /** Collision */
             collision: boolean;
             /** Description */

@@ -11,12 +11,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import AuditEntry, ContextDocumentAxisValue, Project, RunEvent
+from app.db.models import AuditEntry, ContextDocument, ContextDocumentAxisValue, Project, RunEvent
 from app.integrations.doc_organize import ai as library_ai
 from app.jobs.operations import context as operation
 from tests.conftest import ADMIN_PASSWORD, login_as
 from tests.fake_litellm import FakeLiteLLM
 from tests.jobs.test_context_axes import AXES_TEMPLATE
+from tests.jobs.test_context_operation import _finish
 
 KEY = "sk-semantic-test-7u8i"
 TEMPLATE_RUN = {"operation": "context_build", "catalog": "template", "template_name": "ejes", "build_site": False}
@@ -45,7 +46,7 @@ def semantic(project: Project, db: Session, user_client: TestClient, admin: Any)
 
 
 def test_semantic_fills_empty_axes_with_embeddings(
-    run: Any, semantic: Project, db: Session, monkeypatch: pytest.MonkeyPatch
+    run: Any, semantic: Project, db: Session, monkeypatch: pytest.MonkeyPatch, user_client: TestClient
 ) -> None:
     monkeypatch.setenv("DOC_ORGANIZE_LITELLM_BASE_URL", "https://litellm.example.internal")
     monkeypatch.setenv("DOC_ORGANIZE_LITELLM_VIRTUAL_KEY", KEY)
@@ -70,6 +71,19 @@ def test_semantic_fills_empty_axes_with_embeddings(
     assert result["semantic"]["assigned"] >= 1
     events = " ".join(str(e.data) for e in db.scalars(select(RunEvent).where(RunEvent.run_id == ctx.run_id)))
     assert "Semántica:" in events and KEY not in events
+    _finish(db, ctx)
+    # Un documento cuyo dominio lo asignó la semántica se lista (W9: antes, 500 por `classified_by` = semantic).
+    by_semantic = db.scalars(
+        select(ContextDocument).where(
+            ContextDocument.project_id == semantic.id, ContextDocument.classified_by == "semantic"
+        )
+    ).all()
+    assert by_semantic
+    for doc in by_semantic:
+        listed = user_client.get(
+            f"/api/v1/projects/{semantic.id}/context/documents", params={"domain": doc.domain_slug}
+        )
+        assert listed.status_code == 200, listed.text
 
 
 def test_without_ai_configured_it_builds_without_semantic(run: Any, semantic: Project, db: Session) -> None:
