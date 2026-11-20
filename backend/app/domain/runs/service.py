@@ -51,9 +51,11 @@ from app.domain.runs.errors import (
 )
 from app.domain.runs.operations import (
     OPERATIONS,
+    ContextAuditParams,
     ContextBuildParams,
     ContextDryRunParams,
     ContextEvaluateParams,
+    ContextReviewAgentParams,
     DedupApplyParams,
     ProjectMoveParams,
     RunParams,
@@ -231,6 +233,10 @@ def enqueue(
         params = quality.validate_taxonomy_agent(db, settings, project, params, actor=actor)
     if isinstance(params, TaxonomyCheckParams):
         quality.validate_taxonomy_check(params)
+    if isinstance(params, ContextReviewAgentParams):
+        quality.validate_review_agent(db, settings, project)
+    if isinstance(params, ContextAuditParams):
+        quality.validate_audit(db, project)
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

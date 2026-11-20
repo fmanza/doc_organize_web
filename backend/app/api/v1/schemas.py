@@ -426,6 +426,8 @@ Operation = Literal[
     "context_dry_run",
     "taxonomy_agent",
     "taxonomy_check",
+    "context_review_agent",
+    "context_audit",
 ]
 
 
@@ -1529,6 +1531,7 @@ class QualityOut(BaseModel):
     decisions_available: bool = Field(description="Hay decisiones de personas con las que hacer una referencia")
     evaluation: QualityRunOut | None = None
     dry_run: QualityRunOut | None = None
+    audit: QualityRunOut | None = Field(default=None, description="Último informe del auditor (W7)")
 
 
 class DiagnosticsIn(BaseModel):
@@ -1554,3 +1557,24 @@ class DiagnosticsOut(BaseModel):
     ok: bool
     checked_at: str
     checks: list[DiagnosticCheckOut]
+
+
+# --- W7: propuestas del revisor ---------------------------------------------------------------------------------------
+
+
+class ProposalOut(BaseModel):
+    """Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta."""
+
+    id: int
+    document_key: str
+    action: Literal["confirm", "set_axis", "exclude", "set_current_version"]
+    axes: dict[str, list[str]] = {}
+    rationale: str | None = None
+    evidence: str | None = None
+    created_at: datetime
+    run_id: str | None = None
+    document: ReviewDocumentOut | None = None
+
+
+class ProposalList(BaseModel):
+    items: list[ProposalOut]

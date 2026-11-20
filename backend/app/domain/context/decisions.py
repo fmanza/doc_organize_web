@@ -268,7 +268,128 @@ def review_items(
             .group_by(ContextReviewItem.reason)
         ).all()
     )
-    return [(item, document) for item, document in rows], int(total), {k: int(v) for k, v in counts.items()}
+    from app.db.models import ContextReviewProposal
+
+    pending = db.scalar(
+        select(func.count())
+        .select_from(ContextReviewProposal)
+        .where(ContextReviewProposal.project_id == project.id, ContextReviewProposal.status == "pending")
+    )
+    result = {k: int(v) for k, v in counts.items()}
+    if pending:
+        result["reviewer_proposal"] = int(pending)
+    return [(item, document) for item, document in rows], int(total), result
 
 
-__all__ = ["Decisions", "ProfileReplacedError", "decide", "load", "review_items", "revoke"]
+__all__ = [
+    "Decisions",
+    "ProfileReplacedError",
+    "accept_proposal",
+    "decide",
+    "discard_proposal",
+    "list_proposals",
+    "load",
+    "review_items",
+    "revoke",
+]
+
+
+# --- propuestas del revisor (W7) --------------------------------------------------------------------------------------
+
+
+def list_proposals(db: Session, project: Project) -> list[tuple[Any, ContextDocument | None]]:
+    """Propuestas pendientes del revisor, con su documento del contexto (si sigue estando)."""
+    from app.db.models import ContextReviewProposal
+
+    rows = db.execute(
+        select(ContextReviewProposal, ContextDocument)
+        .outerjoin(
+            ContextDocument,
+            (ContextDocument.project_id == ContextReviewProposal.project_id)
+            & (ContextDocument.document_key == ContextReviewProposal.document_key),
+        )
+        .where(ContextReviewProposal.project_id == project.id, ContextReviewProposal.status == "pending")
+        .order_by(ContextReviewProposal.id)
+    ).all()
+    return [(proposal, document) for proposal, document in rows]
+
+
+def _pending(db: Session, project: Project, proposal_id: int) -> Any:
+    from app.db.models import ContextReviewProposal
+    from app.domain.context.errors import ProposalNotFoundError
+
+    proposal = db.get(ContextReviewProposal, proposal_id)
+    if proposal is None or proposal.project_id != project.id or proposal.status != "pending":
+        raise ProposalNotFoundError()
+    return proposal
+
+
+def accept_proposal(
+    db: Session, settings: Settings, project: Project, proposal_id: int, *, actor: User, ctx: RequestContext
+) -> dict[str, Any]:
+    """Acepta una propuesta del revisor: se guarda como decisión de ``actor`` (validada como cualquier otra) y queda
+    ``accepted``. Se audita (la decisión, además, como ``project.decision_add``).
+
+    Raises:
+        ProposalNotFoundError, DecisionDocumentNotFoundError, DecisionInvalidError y los de ``decide``.
+    """
+    from app.db.models import utcnow
+
+    proposal = _pending(db, project, proposal_id)
+    reason = f"Propuesta del revisor: {proposal.rationale}" if proposal.rationale else "Propuesta del revisor"
+    saved = decide(
+        db,
+        settings,
+        project,
+        document_key=proposal.document_key,
+        action=proposal.action,
+        axes=dict(proposal.axes or {}),
+        reason=reason,
+        actor=actor,
+        ctx=ctx,
+    )
+    proposal.status = "accepted"
+    proposal.decided_by = actor.id
+    proposal.decided_at = utcnow()
+    proposal.decision_id = str(saved["id"])
+    audit.record(
+        db,
+        action=AuditAction.PROJECT_PROPOSAL_ACCEPT,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="project",
+        target_id=project.id,
+        details={"proposal_id": proposal_id, "decision_id": saved["id"]},
+    )
+    db.commit()
+    return saved
+
+
+def discard_proposal(
+    db: Session, settings: Settings, project: Project, proposal_id: int, *, actor: User, ctx: RequestContext
+) -> None:
+    """Descarta una propuesta del revisor (no se aplica nada) y lo audita.
+
+    Raises:
+        ProposalNotFoundError, DestinationReadOnlyError.
+    """
+    from app.db.models import utcnow
+    from app.domain.context.errors import DestinationReadOnlyError
+
+    del settings
+    if project.destination_location.access != "rw":
+        raise DestinationReadOnlyError("La ubicación de destino es de solo lectura.")
+    proposal = _pending(db, project, proposal_id)
+    proposal.status = "discarded"
+    proposal.decided_by = actor.id
+    proposal.decided_at = utcnow()
+    audit.record(
+        db,
+        action=AuditAction.PROJECT_PROPOSAL_DISCARD,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="project",
+        target_id=project.id,
+        details={"proposal_id": proposal_id},
+    )
+    db.commit()

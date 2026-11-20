@@ -13,10 +13,17 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from app.db.models import Project
+from sqlalchemy import delete
+
+from app.db.models import ContextReviewProposal, Project
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
-from app.domain.runs.operations import TaxonomyAgentParams, TaxonomyCheckParams
+from app.domain.runs.operations import (
+    ContextAuditParams,
+    ContextReviewAgentParams,
+    TaxonomyAgentParams,
+    TaxonomyCheckParams,
+)
 from app.integrations.doc_organize import agents as library
 from app.integrations.doc_organize.context import TemplateInvalidError
 from app.integrations.doc_organize.projects import DocOrganizeOperationError
@@ -106,3 +113,80 @@ def run_check(ctx: JobContext, params: TaxonomyCheckParams, project: Project | N
         raise JobFailed("template_invalid", f"El manifiesto no es válido: {namer.text(str(exc))}") from None
     ctx.progress("done", 1, 1)
     return {"report": report}
+
+
+def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Project | None) -> dict[str, Any]:
+    """Pide propuestas al revisor y las guarda como pendientes (sustituyen a las pendientes anteriores). No aplica
+    ninguna (D14): las acepta o descarta una persona en «Revisar clasificación»."""
+    project = require_project(project)
+    output, folders, namer = context_folders(ctx, project)
+    connection = replace(ai_connection(ctx, "litellm"), redact_credentials=project.ai_redact_credentials)
+    request = library.ReviewRequest(
+        name=project.name,
+        created_at=project.created_at,
+        output_root=output,
+        folders=folders,
+        connection=connection,
+        max_items=params.max_items,
+        max_steps=params.max_steps,
+        instructions=params.instructions,
+    )
+    ctx.progress("agent_run", 0, None)
+    ctx.check_cancelled()
+    try:
+        result = library.review(request, is_cancelled=lambda: ctx.cancelled)
+    except DocOrganizeOperationError as exc:
+        raise JobFailed("ai_error", namer.text(str(exc))) from None
+    if result["stop_reason"] == "cancelled":
+        raise JobCancelled({k: v for k, v in result.items() if k != "proposals"})
+    proposals = result.pop("proposals")
+    with ctx.session_factory() as db:
+        db.execute(
+            delete(ContextReviewProposal).where(
+                ContextReviewProposal.project_id == project.id, ContextReviewProposal.status == "pending"
+            )
+        )
+        db.add_all(
+            ContextReviewProposal(
+                project_id=project.id,
+                run_id=ctx.run_id,
+                document_key=str(item["document_key"])[:4096],
+                action=str(item["action"]),
+                axes=dict(item.get("axes") or {}),
+                rationale=item.get("rationale") or None,
+                evidence=item.get("evidence") or None,
+                source_sha256=item.get("source_sha256"),
+            )
+            for item in proposals
+        )
+        audit.record(
+            db,
+            action=AuditAction.PROJECT_REVIEW_AGENT,
+            ctx=WORKER_CONTEXT,
+            actor_id=ctx.created_by,
+            target_type="project",
+            target_id=project.id,
+            details={"run_id": ctx.run_id, "stop_reason": result["stop_reason"], "proposals": len(proposals)},
+        )
+        db.commit()
+    if result["stop_reason"] in STOPPED:
+        ctx.log(
+            STOPPED[result["stop_reason"]].replace("su último borrador", "las propuestas ya hechas"), level="warning"
+        )
+    ctx.log(f"Revisor: {len(proposals)} propuestas de {result['reviewed']} documentos revisados.")
+    ctx.progress("done", 1, 1)
+    return {**result, "proposals": len(proposals)}
+
+
+def run_audit(ctx: JobContext, params: ContextAuditParams, project: Project | None) -> dict[str, Any]:
+    """Informe del auditor de la taxonomía, sin IA."""
+    del params
+    project = require_project(project)
+    output, _, namer = context_folders(ctx, project)
+    ctx.progress("agent_corpus", 0, None)
+    try:
+        report = library.audit(output, name=project.name, created_at=project.created_at)
+    except DocOrganizeOperationError as exc:
+        raise JobFailed("context_failed", namer.text(str(exc))) from None
+    ctx.progress("done", 1, 1)
+    return {"audit": report}

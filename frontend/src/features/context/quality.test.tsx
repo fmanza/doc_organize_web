@@ -88,3 +88,66 @@ describe('Calidad', () => {
     expect(await request?.clone().json()).toEqual({ operation: 'context_evaluate', gold: 'xlsx' });
   });
 });
+
+describe('Informe del auditor', () => {
+  it('muestra las estadísticas por eje y lo que revisar, y lanza otro sin IA', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context/quality': {
+        body: {
+          ...QUALITY,
+          audit: {
+            run_id: RUN_ID,
+            finished_at: '2026-11-20T11:00:00Z',
+            result: {
+              audit: {
+                documents: 4,
+                unclassified: 1,
+                axes: [
+                  {
+                    axis: 'domains',
+                    documents: 4,
+                    with_value: 3,
+                    value_counts: { facturas: 3 },
+                    classified_by: {},
+                    low_confidence: 0,
+                    unverified_evidence: 0,
+                  },
+                ],
+                findings: [
+                  {
+                    kind: 'empty_entry',
+                    axis: 'domains',
+                    values: ['informes'],
+                    count: 0,
+                    message: 'Sin documentos: informes',
+                  },
+                ],
+                markdown: '| Eje |',
+              },
+            },
+          },
+        },
+      },
+      'GET /api/v1/taxonomy-templates': { body: { items: [] } },
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: RUN_ID, operation: 'context_audit' }),
+      },
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ id: RUN_ID, operation: 'context_audit' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context/quality');
+    const card = await screen.findByRole('region', { name: 'Informe del auditor' });
+    expect(within(card).getByText('facturas (3)')).toBeInTheDocument();
+    expect(within(card).getByText('Sin documentos: informes')).toBeInTheDocument();
+    expect(within(card).getByText(/4 documentos · 1 sin clasificar/)).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Auditar' }));
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toEqual({ operation: 'context_audit' });
+  });
+});

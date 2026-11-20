@@ -37,6 +37,16 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Propuestas del revisor e informe del auditor** (W7, M9): run `context_review_agent` con `ReviewAgent` (tarea
+  `agent`, primeros 1–100 documentos de la cola, tope de pasos de 1 a 80, indicaciones, cancelación); las propuestas
+  se guardan en la BD (tabla `context_review_proposals`, migración `0022`) **sin aplicarse** (D14) y sustituyen a las
+  pendientes de la pasada anterior. `GET …/context/review/proposals` las lista con su documento; `POST
+  …/proposals/{id}/accept` las guarda como decisión de quien acepta (mismas validaciones que una decisión,
+  `project.proposal_accept` además de `project.decision_add`) y `…/discard` las descarta (`project.proposal_discard`);
+  propietario o editor con destino `rw`. `GET …/context/review` cuenta `reviewer_proposal`. Run `context_audit`
+  (`audit_taxonomy`, sin IA, también para lectores): `GET …/context/quality` añade `audit` con el último informe.
+  Tarjetas «Propuestas del revisor (IA)» en «Revisar clasificación» (pasos, tokens y resumen visibles) e «Informe del
+  auditor» en «Calidad».
 - **Diseñar taxonomía con IA** (W7, M8): run `taxonomy_agent` con `TaxonomyDesignAgent` (tarea `agent`, plazo largo
   por tarea, tope de pasos de 1 a 60, cancelación con `CancelToken`) a partir del manifiesto, una plantilla o desde
   cero, con indicaciones; **no guarda nada**: el resultado trae la propuesta, el último borrador si no terminó, el

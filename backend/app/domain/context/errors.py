@@ -187,3 +187,11 @@ class GoldNotFoundError(AppError):
     status = 422
     title = "Sin referencia"
     code = "gold_not_found"
+
+
+class ProposalNotFoundError(AppError):
+    """No hay ninguna propuesta pendiente del revisor con ese identificador en el proyecto."""
+
+    status = 404
+    title = "Propuesta no encontrada"
+    code = "proposal_not_found"
