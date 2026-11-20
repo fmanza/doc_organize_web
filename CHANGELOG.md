@@ -32,6 +32,12 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Clasificación semántica** (W6, G4): `context_semantic` y `context_semantic_threshold` del proyecto llegan a
+  `build(semantic=, semantic_threshold=)` con la tarea `embed` de «Modelos de IA» (el cliente se crea también sin
+  alcance de IA); sin «Modelos de IA» configurado se construye sin semántica y se avisa en el log. El resultado del run
+  añade `semantic` (`ai_stats.semantic_classification`: embebidos, del índice, asignados, fallidos) y una línea de log.
+  «Contexto e IA del proyecto» tiene el interruptor y la similitud mínima, con aviso si falta la IA. El índice vive en
+  `.doc_organize/embeddings/` del destino, como `Conversión/` (borrar el contexto no lo toca).
 - **Versiones de un documento** (W6, F5): «Contexto e IA del proyecto» elige `context_versions` (`mark` por defecto,
   D8; `current_only`; `all`), que se pasa a `build(versions=)`. `PUT /projects/{id}/ai-settings` pasa a admitir cambios
   parciales de `ai_redact_credentials`, `context_versions`, `context_semantic` y `context_semantic_threshold` (columna

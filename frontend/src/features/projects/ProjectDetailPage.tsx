@@ -7,6 +7,7 @@ import {
   Group,
   Loader,
   Modal,
+  NumberInput,
   SimpleGrid,
   Select,
   Stack,
@@ -23,6 +24,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { StatusLight } from '../../components/StatusLight';
+import { useAiStatus } from '../admin/useAi';
 import { useMe } from '../auth/useAuth';
 import { RunsTable } from '../runs/RunsTable';
 import { useRuns } from '../runs/useRuns';
@@ -103,6 +105,8 @@ function EditProjectModal({ project, onClose }: { project: ProjectOut; onClose: 
 function AiSettingsCard({ project }: { project: ProjectOut }) {
   const { t } = useTranslation();
   const update = useUpdateProjectAi(project.id);
+  const status = useAiStatus();
+  const embedReady = status.data ? status.data.embed === true : undefined;
   const [confirming, setConfirming] = useState(false);
   const writable = project.destination_location.access === 'rw';
   const set = (value: boolean) =>
@@ -139,6 +143,46 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
           value && update.mutate({ context_versions: value as ProjectOut['context_versions'] })
         }
       />
+      <Switch
+        mt="md"
+        label={t('projects.ai.semantic')}
+        description={t('projects.ai.semanticHelp')}
+        checked={project.context_semantic}
+        disabled={!writable || update.isPending}
+        onChange={(event) => update.mutate({ context_semantic: event.currentTarget.checked })}
+      />
+      {project.context_semantic && (
+        <>
+          <NumberInput
+            mt="xs"
+            w={220}
+            label={t('projects.ai.threshold')}
+            description={t('projects.ai.thresholdHelp')}
+            min={0}
+            max={1}
+            step={0.05}
+            decimalScale={2}
+            defaultValue={project.context_semantic_threshold}
+            disabled={!writable || update.isPending}
+            onBlur={(event) => {
+              const value = Number(event.currentTarget.value.replace(',', '.'));
+              if (
+                !Number.isNaN(value) &&
+                value >= 0 &&
+                value <= 1 &&
+                value !== project.context_semantic_threshold
+              ) {
+                update.mutate({ context_semantic_threshold: value });
+              }
+            }}
+          />
+          {embedReady === false && (
+            <Text size="sm" c="orange" mt="xs">
+              {t('projects.ai.semanticNotConfigured')}
+            </Text>
+          )}
+        </>
+      )}
       {!writable && (
         <Text size="xs" c="dimmed" mt="xs">
           {t('projects.ai.readOnly')}
