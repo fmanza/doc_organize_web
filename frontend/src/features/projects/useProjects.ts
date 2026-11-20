@@ -87,7 +87,7 @@ export function useUpdateProject(id: number) {
 export function useUpdateProjectAi(id: number) {
   const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: async (body: { ai_redact_credentials: boolean }) =>
+    mutationFn: async (body: components['schemas']['ProjectAiSettingsIn']) =>
       unwrap(
         await api.PUT('/api/v1/projects/{project_id}/ai-settings', {
           params: { path: { project_id: id } },

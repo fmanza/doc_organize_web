@@ -464,6 +464,9 @@ class ProjectOut(BaseModel):
         default=True,
         description="Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
     )
+    context_versions: Literal["all", "mark", "current_only"] = "mark"
+    context_semantic: bool = False
+    context_semantic_threshold: float = 0.75
     created_at: datetime
     updated_at: datetime
     last_run: RunBrief | None = None
@@ -471,15 +474,30 @@ class ProjectOut(BaseModel):
 
 
 class ProjectAiSettingsIn(BaseModel):
-    """Ajustes de IA del proyecto (W4): propietario o editor, con el destino de lectura y escritura."""
+    """Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.
+    Ausente = no se toca; se aplican desde la siguiente construcción."""
 
     model_config = ConfigDict(extra="forbid")
 
-    ai_redact_credentials: bool = Field(
+    ai_redact_credentials: bool | None = Field(
+        default=None,
         description=(
             "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. "
             "Desactivarlo envía las credenciales tal cual a la IA"
-        )
+        ),
+    )
+    context_versions: Literal["all", "mark", "current_only"] | None = Field(
+        default=None,
+        description=(
+            "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la "
+            "web) o current_only (solo la vigente entra en el contexto)"
+        ),
+    )
+    context_semantic: bool | None = Field(
+        default=None, description="Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)"
+    )
+    context_semantic_threshold: float | None = Field(
+        default=None, ge=0, le=1, description="Similitud mínima para asignar un valor por semántica"
     )
 
 
@@ -1023,6 +1041,17 @@ class ContextFreshnessOut(BaseModel):
     examples: FreshnessExamplesOut = FreshnessExamplesOut()
 
 
+class VersionGroupOut(BaseModel):
+    """Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más
+    alta, con rutas relativas, la vigente y si una persona la confirmó."""
+
+    key: str
+    members: list[str]
+    versions: list[str]
+    current: str
+    confirmed: bool = False
+
+
 class ContextOut(BaseModel):
     """Resumen del contexto construido del proyecto (proyección del último ``context_build``)."""
 
@@ -1045,6 +1074,11 @@ class ContextOut(BaseModel):
     ai_provenance: list[PromptProvenanceOut] = []
     #: W4: frescura respecto a la caché del último escaneo; nula si aún no se ha comprobado.
     freshness: ContextFreshnessOut | None = None
+    #: W6 (F5): modo de versiones de la construcción, sus grupos y las versiones antiguas fuera del contexto.
+    versions_mode: Literal["all", "mark", "current_only"] | None = None
+    version_groups: list[VersionGroupOut] = []
+    superseded: list[str] = []
+    superseded_count: int = 0
     built_by_run_id: str | None
     built_at: datetime
 
@@ -1094,6 +1128,10 @@ class ContextDocumentOut(_Out):
     unclassified_reason: Literal["incomplete_artifacts", "below_threshold"] | None = None
     #: W3 (doc_organize 2.0): valores de cada eje, por clave de eje; vacío en contextos anteriores a 2.0.
     axes: dict[str, list[AxisValueOut]] = {}
+    #: W6 (F5): versión del documento en su grupo, la clave del grupo y si es la vigente (nulos sin grupo).
+    version: str | None = None
+    version_group: str | None = None
+    is_current: bool | None = None
 
 
 class ContextChangeOut(BaseModel):

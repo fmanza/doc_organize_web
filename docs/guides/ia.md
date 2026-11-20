@@ -19,7 +19,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
     tokens, claves de API, claves privadas, usuario y contraseña en una URL) se envían como `«REDACTADO»`. Es una red de
     seguridad, no una garantía: una contraseña solo de letras, por ejemplo, no se detecta.
 
-    Desde la 2.0 la redacción es un **ajuste de cada proyecto** («IA del proyecto» en la página del proyecto,
+    Desde la 2.0 la redacción es un **ajuste de cada proyecto** («Contexto e IA del proyecto» en la página del proyecto,
     activado por defecto). Lo cambian el propietario y los editores, con el destino de lectura y escritura; queda en la
     auditoría y se aplica desde la siguiente construcción (y al pedir un borrador). Desactivarlo envía las credenciales
     tal cual a la IA y las publica en el sitio del contexto.

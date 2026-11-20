@@ -70,6 +70,9 @@ def project_out(access: ProjectAccess, last_run: Run | None = None, *, active_ru
         role=access.role,
         capture_owner=p.capture_owner,
         ai_redact_credentials=p.ai_redact_credentials,
+        context_versions=p.context_versions,
+        context_semantic=p.context_semantic,
+        context_semantic_threshold=p.context_semantic_threshold,
         created_at=p.created_at,
         updated_at=p.updated_at,
         last_run=RunBrief.model_validate(last_run) if last_run else None,
@@ -170,7 +173,7 @@ def put_ai_settings(
     """Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o
     editor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo."""
     access = service.get_access(db, project_id, user, min_role="editor")
-    service.update_ai_settings(db, access, redact_credentials=body.ai_redact_credentials, actor=user, ctx=ctx)
+    service.update_ai_settings(db, access, body.model_dump(exclude_none=True), actor=user, ctx=ctx)
     return get_project(project_id, user, db)
 
 

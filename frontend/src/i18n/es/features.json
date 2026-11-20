@@ -493,14 +493,21 @@
     "duplicates": "Duplicados",
     "context": "Contexto",
     "ai": {
-      "title": "IA del proyecto",
+      "title": "Contexto e IA del proyecto",
       "redact": "Redactar credenciales",
       "redactHelp": "Antes de enviar texto a la IA y de publicar el sitio del contexto, las contraseñas, tokens y claves que aparezcan se sustituyen por «REDACTADO». Activado por defecto. Se aplica desde la siguiente construcción.",
       "redactOff": "Desactivado: las credenciales que haya en los documentos se envían tal cual a la IA y se publican en el sitio.",
       "readOnly": "El destino es de solo lectura: este ajuste no se puede cambiar.",
       "confirmTitle": "¿Desactivar la redacción?",
       "confirm": "Las contraseñas, tokens y claves de los documentos se enviarán tal cual al servicio de IA y aparecerán en el sitio del contexto. Hazlo solo si el servicio de IA y el sitio son de confianza para esos datos.",
-      "confirmButton": "Desactivar"
+      "confirmButton": "Desactivar",
+      "versions": "Versiones de un mismo documento",
+      "versionsHelp": "Documentos con marcador de versión en el nombre («v1.2», «rev2», «versión 3»…) en la misma carpeta. Se aplica desde la siguiente construcción.",
+      "versionModes": {
+        "mark": "Marcar la vigente (todas entran en el contexto)",
+        "current_only": "Solo la vigente (las antiguas quedan fuera)",
+        "all": "Todas, sin marcar (como antes de la 2.0)"
+      }
     }
   },
   "runs": {
@@ -1121,7 +1128,9 @@
       "kinds": {
         "added": "Entra",
         "removed": "Sale",
-        "reclassified": "Cambia"
+        "reclassified": "Cambia",
+        "superseded": "Versión antigua",
+        "excluded": "Excluido por una persona"
       },
       "none": "sin clasificar",
       "older": "Hay {{count}} construcciones más antiguas en el Excel."
@@ -1302,6 +1311,26 @@
       "unknownTitle": "Sin huella de los originales",
       "unknown_one": "{{count}} documento del contexto no tiene huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambia.",
       "unknown_other": "{{count}} documentos del contexto no tienen huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambian."
+    },
+    "versions": {
+      "title": "Versiones de un documento",
+      "intro": "Grupos de versiones del mismo documento en la última construcción. La vigente es la versión más alta, salvo que una persona elija otra.",
+      "mode": {
+        "mark": "Se marcan las antiguas (todas están en el contexto).",
+        "current_only": "Solo la vigente entra en el contexto.",
+        "all": "Las versiones no se tienen en cuenta."
+      },
+      "current": "Vigente",
+      "confirmed": "confirmada",
+      "proposed": "propuesta",
+      "setCurrent": "Marcar como vigente",
+      "setCurrentLabel": "Marcar {{path}} como vigente",
+      "pending": "Decidido: se aplica al reconstruir.",
+      "superseded_one": "{{count}} versión antigua fuera del contexto",
+      "superseded_other": "{{count}} versiones antiguas fuera del contexto",
+      "old": "Versión antigua",
+      "oldTitle": "Hay una versión más reciente de este documento",
+      "onlyCurrent": "Solo vigentes"
     }
   },
   "templates": {

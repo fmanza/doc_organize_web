@@ -43,6 +43,8 @@ from app.jobs.operations.common import WORKER_CONTEXT, require_project
 
 #: Documentos fallidos que se guardan en el resultado del run (el total va en ``failed``).
 MAX_FAILED_SHOWN: Final = 100
+#: Versiones antiguas (``current_only``) que se guardan con su ruta (el total va en ``superseded_count``).
+MAX_SUPERSEDED: Final = 500
 #: Filas de ``context_documents`` por ``INSERT``.
 BATCH: Final = 1000
 
@@ -81,7 +83,8 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "document_key": doc.document_key,
         "source_sha256": _cut(doc.source_sha256, 64),
         "version": _cut(doc.version, 64),
-        "version_group": doc.version_group,
+        # La clave del grupo lleva la carpeta del contenedor: se guarda sin ella, como el resto de rutas.
+        "version_group": namer.text(doc.version_group) if doc.version_group else None,
         "is_current": doc.is_current,
     }
 
@@ -163,6 +166,18 @@ def _project_rows(
                 decisions_applied=outcome.decisions_applied,
                 stale_decisions=outcome.stale_decisions,
                 orphan_decisions=outcome.orphan_decisions,
+                versions_mode=outcome.versions_mode,
+                version_groups=[
+                    {
+                        **group,
+                        "key": namer.text(group["key"]),
+                        "members": [namer.display(path) for path in group["members"]],
+                        "current": namer.display(group["current"]),
+                    }
+                    for group in outcome.version_groups
+                ],
+                superseded=[namer.display(path) for path in outcome.superseded[:MAX_SUPERSEDED]],
+                superseded_count=len(outcome.superseded),
                 built_by_run_id=ctx.run_id,
                 built_at=utcnow(),
             )

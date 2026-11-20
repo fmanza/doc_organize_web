@@ -92,6 +92,22 @@ construcción, la página Contexto lo avisa con los recuentos, unos ejemplos y �
 originales: la comparación usa la huella que guarda la caché del escaneo, así que solo es tan reciente como el último
 escaneo. Los contextos construidos antes de la 2.0 no tienen huella de los originales: reconstruye una vez.
 
+### Versiones de un documento (2.0)
+
+Los documentos con marcador de versión en el nombre (`v1.2`, `rev2`, `versión 3`, `ed. 2`; las fechas no cuentan), en
+la misma carpeta, con la misma extensión y el resto del nombre igual, son **versiones** del mismo documento. Qué hacer
+con ellas se elige en «Contexto e IA del proyecto» (página del proyecto; propietario o editor, se aplica al
+reconstruir):
+
+- **Marcar la vigente** (por defecto): todas entran en el contexto y las antiguas llevan la insignia «Versión
+  antigua»; «Solo vigentes» las oculta de la lista.
+- **Solo la vigente**: las antiguas quedan fuera del contexto (la tarjeta «Versiones de un documento» las lista) y el
+  historial lo anota como «Versión antigua», no como documento que sale.
+- **Todas, sin marcar**: como antes de la 2.0.
+
+La vigente es la versión más alta, salvo que una persona elija otra con «Marcar como vigente» (en la tarjeta de
+versiones o en «Revisar clasificación»), que se guarda como decisión y se aplica al reconstruir.
+
 ### Ejes: filtros, insignias y evidencia (2.0)
 
 Con doc_organize 2.0 la taxonomía es una lista de **ejes**: el dominio (organiza las carpetas), el tipo de material y

@@ -165,6 +165,7 @@ def list_documents(
     language: str | None = None,
     keyword: str | None = None,
     axes: dict[str, list[str]] | None = None,
+    current_only: bool = False,
     limit: int,
     offset: int,
     listing: ListQuery | None = None,
@@ -199,6 +200,8 @@ def list_documents(
         where.append(_keywords_contain(keyword))
     for axis, slugs in (axes or {}).items():
         where.append(_axis_condition(project.id, axis, slugs))
+    if current_only:  # W6: las versiones antiguas (``is_current`` falso) fuera; sin grupo, cuentan como vigentes
+        where.append(or_(ContextDocument.is_current.is_(None), ContextDocument.is_current.is_(True)))
     listing = listing or ListQuery()
     query = apply_search(
         select(ContextDocument).where(*where),

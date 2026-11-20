@@ -259,6 +259,11 @@ class ContextOutcome:
     decisions_applied: int = 0
     stale_decisions: list[dict[str, Any]] = field(default_factory=list)
     orphan_decisions: list[dict[str, Any]] = field(default_factory=list)
+    #: W6 (F5): modo de versiones, grupos (rutas del contenedor: el job las hace relativas) y versiones antiguas fuera
+    #: del contexto (``current_only``).
+    versions_mode: str | None = None
+    version_groups: list[dict[str, Any]] = field(default_factory=list)
+    superseded: list[str] = field(default_factory=list)
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
@@ -958,6 +963,18 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int, roots: l
         decisions_applied=int(context.decisions_applied),
         stale_decisions=[_issue(issue) for issue in context.stale_decisions],
         orphan_decisions=[_issue(issue) for issue in context.orphan_decisions],
+        versions_mode=str(context.versions_mode),
+        version_groups=[
+            {
+                "key": str(group.key),
+                "members": list(group.members),
+                "versions": list(group.versions),
+                "current": str(group.current),
+                "confirmed": bool(group.confirmed),
+            }
+            for group in context.version_groups
+        ],
+        superseded=list(context.superseded_documents),
     )
 
 

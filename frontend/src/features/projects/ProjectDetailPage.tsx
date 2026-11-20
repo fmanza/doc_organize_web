@@ -8,6 +8,7 @@ import {
   Loader,
   Modal,
   SimpleGrid,
+  Select,
   Stack,
   Switch,
   Text,
@@ -123,6 +124,21 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
           {t('projects.ai.redactOff')}
         </Text>
       )}
+      <Select
+        mt="md"
+        label={t('projects.ai.versions')}
+        description={t('projects.ai.versionsHelp')}
+        value={project.context_versions}
+        allowDeselect={false}
+        disabled={!writable || update.isPending}
+        data={(['mark', 'current_only', 'all'] as const).map((value) => ({
+          value,
+          label: t(`projects.ai.versionModes.${value}`),
+        }))}
+        onChange={(value) =>
+          value && update.mutate({ context_versions: value as ProjectOut['context_versions'] })
+        }
+      />
       {!writable && (
         <Text size="xs" c="dimmed" mt="xs">
           {t('projects.ai.readOnly')}

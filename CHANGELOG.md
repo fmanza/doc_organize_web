@@ -32,6 +32,15 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Versiones de un documento** (W6, F5): «Contexto e IA del proyecto» elige `context_versions` (`mark` por defecto,
+  D8; `current_only`; `all`), que se pasa a `build(versions=)`. `PUT /projects/{id}/ai-settings` pasa a admitir cambios
+  parciales de `ai_redact_credentials`, `context_versions`, `context_semantic` y `context_semantic_threshold` (columna
+  nueva, migración `0021`), auditados con el valor anterior y el nuevo de cada uno. La construcción guarda el modo, los
+  grupos de versiones (rutas relativas) y las versiones antiguas fuera del contexto; `GET …/context` los devuelve y
+  cada documento trae `version`, `version_group` e `is_current`; filtro `current=true`. Página: tarjeta «Versiones de
+  un documento» con «Marcar como vigente» (`set_current_version`), insignia «Versión antigua», «Solo vigentes» y los
+  cambios `superseded` y `excluded` en el historial. La clave del grupo se guarda sin la ruta del contenedor (también en
+  `context_documents.version_group`).
 - **Calidad** (W5, G3): referencia en Excel (`PUT`/`DELETE …/context/quality/gold`, cuerpo `.xlsx` de hasta 5 MB con
   hoja, columna del documento y `eje:columna`; comprobada con `load_gold_xlsx`, guardada en el volumen de datos,
   auditada sin el contenido) o las decisiones del proyecto (`gold_from_decisions`). Runs `context_evaluate`
