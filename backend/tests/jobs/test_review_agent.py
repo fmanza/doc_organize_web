@@ -55,6 +55,7 @@ def test_the_reviewer_stores_proposals_without_applying_them(
     (proposal,) = page["items"]
     assert proposal["document_key"] == RECETA and proposal["axes"] == {"domains": ["informes"]}
     assert proposal["document"]["path"] == "receta.txt"
+    assert proposal["proposal_key"] and len(proposal["proposal_key"]) == 32  # ReviewProposal.id (rc2)
     assert user_client.get(f"{base}/review").json()["counts"]["reviewer_proposal"] == 1
     assert user_client.get(f"{base}/decisions").json()["decisions"] == []  # no se aplica sola (D14)
     assert db.scalars(select(AuditEntry).where(AuditEntry.action == "project.review_agent")).one()

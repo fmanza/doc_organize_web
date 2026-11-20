@@ -3,7 +3,7 @@
 Solo se llaman desde el subproceso de un job (leen los ``.json`` de todos los documentos o el ``context.json``).
 doc_organize se importa dentro de cada función (G15).
 
-Firmas verificadas en el tag ``v2.0.0rc1``::
+Firmas verificadas en el tag ``v2.0.0rc2``::
 
     RulesCorpus.load(documents, *, roots=None) -> RulesCorpus
     check_taxonomy_rules(manifest, corpus, *, threshold=0.5) -> TaxonomyRulesReport (axes, documents, unreadable;
@@ -59,12 +59,11 @@ def _manifest(markdown: str) -> Any:
 
 
 def _report(report: Any) -> dict[str, Any] | None:
-    """``TaxonomyRulesReport`` en JSON (con su tabla en Markdown), o ``None``."""
+    """``TaxonomyRulesReport`` en JSON (con su tabla en Markdown y, desde la rc2, ``coverage`` en cada eje), o ``None``."""
     if report is None:
         return None
     data: dict[str, Any] = report.model_dump(mode="json")
     data["markdown"] = report.to_markdown()
-    data["coverage"] = {axis.axis: axis.coverage for axis in report.axes}
     return data
 
 
@@ -136,11 +135,19 @@ def _with_cancel(is_cancelled: Callable[[], bool]) -> tuple[Any, threading.Event
     return token, stop
 
 
+def _step_callback(on_step: Callable[[int, int], None] | None) -> Callable[[Any, int], None] | None:
+    """``AgentRunner.run(on_step=)`` (rc2) → ``on_step(pasos hechos, tope)``."""
+    if on_step is None:
+        return None
+    return lambda step, max_steps: on_step(int(step.index) + 1, int(max_steps))
+
+
 def design_taxonomy(
     request: DesignRequest,
     *,
     on_progress: Callable[[str], None],
     is_cancelled: Callable[[], bool],
+    on_step: Callable[[int, int], None] | None = None,
 ) -> dict[str, Any]:
     """Pide al ``TaxonomyDesignAgent`` una propuesta (tarea ``agent``). **No guarda nada**: la propuesta, el mejor
     borrador comprobado y los informes por reglas van en el resultado para que una persona los revise.
@@ -165,7 +172,13 @@ def design_taxonomy(
             agent = TaxonomyDesignAgent(
                 llm, prompts=PromptRegistry(str(request.output_root)), limits=limits, threshold=request.threshold
             )
-            return await agent.propose(corpus, base=base, instructions=request.instructions, cancel_token=token)
+            return await agent.propose(
+                corpus,
+                base=base,
+                instructions=request.instructions,
+                cancel_token=token,
+                on_step=_step_callback(on_step),
+            )
 
     on_progress("agent_run")
     try:
@@ -224,7 +237,12 @@ def _load_context(output_root: Path, name: str, created_at: Any) -> Any:
         raise DocOrganizeOperationError("No se pudo leer el contexto del proyecto.") from exc
 
 
-def review(request: ReviewRequest, *, is_cancelled: Callable[[], bool]) -> dict[str, Any]:
+def review(
+    request: ReviewRequest,
+    *,
+    is_cancelled: Callable[[], bool],
+    on_step: Callable[[int, int], None] | None = None,
+) -> dict[str, Any]:
     """Pide al ``ReviewAgent`` (tarea ``agent``) propuestas para los primeros ``max_items`` documentos de la cola de
     revisión. Las propuestas **no se aplican** (D14): van en el resultado para guardarlas como pendientes.
 
@@ -250,6 +268,7 @@ def review(request: ReviewRequest, *, is_cancelled: Callable[[], bool]) -> dict[
                 roots=scan_roots(request.folders),
                 instructions=request.instructions,
                 cancel_token=token,
+                on_step=_step_callback(on_step),
             )
 
     try:

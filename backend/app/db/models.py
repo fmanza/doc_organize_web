@@ -760,6 +760,8 @@ class ContextReviewProposal(Base):
     rationale: Mapped[str | None] = mapped_column(Text, default=None)
     evidence: Mapped[str | None] = mapped_column(Text, default=None)
     source_sha256: Mapped[str | None] = mapped_column(String(64), default=None)
+    #: ``ReviewProposal.id`` de doc_organize (rc2): identifica la propuesta fuera de la web (trazabilidad).
+    proposal_key: Mapped[str | None] = mapped_column(String(64), default=None)
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)

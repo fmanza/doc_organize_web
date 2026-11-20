@@ -11,7 +11,7 @@ tag ``v0.11.0``::
     write_scan_errors_xlsx(destination, entries, history, *, on_progress, cancel_token) -> int
     load_context_history(history_logs) -> list[ContextBuildRecord]                       # 1.5.0
     write_context_history_xlsx(destination, history, *, on_progress, cancel_token) -> int  # 1.5.0
-    write_context_documents_xlsx(destination, context, *, on_progress, cancel_token) -> int  # 2.0.0rc1 (D4)
+    write_context_documents_xlsx(destination, context, *, roots, on_progress, cancel_token) -> int  # 2.0.0rc2 (D4)
 
 Las escrituras son síncronas y borran el fichero parcial si se cancelan (``OperationCancelledError``). La caché guarda
 rutas **absolutas** del contenedor: antes de escribir nada, cada ``file_path`` pasa por ``ExportRequest.rename`` y cada
@@ -65,6 +65,8 @@ class ExportRequest:
     #: Nombre y fecha de alta del proyecto (para leer su contexto con ``ContextRegistry``).
     project_name: str = ""
     created_at: datetime | None = None
+    #: Raíces de escaneo para las claves de los documentos (``<carpeta>/<ruta>``; Excel del contexto, rc2).
+    roots: tuple[str, ...] = ()
     #: Entradas ya cargadas (la vista previa y la escritura del ZIP leen las cachés una sola vez).
     loaded: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
@@ -281,31 +283,12 @@ def load_context(request: ExportRequest) -> Any:
         raise ContextMissingError() from None
 
 
-def relative_context(context: Any, rename: Callable[[str], str]) -> Any:
-    """Copia de ``context`` con las rutas de los originales relativas a su carpeta de origen (``2024/a.pdf``): los
-    ficheros que salen de la app no llevan rutas del contenedor."""
-    domains = [
-        domain.model_copy(
-            update={
-                "documents": [
-                    document.model_copy(update={"source_path": rename(document.source_path)})
-                    for document in domain.documents
-                ]
-            }
-        )
-        for domain in context.domains
-    ]
-    unclassified = [
-        detail.model_copy(update={"source_path": rename(detail.source_path)}) for detail in context.unclassified_details
-    ]
-    return context.model_copy(update={"domains": domains, "unclassified_details": unclassified})
-
-
 def write_context_documents_xlsx(
     destination: Path, request: ExportRequest, *, on_progress: ProgressFn, is_cancelled: Callable[[], bool]
 ) -> int:
-    """Excel del contexto (2.0, D4: hojas ``Documentos`` y ``Ejes``, una columna por eje que etiqueta); devuelve las
-    filas escritas. Las rutas de los originales van relativas a su carpeta de origen.
+    """Excel del contexto (D4: hojas ``Documentos``, ``Ejes`` y, desde la rc2, ``Valores``; una columna por eje que
+    etiqueta, y grupo de versiones, versión y vigente); devuelve las filas escritas. Con ``roots=`` (rc2) las rutas van
+    como la clave relativa de cada documento (``<carpeta>/<ruta>``), sin rutas del contenedor.
 
     Raises:
         ContextMissingError: Sin contexto construido.
@@ -313,9 +296,10 @@ def write_context_documents_xlsx(
     """
     from doc_organize.export import write_context_documents_xlsx as _write
 
-    context = relative_context(load_context(request), request.rename)
+    context = load_context(request)
+    roots = list(request.roots) or None
     rows: int = _run(
-        lambda token, progress: _write(destination, context, on_progress=progress, cancel_token=token),
+        lambda token, progress: _write(destination, context, roots=roots, on_progress=progress, cancel_token=token),
         on_progress=on_progress,
         is_cancelled=is_cancelled,
     )

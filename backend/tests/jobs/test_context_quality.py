@@ -158,6 +158,8 @@ def test_dry_run_compares_without_saving(
     assert result["baseline"]["axes"]["domains"]["labelled"] == 3
     assert result["candidate"]["axes"]["domains"]["labelled"] == 3 and result["documents"] == 3
     assert result["ai"]["calls"] <= 1 and result["ai"]["model"] == "modelo-candidato"
+    assert result["changes_total"] == len(result["changes"]) >= 1  # rc2: cambios frente al contexto actual
+    assert {"document_key", "axis", "before", "after"} <= set(result["changes"][0])
     sent = proxy.sent("classify")
     assert all(r.body["model"] == "modelo-candidato" for r in sent)
     assert "documento de cocina sintético" in proxy.text_sent()  # el perfil candidato llega al prompt

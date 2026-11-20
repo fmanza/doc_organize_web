@@ -27,13 +27,13 @@ interface AxisReport {
   documents: number;
   covered: number;
   conflicts: number;
+  coverage: number;
   empty_entries: string[];
   unused_keywords: Record<string, string[]>;
 }
 interface RulesReport {
   axes: AxisReport[];
   documents: number;
-  coverage: Record<string, number>;
   markdown: string;
 }
 interface DesignResult {
@@ -83,8 +83,8 @@ function RulesTable({ before, after }: { before: RulesReport | null; after: Rule
           {report.axes.map((axis) => (
             <Table.Tr key={axis.axis}>
               <Table.Td>{axis.axis}</Table.Td>
-              {after && before && <Table.Td>{pct(before.coverage[axis.axis])}</Table.Td>}
-              <Table.Td>{pct(report.coverage[axis.axis])}</Table.Td>
+              {after && before && <Table.Td>{pct(previous[axis.axis]?.coverage)}</Table.Td>}
+              <Table.Td>{pct(axis.coverage)}</Table.Td>
               {after && before && <Table.Td>{previous[axis.axis]?.conflicts ?? '—'}</Table.Td>}
               <Table.Td>{axis.conflicts}</Table.Td>
               <Table.Td>{axis.empty_entries.join(', ') || '—'}</Table.Td>

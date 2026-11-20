@@ -53,6 +53,8 @@ const QUALITY = {
       candidate: { ...REPORT, axes: { domains: { ...REPORT.axes.domains, accuracy: 1 } } },
       documents: 3,
       ai: { calls: 1, prompt_tokens: 100, completion_tokens: 20, model: 'modelo-prueba' },
+      changes_total: 1,
+      changes: [{ document_key: '2025/receta.txt', axis: 'domains', before: [], after: ['informes'] }],
     },
   },
 };
@@ -81,6 +83,8 @@ describe('Calidad', () => {
     const compare = screen.getByRole('region', { name: 'Comparar cambios' });
     expect(within(compare).getByText('100 %')).toBeInTheDocument();
     expect(within(compare).getByText('+33')).toBeInTheDocument();
+    expect(within(compare).getByText('1 cambio de valor frente al contexto actual')).toBeInTheDocument();
+    expect(within(compare).getByText('2025/receta.txt')).toBeInTheDocument();
 
     await user.click(within(evaluation).getByRole('button', { name: 'Evaluar' }));
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));

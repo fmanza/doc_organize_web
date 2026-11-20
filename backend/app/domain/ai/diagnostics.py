@@ -27,9 +27,9 @@ from app.integrations.doc_organize.ai import TaskKey
 from app.integrations.doc_organize.diagnostics import AiEndpointSpec, DiagnosticsReport, run_diagnostics
 
 MIN_INTERVAL_SECONDS: Final = 30.0
-#: Tareas cuyo modelo se prueba con ``check_ai`` (``check_environment`` pide una respuesta de chat): las de clasificar,
-#: describir y diseñar la taxonomía siempre (con su alias si no tienen modelo) y la de agentes si tiene uno. Los
-#: embeddings no se prueban así (no son chat); se prueban con «Probar el modelo» de Configuración IA.
+#: Tareas cuyo modelo se prueba con ``check_ai``: las de clasificar, describir y diseñar la taxonomía siempre (con su
+#: alias si no tienen modelo) y las de agentes y embeddings si tienen uno propio, como hace doc_organize con las variables
+#: de entorno. Los embeddings se prueban pidiendo un vector (``AiEndpoint(kind="embedding")``, 2.0.0rc2).
 ALWAYS: Final[tuple[TaskKey, ...]] = ("classify", "enrich", "taxonomy_design")
 
 _lock = threading.Lock()
@@ -47,14 +47,14 @@ def _endpoints(db: Session, settings: Settings) -> list[AiEndpointSpec]:
     except AiNotConfiguredError:
         return []
     tasks: list[TaskKey] = list(ALWAYS)
-    if connection.values.get("model_agent"):
-        tasks.append("agent")
+    tasks += [task for task in ("agent", "embed") if connection.values.get(f"model_{task}")]
     return [
         AiEndpointSpec(
             name=task,
             base_url=connection.values["base_url"],
             virtual_key=connection.values.get(f"virtual_key_{task}") or connection.values["virtual_key"],
             model=connection.model_for(task),
+            kind="embedding" if task == "embed" else "chat",
         )
         for task in tasks
     ]

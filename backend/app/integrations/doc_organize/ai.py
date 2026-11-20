@@ -7,7 +7,7 @@ migración ``0016``) y construye aquí el ``AiSettings``; nunca usa ``settings_f
 de variables de 1.x (``legacy_variables``) para avisar de las que ya no se leen (D15, U17). doc_organize se importa
 **dentro** de cada función (G15).
 
-Firmas verificadas en el tag ``v2.0.0rc1``::
+Firmas verificadas en el tag ``v2.0.0rc2``::
 
     AiSettings(base_url, virtual_key, tasks: dict[AiTask, TaskSettings] = {}, timeout_s=120.0, retries=0,
         retry_backoff_s=0.5, rate_limit_retries=3, max_retry_wait_s=60.0, redact_credentials=True, tags=[])

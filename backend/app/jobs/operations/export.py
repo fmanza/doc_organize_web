@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 import shutil
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Final
 
@@ -30,6 +31,7 @@ from app.integrations.doc_organize.export import ProgressFn
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations._files import project_paths
 from app.jobs.operations.common import require_project
+from app.jobs.operations.context import context_folders
 
 EXPORT_DIR: Final = "export"
 #: Margen de espacio libre que se deja en el workspace al escribir un ZIP.
@@ -130,6 +132,9 @@ def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None)
     """Escribe el Excel pedido (``XLSX_KINDS``) como artefacto del run."""
     project = require_project(project)
     request = _request(ctx, project)
+    if params.kind == "context_documents":
+        _, folders, _ = context_folders(ctx, project)
+        request = replace(request, roots=tuple(library.context.scan_roots(folders)))
     suffix, write = XLSX_KINDS[params.kind]
     name = _file_name(project, suffix)
     target: Path = ctx.workdir / EXPORT_DIR / name

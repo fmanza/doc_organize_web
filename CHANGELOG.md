@@ -10,6 +10,19 @@ doc_organize 2.0.0.
 
 ### Changed
 
+- **doc_organize 2.0.0rc2** (antes 2.0.0rc1), con lo que pidió la web en W4–W8 y sin los apaños de la rc1:
+  - Excel del contexto con `write_context_documents_xlsx(roots=)`: claves relativas sin copiar el contexto, columnas
+    «Grupo de versiones», «Versión» y «Vigente» y hoja «Valores» (quién asignó cada valor, confianza y cita).
+  - Sitio sin conexión con `SiteGenerator.generate(work_dir=)`: la librería copia la carpeta reorganizada al workspace
+    del run y construye ahí; se quitan la copia propia, el traslado de `markdown_path` y la limpieza de los problemas.
+  - Agentes: progreso por paso (`on_step`) en el diseñador y el revisor; la propuesta guarda `ReviewProposal.id`
+    (`proposal_key`, migración `0023`, con bajada); la cobertura del informe por reglas va en cada eje (`coverage`),
+    sin el diccionario que añadía la web.
+  - «Comparar cambios» pasa el contexto actual como `baseline` y el resultado trae `changes` (hasta 200) y
+    `changes_total`: qué documentos cambian de valor y en qué eje, también en la página.
+  - Diagnóstico: con modelo propio, la tarea `embed` se comprueba pidiendo un vector (`AiEndpoint(kind="embedding")`).
+  - Construcción con semántica: el resultado añade `index_vectors` e `index_bytes` (`embedding_index_info`).
+  - La clave de los grupos de versiones ya es relativa en la librería (se ve igual en la web).
 - **doc_organize 2.0.0rc1** (antes 2.0.0a2): plazo y reintentos por tarea (`TaskSettings.timeout_s`/`retries`: el
   borrador y los agentes usan los «largos», `ai_draft_timeout_seconds`/`ai_draft_retries`, sin cliente aparte) y
   presupuesto por tarea (`TaskSettings.max_documents`, que la librería combina con `ai_max_documents`: clasificar y

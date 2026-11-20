@@ -76,6 +76,7 @@ def test_ai_check_uses_each_task_model_and_key_without_leaking(
                 "virtual_key": KEY,
                 "model_enrich": "descriptor",
                 "virtual_key_enrich": "sk-enrich-9i8u",
+                "model_embed": "vectores",
             }
         },
     )
@@ -94,11 +95,12 @@ def test_ai_check_uses_each_task_model_and_key_without_leaking(
     response = admin_api.post(URL, json={"check_ai": True})
 
     assert response.status_code == 200, response.text
-    endpoints = {e.name: (e.model, e.virtual_key) for e in seen["endpoints"]}
+    endpoints = {e.name: (e.model, e.virtual_key, e.kind) for e in seen["endpoints"]}
     assert endpoints == {
-        "classify": ("doc-organize-classify", KEY),
-        "enrich": ("descriptor", "sk-enrich-9i8u"),
-        "taxonomy_design": ("doc-organize-taxonomy-design", KEY),
+        "classify": ("doc-organize-classify", KEY, "chat"),
+        "enrich": ("descriptor", "sk-enrich-9i8u", "chat"),
+        "taxonomy_design": ("doc-organize-taxonomy-design", KEY, "chat"),
+        "embed": ("vectores", KEY, "embedding"),  # rc2: con modelo propio, se pide un vector
     }
     text = json.dumps(response.json())
     assert KEY not in text and BASE_URL not in text and str(migrated.data_dir) not in text

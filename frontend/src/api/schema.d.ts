@@ -3926,6 +3926,11 @@ export interface components {
             evidence?: string | null;
             /** Id */
             id: number;
+            /**
+             * Proposal Key
+             * @description ``ReviewProposal.id`` de doc_organize
+             */
+            proposal_key?: string | null;
             /** Rationale */
             rationale?: string | null;
             /** Run Id */

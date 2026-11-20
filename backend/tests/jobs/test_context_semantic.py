@@ -59,6 +59,8 @@ def test_semantic_fills_empty_axes_with_embeddings(
     assert embeddings and {r.body["model"] for r in embeddings} == {"embebedor-sintetico"}
     assert proxy.sent("classify") == []  # sin alcance de IA: solo embeddings
     assert result["semantic"]["enabled"] is True and result["semantic"]["embedded"] > 0
+    assert result["semantic"]["index_vectors"] >= result["semantic"]["embedded"] > 0  # rc2: embedding_index_info
+    assert result["semantic"]["index_bytes"] > 0
     values = db.scalars(
         select(ContextDocumentAxisValue).where(
             ContextDocumentAxisValue.project_id == semantic.id, ContextDocumentAxisValue.classified_by == "semantic"

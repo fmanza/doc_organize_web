@@ -59,6 +59,7 @@ def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | 
             request,
             on_progress=lambda phase: ctx.progress(phase, 0, None),
             is_cancelled=lambda: ctx.cancelled,
+            on_step=lambda done, total: ctx.progress("agent_run", done, total),
         )
     except library.NoDocumentsError:
         raise JobFailed(
@@ -134,7 +135,11 @@ def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Proje
     ctx.progress("agent_run", 0, None)
     ctx.check_cancelled()
     try:
-        result = library.review(request, is_cancelled=lambda: ctx.cancelled)
+        result = library.review(
+            request,
+            is_cancelled=lambda: ctx.cancelled,
+            on_step=lambda done, total: ctx.progress("agent_run", done, total),
+        )
     except DocOrganizeOperationError as exc:
         raise JobFailed("ai_error", namer.text(str(exc))) from None
     if result["stop_reason"] == "cancelled":
@@ -156,6 +161,7 @@ def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Proje
                 rationale=item.get("rationale") or None,
                 evidence=item.get("evidence") or None,
                 source_sha256=item.get("source_sha256"),
+                proposal_key=str(item.get("id") or "")[:64] or None,
             )
             for item in proposals
         )
