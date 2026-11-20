@@ -1402,7 +1402,9 @@
               {
                 "enum": [
                   "rules",
-                  "ai"
+                  "semantic",
+                  "ai",
+                  "human"
                 ],
                 "type": "string"
               },

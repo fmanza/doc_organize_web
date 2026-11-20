@@ -5,6 +5,10 @@ el cliente único de doc_organize 2.0 (``LlmClient``):
   tarea sale de ``metadata.tags`` (``task:<tarea>``). ``taxonomy_design`` devuelve un borrador fijo; el resto, un JSON
   generado del propio esquema (en la clasificación, el primer valor del ``enum`` de cada eje). Con ``json_object`` (la
   caída de 2.0) responde lo mismo.
+- Con ``tools`` (agentes de la tarea ``agent``, 2.0): un guion fijo con ``tool_calls``. El diseñador de la taxonomía
+  (ofrece ``edit_draft``) hace ``overview`` → ``edit_draft`` (añade el dominio «Recetas») → ``finish``; el revisor (ofrece
+  ``propose_decision``) hace ``list_queue`` → ``propose_decision`` (excluir el primer documento de su cola) →
+  ``finish``. Los argumentos de ``finish`` salen de su esquema.
 - ``POST /embeddings``: vectores fijos deterministas.
 - ``GET /key/info``: gasto fijo de la clave.
 
@@ -38,8 +42,9 @@ def sample(schema: dict[str, Any]) -> Any:
     kind = schema.get("type")
     if "enum" in schema:
         return schema["enum"][0]
-    if isinstance(kind, list):
-        return None if "null" in kind else sample({**schema, "type": kind[0]})
+    if isinstance(kind, list):  # anulable: el primer tipo que no es null (así la IA da cita, `evidence`)
+        concrete = [item for item in kind if item != "null"]
+        return sample({**schema, "type": concrete[0]}) if concrete else None
     if kind == "object":
         properties = schema.get("properties", {})
         return {name: sample(properties[name]) for name in schema.get("required", list(properties))}
@@ -59,7 +64,60 @@ def sample(schema: dict[str, Any]) -> Any:
 _schemas: dict[str, dict[str, Any]] = {}
 
 
+#: Guion de cada agente, por la herramienta que lo distingue.
+SCRIPTS = {
+    "edit_draft": ["overview", "edit_draft", "finish"],
+    "propose_decision": ["list_queue", "propose_decision", "finish"],
+}
+RECIPES = {"axis": "domains", "action": "add", "slug": "recetas", "name": "Recetas", "keywords": ["receta"]}
+
+
+def _first_queue_key(messages: list[dict[str, Any]]) -> str:
+    """La primera clave de la cola en el último resultado de ``list_queue``."""
+    for message in reversed(messages):
+        if message.get("role") != "tool":
+            continue
+        try:
+            documents = json.loads(message.get("content") or "{}").get("documents") or []
+        except (ValueError, AttributeError):
+            continue
+        if documents:
+            return str(documents[0].get("key"))
+    return ""
+
+
+def _agent(body: dict[str, Any]) -> dict[str, Any]:
+    """El siguiente paso del guion como ``tool_calls`` (los agentes solo avanzan con herramientas)."""
+    tools = {tool["function"]["name"]: tool["function"].get("parameters") or {} for tool in body.get("tools") or []}
+    messages = body.get("messages") or []
+    made = sum(len(m.get("tool_calls") or []) for m in messages if m.get("role") == "assistant")
+    script = next((plan for marker, plan in SCRIPTS.items() if marker in tools), ["finish"])
+    name = script[min(made, len(script) - 1)]
+    if name not in tools:
+        name = "finish"
+    if name == "edit_draft":
+        arguments: Any = {"changes": [RECIPES]}
+    elif name == "propose_decision":
+        arguments = {
+            "document_key": _first_queue_key(messages),
+            "action": "exclude",
+            "rationale": "Propuesta del LiteLLM falso de los E2E.",
+        }
+    elif name == "finish":
+        arguments = sample(tools.get("finish") or {"type": "object", "properties": {}})
+    else:
+        arguments = {}
+    call = {"id": f"call_{made}", "type": "function", "function": {"name": name, "arguments": json.dumps(arguments)}}
+    message = {"role": "assistant", "content": None, "tool_calls": [call]}
+    return {
+        "choices": [{"message": message, "finish_reason": "tool_calls"}],
+        "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+    }
+
+
 def _answer(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    if body.get("tools"):
+        return 200, _agent(body)
     tags = (body.get("metadata") or {}).get("tags") or []
     task = next((tag.removeprefix("task:") for tag in tags if tag.startswith("task:")), "")
     response_format = body.get("response_format") or {}

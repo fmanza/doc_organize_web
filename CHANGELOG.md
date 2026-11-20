@@ -50,6 +50,12 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **E2E de la 2.0** (W9, Playwright, LiteLLM falso con `json_schema`, herramientas y embeddings) sobre la carpeta
+  sintética `w9` (`scripts/e2e_data.sh`, la misma en CI y en local): migración de un manifiesto 1.x al restaurarlo,
+  ajustes de IA por tarea, diagnóstico de los modelos (también embeddings), perfil y vista previa, contexto por ejes
+  con IA, semántica y versiones (evidencia y procedencia en la página), frescura, revisar clasificación, Calidad,
+  revisor, auditor y diseñador, y las tres entregas descargadas con su SHA-256 y sin la credencial sintética en las
+  páginas. El LiteLLM falso responde a los agentes con un guion de `tool_calls` y da cita (`evidence`).
 - **Sitio sin conexión y paquete para IA** (W8, F3/F7): runs `export_site` (`SiteGenerator.generate(offline=True,
   llms_txt=, redact_credentials=<ajuste del proyecto>)`, `check_site_offline` y `write_site_zip`, reproducible) y
   `export_ai_bundle` (`write_ai_context_bundle` con `include_text`, `current_only`, `redact`, `max_file_chars`,
@@ -165,6 +171,11 @@ doc_organize 2.0.0.
   `config.db` (sube a `head`, lee todos los modelos, baja y compara las filas tabla a tabla sin imprimir valores).
 - LiteLLM falso para los tests (`backend/tests/fake_litellm.py`): exige `json_schema` estricto y valida cada
   respuesta contra el esquema recibido, simula modelos sin `json_schema`, herramientas, embeddings y `/key/info`.
+
+### Fixed
+
+- `GET …/context/documents` respondía 500 con un documento cuyo dominio asignó la semántica (`classified_by` =
+  `semantic`, W6): el esquema solo admitía `rules` y `ai`.
 
 ## [1.9.1] - 2026-11-18
 
