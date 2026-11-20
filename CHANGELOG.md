@@ -37,6 +37,14 @@ doc_organize 2.0.0.
 
 ### Added
 
+- **Diseñar taxonomía con IA** (W7, M8): run `taxonomy_agent` con `TaxonomyDesignAgent` (tarea `agent`, plazo largo
+  por tarea, tope de pasos de 1 a 60, cancelación con `CancelToken`) a partir del manifiesto, una plantilla o desde
+  cero, con indicaciones; **no guarda nada**: el resultado trae la propuesta, el último borrador si no terminó, el
+  mejor borrador comprobado si difiere, los informes por reglas de partida y propuesta, `improves`, la justificación,
+  los pasos y los tokens; auditado (`project.taxonomy_agent`). Run `taxonomy_check` (`check_taxonomy_rules`, sin IA)
+  con el texto del editor. Panel en el bloque del manifiesto con «Cargar la propuesta en el editor» (se guarda a mano,
+  con `If-Match` y versiones), «Cargar el mejor borrador comprobado» y «Guardar como plantilla…» (`templates.manage`),
+  y «Comprobar manifiesto».
 - **Versiones de un documento** (W6, F5): «Contexto e IA del proyecto» elige `context_versions` (`mark` por defecto,
   D8; `current_only`; `all`), que se pasa a `build(versions=)`. `PUT /projects/{id}/ai-settings` pasa a admitir cambios
   parciales de `ai_redact_credentials`, `context_versions`, `context_semantic` y `context_semantic_threshold` (columna

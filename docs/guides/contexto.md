@@ -191,6 +191,22 @@ catálogo, «Construir» se desactiva hasta que guardes. Hay tres formas de part
 
 Si el editor ya tiene otro texto, cualquiera de las tres pide confirmación antes de sustituirlo.
 
+### Diseñar con IA y comprobar por reglas (2.0)
+
+En el bloque del manifiesto hay dos ayudas más, que **nunca guardan nada**:
+
+- **Diseñar taxonomía con IA (agente)**: un agente (tarea «Agentes» de «Modelos de IA») explora los documentos y
+  mejora el manifiesto, una plantilla o empieza de cero, con cambios pequeños que comprueba con las reglas contra
+  todos los documentos, siguiendo tus indicaciones si las das. El «Tope de pasos» limita las llamadas al modelo. Al
+  terminar enseña si mejora el de partida (cobertura y conflictos por eje, antes y después), su justificación y el
+  coste; «Cargar la propuesta en el editor» la pone en el editor para revisarla y guardarla (con sus versiones, como
+  cualquier cambio), y si un borrador anterior era mejor, «Cargar el mejor borrador comprobado». Quien gestiona las
+  plantillas puede «Guardar como plantilla…». Si no termina (tope o cancelación), se puede cargar su último borrador.
+  El texto de los documentos sale hacia el servicio de IA; queda en la auditoría.
+- **Comprobar manifiesto**: clasifica por reglas, sin IA, todos los documentos convertidos con el texto del editor
+  (aunque no esté guardado) y da por eje la cobertura, los conflictos (dos entradas casi empatadas) y las entradas
+  vacías.
+
 ### Versiones, restaurar y borrar (1.8.0)
 
 Cada cambio del manifiesto guarda antes **lo que había**, para poder deshacerlo: al guardar, al borrar, al restaurar
