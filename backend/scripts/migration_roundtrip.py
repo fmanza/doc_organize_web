@@ -58,46 +58,68 @@ def main(argv: list[str] | None = None) -> int:
     if not source.is_file():
         parser.error(f"no existe {source}")
 
-    # Windows: el engine de la aplicación puede retener el fichero un momento; el directorio se borra igualmente al salir.
-    with tempfile.TemporaryDirectory(prefix="dow-roundtrip-", ignore_cleanup_errors=True) as workdir:
-        data_dir = Path(workdir)
-        copy = data_dir / "config.db"
-        with (
-            closing(sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)) as src,
-            closing(sqlite3.connect(copy)) as dst,
-        ):
-            src.backup(dst)  # copia coherente aunque el original esté en modo WAL
-        start = _revision(copy)
-        if start is None:
-            print("La copia no tiene revisión de Alembic.")
-            return 2
-        before = _snapshot(copy)
+    # Windows: el engine de la aplicación puede retener el fichero un momento; ``_remove`` reintenta y, si no puede,
+    # dice qué carpeta borrar a mano (la copia puede llevar datos reales: no debe quedarse).
+    workdir = tempfile.mkdtemp(prefix="dow-roundtrip-")
+    try:
+        return _roundtrip(source, Path(workdir))
+    finally:
+        _remove(Path(workdir))
 
-        os.environ["DOW_DATA_DIR"] = str(data_dir)
-        os.environ.setdefault("DOW_ENVIRONMENT", "development")
-        sys.path.insert(0, str(BACKEND_DIR))
-        from alembic import command
-        from alembic.config import Config
-        from alembic.script import ScriptDirectory
 
-        from app.core.config import get_settings
+def _remove(path: Path) -> None:
+    import gc
+    import shutil
+    import time
 
-        get_settings.cache_clear()
-        config = Config(str(BACKEND_DIR / "alembic.ini"))
-        head = ScriptDirectory.from_config(config).get_current_head()
-        print(f"Revisión de partida: {start}; head: {head}")
-        command.upgrade(config, "head")
-        after_upgrade = _snapshot(copy)
-        print("Tras subir:")
-        for table, (count, _) in sorted(after_upgrade.items()):
-            mark = "" if table in before else "  (nueva)"
-            print(f"  {table}: {count} filas{mark}")
-        _check_models(copy)
-        command.downgrade(config, start)
-        after = _snapshot(copy)
-        from app.db.session import get_engine
+    for _ in range(10):
+        gc.collect()
+        shutil.rmtree(path, ignore_errors=True)
+        if not path.exists():
+            return
+        time.sleep(0.5)
+    print(f"AVISO: no se pudo borrar la copia temporal {path}: bórrala a mano.")
 
-        get_engine().dispose()
+
+def _roundtrip(source: Path, workdir: Path) -> int:
+    data_dir = Path(workdir)
+    copy = data_dir / "config.db"
+    with (
+        closing(sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)) as src,
+        closing(sqlite3.connect(copy)) as dst,
+    ):
+        src.backup(dst)  # copia coherente aunque el original esté en modo WAL
+    start = _revision(copy)
+    if start is None:
+        print("La copia no tiene revisión de Alembic.")
+        return 2
+    before = _snapshot(copy)
+
+    os.environ["DOW_DATA_DIR"] = str(data_dir)
+    os.environ.setdefault("DOW_ENVIRONMENT", "development")
+    sys.path.insert(0, str(BACKEND_DIR))
+    from alembic import command
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    head = ScriptDirectory.from_config(config).get_current_head()
+    print(f"Revisión de partida: {start}; head: {head}")
+    command.upgrade(config, "head")
+    after_upgrade = _snapshot(copy)
+    print("Tras subir:")
+    for table, (count, _) in sorted(after_upgrade.items()):
+        mark = "" if table in before else "  (nueva)"
+        print(f"  {table}: {count} filas{mark}")
+    _check_models(copy)
+    command.downgrade(config, start)
+    after = _snapshot(copy)
+    from app.db.session import get_engine
+
+    get_engine().dispose()
 
     differences = [table for table in before if before[table] != after.get(table)]
     extra = sorted(set(after) - set(before))

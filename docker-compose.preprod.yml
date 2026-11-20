@@ -1,0 +1,17 @@
+# Preproducción de la 2.0 (W9): una instancia AISLADA con su propio proyecto de Compose, volúmenes y puerto, sobre una
+# copia (o un montaje de solo lectura) de los documentos. Nunca junto a docker-compose.override.yml ni con los volúmenes
+# de producción. La levanta scripts/preprod/up.sh, que exige las variables:
+#   DOW_PREPROD_SOURCE   carpeta del host con los documentos (se monta :ro en /mnt/origen)
+#   DOW_PREPROD_OUT      carpeta del host, vacía, para las salidas (se monta en /mnt/salidas)
+x-preprod-volumes: &preprod-volumes
+  - data:/data
+  - workspace:/workspace
+  - models:/models:ro
+  - ${DOW_PREPROD_SOURCE:?Define DOW_PREPROD_SOURCE}:/mnt/origen:ro
+  - ${DOW_PREPROD_OUT:?Define DOW_PREPROD_OUT}:/mnt/salidas
+
+services:
+  web:
+    volumes: *preprod-volumes
+  worker:
+    volumes: *preprod-volumes
