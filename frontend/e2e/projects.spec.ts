@@ -36,7 +36,8 @@ test('crea un proyecto, prueba el motor y sigue el progreso en vivo', async ({ p
 
   // Detalle del run: progreso por SSE y fin con artefactos.
   await expect(page.getByRole('heading', { name: 'Prueba del motor' })).toBeVisible();
-  await expect(page.getByText(/de 5$/)).toBeVisible({ timeout: 30_000 });
+  // Con los E2E de 2.0 en paralelo, la prueba puede esperar en la cola del worker.
+  await expect(page.getByText(/de 5$/)).toBeVisible({ timeout: 180_000 });
   await expect(page.getByText('Terminada')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('link', { name: 'noop.txt' })).toBeVisible();
 

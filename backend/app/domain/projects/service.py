@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, cast
+from typing import Any, Final, cast
 
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -498,6 +498,48 @@ def update_project(
             target_type="project",
             target_id=project.id,
             details={"fields": changed},
+        )
+    db.commit()
+    return project
+
+
+#: Ajustes de IA y del contexto del proyecto que se cambian con ``update_ai_settings`` (W4, W6).
+AI_SETTINGS: Final = ("ai_redact_credentials", "context_versions", "context_semantic", "context_semantic_threshold")
+
+
+def update_ai_settings(
+    db: Session, access: ProjectAccess, changes: dict[str, Any], *, actor: User, ctx: RequestContext
+) -> Project:
+    """Ajustes de IA y del contexto del proyecto: redacción de credenciales (D7), versiones de un documento (F5, D8) y
+    sub-fase semántica con su umbral (G4, D13). ``changes``: solo los que cambian (``None`` = no se toca).
+
+    Propietario o editor (lo comprueba la API) con el destino de lectura y escritura, como construir el contexto.
+    Se audita con el valor anterior y el nuevo de cada uno; se aplican desde la siguiente construcción.
+
+    Raises:
+        DestinationReadOnlyError: El destino es de solo lectura.
+    """
+    from app.domain.context.errors import DestinationReadOnlyError
+
+    project = access.project
+    if project.destination_location.access != "rw":
+        raise DestinationReadOnlyError("La ubicación de destino es de solo lectura.")
+    changed: dict[str, list[Any]] = {}
+    for name in AI_SETTINGS:
+        value = changes.get(name)
+        if value is not None and value != getattr(project, name):
+            changed[name] = [getattr(project, name), value]
+            setattr(project, name, value)
+    if changed:
+        project.updated_at = utcnow()
+        audit.record(
+            db,
+            action=AuditAction.PROJECT_AI_SETTINGS_UPDATE,
+            ctx=ctx,
+            actor_id=actor.id,
+            target_type="project",
+            target_id=project.id,
+            details=changed,
         )
     db.commit()
     return project

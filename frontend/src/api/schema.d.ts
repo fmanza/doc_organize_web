@@ -33,7 +33,8 @@ export interface paths {
         };
         /**
          * Ver la configuración de IA
-         * @description Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
+         * @description Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de
+         *     entorno de doc_organize 1.x que siguen definidas y ya no se leen.
          */
         get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
         put?: never;
@@ -127,6 +128,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diagnóstico del entorno
+         * @description ``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,
+         *     GPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un
+         *     minuto; se audita sin detalles.
+         */
+        post: operations["run_diagnostics_api_v1_admin_diagnostics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/mounts": {
         parameters: {
             query?: never;
@@ -200,7 +223,8 @@ export interface paths {
         };
         /**
          * Familias de IA configuradas
-         * @description Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto.
+         * @description Si cada familia tiene sus campos obligatorios y si cada tarea se puede usar: activa la IA en la página de
+         *     contexto.
          */
         get: operations["get_ai_status_api_v1_ai_status_get"];
         put?: never;
@@ -555,6 +579,27 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/ai-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ajustes de IA del proyecto
+         * @description Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o
+         *     editor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo.
+         */
+        put: operations["put_ai_settings_api_v1_projects__project_id__ai_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context": {
         parameters: {
             query?: never;
@@ -569,6 +614,52 @@ export interface paths {
         get: operations["get_context_api_v1_projects__project_id__context_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decisiones de personas
+         * @description Vigentes (``.doc_organize/decisions.json``), historial de revocadas y las que la última construcción no aplicó
+         *     (desfasadas y huérfanas).
+         */
+        get: operations["get_decisions_api_v1_projects__project_id__context_decisions_get"];
+        put?: never;
+        /**
+         * Decidir sobre un documento
+         * @description Confirmar la clasificación, fijar los valores de un eje (del catálogo), sacar el documento del contexto o
+         *     marcarlo como versión vigente. Se aplica en la siguiente construcción; propietario o editor; auditado.
+         */
+        post: operations["post_decision_api_v1_projects__project_id__context_decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/decisions/{decision_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revocar una decisión
+         * @description La decisión deja de aplicarse en la siguiente construcción y pasa al historial.
+         */
+        post: operations["revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -613,6 +704,184 @@ export interface paths {
         get: operations["get_context_history_api_v1_projects__project_id__context_history_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Perfil del proyecto
+         * @description ``.doc_organize/profile.md`` del proyecto y las secciones que reconoce doc_organize.
+         */
+        get: operations["get_profile_api_v1_projects__project_id__context_profile_get"];
+        /**
+         * Guardar el perfil del proyecto
+         * @description Escribe el perfil propio del proyecto (D11: se añade al de la plantilla o el manifiesto). Propietario o editor,
+         *     con el destino ``rw``; auditado sin el texto.
+         */
+        put: operations["put_profile_api_v1_projects__project_id__context_profile_put"];
+        post?: never;
+        /**
+         * Borrar el perfil del proyecto
+         * @description Borra ``profile.md`` (queda solo el perfil de la plantilla o el manifiesto).
+         */
+        delete: operations["delete_profile_api_v1_projects__project_id__context_profile_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/prompt-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del prompt de clasificación
+         * @description Los mensajes que recibiría el modelo al clasificar con la plantilla o el manifiesto y el perfil (el borrador
+         *     del formulario o el guardado), **sin llamarlo**.
+         */
+        post: operations["preview_prompt_api_v1_projects__project_id__context_prompt_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calidad de la clasificación
+         * @description La referencia subida, si hay decisiones con las que hacer una, y la última evaluación y comparación terminadas
+         *     (``context_evaluate`` y ``context_dry_run``).
+         */
+        get: operations["get_quality_api_v1_projects__project_id__context_quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/quality/gold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Subir la referencia en Excel
+         * @description Referencia etiquetada a mano (``.xlsx``, como mucho 5 MB): una fila por documento con su clave
+         *     (``<carpeta>/<ruta>``) y, por eje, el valor correcto (varios separados por coma; ``ninguno`` si ninguno). Se
+         *     comprueba con ``load_gold_xlsx`` y sustituye a la anterior; propietario o editor, auditado sin el contenido.
+         */
+        put: operations["put_gold_api_v1_projects__project_id__context_quality_gold_put"];
+        post?: never;
+        /**
+         * Borrar la referencia en Excel
+         * @description Borra la referencia subida.
+         */
+        delete: operations["delete_gold_api_v1_projects__project_id__context_quality_gold_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cola de revisión de la clasificación
+         * @description Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
+         *     si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).
+         */
+        get: operations["get_review_api_v1_projects__project_id__context_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Propuestas pendientes del revisor
+         * @description Las propuestas del revisor (``context_review_agent``) que nadie ha aceptado ni descartado, con su documento.
+         */
+        get: operations["get_proposals_api_v1_projects__project_id__context_review_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aceptar una propuesta del revisor
+         * @description La propuesta se guarda como decisión de quien la acepta (se aplica al reconstruir). Propietario o editor.
+         */
+        post: operations["accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar una propuesta del revisor
+         * @description No se aplica nada; la propuesta deja de estar pendiente. Propietario o editor.
+         */
+        post: operations["discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1210,6 +1479,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/taxonomy-templates/prompt-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del prompt de una plantilla
+         * @description Los mensajes que recibiría el modelo con esta plantilla y su perfil (``templates.manage``), sin llamarlo.
+         */
+        post: operations["preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/taxonomy-templates/{name}": {
         parameters: {
             query?: never;
@@ -1400,7 +1689,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "litellm_classification" | "litellm_taxonomy_classification" | "litellm_taxonomy_manifest_draft" | "litellm_enrichment" | "litellm_usage" | "github_copilot_usage";
+            key: "litellm" | "litellm_usage" | "github_copilot_usage";
         };
         /**
          * AiFamilyUpdate
@@ -1417,8 +1706,11 @@ export interface components {
          * @description Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos.
          */
         AiFieldOut: {
-            /** Env Var */
-            env_var: string;
+            /**
+             * Env Var
+             * @description Variable de entorno equivalente; null si el campo no tiene
+             */
+            env_var: string | null;
             /** Hint */
             hint: string | null;
             /** Name */
@@ -1433,12 +1725,27 @@ export interface components {
              */
             source: "db" | "env" | "none";
             /**
+             * Task
+             * @description Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas
+             */
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
+            /**
              * Undecryptable
              * @description Hay un valor guardado que no se descifra con las claves actuales
              */
             undecryptable: boolean;
             /** Value */
             value: string | null;
+        };
+        /**
+         * AiLegacyVariableOut
+         * @description Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.
+         */
+        AiLegacyVariableOut: {
+            /** Name */
+            name: string;
+            /** Replacement */
+            replacement: string;
         };
         /**
          * AiSettingsOut
@@ -1449,14 +1756,26 @@ export interface components {
             encryption_configured: boolean;
             /** Families */
             families: components["schemas"]["AiFamilyOut"][];
+            /**
+             * Legacy Variables
+             * @description Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)
+             */
+            legacy_variables?: components["schemas"]["AiLegacyVariableOut"][];
         };
         /**
          * AiStatusOut
-         * @description Qué familias de IA están configuradas (para cualquier usuario, sin valores).
+         * @description Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores).
          */
         AiStatusOut: {
             /** Families */
             families: {
+                [key: string]: boolean;
+            };
+            /**
+             * Tasks
+             * @description Tarea de IA (doc_organize 2.0) → si se puede usar
+             */
+            tasks?: {
                 [key: string]: boolean;
             };
         };
@@ -1476,6 +1795,13 @@ export interface components {
              * @default false
              */
             model_check: boolean;
+            /**
+             * Task
+             * @description Tarea cuyo modelo se prueba (familia litellm)
+             * @default classify
+             * @enum {string}
+             */
+            task: "classify" | "enrich" | "taxonomy_design" | "agent" | "embed";
         };
         /**
          * AiTestOut
@@ -1502,6 +1828,16 @@ export interface components {
             model_checked: boolean;
             /** Ok */
             ok: boolean;
+            /**
+             * Response Format
+             * @description Formato con el que respondió el modelo: json_schema si admite la salida estricta
+             */
+            response_format?: ("json_schema" | "json_object") | null;
+            /**
+             * Task
+             * @description Tarea cuyo modelo se probó (familia litellm)
+             */
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
             /**
              * Tested At
              * Format: date-time
@@ -1661,6 +1997,25 @@ export interface components {
             matched: number;
         };
         /**
+         * AxisValueOut
+         * @description Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio
+         *     la IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral).
+         */
+        AxisValueOut: {
+            /** Classified By */
+            classified_by?: ("rules" | "semantic" | "ai" | "human") | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Evidence Verified */
+            evidence_verified?: boolean | null;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
          * CapabilitiesOut
          * @description Capacidades de la instancia para convertir documentos.
          */
@@ -1704,6 +2059,51 @@ export interface components {
             slug: string;
         };
         /**
+         * ContextAuditParams
+         * @description Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas.
+         */
+        ContextAuditParams: {
+            /**
+             * Operation
+             * @default context_audit
+             * @constant
+             */
+            operation: "context_audit";
+        };
+        /**
+         * ContextAxisOut
+         * @description Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.
+         */
+        ContextAxisOut: {
+            /** Description */
+            description?: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Multiple
+             * @default false
+             */
+            multiple: boolean;
+            /** Name */
+            name: string;
+            /** Organizes */
+            organizes?: ("folder" | "subfolder") | null;
+            /** Values */
+            values: components["schemas"]["ContextAxisValueOut"][];
+        };
+        /**
+         * ContextAxisValueOut
+         * @description Un valor de un eje del contexto y cuántos documentos lo tienen.
+         */
+        ContextAxisValueOut: {
+            /** Documents */
+            documents: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
          * ContextBuildOut
          * @description Una construcción del historial del contexto (1.5.0).
          */
@@ -1741,10 +2141,10 @@ export interface components {
          *     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
          *     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
          *     descarta) y no se devuelve en el run.
-         *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
-         *     ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
-         *     ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
-         *     documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
+         *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
+         *     ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+         *     ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
+         *     clasificados que no las declaran; tiene su propio presupuesto de documentos.
          */
         ContextBuildParams: {
             /**
@@ -1797,7 +2197,7 @@ export interface components {
              * Change
              * @enum {string}
              */
-            change: "added" | "removed" | "reclassified";
+            change: "added" | "removed" | "reclassified" | "superseded" | "excluded";
             /** Classified By */
             classified_by: string | null;
             /** Domain */
@@ -1853,8 +2253,15 @@ export interface components {
             ai_reasoning?: string | null;
             /** Author */
             author?: string | null;
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: components["schemas"]["AxisValueOut"][];
+            };
             /** Classified By */
-            classified_by?: ("rules" | "ai") | null;
+            classified_by?: ("rules" | "semantic" | "ai" | "human") | null;
             /** Collision */
             collision: boolean;
             /** Description */
@@ -1867,6 +2274,8 @@ export interface components {
             failed: boolean;
             /** Folder */
             folder: string;
+            /** Is Current */
+            is_current?: boolean | null;
             /**
              * Keywords
              * @default []
@@ -1894,6 +2303,10 @@ export interface components {
             title: string;
             /** Unclassified Reason */
             unclassified_reason?: ("incomplete_artifacts" | "below_threshold") | null;
+            /** Version */
+            version?: string | null;
+            /** Version Group */
+            version_group?: string | null;
         };
         /** ContextDocumentPage */
         ContextDocumentPage: {
@@ -1914,6 +2327,109 @@ export interface components {
             slug: string;
             /** Status */
             status: string;
+        };
+        /**
+         * ContextDryRunParams
+         * @description Comparar cambios (W5, G3): clasificar los documentos de la referencia con otra configuración (plantilla o
+         *     manifiesto, modelo de clasificar, alcance de la IA o perfil), **sin guardar nada**, y compararlo con el contexto
+         *     actual. ``template_markdown`` lo fija la API al encolar (como en ``context_build``); con IA, ``max_documents`` es el
+         *     presupuesto de documentos enviados.
+         */
+        ContextDryRunParams: {
+            /**
+             * Ai Scope
+             * @default off
+             * @enum {string}
+             */
+            ai_scope: "off" | "unclassified" | "missing_axes";
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "template" | "manifest";
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Max Documents
+             * @default 50
+             */
+            max_documents: number;
+            /** Model Classify */
+            model_classify?: string | null;
+            /**
+             * Operation
+             * @default context_dry_run
+             * @constant
+             */
+            operation: "context_dry_run";
+            /** Profile Markdown */
+            profile_markdown?: string | null;
+            /** Template Markdown */
+            template_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
+         * ContextEvaluateParams
+         * @description Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.
+         *
+         *     No escribe nada: el informe (por eje: exactitud, cobertura, precisión, *recall*, confusiones y desglose por quién
+         *     clasificó) va en el resultado del run.
+         */
+        ContextEvaluateParams: {
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Operation
+             * @default context_evaluate
+             * @constant
+             */
+            operation: "context_evaluate";
+        };
+        /**
+         * ContextFreshnessOut
+         * @description Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).
+         *
+         *     Recuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,
+         *     no se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con
+         *     rutas relativas. Se calcula al escanear y al construir, sin leer originales.
+         */
+        ContextFreshnessOut: {
+            /** Added */
+            added: number;
+            /** Changed */
+            changed: number;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /**
+             * @default {
+             *       "added": [],
+             *       "changed": [],
+             *       "removed": [],
+             *       "unknown": []
+             *     }
+             */
+            examples: components["schemas"]["FreshnessExamplesOut"];
+            /** Removed */
+            removed: number;
+            /** Stale Site */
+            stale_site: boolean;
+            /** Unknown */
+            unknown: number;
+            /** Up To Date */
+            up_to_date: boolean;
         };
         /**
          * ContextHistoryOut
@@ -1945,6 +2461,11 @@ export interface components {
             /** Ai Enrichment Model */
             ai_enrichment_model?: string | null;
             /**
+             * Ai Provenance
+             * @default []
+             */
+            ai_provenance: components["schemas"]["PromptProvenanceOut"][];
+            /**
              * Built At
              * Format: date-time
              */
@@ -1963,14 +2484,65 @@ export interface components {
             domains: components["schemas"]["ContextDomainOut"][];
             /** Failed Count */
             failed_count: number;
+            freshness?: components["schemas"]["ContextFreshnessOut"] | null;
             /** Output Folder Name */
             output_folder_name: string;
             /** Site Built */
             site_built: boolean;
+            /**
+             * Superseded
+             * @default []
+             */
+            superseded: string[];
+            /**
+             * Superseded Count
+             * @default 0
+             */
+            superseded_count: number;
+            /**
+             * Taxonomy Axes
+             * @default []
+             */
+            taxonomy_axes: components["schemas"]["ContextAxisOut"][];
             /** Taxonomy Template Name */
             taxonomy_template_name: string | null;
             /** Unclassified Count */
             unclassified_count: number;
+            /**
+             * Version Groups
+             * @default []
+             */
+            version_groups: components["schemas"]["VersionGroupOut"][];
+            /** Versions Mode */
+            versions_mode?: ("all" | "mark" | "current_only") | null;
+        };
+        /**
+         * ContextReviewAgentParams
+         * @description Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de
+         *     la cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14).
+         */
+        ContextReviewAgentParams: {
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Items
+             * @default 20
+             */
+            max_items: number;
+            /**
+             * Max Steps
+             * @default 40
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default context_review_agent
+             * @constant
+             */
+            operation: "context_review_agent";
         };
         /**
          * CsrfToken
@@ -1979,6 +2551,108 @@ export interface components {
         CsrfToken: {
             /** Csrf Token */
             csrf_token: string;
+        };
+        /**
+         * DecisionIn
+         * @description Una decisión sobre un documento del contexto (se aplica en la siguiente construcción).
+         *
+         *     ``confirm``: los valores de los ejes que se confirman. ``set_axis``: un eje y sus valores. ``exclude`` y
+         *     ``set_current_version``: sin ejes.
+         */
+        DecisionIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /** Axes */
+            axes?: {
+                [key: string]: string[];
+            };
+            /** Document Key */
+            document_key: string;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * DecisionIssueOut
+         * @description Una decisión que la última construcción no aplicó, y por qué.
+         */
+        DecisionIssueOut: {
+            /** Decision Id */
+            decision_id: string;
+            /** Detail */
+            detail?: string | null;
+            /** Document Key */
+            document_key: string;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * DecisionOut
+         * @description Una decisión de una persona (``ClassificationDecision``): vigente o, con ``revoked_at``, del historial.
+         */
+        DecisionOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /** Author */
+            author?: string | null;
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: string[];
+            };
+            /** Decided At */
+            decided_at: string;
+            /** Document Key */
+            document_key: string;
+            /** Id */
+            id: string;
+            /** Reason */
+            reason?: string | null;
+            /** Revoke Reason */
+            revoke_reason?: string | null;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Revoked By */
+            revoked_by?: string | null;
+            /** Source Sha256 */
+            source_sha256?: string | null;
+        };
+        /** DecisionRevokeIn */
+        DecisionRevokeIn: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * DecisionsOut
+         * @description Decisiones del proyecto: vigentes, historial y las no aplicadas en la última construcción.
+         */
+        DecisionsOut: {
+            /**
+             * Applied
+             * @default 0
+             */
+            applied: number;
+            /** Decisions */
+            decisions: components["schemas"]["DecisionOut"][];
+            /**
+             * Orphan
+             * @default []
+             */
+            orphan: components["schemas"]["DecisionIssueOut"][];
+            /** Revoked */
+            revoked: components["schemas"]["DecisionOut"][];
+            /**
+             * Stale
+             * @default []
+             */
+            stale: components["schemas"]["DecisionIssueOut"][];
         };
         /**
          * DedupApplyParams
@@ -2041,6 +2715,46 @@ export interface components {
              * @constant
              */
             operation: "dedup_preview";
+        };
+        /**
+         * DiagnosticCheckOut
+         * @description Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``.
+         */
+        DiagnosticCheckOut: {
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+            /** Remedy */
+            remedy?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "warning" | "error";
+        };
+        /**
+         * DiagnosticsIn
+         * @description Diagnóstico del entorno (W4): ``check_ai`` prueba también los modelos de IA configurados (gasta unos tokens).
+         */
+        DiagnosticsIn: {
+            /**
+             * Check Ai
+             * @default false
+             */
+            check_ai: boolean;
+        };
+        /**
+         * DiagnosticsOut
+         * @description Resultado del diagnóstico del entorno, sin claves, URL del proxy ni rutas del contenedor.
+         */
+        DiagnosticsOut: {
+            /** Checked At */
+            checked_at: string;
+            /** Checks */
+            checks: components["schemas"]["DiagnosticCheckOut"][];
+            /** Ok */
+            ok: boolean;
         };
         /**
          * DocumentOut
@@ -2181,16 +2895,68 @@ export interface components {
             preview: components["schemas"]["RunBrief"] | null;
         };
         /**
+         * ExportAiBundleParams
+         * @description Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con
+         *     su ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1).
+         */
+        ExportAiBundleParams: {
+            /**
+             * Current Only
+             * @default true
+             */
+            current_only: boolean;
+            /**
+             * Include Text
+             * @default true
+             */
+            include_text: boolean;
+            /** Max File Chars */
+            max_file_chars?: number | null;
+            /** Max Full Chars */
+            max_full_chars?: number | null;
+            /**
+             * Operation
+             * @default export_ai_bundle
+             * @constant
+             */
+            operation: "export_ai_bundle";
+            /**
+             * Redact
+             * @default true
+             */
+            redact: boolean;
+        };
+        /**
+         * ExportSiteParams
+         * @description Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en
+         *     el workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con
+         *     ``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio.
+         */
+        ExportSiteParams: {
+            /**
+             * Llms Txt
+             * @default false
+             */
+            llms_txt: boolean;
+            /**
+             * Operation
+             * @default export_site
+             * @constant
+             */
+            operation: "export_site";
+        };
+        /**
          * ExportXlsxParams
-         * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del
-         *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios).
+         * @description Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del
+         *     historial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con
+         *     sus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»).
          */
         ExportXlsxParams: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "cache" | "errors" | "context_history";
+            kind: "cache" | "errors" | "context_history" | "context_documents";
             /**
              * Operation
              * @default export_xlsx
@@ -2242,6 +3008,88 @@ export interface components {
             path: string;
             /** Total */
             total: number;
+        };
+        /** FreshnessExamplesOut */
+        FreshnessExamplesOut: {
+            /**
+             * Added
+             * @default []
+             */
+            added: string[];
+            /**
+             * Changed
+             * @default []
+             */
+            changed: string[];
+            /**
+             * Removed
+             * @default []
+             */
+            removed: string[];
+            /**
+             * Unknown
+             * @default []
+             */
+            unknown: string[];
+        };
+        /**
+         * FrontMatterReportOut
+         * @description Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
+         *
+         *     ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
+         *     ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+         */
+        FrontMatterReportOut: {
+            /**
+             * Axes
+             * @default []
+             */
+            axes: components["schemas"]["TaxonomyAxisSummaryOut"][];
+            /**
+             * Ignored Keys
+             * @default []
+             */
+            ignored_keys: string[];
+            /**
+             * Implicit Axes
+             * @default []
+             */
+            implicit_axes: string[];
+            /**
+             * Legacy Format
+             * @default false
+             */
+            legacy_format: boolean;
+        };
+        /**
+         * GoldOut
+         * @description Referencia en Excel del proyecto (sin el contenido): de dónde se leyó y qué tiene.
+         */
+        GoldOut: {
+            /**
+             * Axes
+             * @description Ejes con etiquetas
+             */
+            axes: string[];
+            /** Columns */
+            columns: {
+                [key: string]: string;
+            };
+            /** Document Column */
+            document_column: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Labels
+             * @description Documentos etiquetados
+             */
+            labels: number;
+            /** Sheet */
+            sheet: string;
+            /** Uploaded At */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2748,6 +3596,50 @@ export interface components {
             items: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
         };
         /**
+         * ProfileSectionsOut
+         * @description Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar.
+         */
+        ProfileSectionsOut: {
+            /** Context */
+            context?: string | null;
+            /**
+             * Examples
+             * @default []
+             */
+            examples: string[];
+            /** Glossary */
+            glossary?: string | null;
+            /** Tie Breakers */
+            tie_breakers?: string | null;
+        };
+        /**
+         * ProjectAiSettingsIn
+         * @description Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.
+         *     Ausente = no se toca; se aplican desde la siguiente construcción.
+         */
+        ProjectAiSettingsIn: {
+            /**
+             * Ai Redact Credentials
+             * @description Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA
+             */
+            ai_redact_credentials?: boolean | null;
+            /**
+             * Context Semantic
+             * @description Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)
+             */
+            context_semantic?: boolean | null;
+            /**
+             * Context Semantic Threshold
+             * @description Similitud mínima para asignar un valor por semántica
+             */
+            context_semantic_threshold?: number | null;
+            /**
+             * Context Versions
+             * @description Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)
+             */
+            context_versions?: ("all" | "mark" | "current_only") | null;
+        };
+        /**
          * ProjectCreate
          * @description Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,
          *     ``destination_parent`` (que debe estar vacía).
@@ -2839,11 +3731,33 @@ export interface components {
              */
             active_run: boolean;
             /**
+             * Ai Redact Credentials
+             * @description Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)
+             * @default true
+             */
+            ai_redact_credentials: boolean;
+            /**
              * Capture Owner
              * @description Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)
              * @default false
              */
             capture_owner: boolean;
+            /**
+             * Context Semantic
+             * @default false
+             */
+            context_semantic: boolean;
+            /**
+             * Context Semantic Threshold
+             * @default 0.75
+             */
+            context_semantic_threshold: number;
+            /**
+             * Context Versions
+             * @default mark
+             * @enum {string}
+             */
+            context_versions: "all" | "mark" | "current_only";
             /**
              * Created At
              * Format: date-time
@@ -2884,6 +3798,29 @@ export interface components {
             total: number;
         };
         /**
+         * ProjectProfileIn
+         * @description Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de
+         *     desempate``, ``## Glosario`` y ``## Ejemplos``.
+         */
+        ProjectProfileIn: {
+            /** Markdown */
+            markdown: string;
+        };
+        /**
+         * ProjectProfileOut
+         * @description ``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).
+         *
+         *     ``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se
+         *     envía en ``If-Match`` al guardar o borrar (``"none"`` si no hay perfil).
+         */
+        ProjectProfileOut: {
+            /** Etag */
+            etag: string;
+            /** Markdown */
+            markdown: string | null;
+            sections?: components["schemas"]["ProfileSectionsOut"] | null;
+        };
+        /**
          * ProjectUpdate
          * @description Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.
          */
@@ -2899,6 +3836,208 @@ export interface components {
             name?: string | null;
             /** Source Subpaths */
             source_subpaths?: string[] | null;
+        };
+        /** PromptMessageOut */
+        PromptMessageOut: {
+            /** Content */
+            content: string;
+            /** Role */
+            role: string;
+        };
+        /**
+         * PromptPreviewIn
+         * @description Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y
+         *     con ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado.
+         */
+        PromptPreviewIn: {
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "template" | "manifest";
+            /** Profile Markdown */
+            profile_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
+         * PromptPreviewOut
+         * @description Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del
+         *     proyecto y el compuesto que va en el prompt.
+         */
+        PromptPreviewOut: {
+            /** Messages */
+            messages: components["schemas"]["PromptMessageOut"][];
+            profile?: components["schemas"]["ProfileSectionsOut"] | null;
+            project_profile?: components["schemas"]["ProfileSectionsOut"] | null;
+            template_profile?: components["schemas"]["ProfileSectionsOut"] | null;
+        };
+        /**
+         * PromptProvenanceOut
+         * @description Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``).
+         */
+        PromptProvenanceOut: {
+            /** Model */
+            model: string;
+            /** Prompt Id */
+            prompt_id: string;
+            /**
+             * Source
+             * @description builtin (empaquetado) o project (prompt propio del proyecto)
+             */
+            source: string;
+            /** Task */
+            task: string;
+            /** Version */
+            version: string;
+        };
+        /** ProposalList */
+        ProposalList: {
+            /** Items */
+            items: components["schemas"]["ProposalOut"][];
+        };
+        /**
+         * ProposalOut
+         * @description Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta.
+         */
+        ProposalOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "set_axis" | "exclude" | "set_current_version";
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: string[];
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            document?: components["schemas"]["ReviewDocumentOut"] | null;
+            /** Document Key */
+            document_key: string;
+            /** Evidence */
+            evidence?: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Proposal Key
+             * @description ``ReviewProposal.id`` de doc_organize
+             */
+            proposal_key?: string | null;
+            /** Rationale */
+            rationale?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+        };
+        /**
+         * QualityOut
+         * @description Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.
+         */
+        QualityOut: {
+            /** @description Último informe del auditor (W7) */
+            audit?: components["schemas"]["QualityRunOut"] | null;
+            /**
+             * Decisions Available
+             * @description Hay decisiones de personas con las que hacer una referencia
+             */
+            decisions_available: boolean;
+            dry_run?: components["schemas"]["QualityRunOut"] | null;
+            evaluation?: components["schemas"]["QualityRunOut"] | null;
+            gold?: components["schemas"]["GoldOut"] | null;
+        };
+        /**
+         * QualityRunOut
+         * @description El último run terminado de una comprobación de calidad, con su resultado.
+         */
+        QualityRunOut: {
+            /** Finished At */
+            finished_at: string | null;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * ReviewDocumentOut
+         * @description El documento de un motivo de revisión, con sus valores por eje y su versión.
+         */
+        ReviewDocumentOut: {
+            /**
+             * Axes
+             * @default {}
+             */
+            axes: {
+                [key: string]: components["schemas"]["AxisValueOut"][];
+            };
+            /** Domain Slug */
+            domain_slug: string | null;
+            /** Folder */
+            folder: string;
+            /** Is Current */
+            is_current?: boolean | null;
+            /** Output Path */
+            output_path?: string | null;
+            /** Path */
+            path: string;
+            /** Seq */
+            seq: number;
+            /** Title */
+            title: string;
+            /** Version */
+            version?: string | null;
+            /** Version Group */
+            version_group?: string | null;
+        };
+        /**
+         * ReviewItemOut
+         * @description Un motivo para revisar un documento (``review_queue``), con el documento y su decisión vigente, si la hay.
+         */
+        ReviewItemOut: {
+            /** Axis */
+            axis?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** @description Decisión vigente del documento (se aplica en la siguiente construcción) */
+            decision?: components["schemas"]["DecisionOut"] | null;
+            /** Detail */
+            detail?: string | null;
+            document?: components["schemas"]["ReviewDocumentOut"] | null;
+            /** Document Key */
+            document_key: string;
+            /** Id */
+            id: number;
+            /** Priority */
+            priority: number;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "stale_decision" | "unclassified" | "rules_ai_disagreement" | "unverified_evidence" | "low_confidence" | "unconfirmed_version";
+            /** Value */
+            value?: string | null;
+        };
+        /** ReviewPage */
+        ReviewPage: {
+            /**
+             * Counts
+             * @description Motivos de revisión → cuántos hay
+             */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["ReviewItemOut"][];
+            /** Total */
+            total: number;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -2969,7 +4108,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /**
              * Status
              * @enum {string}
@@ -3008,7 +4147,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -3378,6 +4517,73 @@ export interface components {
             url: string;
         };
         /**
+         * TaxonomyAgentParams
+         * @description Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,
+         *     una plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.
+         *
+         *     **No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la
+         *     API al encolar. ``max_steps`` es el tope de llamadas al modelo.
+         */
+        TaxonomyAgentParams: {
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "manifest" | "template" | "none";
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Steps
+             * @default 30
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default taxonomy_agent
+             * @constant
+             */
+            operation: "taxonomy_agent";
+            /** Template Markdown */
+            template_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
+         * TaxonomyAxisSummaryOut
+         * @description Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.
+         */
+        TaxonomyAxisSummaryOut: {
+            /** Key */
+            key: string;
+            /** Multiple */
+            multiple: boolean;
+            /** Name */
+            name: string;
+            /** Organizes */
+            organizes: ("folder" | "subfolder") | null;
+            /** Values */
+            values: number;
+        };
+        /**
+         * TaxonomyCheckParams
+         * @description Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin
+         *     IA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje.
+         */
+        TaxonomyCheckParams: {
+            /** Markdown */
+            markdown: string;
+            /**
+             * Operation
+             * @default taxonomy_check
+             * @constant
+             */
+            operation: "taxonomy_check";
+        };
+        /**
          * TaxonomyDraftParams
          * @description Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.
          *
@@ -3413,6 +4619,15 @@ export interface components {
             error?: string | null;
             /** Etag */
             etag: string;
+            /**
+             * @default {
+             *       "axes": [],
+             *       "ignored_keys": [],
+             *       "implicit_axes": [],
+             *       "legacy_format": false
+             *     }
+             */
+            front_matter: components["schemas"]["FrontMatterReportOut"];
             /** Last Changed At */
             last_changed_at?: string | null;
             /** Markdown */
@@ -3433,7 +4648,7 @@ export interface components {
         };
         /**
          * TaxonomyTemplateDetail
-         * @description Plantilla con su Markdown y su catálogo.
+         * @description Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3).
          */
         TaxonomyTemplateDetail: {
             /** Builtin */
@@ -3442,6 +4657,15 @@ export interface components {
             description: string | null;
             /** Domains */
             domains: components["schemas"]["CatalogEntryOut"][];
+            /**
+             * @default {
+             *       "axes": [],
+             *       "ignored_keys": [],
+             *       "implicit_axes": [],
+             *       "legacy_format": false
+             *     }
+             */
+            front_matter: components["schemas"]["FrontMatterReportOut"];
             /** Markdown */
             markdown: string;
             /** Material Types */
@@ -3473,6 +4697,14 @@ export interface components {
             title: string | null;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * TemplatePromptPreviewIn
+         * @description Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto).
+         */
+        TemplatePromptPreviewIn: {
+            /** Markdown */
+            markdown: string;
         };
         /** TenantCreate */
         TenantCreate: {
@@ -3673,6 +4905,26 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VersionGroupOut
+         * @description Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más
+         *     alta, con rutas relativas, la vigente y si una persona la confirmó.
+         */
+        VersionGroupOut: {
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+            /** Current */
+            current: string;
+            /** Key */
+            key: string;
+            /** Members */
+            members: string[];
+            /** Versions */
+            versions: string[];
         };
         /**
          * WorkerList
@@ -4018,6 +5270,67 @@ export interface operations {
             };
             /** @description Sin rol de administrador o token CSRF no válido */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run_diagnostics_api_v1_admin_diagnostics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagnosticsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosticsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No terminó a tiempo o falló (diagnostics_failed) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5303,6 +6616,60 @@ export interface operations {
             };
         };
     };
+    put_ai_settings_api_v1_projects__project_id__ai_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectAiSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Destino de solo lectura (location_read_only) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_context_api_v1_projects__project_id__context_get: {
         parameters: {
             query?: never;
@@ -5348,6 +6715,186 @@ export interface operations {
             };
         };
     };
+    get_decisions_api_v1_projects__project_id__context_decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_decision_api_v1_projects__project_id__context_decisions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin contexto, sin el documento o sin la decisión */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevokeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin contexto, sin el documento o sin la decisión */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_context_documents_api_v1_projects__project_id__context_documents_get: {
         parameters: {
             query?: {
@@ -5359,6 +6906,10 @@ export interface operations {
                 language?: string | null;
                 /** @description Solo si alguna palabra clave contiene este texto (1.5.0) */
                 keyword?: string | null;
+                /** @description Solo las versiones vigentes (W6): fuera las marcadas como versión antigua */
+                current?: boolean;
+                /** @description Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía */
+                axis?: string[] | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
@@ -5457,6 +7008,628 @@ export interface operations {
                 };
             };
             /** @description Ubicación de destino no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_profile_api_v1_projects__project_id__context_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_profile_api_v1_projects__project_id__context_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Demasiado grande (profile_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_profile_api_v1_projects__project_id__context_profile_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo */
+                "if-match"?: string | null;
+            };
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectProfileOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Demasiado grande (profile_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta If-Match (etag_required) */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_prompt_api_v1_projects__project_id__context_prompt_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromptPreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreviewOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin manifiesto o no válido (prompt_preview_invalid) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_quality_api_v1_projects__project_id__context_quality_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_gold_api_v1_projects__project_id__context_quality_gold_put: {
+        parameters: {
+            query?: {
+                filename?: string;
+                sheet?: string;
+                document_column?: string;
+                /** @description Eje y columna, ``eje:columna`` (repetible); sin ninguno, ``dominio_ok`` y ``tipo_ok`` */
+                columns?: string[] | null;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description gold_invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_gold_api_v1_projects__project_id__context_quality_gold_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_review_api_v1_projects__project_id__context_review_get: {
+        parameters: {
+            query?: {
+                /** @description Solo este motivo */
+                reason?: ("stale_decision" | "unclassified" | "rules_ai_disagreement" | "unverified_evidence" | "low_confidence" | "unconfirmed_version") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPage"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proposals_api_v1_projects__project_id__context_review_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalList"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin la propuesta (proposal_not_found) o sin el documento */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente (editor) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin la propuesta (proposal_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Escritura en curso (write_locked) o carpeta .doc_organize que no es normal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Decisión no válida (decision_invalid) o destino de solo lectura */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación no disponible */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6362,7 +8535,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["ExportSiteParams"] | components["schemas"]["ExportAiBundleParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"] | components["schemas"]["ContextReviewAgentParams"] | components["schemas"]["ContextAuditParams"];
             };
         };
         responses: {
@@ -7062,7 +9235,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */
@@ -7551,6 +9724,51 @@ export interface operations {
             };
             /** @description No autenticado */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplatePromptPreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreviewOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plantilla no válida (template_invalid) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

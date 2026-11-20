@@ -1,6 +1,5 @@
 # E2E (CI y local): carpetas sintéticas como ubicaciones bajo /mnt, montadas igual en `web` y `worker`.
-#   mkdir -p dev-data/e2e/expedientes/2024 dev-data/e2e/expedientes/2025 dev-data/e2e/proyectos/2024 dev-data/e2e-out
-#   chmod 777 dev-data/e2e-out          # el contenedor escribe con el uid 10001
+#   sh scripts/e2e_data.sh              # datos sintéticos (e2e-out con 777: el contenedor escribe con el uid 10001)
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
 # Solo carpetas sintéticas creadas por el propio CI (repositorio público).
 # `litellm-fake` (Fase 8) es un LiteLLM Proxy falso (docker/e2e/fake_litellm.py) con la clave `sk-e2e-fake`: los E2E

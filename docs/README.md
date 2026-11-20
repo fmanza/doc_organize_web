@@ -5,13 +5,9 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, detecta duplicados y genera un contexto navegable por dominios, con proyectos,
 miembros y ejecuciones en segundo plano.
 
-> **Estado: Fase 9 (multi-tenant y roles, 0.10.0).** Inicio de sesión, usuarios, ubicaciones locales y de red, ajustes
-> administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo, escaneo incremental con OCR
-> y GPU, visor de documentos convertidos, búsqueda de texto completo, exportaciones, duplicados en dos pasos, contexto por dominios con sitio navegable
-> clasificación, borrador de manifiesto y panel de uso con IA, y tenants aislados con roles y permisos
-> ([Tenants y roles](guides/tenants_y_roles.md), [Proyectos](guides/proyectos.md), [Ejecuciones](guides/ejecuciones.md), [Escaneo](guides/escaneo.md),
-> [Documentos](guides/documentos.md), [Duplicados](guides/duplicados.md), [Contexto](guides/contexto.md), [IA](guides/ia.md)). Las funcionalidades llegan fase a fase según el [ROADMAP](plan/ROADMAP.md); la web integrada de doc_organize sigue siendo
-> la interfaz hasta alcanzar la [paridad](plan/PARIDAD.md).
+Con doc_organize 2.0, el contexto se organiza por **ejes** de taxonomía (dominio, tipo de material y los que solo
+etiquetan), desde una plantilla o el manifiesto del proyecto, con reglas, clasificación semántica, IA con cita y
+decisiones de personas; se revisa y se mide su calidad, y se entrega como Excel, sitio sin conexión o paquete para IA.
 
 ## Uso
 
@@ -24,14 +20,18 @@ miembros y ejecuciones en segundo plano.
   [Escaneo y conversión](guides/escaneo.md): carpetas, opciones, incremental, errores y forzar reconversión.
 - [Documentos, búsqueda y exportaciones](guides/documentos.md): caché, visor, búsqueda de texto completo, ZIP y Excel.
 - [Duplicados](guides/duplicados.md): buscar, revisar y aplicar (copiar, mover o solo informe) en dos pasos.
-- [Contexto y taxonomías](guides/contexto.md): dominios, carpeta reorganizada, sitio, manifiesto y plantillas.
-- [Inteligencia artificial](guides/ia.md): configuración, clasificación con IA, borrador de manifiesto y uso.
+- [Contexto y taxonomías](guides/contexto.md): ejes, carpeta reorganizada, sitio, manifiesto y plantillas, perfil,
+  versiones, semántica, revisar clasificación y decisiones, Calidad, agentes y entregas.
+- [Inteligencia artificial](guides/ia.md): configuración por tarea, clasificar y describir con IA, semántica, borrador,
+  agentes, modelos locales y uso.
 
 ## Operación
 
-- [Despliegue](guides/despliegue.md): Docker Compose, secretos, volúmenes, modelos de Docling, worker con GPU, copias
-  de seguridad y proxy TLS.
+- [Despliegue](guides/despliegue.md): Docker Compose, secretos, volúmenes, diagnóstico, IA, modelos de Docling,
+  worker con GPU, copias de seguridad y proxy TLS.
 - [Montar carpetas de red](guides/carpetas_de_red.md): SMB/NFS en el servidor Linux y su paso al contenedor.
+- [Preproducción de la 2.0](guides/preproduccion_2_0.md): probar migraciones, diagnóstico y entregas con datos reales
+  sin tocarlos.
 - [Publicar una versión](guides/publicar_version.md).
 
 ## Desarrollo

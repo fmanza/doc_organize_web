@@ -25,6 +25,7 @@ convertido que cubren se conserva; con ``force`` se borra, y la vista previa lo 
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sqlite3
@@ -48,6 +49,8 @@ from app.jobs.context import JobCancelled, JobContext, JobFailed, JobRecycle
 from app.jobs.operations._files import ProjectPaths, measure, project_paths, require_rw, resolve_in
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
 from app.jobs.operations.search_index import reindex_project
+
+logger = logging.getLogger(__name__)
 
 MAX_MESSAGE: Final = 2000
 #: Errores que se guardan por run (el total va en ``result.errors``): acota ``config.db`` ante orígenes enormes.
@@ -432,6 +435,7 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
     if not result.get("excluded_cached"):  # doc_organize 1.3.0 siempre lo da: sin exclusiones, el resultado de 1.3.0
         result.pop("excluded_cached", None)
     _index(ctx, paths, result)
+    _freshness(ctx, project)
     if failed:
         result["failed_folders"] = len(failed)
         raise JobFailed(
@@ -439,3 +443,20 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
         )
     ctx.progress("done", 1, 1)
     return result
+
+
+def _freshness(ctx: JobContext, project: Project) -> None:
+    """Tras escanear, si el contexto quedó desactualizado (W4, doc_organize 2.0 F4). Un fallo no estropea el escaneo."""
+    from app.jobs.operations.context import refresh_freshness
+
+    try:
+        freshness = refresh_freshness(ctx, project)
+    except Exception:  # noqa: BLE001 - informativo: el escaneo ya terminó bien
+        logger.warning("No se pudo comprobar la frescura del contexto", extra={"project_id": project.id})
+        return
+    if freshness and not freshness["up_to_date"]:
+        ctx.log(
+            f"El contexto está desactualizado: {freshness['changed']} cambiados, {freshness['added']} nuevos y "
+            f"{freshness['removed']} que ya no están. Reconstrúyelo para incluirlos.",
+            level="warning",
+        )

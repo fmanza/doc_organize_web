@@ -36,7 +36,7 @@ import { useAiStatus } from '../admin/useAi';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
 import {
-  aiFamily,
+  aiTask,
   buildParams,
   type Catalog,
   CONTEXT_HISTORY_XLSX,
@@ -57,7 +57,11 @@ import {
   useProjectContext,
   useTemplates,
 } from './useContext';
+import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
+import { DeliveryCard } from './DeliveryCard';
 import { ManifestCard } from './ManifestCard';
+import { ProfileCard } from './ProfileCard';
+import { VersionsCard } from './Versions';
 
 /**
  * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
@@ -195,6 +199,8 @@ export function ContextPage() {
         </Text>
       )}
 
+      {built?.freshness && <FreshnessBanner freshness={built.freshness} canBuild={canBuild} />}
+
       {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
       {canBuild && (
         <BuildCard
@@ -218,7 +224,13 @@ export function ContextPage() {
           </Anchor>
         ))}
 
+      <ProfileCard projectId={projectId} editable={canBuild} selection={selection} />
+
+      {built && <VersionsCard context={built} projectId={projectId} editable={canBuild} />}
+
       {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
+
+      {built && <DeliveryCard projectId={projectId} />}
 
       <HistoryCard projectId={projectId} />
 
@@ -325,6 +337,12 @@ function Summary({
         </Alert>
       )}
       <Group mt="sm">
+        <Button component={Link} to={`/projects/${projectId}/context/review`} variant="light">
+          {t('review.open')}
+        </Button>
+        <Button component={Link} to={`/projects/${projectId}/context/quality`} variant="light">
+          {t('quality.open')}
+        </Button>
         {context.site_built && (
           <Button component={Link} to={`/projects/${projectId}/context/site`}>
             {t('context.site.open')}
@@ -356,6 +374,64 @@ function Traceability({ context }: { context: ContextOut }) {
     <Text size="xs" c="dimmed" mb="xs">
       {parts.join(' · ')}
     </Text>
+  );
+}
+
+/** Ancla de la tarjeta de construcción (el aviso de frescura lleva a ella). */
+const BUILD_CARD_ID = 'construir-contexto';
+type Freshness = NonNullable<ContextOut['freshness']>;
+
+/**
+ * Aviso de frescura (W4, `check_context_freshness`): el contexto ya no refleja la caché del último escaneo. Con los
+ * recuentos, unos ejemplos y, si puede construir, el enlace para reconstruir.
+ */
+function FreshnessBanner({ freshness, canBuild }: { freshness: Freshness; canBuild: boolean }) {
+  const { t } = useTranslation();
+  if (freshness.up_to_date) {
+    return freshness.unknown > 0 ? (
+      <Alert color="gray" title={t('context.freshness.unknownTitle')}>
+        {t('context.freshness.unknown', { count: freshness.unknown })}
+      </Alert>
+    ) : null;
+  }
+  const parts = (['changed', 'added', 'removed'] as const)
+    .filter((key) => freshness[key] > 0)
+    .map((key) => t(`context.freshness.${key}`, { count: freshness[key] }));
+  if (freshness.stale_site) {
+    parts.push(t('context.freshness.staleSite'));
+  }
+  const examples = (['changed', 'added', 'removed'] as const).flatMap((key) =>
+    freshness.examples[key].map((path) => ({ key, path })),
+  );
+  return (
+    <Alert color="orange" title={t('context.freshness.title')} role="status">
+      <Text size="sm">{parts.join(' · ')}</Text>
+      {examples.length > 0 && (
+        <Text component="details" size="xs" mt={4}>
+          <summary style={{ cursor: 'pointer' }}>{t('context.freshness.examples')}</summary>
+          <Stack gap={0} mt={2}>
+            {examples.map(({ key, path }) => (
+              <Text key={`${key}:${path}`} size="xs" ff="monospace">
+                {t(`context.freshness.kinds.${key}`)}: {path}
+              </Text>
+            ))}
+          </Stack>
+        </Text>
+      )}
+      <Text size="xs" c="dimmed" mt={4}>
+        {t('context.freshness.checkedAt', { date: formatDateTime(freshness.checked_at) })}
+      </Text>
+      {canBuild && (
+        <Button
+          mt="xs"
+          size="xs"
+          variant="light"
+          onClick={() => document.getElementById(BUILD_CARD_ID)?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          {t('context.freshness.rebuild')}
+        </Button>
+      )}
+    </Alert>
   );
 }
 
@@ -391,8 +467,8 @@ function BuildCard({
   const status = useAiStatus();
   const [withAi, setWithAi] = useState(false);
   const [withEnrichment, setWithEnrichment] = useState(false);
-  const aiAvailable = status.data?.[aiFamily(catalog)] === true;
-  const enrichmentAvailable = status.data?.litellm_enrichment === true;
+  const aiAvailable = status.data?.[aiTask(catalog)] === true;
+  const enrichmentAvailable = status.data?.enrich === true;
 
   const blockedByDraft = catalog === 'manifest' && manifestDirty;
   const ready =
@@ -415,7 +491,7 @@ function BuildCard({
     );
 
   return (
-    <Card withBorder>
+    <Card withBorder id={BUILD_CARD_ID}>
       <Title order={3} size="h4" mb="xs">
         {t(context ? 'context.build.rebuildTitle' : 'context.build.title')}
       </Title>
@@ -499,7 +575,7 @@ function BuildCard({
         <Switch
           label={t('context.ai.classify')}
           description={t(
-            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiFamily(catalog)}`,
+            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiTask(catalog)}`,
           )}
           checked={withAi && aiAvailable}
           disabled={!aiAvailable}
@@ -512,9 +588,7 @@ function BuildCard({
         )}
         <Switch
           label={t('context.ai.enrich')}
-          description={t(
-            enrichmentAvailable ? 'context.ai.enrichHelp' : 'context.ai.notConfigured.litellm_enrichment',
-          )}
+          description={t(enrichmentAvailable ? 'context.ai.enrichHelp' : 'context.ai.notConfigured.enrich')}
           checked={withEnrichment && enrichmentAvailable}
           disabled={!enrichmentAvailable}
           onChange={(event) => setWithEnrichment(event.currentTarget.checked)}
@@ -549,6 +623,8 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
   const [only, setOnly] = useState<DocumentFilter | null>(null);
   const [language, setLanguage] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [axisFilters, setAxisFilters] = useState<string[]>([]);
+  const [onlyCurrent, setOnlyCurrent] = useState(false);
   const [debouncedLanguage] = useDebouncedValue(language.trim().toLowerCase(), 300);
   const [debouncedKeyword] = useDebouncedValue(keyword, 300);
   const list = useListState(CONTEXT_DOCUMENT_SORT, 'doc');
@@ -560,6 +636,8 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
       // La API pide entre 2 y 8 caracteres: con uno solo, todavía no se filtra.
       language: debouncedLanguage.length >= 2 ? debouncedLanguage : null,
       keyword: debouncedKeyword,
+      axis: axisFilters,
+      current: onlyCurrent,
     },
     list.query,
   );
@@ -674,6 +752,25 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
           }}
         />
       </Group>
+      {(context.version_groups ?? []).length > 0 && (
+        <Switch
+          mt="xs"
+          label={t('context.versions.onlyCurrent')}
+          checked={onlyCurrent}
+          onChange={(event) => {
+            setOnlyCurrent(event.currentTarget.checked);
+            list.paging.setPage(1, true);
+          }}
+        />
+      )}
+      <AxisFilters
+        axes={context.taxonomy_axes ?? []}
+        value={axisFilters}
+        onChange={(value) => {
+          setAxisFilters(value);
+          list.paging.setPage(1, true);
+        }}
+      />
       {documents.isError ? (
         <ErrorAlert error={documents.error} />
       ) : !documents.data ? (
@@ -726,9 +823,24 @@ function Domains({ context, projectId }: { context: ContextOut; projectId: numbe
                   return (
                     <Table.Tr key={original}>
                       <Table.Td>
-                        <Text size="sm">{doc.title}</Text>
+                        <Text size="sm">
+                          {doc.title}
+                          {doc.is_current === false && (
+                            <Badge
+                              ml={6}
+                              size="xs"
+                              variant="light"
+                              color="gray"
+                              title={t('context.versions.oldTitle')}
+                            >
+                              {t('context.versions.old')}
+                              {doc.version && ` · v${doc.version}`}
+                            </Badge>
+                          )}
+                        </Text>
                         <DocumentProperties doc={doc} />
-                        <HowClassified doc={doc} />
+                        <AxisBadges axes={context.taxonomy_axes ?? []} values={doc.axes ?? {}} />
+                        <HowClassified doc={doc} context={context} />
                         {doc.output_path && (
                           <Anchor
                             component={Link}
@@ -841,10 +953,13 @@ function DocumentProperties({ doc }: { doc: ContextDocument }) {
 }
 
 /** Detalle plegable «Cómo se clasificó» (1.5.0): reglas, propuesta de la IA y su justificación. */
-function HowClassified({ doc }: { doc: ContextDocument }) {
+function HowClassified({ doc, context }: { doc: ContextDocument; context: ContextOut }) {
   const { t } = useTranslation();
   const materialConfidence = doc.material_type_confidence;
-  if (!doc.rules_domain && !doc.ai_domain && typeof materialConfidence !== 'number') {
+  const evidence = Object.values(doc.axes ?? {}).some((items) =>
+    items.some((item) => item.evidence || item.classified_by === 'ai'),
+  );
+  if (!doc.rules_domain && !doc.ai_domain && typeof materialConfidence !== 'number' && !evidence) {
     return null;
   }
   return (
@@ -877,6 +992,11 @@ function HowClassified({ doc }: { doc: ContextDocument }) {
         {typeof materialConfidence === 'number' && (
           <Text size="xs">{t('context.how.material', { confidence: percent(materialConfidence) })}</Text>
         )}
+        <AxisEvidence
+          axes={context.taxonomy_axes ?? []}
+          values={doc.axes ?? {}}
+          provenance={context.ai_provenance ?? []}
+        />
       </Stack>
     </Text>
   );

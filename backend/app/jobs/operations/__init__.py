@@ -12,14 +12,17 @@ from typing import Any, Final
 from app.db.models import Project
 from app.jobs.context import JobContext
 from app.jobs.operations import (
+    agents,
     ai,
     context,
     dedup,
+    delivery,
     export,
     history_clear,
     noop,
     project_delete,
     project_move,
+    quality,
     scan,
     search_index,
 )
@@ -34,10 +37,18 @@ REGISTRY: Final[dict[str, Operation]] = {
     "scan": scan.run,
     "export_zip": export.run_zip,
     "export_xlsx": export.run_xlsx,
+    "export_site": delivery.run_site,
+    "export_ai_bundle": delivery.run_ai_bundle,
     "search_index": search_index.run,
     "dedup_preview": dedup.run_preview,
     "dedup_apply": dedup.run_apply,
     "context_build": context.run_build,
     "context_delete": context.run_delete,
     "taxonomy_draft": ai.run,
+    "context_evaluate": quality.run_evaluate,
+    "context_dry_run": quality.run_dry_run,
+    "taxonomy_agent": agents.run_design,
+    "taxonomy_check": agents.run_check,
+    "context_review_agent": agents.run_review,
+    "context_audit": agents.run_audit,
 }

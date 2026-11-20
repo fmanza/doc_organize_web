@@ -17,10 +17,7 @@
           },
           "key": {
             "enum": [
-              "litellm_classification",
-              "litellm_taxonomy_classification",
-              "litellm_taxonomy_manifest_draft",
-              "litellm_enrichment",
+              "litellm",
               "litellm_usage",
               "github_copilot_usage"
             ],
@@ -52,7 +49,7 @@
                 }
               ]
             },
-            "maxProperties": 8,
+            "maxProperties": 16,
             "propertyNames": {
               "maxLength": 32
             },
@@ -70,8 +67,16 @@
         "description": "Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos.",
         "properties": {
           "env_var": {
-            "title": "Env Var",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Variable de entorno equivalente; null si el campo no tiene",
+            "title": "Env Var"
           },
           "hint": {
             "anyOf": [
@@ -105,6 +110,25 @@
             "title": "Source",
             "type": "string"
           },
+          "task": {
+            "anyOf": [
+              {
+                "enum": [
+                  "classify",
+                  "enrich",
+                  "taxonomy_design",
+                  "agent",
+                  "embed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas",
+            "title": "Task"
+          },
           "undecryptable": {
             "description": "Hay un valor guardado que no se descifra con las claves actuales",
             "title": "Undecryptable",
@@ -135,6 +159,25 @@
         "title": "AiFieldOut",
         "type": "object"
       },
+      "AiLegacyVariableOut": {
+        "description": "Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replacement": {
+            "title": "Replacement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "replacement"
+        ],
+        "title": "AiLegacyVariableOut",
+        "type": "object"
+      },
       "AiSettingsOut": {
         "description": "Configuración de IA de la instancia, sin ningún secreto.",
         "properties": {
@@ -148,6 +191,14 @@
             },
             "title": "Families",
             "type": "array"
+          },
+          "legacy_variables": {
+            "description": "Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+            "items": {
+              "$ref": "#/components/schemas/AiLegacyVariableOut"
+            },
+            "title": "Legacy Variables",
+            "type": "array"
           }
         },
         "required": [
@@ -158,13 +209,21 @@
         "type": "object"
       },
       "AiStatusOut": {
-        "description": "Qué familias de IA están configuradas (para cualquier usuario, sin valores).",
+        "description": "Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores).",
         "properties": {
           "families": {
             "additionalProperties": {
               "type": "boolean"
             },
             "title": "Families",
+            "type": "object"
+          },
+          "tasks": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Tarea de IA (doc_organize 2.0) → si se puede usar",
+            "title": "Tasks",
             "type": "object"
           }
         },
@@ -190,7 +249,7 @@
                 }
               ]
             },
-            "maxProperties": 8,
+            "maxProperties": 16,
             "propertyNames": {
               "maxLength": 32
             },
@@ -202,6 +261,19 @@
             "description": "Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
             "title": "Model Check",
             "type": "boolean"
+          },
+          "task": {
+            "default": "classify",
+            "description": "Tarea cuyo modelo se prueba (familia litellm)",
+            "enum": [
+              "classify",
+              "enrich",
+              "taxonomy_design",
+              "agent",
+              "embed"
+            ],
+            "title": "Task",
+            "type": "string"
           }
         },
         "title": "AiTestIn",
@@ -250,6 +322,41 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "response_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "json_schema",
+                  "json_object"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Formato con el que respondió el modelo: json_schema si admite la salida estricta",
+            "title": "Response Format"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "enum": [
+                  "classify",
+                  "enrich",
+                  "taxonomy_design",
+                  "agent",
+                  "embed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tarea cuyo modelo se probó (familia litellm)",
+            "title": "Task"
           },
           "tested_at": {
             "format": "date-time",
@@ -669,6 +776,75 @@
         "title": "AuditPurgeOut",
         "type": "object"
       },
+      "AxisValueOut": {
+        "description": "Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio\nla IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral).",
+        "properties": {
+          "classified_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "rules",
+                  "semantic",
+                  "ai",
+                  "human"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classified By"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "evidence_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Verified"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "AxisValueOut",
+        "type": "object"
+      },
       "CapabilitiesOut": {
         "description": "Capacidades de la instancia para convertir documentos.",
         "properties": {
@@ -740,6 +916,102 @@
           "name"
         ],
         "title": "CatalogEntryOut",
+        "type": "object"
+      },
+      "ContextAuditParams": {
+        "additionalProperties": false,
+        "description": "Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas.",
+        "properties": {
+          "operation": {
+            "const": "context_audit",
+            "default": "context_audit",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ContextAuditParams",
+        "type": "object"
+      },
+      "ContextAxisOut": {
+        "description": "Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "multiple": {
+            "default": false,
+            "title": "Multiple",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organizes": {
+            "anyOf": [
+              {
+                "enum": [
+                  "folder",
+                  "subfolder"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizes"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/ContextAxisValueOut"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "values"
+        ],
+        "title": "ContextAxisOut",
+        "type": "object"
+      },
+      "ContextAxisValueOut": {
+        "description": "Un valor de un eje del contexto y cuántos documentos lo tienen.",
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "documents"
+        ],
+        "title": "ContextAxisValueOut",
         "type": "object"
       },
       "ContextBuildOut": {
@@ -835,7 +1107,7 @@
       },
       "ContextBuildParams": {
         "additionalProperties": false,
-        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con\n``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).\n``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los\ndocumentos clasificados que no las declaran; tiene su propio presupuesto de documentos.",
+        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia\n``litellm`` desde doc_organize 2.0, ``ai_scope=\"unclassified\"``).\n``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos\nclasificados que no las declaran; tiene su propio presupuesto de documentos.",
         "properties": {
           "ai_classification": {
             "default": false,
@@ -936,7 +1208,9 @@
             "enum": [
               "added",
               "removed",
-              "reclassified"
+              "reclassified",
+              "superseded",
+              "excluded"
             ],
             "title": "Change",
             "type": "string"
@@ -1112,12 +1386,25 @@
             ],
             "title": "Author"
           },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/AxisValueOut"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
           "classified_by": {
             "anyOf": [
               {
                 "enum": [
                   "rules",
-                  "ai"
+                  "semantic",
+                  "ai",
+                  "human"
                 ],
                 "type": "string"
               },
@@ -1171,6 +1458,17 @@
           "folder": {
             "title": "Folder",
             "type": "string"
+          },
+          "is_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Current"
           },
           "keywords": {
             "default": [],
@@ -1290,6 +1588,28 @@
               }
             ],
             "title": "Unclassified Reason"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "version_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Group"
           }
         },
         "required": [
@@ -1368,6 +1688,182 @@
         "title": "ContextDomainOut",
         "type": "object"
       },
+      "ContextDryRunParams": {
+        "additionalProperties": false,
+        "description": "Comparar cambios (W5, G3): clasificar los documentos de la referencia con otra configuración (plantilla o\nmanifiesto, modelo de clasificar, alcance de la IA o perfil), **sin guardar nada**, y compararlo con el contexto\nactual. ``template_markdown`` lo fija la API al encolar (como en ``context_build``); con IA, ``max_documents`` es el\npresupuesto de documentos enviados.",
+        "properties": {
+          "ai_scope": {
+            "default": "off",
+            "enum": [
+              "off",
+              "unclassified",
+              "missing_axes"
+            ],
+            "title": "Ai Scope",
+            "type": "string"
+          },
+          "catalog": {
+            "default": "manifest",
+            "enum": [
+              "template",
+              "manifest"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "gold": {
+            "default": "xlsx",
+            "enum": [
+              "xlsx",
+              "decisions"
+            ],
+            "title": "Gold",
+            "type": "string"
+          },
+          "max_documents": {
+            "default": 50,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Max Documents",
+            "type": "integer"
+          },
+          "model_classify": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Classify"
+          },
+          "operation": {
+            "const": "context_dry_run",
+            "default": "context_dry_run",
+            "title": "Operation",
+            "type": "string"
+          },
+          "profile_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Markdown"
+          },
+          "template_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          }
+        },
+        "title": "ContextDryRunParams",
+        "type": "object"
+      },
+      "ContextEvaluateParams": {
+        "additionalProperties": false,
+        "description": "Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.\n\nNo escribe nada: el informe (por eje: exactitud, cobertura, precisión, *recall*, confusiones y desglose por quién\nclasificó) va en el resultado del run.",
+        "properties": {
+          "gold": {
+            "default": "xlsx",
+            "enum": [
+              "xlsx",
+              "decisions"
+            ],
+            "title": "Gold",
+            "type": "string"
+          },
+          "operation": {
+            "const": "context_evaluate",
+            "default": "context_evaluate",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ContextEvaluateParams",
+        "type": "object"
+      },
+      "ContextFreshnessOut": {
+        "description": "Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).\n\nRecuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,\nno se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con\nrutas relativas. Se calcula al escanear y al construir, sin leer originales.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "examples": {
+            "$ref": "#/components/schemas/FreshnessExamplesOut",
+            "default": {
+              "added": [],
+              "changed": [],
+              "removed": [],
+              "unknown": []
+            }
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "stale_site": {
+            "title": "Stale Site",
+            "type": "boolean"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "checked_at",
+          "up_to_date",
+          "changed",
+          "added",
+          "removed",
+          "unknown",
+          "stale_site"
+        ],
+        "title": "ContextFreshnessOut",
+        "type": "object"
+      },
       "ContextHistoryOut": {
         "description": "Últimas construcciones del contexto, las más recientes primero (1.5.0). Se conserva al borrar el contexto.",
         "properties": {
@@ -1433,6 +1929,14 @@
             ],
             "title": "Ai Enrichment Model"
           },
+          "ai_provenance": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PromptProvenanceOut"
+            },
+            "title": "Ai Provenance",
+            "type": "array"
+          },
           "built_at": {
             "format": "date-time",
             "title": "Built At",
@@ -1483,6 +1987,16 @@
             "title": "Failed Count",
             "type": "integer"
           },
+          "freshness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextFreshnessOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "output_folder_name": {
             "title": "Output Folder Name",
             "type": "string"
@@ -1490,6 +2004,27 @@
           "site_built": {
             "title": "Site Built",
             "type": "boolean"
+          },
+          "superseded": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Superseded",
+            "type": "array"
+          },
+          "superseded_count": {
+            "default": 0,
+            "title": "Superseded Count",
+            "type": "integer"
+          },
+          "taxonomy_axes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContextAxisOut"
+            },
+            "title": "Taxonomy Axes",
+            "type": "array"
           },
           "taxonomy_template_name": {
             "anyOf": [
@@ -1505,6 +2040,30 @@
           "unclassified_count": {
             "title": "Unclassified Count",
             "type": "integer"
+          },
+          "version_groups": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/VersionGroupOut"
+            },
+            "title": "Version Groups",
+            "type": "array"
+          },
+          "versions_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "all",
+                  "mark",
+                  "current_only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions Mode"
           }
         },
         "required": [
@@ -1523,6 +2082,40 @@
         "title": "ContextOut",
         "type": "object"
       },
+      "ContextReviewAgentParams": {
+        "additionalProperties": false,
+        "description": "Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de\nla cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14).",
+        "properties": {
+          "instructions": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "max_items": {
+            "default": 20,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Items",
+            "type": "integer"
+          },
+          "max_steps": {
+            "default": 40,
+            "maximum": 80.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "context_review_agent",
+            "default": "context_review_agent",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ContextReviewAgentParams",
+        "type": "object"
+      },
       "CsrfToken": {
         "description": "Token CSRF para la cabecera ``X-CSRF-Token``.",
         "properties": {
@@ -1535,6 +2128,274 @@
           "csrf_token"
         ],
         "title": "CsrfToken",
+        "type": "object"
+      },
+      "DecisionIn": {
+        "additionalProperties": false,
+        "description": "Una decisión sobre un documento del contexto (se aplica en la siguiente construcción).\n\n``confirm``: los valores de los ejes que se confirman. ``set_axis``: un eje y sus valores. ``exclude`` y\n``set_current_version``: sin ejes.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "maxProperties": 10,
+            "propertyNames": {
+              "maxLength": 41
+            },
+            "title": "Axes",
+            "type": "object"
+          },
+          "document_key": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Document Key",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "document_key",
+          "action"
+        ],
+        "title": "DecisionIn",
+        "type": "object"
+      },
+      "DecisionIssueOut": {
+        "description": "Una decisión que la última construcción no aplicó, y por qué.",
+        "properties": {
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "document_key",
+          "reason"
+        ],
+        "title": "DecisionIssueOut",
+        "type": "object"
+      },
+      "DecisionOut": {
+        "description": "Una decisión de una persona (``ClassificationDecision``): vigente o, con ``revoked_at``, del historial.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": "string"
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "revoke_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoke Reason"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By"
+          },
+          "source_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Sha256"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "action",
+          "decided_at"
+        ],
+        "title": "DecisionOut",
+        "type": "object"
+      },
+      "DecisionRevokeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "DecisionRevokeIn",
+        "type": "object"
+      },
+      "DecisionsOut": {
+        "description": "Decisiones del proyecto: vigentes, historial y las no aplicadas en la última construcción.",
+        "properties": {
+          "applied": {
+            "default": 0,
+            "title": "Applied",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "orphan": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DecisionIssueOut"
+            },
+            "title": "Orphan",
+            "type": "array"
+          },
+          "revoked": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "Revoked",
+            "type": "array"
+          },
+          "stale": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DecisionIssueOut"
+            },
+            "title": "Stale",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decisions",
+          "revoked"
+        ],
+        "title": "DecisionsOut",
         "type": "object"
       },
       "DedupApplyParams": {
@@ -1658,6 +2519,86 @@
           }
         },
         "title": "DedupPreviewParams",
+        "type": "object"
+      },
+      "DiagnosticCheckOut": {
+        "description": "Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "remedy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remedy"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "warning",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "detail"
+        ],
+        "title": "DiagnosticCheckOut",
+        "type": "object"
+      },
+      "DiagnosticsIn": {
+        "additionalProperties": false,
+        "description": "Diagnóstico del entorno (W4): ``check_ai`` prueba también los modelos de IA configurados (gasta unos tokens).",
+        "properties": {
+          "check_ai": {
+            "default": false,
+            "title": "Check Ai",
+            "type": "boolean"
+          }
+        },
+        "title": "DiagnosticsIn",
+        "type": "object"
+      },
+      "DiagnosticsOut": {
+        "description": "Resultado del diagnóstico del entorno, sin claves, URL del proxy ni rutas del contenedor.",
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "checked_at",
+          "checks"
+        ],
+        "title": "DiagnosticsOut",
         "type": "object"
       },
       "DocumentOut": {
@@ -1956,15 +2897,90 @@
         "title": "DuplicatesLastOut",
         "type": "object"
       },
+      "ExportAiBundleParams": {
+        "additionalProperties": false,
+        "description": "Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con\nsu ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1).",
+        "properties": {
+          "current_only": {
+            "default": true,
+            "title": "Current Only",
+            "type": "boolean"
+          },
+          "include_text": {
+            "default": true,
+            "title": "Include Text",
+            "type": "boolean"
+          },
+          "max_file_chars": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 1000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max File Chars"
+          },
+          "max_full_chars": {
+            "anyOf": [
+              {
+                "maximum": 100000000.0,
+                "minimum": 1000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Full Chars"
+          },
+          "operation": {
+            "const": "export_ai_bundle",
+            "default": "export_ai_bundle",
+            "title": "Operation",
+            "type": "string"
+          },
+          "redact": {
+            "default": true,
+            "title": "Redact",
+            "type": "boolean"
+          }
+        },
+        "title": "ExportAiBundleParams",
+        "type": "object"
+      },
+      "ExportSiteParams": {
+        "additionalProperties": false,
+        "description": "Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en\nel workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con\n``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio.",
+        "properties": {
+          "llms_txt": {
+            "default": false,
+            "title": "Llms Txt",
+            "type": "boolean"
+          },
+          "operation": {
+            "const": "export_site",
+            "default": "export_site",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ExportSiteParams",
+        "type": "object"
+      },
       "ExportXlsxParams": {
         "additionalProperties": false,
-        "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios).",
+        "description": "Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del\nhistorial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con\nsus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»).",
         "properties": {
           "kind": {
             "enum": [
               "cache",
               "errors",
-              "context_history"
+              "context_history",
+              "context_documents"
             ],
             "title": "Kind",
             "type": "string"
@@ -2069,6 +3085,143 @@
           "total"
         ],
         "title": "FolderListing",
+        "type": "object"
+      },
+      "FreshnessExamplesOut": {
+        "properties": {
+          "added": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "changed": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "removed": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed",
+            "type": "array"
+          },
+          "unknown": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown",
+            "type": "array"
+          }
+        },
+        "title": "FreshnessExamplesOut",
+        "type": "object"
+      },
+      "FrontMatterReportOut": {
+        "description": "Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.\n\n``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).\n``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.",
+        "properties": {
+          "axes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyAxisSummaryOut"
+            },
+            "title": "Axes",
+            "type": "array"
+          },
+          "ignored_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignored Keys",
+            "type": "array"
+          },
+          "implicit_axes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Implicit Axes",
+            "type": "array"
+          },
+          "legacy_format": {
+            "default": false,
+            "title": "Legacy Format",
+            "type": "boolean"
+          }
+        },
+        "title": "FrontMatterReportOut",
+        "type": "object"
+      },
+      "GoldOut": {
+        "description": "Referencia en Excel del proyecto (sin el contenido): de dónde se leyó y qué tiene.",
+        "properties": {
+          "axes": {
+            "description": "Ejes con etiquetas",
+            "items": {
+              "type": "string"
+            },
+            "title": "Axes",
+            "type": "array"
+          },
+          "columns": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "object"
+          },
+          "document_column": {
+            "title": "Document Column",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Documentos etiquetados",
+            "title": "Labels",
+            "type": "integer"
+          },
+          "sheet": {
+            "title": "Sheet",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
+          }
+        },
+        "required": [
+          "filename",
+          "sheet",
+          "document_column",
+          "columns",
+          "labels",
+          "axes",
+          "uploaded_at"
+        ],
+        "title": "GoldOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3291,6 +4444,117 @@
         "title": "PermissionList",
         "type": "object"
       },
+      "ProfileSectionsOut": {
+        "description": "Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar.",
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "examples": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "glossary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary"
+          },
+          "tie_breakers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tie Breakers"
+          }
+        },
+        "title": "ProfileSectionsOut",
+        "type": "object"
+      },
+      "ProjectAiSettingsIn": {
+        "additionalProperties": false,
+        "description": "Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.\nAusente = no se toca; se aplican desde la siguiente construcción.",
+        "properties": {
+          "ai_redact_credentials": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. Desactivarlo envía las credenciales tal cual a la IA",
+            "title": "Ai Redact Credentials"
+          },
+          "context_semantic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)",
+            "title": "Context Semantic"
+          },
+          "context_semantic_threshold": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Similitud mínima para asignar un valor por semántica",
+            "title": "Context Semantic Threshold"
+          },
+          "context_versions": {
+            "anyOf": [
+              {
+                "enum": [
+                  "all",
+                  "mark",
+                  "current_only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)",
+            "title": "Context Versions"
+          }
+        },
+        "title": "ProjectAiSettingsIn",
+        "type": "object"
+      },
       "ProjectCreate": {
         "additionalProperties": false,
         "description": "Alta de proyecto. La carpeta de salidas es ``destination_parent/new_folder`` (nueva) o, sin ``new_folder``,\n``destination_parent`` (que debe estar vacía).",
@@ -3484,11 +4748,37 @@
             "title": "Active Run",
             "type": "boolean"
           },
+          "ai_redact_credentials": {
+            "default": true,
+            "description": "Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
+            "title": "Ai Redact Credentials",
+            "type": "boolean"
+          },
           "capture_owner": {
             "default": false,
             "description": "Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)",
             "title": "Capture Owner",
             "type": "boolean"
+          },
+          "context_semantic": {
+            "default": false,
+            "title": "Context Semantic",
+            "type": "boolean"
+          },
+          "context_semantic_threshold": {
+            "default": 0.75,
+            "title": "Context Semantic Threshold",
+            "type": "number"
+          },
+          "context_versions": {
+            "default": "mark",
+            "enum": [
+              "all",
+              "mark",
+              "current_only"
+            ],
+            "title": "Context Versions",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -3593,6 +4883,59 @@
         "title": "ProjectPage",
         "type": "object"
       },
+      "ProjectProfileIn": {
+        "additionalProperties": false,
+        "description": "Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de\ndesempate``, ``## Glosario`` y ``## Ejemplos``.",
+        "properties": {
+          "markdown": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "ProjectProfileIn",
+        "type": "object"
+      },
+      "ProjectProfileOut": {
+        "description": "``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).\n\n``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se\nenvía en ``If-Match`` al guardar o borrar (``\"none\"`` si no hay perfil).",
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "sections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "markdown",
+          "etag"
+        ],
+        "title": "ProjectProfileOut",
+        "type": "object"
+      },
       "ProjectUpdate": {
         "additionalProperties": false,
         "description": "Edición parcial: renombrar (solo en la BD), descripción, carpetas de origen y si se guarda el propietario.",
@@ -3654,6 +4997,581 @@
           }
         },
         "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "PromptMessageOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "PromptMessageOut",
+        "type": "object"
+      },
+      "PromptPreviewIn": {
+        "additionalProperties": false,
+        "description": "Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y\ncon ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado.",
+        "properties": {
+          "catalog": {
+            "default": "manifest",
+            "enum": [
+              "template",
+              "manifest"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "profile_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          }
+        },
+        "title": "PromptPreviewIn",
+        "type": "object"
+      },
+      "PromptPreviewOut": {
+        "description": "Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del\nproyecto y el compuesto que va en el prompt.",
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/PromptMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "template_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileSectionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "PromptPreviewOut",
+        "type": "object"
+      },
+      "PromptProvenanceOut": {
+        "description": "Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``).",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_id": {
+            "title": "Prompt Id",
+            "type": "string"
+          },
+          "source": {
+            "description": "builtin (empaquetado) o project (prompt propio del proyecto)",
+            "title": "Source",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "prompt_id",
+          "version",
+          "source",
+          "model"
+        ],
+        "title": "PromptProvenanceOut",
+        "type": "object"
+      },
+      "ProposalList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProposalList",
+        "type": "object"
+      },
+      "ProposalOut": {
+        "description": "Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDocumentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "proposal_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "``ReviewProposal.id`` de doc_organize",
+            "title": "Proposal Key"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "action",
+          "created_at"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
+      "QualityOut": {
+        "description": "Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.",
+        "properties": {
+          "audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Último informe del auditor (W7)"
+          },
+          "decisions_available": {
+            "description": "Hay decisiones de personas con las que hacer una referencia",
+            "title": "Decisions Available",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gold": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoldOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "decisions_available"
+        ],
+        "title": "QualityOut",
+        "type": "object"
+      },
+      "QualityRunOut": {
+        "description": "El último run terminado de una comprobación de calidad, con su resultado.",
+        "properties": {
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "finished_at",
+          "result"
+        ],
+        "title": "QualityRunOut",
+        "type": "object"
+      },
+      "ReviewDocumentOut": {
+        "description": "El documento de un motivo de revisión, con sus valores por eje y su versión.",
+        "properties": {
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/AxisValueOut"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "domain_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Slug"
+          },
+          "folder": {
+            "title": "Folder",
+            "type": "string"
+          },
+          "is_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Current"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "version_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Group"
+          }
+        },
+        "required": [
+          "seq",
+          "title",
+          "folder",
+          "path",
+          "domain_slug"
+        ],
+        "title": "ReviewDocumentOut",
+        "type": "object"
+      },
+      "ReviewItemOut": {
+        "description": "Un motivo para revisar un documento (``review_queue``), con el documento y su decisión vigente, si la hay.",
+        "properties": {
+          "axis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Axis"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decisión vigente del documento (se aplica en la siguiente construcción)"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDocumentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "stale_decision",
+              "unclassified",
+              "rules_ai_disagreement",
+              "unverified_evidence",
+              "low_confidence",
+              "unconfirmed_version"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "reason",
+          "priority"
+        ],
+        "title": "ReviewItemOut",
+        "type": "object"
+      },
+      "ReviewPage": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Motivos de revisión → cuántos hay",
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ReviewPage",
         "type": "object"
       },
       "RoleCreate": {
@@ -3865,12 +5783,20 @@
               "scan",
               "export_zip",
               "export_xlsx",
+              "export_site",
+              "export_ai_bundle",
               "search_index",
               "dedup_preview",
               "dedup_apply",
               "context_build",
               "context_delete",
-              "taxonomy_draft"
+              "taxonomy_draft",
+              "context_evaluate",
+              "context_dry_run",
+              "taxonomy_agent",
+              "taxonomy_check",
+              "context_review_agent",
+              "context_audit"
             ],
             "title": "Operation",
             "type": "string"
@@ -3982,12 +5908,20 @@
               "scan",
               "export_zip",
               "export_xlsx",
+              "export_site",
+              "export_ai_bundle",
               "search_index",
               "dedup_preview",
               "dedup_apply",
               "context_build",
               "context_delete",
-              "taxonomy_draft"
+              "taxonomy_draft",
+              "context_evaluate",
+              "context_dry_run",
+              "taxonomy_agent",
+              "taxonomy_check",
+              "context_review_agent",
+              "context_audit"
             ],
             "title": "Operation",
             "type": "string"
@@ -4803,6 +6737,137 @@
         "title": "SiteSessionOut",
         "type": "object"
       },
+      "TaxonomyAgentParams": {
+        "additionalProperties": false,
+        "description": "Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,\nuna plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.\n\n**No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la\nAPI al encolar. ``max_steps`` es el tope de llamadas al modelo.",
+        "properties": {
+          "catalog": {
+            "default": "manifest",
+            "enum": [
+              "manifest",
+              "template",
+              "none"
+            ],
+            "title": "Catalog",
+            "type": "string"
+          },
+          "instructions": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "max_steps": {
+            "default": 30,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "taxonomy_agent",
+            "default": "taxonomy_agent",
+            "title": "Operation",
+            "type": "string"
+          },
+          "template_markdown": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Markdown"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          }
+        },
+        "title": "TaxonomyAgentParams",
+        "type": "object"
+      },
+      "TaxonomyAxisSummaryOut": {
+        "description": "Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "multiple": {
+            "title": "Multiple",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organizes": {
+            "anyOf": [
+              {
+                "enum": [
+                  "folder",
+                  "subfolder"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizes"
+          },
+          "values": {
+            "title": "Values",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "organizes",
+          "multiple",
+          "values"
+        ],
+        "title": "TaxonomyAxisSummaryOut",
+        "type": "object"
+      },
+      "TaxonomyCheckParams": {
+        "additionalProperties": false,
+        "description": "Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin\nIA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje.",
+        "properties": {
+          "markdown": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          },
+          "operation": {
+            "const": "taxonomy_check",
+            "default": "taxonomy_check",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TaxonomyCheckParams",
+        "type": "object"
+      },
       "TaxonomyDraftParams": {
         "additionalProperties": false,
         "description": "Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.\n\nNo escribe nada: el borrador va en el resultado del run y se guarda, si se quiere, con el ``PUT`` del manifiesto.",
@@ -4849,6 +6914,15 @@
           "etag": {
             "title": "Etag",
             "type": "string"
+          },
+          "front_matter": {
+            "$ref": "#/components/schemas/FrontMatterReportOut",
+            "default": {
+              "axes": [],
+              "ignored_keys": [],
+              "implicit_axes": [],
+              "legacy_format": false
+            }
           },
           "last_changed_at": {
             "anyOf": [
@@ -4907,7 +6981,7 @@
         "type": "object"
       },
       "TaxonomyTemplateDetail": {
-        "description": "Plantilla con su Markdown y su catálogo.",
+        "description": "Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3).",
         "properties": {
           "builtin": {
             "title": "Builtin",
@@ -4930,6 +7004,15 @@
             },
             "title": "Domains",
             "type": "array"
+          },
+          "front_matter": {
+            "$ref": "#/components/schemas/FrontMatterReportOut",
+            "default": {
+              "axes": [],
+              "ignored_keys": [],
+              "implicit_axes": [],
+              "legacy_format": false
+            }
           },
           "markdown": {
             "title": "Markdown",
@@ -5051,6 +7134,23 @@
           "builtin"
         ],
         "title": "TaxonomyTemplateOut",
+        "type": "object"
+      },
+      "TemplatePromptPreviewIn": {
+        "additionalProperties": false,
+        "description": "Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto).",
+        "properties": {
+          "markdown": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "TemplatePromptPreviewIn",
         "type": "object"
       },
       "TenantCreate": {
@@ -5537,6 +7637,46 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VersionGroupOut": {
+        "description": "Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más\nalta, con rutas relativas, la vigente y si una persona la confirmó.",
+        "properties": {
+          "confirmed": {
+            "default": false,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "current": {
+            "title": "Current",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "members",
+          "versions",
+          "current"
+        ],
+        "title": "VersionGroupOut",
+        "type": "object"
+      },
       "WorkerList": {
         "description": "Workers registrados.",
         "properties": {
@@ -5762,7 +7902,7 @@
   },
   "info": {
     "title": "doc_organize_web",
-    "version": "1.9.1"
+    "version": "2.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5800,7 +7940,7 @@
     },
     "/api/v1/admin/ai-settings": {
       "get": {
-        "description": "Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.",
+        "description": "Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de\nentorno de doc_organize 1.x que siguen definidas y ya no se leen.",
         "operationId": "get_ai_settings_api_v1_admin_ai_settings_get",
         "responses": {
           "200": {
@@ -6020,6 +8160,60 @@
         ]
       }
     },
+    "/api/v1/admin/diagnostics": {
+      "post": {
+        "description": "``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,\nGPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un\nminuto; se audita sin detalles.",
+        "operationId": "run_diagnostics_api_v1_admin_diagnostics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagnosticsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon)"
+          },
+          "503": {
+            "description": "No terminó a tiempo o falló (diagnostics_failed)"
+          }
+        },
+        "summary": "Diagnóstico del entorno",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/admin/mounts": {
       "get": {
         "description": "Subcarpetas bajo ``DOW_LOCATIONS_ROOT`` para elegir la carpeta de una ubicación nueva.",
@@ -6205,7 +8399,7 @@
     },
     "/api/v1/ai/status": {
       "get": {
-        "description": "Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto.",
+        "description": "Si cada familia tiene sus campos obligatorios y si cada tarea se puede usar: activa la IA en la página de\ncontexto.",
         "operationId": "get_ai_status_api_v1_ai_status_get",
         "responses": {
           "200": {
@@ -7541,6 +9735,61 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/ai-settings": {
+      "put": {
+        "description": "Redacción de credenciales de lo que sale hacia la IA y del sitio (D7, por defecto activada). Propietario o\neditor, con el destino de lectura y escritura; auditado con el valor anterior y el nuevo.",
+        "operationId": "put_ai_settings_api_v1_projects__project_id__ai_settings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectAiSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Destino de solo lectura (location_read_only)"
+          }
+        },
+        "summary": "Ajustes de IA del proyecto",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/context": {
       "get": {
         "description": "Resumen del último contexto construido (404 ``context_not_found`` si no hay).",
@@ -7585,6 +9834,179 @@
           }
         },
         "summary": "Contexto del proyecto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/decisions": {
+      "get": {
+        "description": "Vigentes (``.doc_organize/decisions.json``), historial de revocadas y las que la última construcción no aplicó\n(desfasadas y huérfanas).",
+        "operationId": "get_decisions_api_v1_projects__project_id__context_decisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decisiones de personas",
+        "tags": [
+          "context"
+        ]
+      },
+      "post": {
+        "description": "Confirmar la clasificación, fijar los valores de un eje (del catálogo), sacar el documento del contexto o\nmarcarlo como versión vigente. Se aplica en la siguiente construcción; propietario o editor; auditado.",
+        "operationId": "post_decision_api_v1_projects__project_id__context_decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin contexto, sin el documento o sin la decisión"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Decidir sobre un documento",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/decisions/{decision_id}/revoke": {
+      "post": {
+        "description": "La decisión deja de aplicarse en la siguiente construcción y pasa al historial.",
+        "operationId": "revoke_decision_api_v1_projects__project_id__context_decisions__decision_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Decision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRevokeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin contexto, sin el documento o sin la decisión"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Revocar una decisión",
         "tags": [
           "context"
         ]
@@ -7683,6 +10105,41 @@
               ],
               "description": "Solo si alguna palabra clave contiene este texto (1.5.0)",
               "title": "Keyword"
+            }
+          },
+          {
+            "description": "Solo las versiones vigentes (W6): fuera las marcadas como versión antigua",
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Solo las versiones vigentes (W6): fuera las marcadas como versión antigua",
+              "title": "Current",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía",
+            "in": "query",
+            "name": "axis",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "pattern": "^[a-z][a-z0-9_]{0,40}:[a-z0-9-]{1,128}$",
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por eje ``clave:slug`` (W3), repetible hasta 20: valores del mismo eje con O, ejes distintos con Y. Un eje o valor que no existe da una lista vacía",
+              "title": "Axis"
             }
           },
           {
@@ -7863,6 +10320,724 @@
           }
         },
         "summary": "Historial del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/profile": {
+      "delete": {
+        "description": "Borra ``profile.md`` (queda solo el perfil de la plantilla o el manifiesto).",
+        "operationId": "delete_profile_api_v1_projects__project_id__context_profile_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced)"
+          },
+          "422": {
+            "description": "Demasiado grande (profile_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Borrar el perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      },
+      "get": {
+        "description": "``.doc_organize/profile.md`` del proyecto y las secciones que reconoce doc_organize.",
+        "operationId": "get_profile_api_v1_projects__project_id__context_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      },
+      "put": {
+        "description": "Escribe el perfil propio del proyecto (D11: se añade al de la plantilla o el manifiesto). Propietario o editor,\ncon el destino ``rw``; auditado sin el texto.",
+        "operationId": "put_profile_api_v1_projects__project_id__context_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``etag`` del manifiesto leído (``GET …/taxonomy-manifest``); obligatorio al cambiarlo",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "409": {
+            "description": "Cambió desde que se leyó (profile_changed), escritura en curso (write_locked) o no es un fichero normal (profile_replaced)"
+          },
+          "422": {
+            "description": "Demasiado grande (profile_invalid) o destino de solo lectura"
+          },
+          "428": {
+            "description": "Falta If-Match (etag_required)"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Guardar el perfil del proyecto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/prompt-preview": {
+      "post": {
+        "description": "Los mensajes que recibiría el modelo al clasificar con la plantilla o el manifiesto y el perfil (el borrador\ndel formulario o el guardado), **sin llamarlo**.",
+        "operationId": "preview_prompt_api_v1_projects__project_id__context_prompt_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptPreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Sin manifiesto o no válido (prompt_preview_invalid)"
+          }
+        },
+        "summary": "Vista previa del prompt de clasificación",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/quality": {
+      "get": {
+        "description": "La referencia subida, si hay decisiones con las que hacer una, y la última evaluación y comparación terminadas\n(``context_evaluate`` y ``context_dry_run``).",
+        "operationId": "get_quality_api_v1_projects__project_id__context_quality_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calidad de la clasificación",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/quality/gold": {
+      "delete": {
+        "description": "Borra la referencia subida.",
+        "operationId": "delete_gold_api_v1_projects__project_id__context_quality_gold_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Borrar la referencia en Excel",
+        "tags": [
+          "context"
+        ]
+      },
+      "put": {
+        "description": "Referencia etiquetada a mano (``.xlsx``, como mucho 5 MB): una fila por documento con su clave\n(``<carpeta>/<ruta>``) y, por eje, el valor correcto (varios separados por coma; ``ninguno`` si ninguno). Se\ncomprueba con ``load_gold_xlsx`` y sustituye a la anterior; propietario o editor, auditado sin el contenido.",
+        "operationId": "put_gold_api_v1_projects__project_id__context_quality_gold_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filename",
+            "required": false,
+            "schema": {
+              "default": "referencia.xlsx",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Filename",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sheet",
+            "required": false,
+            "schema": {
+              "default": "Referencia",
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Sheet",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_column",
+            "required": false,
+            "schema": {
+              "default": "documento",
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Document Column",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Eje y columna, ``eje:columna`` (repetible); sin ninguno, ``dominio_ok`` y ``tipo_ok``",
+            "in": "query",
+            "name": "columns",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "pattern": "^[a-z][a-z0-9_]{0,40}:[^:]{1,100}$",
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Eje y columna, ``eje:columna`` (repetible); sin ninguno, ``dominio_ok`` y ``tipo_ok``",
+              "title": "Columns"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "gold_invalid"
+          }
+        },
+        "summary": "Subir la referencia en Excel",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review": {
+      "get": {
+        "description": "Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,\nsi la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).",
+        "operationId": "get_review_api_v1_projects__project_id__context_review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Solo este motivo",
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "stale_decision",
+                    "unclassified",
+                    "rules_ai_disagreement",
+                    "unverified_evidence",
+                    "low_confidence",
+                    "unconfirmed_version"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo este motivo",
+              "title": "Reason"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cola de revisión de la clasificación",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review/proposals": {
+      "get": {
+        "description": "Las propuestas del revisor (``context_review_agent``) que nadie ha aceptado ni descartado, con su documento.",
+        "operationId": "get_proposals_api_v1_projects__project_id__context_review_proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propuestas pendientes del revisor",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/accept": {
+      "post": {
+        "description": "La propuesta se guarda como decisión de quien la acepta (se aplica al reconstruir). Propietario o editor.",
+        "operationId": "accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin la propuesta (proposal_not_found) o sin el documento"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Aceptar una propuesta del revisor",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/discard": {
+      "post": {
+        "description": "No se aplica nada; la propuesta deja de estar pendiente. Propietario o editor.",
+        "operationId": "discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin la propuesta (proposal_not_found)"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Descartar una propuesta del revisor",
         "tags": [
           "context"
         ]
@@ -9010,6 +12185,12 @@
                     "$ref": "#/components/schemas/ExportXlsxParams"
                   },
                   {
+                    "$ref": "#/components/schemas/ExportSiteParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExportAiBundleParams"
+                  },
+                  {
                     "$ref": "#/components/schemas/SearchIndexParams"
                   },
                   {
@@ -9026,6 +12207,24 @@
                   },
                   {
                     "$ref": "#/components/schemas/TaxonomyDraftParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextEvaluateParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextDryRunParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TaxonomyAgentParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TaxonomyCheckParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextReviewAgentParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextAuditParams"
                   }
                 ],
                 "title": "Body"
@@ -9851,12 +13050,20 @@
                     "scan",
                     "export_zip",
                     "export_xlsx",
+                    "export_site",
+                    "export_ai_bundle",
                     "search_index",
                     "dedup_preview",
                     "dedup_apply",
                     "context_build",
                     "context_delete",
-                    "taxonomy_draft"
+                    "taxonomy_draft",
+                    "context_evaluate",
+                    "context_dry_run",
+                    "taxonomy_agent",
+                    "taxonomy_check",
+                    "context_review_agent",
+                    "context_audit"
                   ],
                   "type": "string"
                 },
@@ -10715,6 +13922,47 @@
           }
         },
         "summary": "Plantillas de taxonomía",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/taxonomy-templates/prompt-preview": {
+      "post": {
+        "description": "Los mensajes que recibiría el modelo con esta plantilla y su perfil (``templates.manage``), sin llamarlo.",
+        "operationId": "preview_template_prompt_api_v1_taxonomy_templates_prompt_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplatePromptPreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "description": "Plantilla no válida (template_invalid)"
+          }
+        },
+        "summary": "Vista previa del prompt de una plantilla",
         "tags": [
           "context"
         ]

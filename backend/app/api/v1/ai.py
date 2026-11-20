@@ -14,6 +14,7 @@ from app.api.v1.schemas import (
     AiFamilyOut,
     AiFamilyUpdate,
     AiFieldOut,
+    AiLegacyVariableOut,
     AiSettingsOut,
     AiStatusOut,
     AiTestIn,
@@ -21,9 +22,13 @@ from app.api.v1.schemas import (
     AiUsageItemOut,
     AiUsageOut,
     AiUsageSourceOut,
+    DiagnosticCheckOut,
+    DiagnosticsIn,
+    DiagnosticsOut,
 )
 from app.core import crypto
 from app.domain.ai import connection_test
+from app.domain.ai import diagnostics as ai_diagnostics
 from app.domain.ai import settings as ai_settings
 from app.domain.ai import usage as ai_usage
 from app.domain.ai.settings import FamilyView
@@ -50,6 +55,7 @@ def _family_out(view: FamilyView) -> AiFamilyOut:
                 value=f.value,
                 hint=f.hint,
                 undecryptable=f.undecryptable,
+                task=f.task,
             )
             for f in view.fields
         ],
@@ -58,10 +64,15 @@ def _family_out(view: FamilyView) -> AiFamilyOut:
 
 @router.get("/admin/ai-settings", response_model=AiSettingsOut, summary="Ver la configuración de IA", responses=_ERRORS)
 def get_ai_settings(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> AiSettingsOut:
-    """Las 6 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos."""
+    """Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de
+    entorno de doc_organize 1.x que siguen definidas y ya no se leen."""
     return AiSettingsOut(
         encryption_configured=crypto.is_configured(settings),
         families=[_family_out(view) for view in ai_settings.list_families(db, settings)],
+        legacy_variables=[
+            AiLegacyVariableOut(name=name, replacement=replacement)
+            for name, replacement in sorted(ai_settings.legacy_variables().items())
+        ],
     )
 
 
@@ -110,7 +121,7 @@ def probe_ai_family(
     clasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.
     """
     outcome = connection_test.probe_family(
-        db, family, body.fields, model_check=body.model_check, settings=settings, actor=admin, ctx=ctx
+        db, family, body.fields, model_check=body.model_check, task=body.task, settings=settings, actor=admin, ctx=ctx
     )
     check = outcome.check
     return AiTestOut(
@@ -118,6 +129,8 @@ def probe_ai_family(
         error=check.error,
         model_access=check.model_access,
         model_checked=check.model_checked,
+        task=check.task,
+        response_format=check.response_format,
         elapsed_ms=check.elapsed_ms,
         tested_at=outcome.tested_at,
     )
@@ -125,8 +138,12 @@ def probe_ai_family(
 
 @router.get("/ai/status", response_model=AiStatusOut, summary="Familias de IA configuradas", responses=_ERRORS)
 def get_ai_status(_: CurrentUser, db: DbSession, settings: SettingsDep) -> AiStatusOut:
-    """Si cada familia tiene sus campos obligatorios: activa la IA en la página de contexto."""
-    return AiStatusOut(families=ai_settings.configured_families(db, settings))
+    """Si cada familia tiene sus campos obligatorios y si cada tarea se puede usar: activa la IA en la página de
+    contexto."""
+    return AiStatusOut(
+        families=ai_settings.configured_families(db, settings),
+        tasks=ai_settings.configured_tasks(db, settings),
+    )
 
 
 @router.get("/admin/ai-usage", response_model=AiUsageOut, summary="Uso y coste de IA", responses=_ERRORS)
@@ -156,3 +173,27 @@ def get_ai_usage(
             )
         )
     return AiUsageOut(sources=sources)
+
+
+@router.post(
+    "/admin/diagnostics",
+    response_model=DiagnosticsOut,
+    summary="Diagnóstico del entorno",
+    responses={
+        **_ERRORS,
+        429: {"description": "Otro diagnóstico en marcha o hace menos de 30 s (diagnostics_too_soon)"},
+        503: {"description": "No terminó a tiempo o falló (diagnostics_failed)"},
+    },
+)
+def run_diagnostics(
+    body: DiagnosticsIn, admin: InstanceAdmin, db: DbSession, settings: SettingsDep, ctx: Context
+) -> DiagnosticsOut:
+    """``check_environment`` de doc_organize en el servidor web (Python, docling y sus modelos, extras, sitio de prueba,
+    GPU, LibreOffice, audio y vídeo) y, con ``check_ai``, los modelos de IA de la familia ``litellm``. Puede tardar un
+    minuto; se audita sin detalles."""
+    report = ai_diagnostics.run(db, settings, check_ai=body.check_ai, actor=admin, ctx=ctx)
+    return DiagnosticsOut(
+        ok=report.ok,
+        checked_at=report.checked_at,
+        checks=[DiagnosticCheckOut.model_validate(check, from_attributes=True) for check in report.checks],
+    )

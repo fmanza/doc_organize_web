@@ -416,12 +416,20 @@ Operation = Literal[
     "scan",
     "export_zip",
     "export_xlsx",
+    "export_site",
+    "export_ai_bundle",
     "search_index",
     "dedup_preview",
     "dedup_apply",
     "context_build",
     "context_delete",
     "taxonomy_draft",
+    "context_evaluate",
+    "context_dry_run",
+    "taxonomy_agent",
+    "taxonomy_check",
+    "context_review_agent",
+    "context_audit",
 ]
 
 
@@ -458,10 +466,45 @@ class ProjectOut(BaseModel):
     capture_owner: bool = Field(
         default=False, description="Los escaneos guardan la cuenta propietaria de cada fichero (1.5.0)"
     )
+    ai_redact_credentials: bool = Field(
+        default=True,
+        description="Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
+    )
+    context_versions: Literal["all", "mark", "current_only"] = "mark"
+    context_semantic: bool = False
+    context_semantic_threshold: float = 0.75
     created_at: datetime
     updated_at: datetime
     last_run: RunBrief | None = None
     active_run: bool = False
+
+
+class ProjectAiSettingsIn(BaseModel):
+    """Ajustes de IA y del contexto del proyecto (W4, W6): propietario o editor, con el destino de lectura y escritura.
+    Ausente = no se toca; se aplican desde la siguiente construcción."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ai_redact_credentials: bool | None = Field(
+        default=None,
+        description=(
+            "Redactar credenciales (contraseñas, tokens, claves) del texto que se envía a la IA y del sitio publicado. "
+            "Desactivarlo envía las credenciales tal cual a la IA"
+        ),
+    )
+    context_versions: Literal["all", "mark", "current_only"] | None = Field(
+        default=None,
+        description=(
+            "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la "
+            "web) o current_only (solo la vigente entra en el contexto)"
+        ),
+    )
+    context_semantic: bool | None = Field(
+        default=None, description="Sub-fase semántica con embeddings antes de la IA (G4, opt-in; tarea embed)"
+    )
+    context_semantic_threshold: float | None = Field(
+        default=None, ge=0, le=1, description="Similitud mínima para asignar un valor por semántica"
+    )
 
 
 class ProjectPage(BaseModel):
@@ -796,12 +839,36 @@ class TaxonomyTemplateList(BaseModel):
     items: list[TaxonomyTemplateOut]
 
 
+class TaxonomyAxisSummaryOut(BaseModel):
+    """Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores."""
+
+    key: str
+    name: str
+    organizes: Literal["folder", "subfolder"] | None
+    multiple: bool
+    values: int
+
+
+class FrontMatterReportOut(BaseModel):
+    """Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
+
+    ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
+    ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+    """
+
+    axes: list[TaxonomyAxisSummaryOut] = []
+    implicit_axes: list[str] = []
+    ignored_keys: list[str] = []
+    legacy_format: bool = False
+
+
 class TaxonomyTemplateDetail(TaxonomyTemplateOut):
-    """Plantilla con su Markdown y su catálogo."""
+    """Plantilla con su Markdown, su catálogo y lo que avisa su front matter (W3)."""
 
     markdown: str
     domains: list[CatalogEntryOut]
     material_types: list[CatalogEntryOut]
+    front_matter: FrontMatterReportOut = FrontMatterReportOut()
 
 
 class TaxonomyMarkdownIn(BaseModel):
@@ -823,8 +890,73 @@ class TaxonomyManifestOut(BaseModel):
     error: str | None = None
     domains: list[CatalogEntryOut] = []
     material_types: list[CatalogEntryOut] = []
+    front_matter: FrontMatterReportOut = FrontMatterReportOut()
     etag: str
     last_changed_at: datetime | None = None
+
+
+class ProfileSectionsOut(BaseModel):
+    """Secciones de un perfil de proyecto (doc_organize 2.0, G2): lo que se envía al modelo al clasificar."""
+
+    context: str | None = None
+    tie_breakers: str | None = None
+    glossary: str | None = None
+    examples: list[str] = []
+
+
+class ProjectProfileOut(BaseModel):
+    """``.doc_organize/profile.md`` del proyecto (D11: se añade al perfil de la plantilla o el manifiesto).
+
+    ``markdown`` nulo si no existe; ``sections`` lo que doc_organize reconoce (nulo si ninguna sección). ``etag`` se
+    envía en ``If-Match`` al guardar o borrar (``"none"`` si no hay perfil).
+    """
+
+    markdown: str | None
+    sections: ProfileSectionsOut | None = None
+    etag: str
+
+
+class ProjectProfileIn(BaseModel):
+    """Perfil propio del proyecto: Markdown con las secciones ``## Contexto del proyecto``, ``## Reglas de
+    desempate``, ``## Glosario`` y ``## Ejemplos``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str = Field(min_length=1, max_length=32_768)
+
+
+class PromptPreviewIn(BaseModel):
+    """Vista previa del prompt de clasificación: con la plantilla ``template_name`` o con el manifiesto del proyecto, y
+    con ``profile_markdown`` (un borrador sin guardar) o, si es nulo, el perfil guardado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    catalog: Literal["template", "manifest"] = "manifest"
+    template_name: str | None = Field(default=None, max_length=64)
+    profile_markdown: str | None = Field(default=None, max_length=32_768)
+
+
+class TemplatePromptPreviewIn(BaseModel):
+    """Vista previa del prompt de una plantilla (su perfil, sin el de ningún proyecto)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str = Field(min_length=1, max_length=262_144)
+
+
+class PromptMessageOut(BaseModel):
+    role: str
+    content: str
+
+
+class PromptPreviewOut(BaseModel):
+    """Lo que recibiría el modelo al clasificar (sin llamarlo): los mensajes y el perfil de la plantilla, el del
+    proyecto y el compuesto que va en el prompt."""
+
+    messages: list[PromptMessageOut]
+    template_profile: ProfileSectionsOut | None = None
+    project_profile: ProfileSectionsOut | None = None
+    profile: ProfileSectionsOut | None = None
 
 
 class ManifestVersionOut(BaseModel):
@@ -861,6 +993,71 @@ class ContextDomainOut(BaseModel):
     documents: int
 
 
+class ContextAxisValueOut(BaseModel):
+    """Un valor de un eje del contexto y cuántos documentos lo tienen."""
+
+    slug: str
+    name: str
+    documents: int
+
+
+class ContextAxisOut(BaseModel):
+    """Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos."""
+
+    key: str
+    name: str
+    description: str | None = None
+    multiple: bool = False
+    organizes: Literal["folder", "subfolder"] | None = None
+    values: list[ContextAxisValueOut]
+
+
+class PromptProvenanceOut(BaseModel):
+    """Con qué prompt y qué modelo se hizo una tarea de IA en la construcción (``Context.ai_provenance``)."""
+
+    task: str
+    prompt_id: str
+    version: str
+    source: str = Field(description="builtin (empaquetado) o project (prompt propio del proyecto)")
+    model: str
+
+
+class FreshnessExamplesOut(BaseModel):
+    changed: list[str] = []
+    added: list[str] = []
+    removed: list[str] = []
+    unknown: list[str] = []
+
+
+class ContextFreshnessOut(BaseModel):
+    """Si el contexto sigue al día respecto a la caché del último escaneo (W4, ``check_context_freshness``).
+
+    Recuentos de originales cambiados, nuevos, que ya no están y sin huella (``unknown``: contextos anteriores a 2.0,
+    no se sabe si cambiaron; no cuentan para ``up_to_date``), si el sitio quedó desfasado y unos pocos ejemplos con
+    rutas relativas. Se calcula al escanear y al construir, sin leer originales.
+    """
+
+    checked_at: datetime
+    up_to_date: bool
+    changed: int
+    added: int
+    removed: int
+    unknown: int
+    stale_site: bool
+    examples: FreshnessExamplesOut = FreshnessExamplesOut()
+
+
+class VersionGroupOut(BaseModel):
+    """Versiones de un mismo documento (``Context.version_groups``, F5): miembros de la versión más baja a la más
+    alta, con rutas relativas, la vigente y si una persona la confirmó."""
+
+    key: str
+    members: list[str]
+    versions: list[str]
+    current: str
+    confirmed: bool = False
+
+
 class ContextOut(BaseModel):
     """Resumen del contexto construido del proyecto (proyección del último ``context_build``)."""
 
@@ -878,8 +1075,30 @@ class ContextOut(BaseModel):
     ai_classification_model: str | None = None
     ai_enrichment_model: str | None = None
     domains: list[ContextDomainOut]
+    #: W3 (doc_organize 2.0): ejes con recuentos por valor y procedencia de la IA; vacíos en contextos anteriores.
+    taxonomy_axes: list[ContextAxisOut] = []
+    ai_provenance: list[PromptProvenanceOut] = []
+    #: W4: frescura respecto a la caché del último escaneo; nula si aún no se ha comprobado.
+    freshness: ContextFreshnessOut | None = None
+    #: W6 (F5): modo de versiones de la construcción, sus grupos y las versiones antiguas fuera del contexto.
+    versions_mode: Literal["all", "mark", "current_only"] | None = None
+    version_groups: list[VersionGroupOut] = []
+    superseded: list[str] = []
+    superseded_count: int = 0
     built_by_run_id: str | None
     built_at: datetime
+
+
+class AxisValueOut(_Out):
+    """Un valor de un eje de un documento: quién lo asignó (``rules``, ``semantic``, ``ai`` o ``human``) y, si lo dio
+    la IA, la cita literal y si se encontró en el texto enviado (D10: sin verificar, confianza bajo el umbral)."""
+
+    slug: str
+    name: str
+    confidence: float | None = None
+    classified_by: Literal["rules", "semantic", "ai", "human"] | None = None
+    evidence: str | None = None
+    evidence_verified: bool | None = None
 
 
 class ContextDocumentOut(_Out):
@@ -895,7 +1114,7 @@ class ContextDocumentOut(_Out):
     organized_path: str | None
     failed: bool
     collision: bool
-    classified_by: Literal["rules", "ai"] | None = None
+    classified_by: Literal["rules", "semantic", "ai", "human"] | None = None
     output_path: str | None = None
     # 1.5.0: propiedades declaradas en el documento (o de la IA si faltan: ``ai_filled``) e idioma detectado.
     author: str | None = None
@@ -913,13 +1132,20 @@ class ContextDocumentOut(_Out):
     # 1.6.0 (G42): por qué no se clasificó; los sin clasificar traen también sus propiedades y lo que propusieron las
     # reglas por debajo del umbral (``rules_domain``, ``rules_confidence``). Nulo en contextos anteriores.
     unclassified_reason: Literal["incomplete_artifacts", "below_threshold"] | None = None
+    #: W3 (doc_organize 2.0): valores de cada eje, por clave de eje; vacío en contextos anteriores a 2.0.
+    axes: dict[str, list[AxisValueOut]] = {}
+    #: W6 (F5): versión del documento en su grupo, la clave del grupo y si es la vigente (nulos sin grupo).
+    version: str | None = None
+    version_group: str | None = None
+    is_current: bool | None = None
 
 
 class ContextChangeOut(BaseModel):
     """Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0)."""
 
     path: str = Field(description="Original relativo a la carpeta de origen (``<carpeta>/<ruta>``)")
-    change: Literal["added", "removed", "reclassified"]
+    #: doc_organize 2.0: ``superseded`` (versión antigua fuera del contexto) y ``excluded`` (lo sacó una persona).
+    change: Literal["added", "removed", "reclassified", "superseded", "excluded"]
     previous_domain: str | None
     domain: str | None
     previous_material_type: str | None
@@ -966,27 +1192,32 @@ class SiteSessionOut(BaseModel):
 
 # --- ai (Fase 8) -------------------------------------------------------------------------------------------------
 
-AiFamilyKey = Literal[
-    "litellm_classification",
-    "litellm_taxonomy_classification",
-    "litellm_taxonomy_manifest_draft",
-    "litellm_enrichment",
-    "litellm_usage",
-    "github_copilot_usage",
-]
+#: doc_organize 2.0 (W2): una familia ``litellm`` para todas las tareas de IA (migración ``0016``) y las dos de uso.
+AiFamilyKey = Literal["litellm", "litellm_usage", "github_copilot_usage"]
+AiTaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
 
 
 class AiFieldOut(BaseModel):
     """Campo de una familia de IA. ``value`` solo en los no secretos; ``hint`` («…ab12» o «***») solo en los secretos."""
 
     name: str
-    env_var: str
+    env_var: str | None = Field(description="Variable de entorno equivalente; null si el campo no tiene")
     secret: bool
     required: bool
     source: Literal["db", "env", "none"]
     value: str | None
     hint: str | None
     undecryptable: bool = Field(description="Hay un valor guardado que no se descifra con las claves actuales")
+    task: AiTaskKey | None = Field(
+        default=None, description="Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas"
+    )
+
+
+class AiLegacyVariableOut(BaseModel):
+    """Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye."""
+
+    name: str
+    replacement: str
 
 
 class AiFamilyOut(BaseModel):
@@ -1000,6 +1231,10 @@ class AiSettingsOut(BaseModel):
 
     encryption_configured: bool
     families: list[AiFamilyOut]
+    legacy_variables: list[AiLegacyVariableOut] = Field(
+        default_factory=list,
+        description="Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+    )
 
 
 class AiFamilyUpdate(BaseModel):
@@ -1008,7 +1243,7 @@ class AiFamilyUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
-        max_length=8
+        max_length=16
     )
 
 
@@ -1019,12 +1254,13 @@ class AiTestIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=4096)] | None] = Field(
-        default_factory=dict, max_length=8
+        default_factory=dict, max_length=16
     )
     model_check: bool = Field(
         default=False,
         description="Enviar también una petición mínima al modelo (gasta unos pocos tokens; solo familias con modelo)",
     )
+    task: AiTaskKey = Field(default="classify", description="Tarea cuyo modelo se prueba (familia litellm)")
 
 
 class AiTestOut(BaseModel):
@@ -1038,14 +1274,21 @@ class AiTestOut(BaseModel):
         description="Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)"
     )
     model_checked: bool = Field(description="Si se envió la petición al modelo")
+    task: AiTaskKey | None = Field(default=None, description="Tarea cuyo modelo se probó (familia litellm)")
+    response_format: Literal["json_schema", "json_object"] | None = Field(
+        default=None, description="Formato con el que respondió el modelo: json_schema si admite la salida estricta"
+    )
     elapsed_ms: int
     tested_at: AwareDatetime
 
 
 class AiStatusOut(BaseModel):
-    """Qué familias de IA están configuradas (para cualquier usuario, sin valores)."""
+    """Qué familias y qué tareas de IA están configuradas (para cualquier usuario, sin valores)."""
 
     families: dict[str, bool]
+    tasks: dict[str, bool] = Field(
+        default_factory=dict, description="Tarea de IA (doc_organize 2.0) → si se puede usar"
+    )
 
 
 class AiUsageItemOut(BaseModel):
@@ -1149,3 +1392,192 @@ class PermissionList(BaseModel):
     """Catálogo de permisos de los roles, en orden."""
 
     items: list[Permission]
+
+
+# --- W5: revisar la clasificación -------------------------------------------------------------------------------------
+
+ReviewReason = Literal[
+    "stale_decision",
+    "unclassified",
+    "rules_ai_disagreement",
+    "unverified_evidence",
+    "low_confidence",
+    "unconfirmed_version",
+]
+
+
+class ReviewDocumentOut(BaseModel):
+    """El documento de un motivo de revisión, con sus valores por eje y su versión."""
+
+    seq: int
+    title: str
+    folder: str
+    path: str
+    domain_slug: str | None
+    output_path: str | None = None
+    version: str | None = None
+    version_group: str | None = None
+    is_current: bool | None = None
+    axes: dict[str, list[AxisValueOut]] = {}
+
+
+class DecisionOut(BaseModel):
+    """Una decisión de una persona (``ClassificationDecision``): vigente o, con ``revoked_at``, del historial."""
+
+    id: str
+    document_key: str
+    action: Literal["confirm", "set_axis", "exclude", "set_current_version"]
+    axes: dict[str, list[str]] = {}
+    author: str | None = None
+    decided_at: str
+    reason: str | None = None
+    source_sha256: str | None = None
+    revoked_at: str | None = None
+    revoked_by: str | None = None
+    revoke_reason: str | None = None
+
+
+class ReviewItemOut(BaseModel):
+    """Un motivo para revisar un documento (``review_queue``), con el documento y su decisión vigente, si la hay."""
+
+    id: int
+    document_key: str
+    reason: ReviewReason
+    priority: int
+    axis: str | None = None
+    value: str | None = None
+    confidence: float | None = None
+    detail: str | None = None
+    document: ReviewDocumentOut | None = None
+    decision: DecisionOut | None = Field(
+        default=None, description="Decisión vigente del documento (se aplica en la siguiente construcción)"
+    )
+
+
+class ReviewPage(BaseModel):
+    items: list[ReviewItemOut]
+    total: int
+    counts: dict[str, int] = Field(default_factory=dict, description="Motivos de revisión → cuántos hay")
+
+
+class DecisionIssueOut(BaseModel):
+    """Una decisión que la última construcción no aplicó, y por qué."""
+
+    decision_id: str
+    document_key: str
+    reason: str
+    detail: str | None = None
+
+
+class DecisionsOut(BaseModel):
+    """Decisiones del proyecto: vigentes, historial y las no aplicadas en la última construcción."""
+
+    decisions: list[DecisionOut]
+    revoked: list[DecisionOut]
+    stale: list[DecisionIssueOut] = []
+    orphan: list[DecisionIssueOut] = []
+    applied: int = 0
+
+
+class DecisionIn(BaseModel):
+    """Una decisión sobre un documento del contexto (se aplica en la siguiente construcción).
+
+    ``confirm``: los valores de los ejes que se confirman. ``set_axis``: un eje y sus valores. ``exclude`` y
+    ``set_current_version``: sin ejes.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    document_key: str = Field(min_length=1, max_length=4096)
+    action: Literal["confirm", "set_axis", "exclude", "set_current_version"]
+    axes: dict[Annotated[str, Field(max_length=41)], list[Annotated[str, Field(min_length=1, max_length=128)]]] = Field(
+        default_factory=dict, max_length=10
+    )
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class DecisionRevokeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
+# --- W5: calidad -----------------------------------------------------------------------------------------------------
+
+
+class GoldOut(BaseModel):
+    """Referencia en Excel del proyecto (sin el contenido): de dónde se leyó y qué tiene."""
+
+    filename: str
+    sheet: str
+    document_column: str
+    columns: dict[str, str]
+    labels: int = Field(description="Documentos etiquetados")
+    axes: list[str] = Field(description="Ejes con etiquetas")
+    uploaded_at: str
+    uploaded_by: str | None = None
+
+
+class QualityRunOut(BaseModel):
+    """El último run terminado de una comprobación de calidad, con su resultado."""
+
+    run_id: str
+    finished_at: AwareDatetime | None
+    result: dict[str, Any]
+
+
+class QualityOut(BaseModel):
+    """Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas."""
+
+    gold: GoldOut | None = None
+    decisions_available: bool = Field(description="Hay decisiones de personas con las que hacer una referencia")
+    evaluation: QualityRunOut | None = None
+    dry_run: QualityRunOut | None = None
+    audit: QualityRunOut | None = Field(default=None, description="Último informe del auditor (W7)")
+
+
+class DiagnosticsIn(BaseModel):
+    """Diagnóstico del entorno (W4): ``check_ai`` prueba también los modelos de IA configurados (gasta unos tokens)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    check_ai: bool = False
+
+
+class DiagnosticCheckOut(BaseModel):
+    """Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``."""
+
+    name: str
+    status: Literal["ok", "warning", "error"]
+    detail: str
+    remedy: str | None = None
+
+
+class DiagnosticsOut(BaseModel):
+    """Resultado del diagnóstico del entorno, sin claves, URL del proxy ni rutas del contenedor."""
+
+    ok: bool
+    checked_at: str
+    checks: list[DiagnosticCheckOut]
+
+
+# --- W7: propuestas del revisor ---------------------------------------------------------------------------------------
+
+
+class ProposalOut(BaseModel):
+    """Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta."""
+
+    id: int
+    document_key: str
+    action: Literal["confirm", "set_axis", "exclude", "set_current_version"]
+    axes: dict[str, list[str]] = {}
+    rationale: str | None = None
+    evidence: str | None = None
+    created_at: datetime
+    run_id: str | None = None
+    proposal_key: str | None = Field(default=None, description="``ReviewProposal.id`` de doc_organize")
+    document: ReviewDocumentOut | None = None
+
+
+class ProposalList(BaseModel):
+    items: list[ProposalOut]

@@ -1,5 +1,7 @@
-"""API de IA (Fase 8): configuración cifrada sin secretos en claro, estado para cualquier usuario, panel de uso con
-caché (clientes reales de doc_organize sobre ``httpx.MockTransport``) y comprobaciones al encolar."""
+"""API de IA (Fase 8; doc_organize 2.0 en W2): configuración cifrada sin secretos en claro (familia ``litellm`` con
+modelo, clave y presupuesto por tarea), estado para cualquier usuario, panel de uso con caché (clientes reales de
+doc_organize sobre ``httpx.MockTransport`` o el LiteLLM falso de ``tests/fake_litellm.py``) y comprobaciones al
+encolar."""
 
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from app.domain.ai import connection_test
 from app.domain.ai import usage as ai_usage
 from app.integrations.doc_organize import ai as library_ai
 from tests.conftest import ADMIN_PASSWORD, login_as, project_payload
+from tests.fake_litellm import FakeLiteLLM
 
 KEY = "sk-api-test-secret-9z8y"
 URL = "/api/v1/admin/ai-settings"
@@ -32,7 +35,10 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Sin variables ``DOC_ORGANIZE_*`` del entorno de quien ejecuta los tests, y caché de uso vacía."""
     for family in library_ai.FAMILIES:
         for field in family.fields:
-            monkeypatch.delenv(field.env_var, raising=False)
+            if field.env_var:
+                monkeypatch.delenv(field.env_var, raising=False)
+    for name in library_ai.legacy_env():
+        monkeypatch.delenv(name, raising=False)
     ai_usage.clear_cache()
     connection_test.clear_rate_limit()
     yield
@@ -64,7 +70,7 @@ def _field(family: dict[str, object], name: str) -> dict[str, object]:
 
 def test_settings_are_admin_only(client: TestClient, user_client: TestClient, migrated: Settings) -> None:
     assert user_client.get(URL).status_code == 403
-    assert user_client.put(f"{URL}/litellm_classification", json={"fields": {}}).status_code == 403
+    assert user_client.put(f"{URL}/litellm", json={"fields": {}}).status_code == 403
     assert user_client.get("/api/v1/admin/ai-usage").status_code == 403
     anonymous = TestClient(client.app, base_url="https://testserver")
     assert anonymous.get(URL).status_code == 401
@@ -72,7 +78,7 @@ def test_settings_are_admin_only(client: TestClient, user_client: TestClient, mi
 
 
 def test_saved_secret_is_encrypted_and_never_returned(admin_api: TestClient, db: Session, fernet: str) -> None:
-    response = admin_api.put(f"{URL}/litellm_classification", json={"fields": {**LITELLM, "model": "clasificador"}})
+    response = admin_api.put(f"{URL}/litellm", json={"fields": {**LITELLM, "model_classify": "clasificador"}})
 
     assert response.status_code == 200, response.text
     assert KEY not in response.text
@@ -88,19 +94,19 @@ def test_saved_secret_is_encrypted_and_never_returned(admin_api: TestClient, db:
     assert rows["base_url"].ciphertext is None
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "ai_settings.update")).one()
     assert KEY not in str(entry.details)
-    assert set(entry.details["changed"]) == {"base_url", "virtual_key", "model"}  # type: ignore[index]
+    assert set(entry.details["changed"]) == {"base_url", "virtual_key", "model_classify"}  # type: ignore[index]
     assert "virtual_key" not in entry.details["values"]  # type: ignore[index,operator]
 
 
 def test_clearing_falls_back_to_the_environment(
     admin_api: TestClient, fernet: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_CLASSIFICATION_VIRTUAL_KEY", "env-key-1234")
-    family = _family(admin_api.get(URL).json(), "litellm_classification")
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_VIRTUAL_KEY", "env-key-1234")
+    family = _family(admin_api.get(URL).json(), "litellm")
     assert _field(family, "virtual_key")["source"] == "env" and family["configured"] is False  # falta base_url
 
-    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
-    response = admin_api.put(f"{URL}/litellm_classification", json={"fields": {"virtual_key": None, "model": ""}})
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
+    response = admin_api.put(f"{URL}/litellm", json={"fields": {"virtual_key": None, "model_classify": ""}})
 
     key = _field(response.json(), "virtual_key")
     assert key["source"] == "env" and key["hint"] == "…1234"
@@ -116,6 +122,12 @@ def test_clearing_falls_back_to_the_environment(
         ("litellm_usage", {"base_url": "https://u:p@litellm.example.internal"}, 422, "ai_setting_invalid"),
         ("github_copilot_usage", {"username": "no válido"}, 422, "ai_setting_invalid"),
         ("litellm_usage", {"virtual_key": "con espacio"}, 422, "ai_setting_invalid"),
+        ("litellm_classification", {}, 404, "ai_family_not_found"),  # familias de 1.x: retiradas en 2.0
+        ("litellm", {"model": "x"}, 422, "ai_setting_invalid"),  # el modelo va por tarea
+        ("litellm", {"model_enrich": "no válido"}, 422, "ai_setting_invalid"),
+        ("litellm", {"budget_classify": "0"}, 422, "ai_setting_invalid"),
+        ("litellm", {"budget_enrich": "muchos"}, 422, "ai_setting_invalid"),
+        ("litellm", {"budget_taxonomy_design": "5"}, 422, "ai_setting_invalid"),  # sin presupuesto: una petición
     ],
 )
 def test_invalid_updates_are_rejected(
@@ -149,13 +161,60 @@ def test_rotated_away_key_reads_as_unconfigured(
 
 
 def test_status_is_visible_to_every_user(admin_api: TestClient, user_client: TestClient, fernet: str) -> None:
-    admin_api.put(f"{URL}/litellm_taxonomy_manifest_draft", json={"fields": LITELLM})
+    assert set(user_client.get("/api/v1/ai/status").json()["tasks"].values()) == {False}
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
 
     status = user_client.get("/api/v1/ai/status")
 
     assert status.status_code == 200 and KEY not in status.text
-    assert status.json()["families"]["litellm_taxonomy_manifest_draft"] is True
-    assert status.json()["families"]["litellm_classification"] is False
+    assert status.json()["families"] == {"litellm": True, "litellm_usage": False, "github_copilot_usage": False}
+    assert status.json()["tasks"] == dict.fromkeys(("classify", "enrich", "taxonomy_design", "agent", "embed"), True)
+
+
+def test_one_family_with_a_model_key_and_budget_per_task(admin_api: TestClient, db: Session, fernet: str) -> None:
+    """2.0 (D12): la familia ``litellm`` lleva modelo, clave propia y presupuesto opcionales por tarea."""
+    fields = {
+        **LITELLM,
+        "model_classify": "clasificador",
+        "virtual_key_enrich": "sk-propia-enrich-5555",
+        "budget_enrich": "25",
+    }
+    response = admin_api.put(f"{URL}/litellm", json={"fields": fields})
+
+    assert response.status_code == 200, response.text
+    family = response.json()
+    assert "sk-propia-enrich-5555" not in response.text and _field(family, "virtual_key_enrich")["hint"] == "…5555"
+    assert _field(family, "virtual_key_enrich")["task"] == "enrich" and _field(family, "virtual_key")["task"] is None
+    assert _field(family, "budget_enrich")["value"] == "25" and _field(family, "budget_enrich")["env_var"] is None
+    assert _field(family, "model_embed")["env_var"] == "DOC_ORGANIZE_LITELLM_MODEL_EMBED"
+    assert {row.field for row in db.scalars(select(AiSetting))} == set(fields)
+
+
+def test_legacy_environment_variables_are_reported(
+    admin_api: TestClient,
+    fernet: str,
+    monkeypatch: pytest.MonkeyPatch,
+    project: dict[str, object],
+    user_client: TestClient,
+) -> None:
+    """D15/U17: las variables de 1.x ya no se leen; se listan (sin valores) y el error al encolar dice cuál usar."""
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL", "modelo-antiguo")
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_CLASSIFICATION_VIRTUAL_KEY", "sk-antigua-0000")
+
+    body = admin_api.get(URL).json()
+    response = user_client.post(f"/api/v1/projects/{project['id']}/runs", json={"operation": "taxonomy_draft"})
+
+    assert body["legacy_variables"] == [
+        {
+            "name": "DOC_ORGANIZE_LITELLM_CLASSIFICATION_VIRTUAL_KEY",
+            "replacement": "DOC_ORGANIZE_LITELLM_VIRTUAL_KEY_CLASSIFY",
+        },
+        {"name": "DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL", "replacement": "DOC_ORGANIZE_LITELLM_MODEL_ENRICH"},
+    ]
+    assert "sk-antigua" not in json.dumps(body) and "modelo-antiguo" not in json.dumps(body)
+    assert _family(body, "litellm")["configured"] is False  # no se leen
+    assert response.status_code == 422 and response.json()["code"] == "ai_not_configured"
+    assert "DOC_ORGANIZE_LITELLM_MODEL_ENRICH" in response.text and "sk-antigua" not in response.text
 
 
 def _usage_transport(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]) -> list[str]:
@@ -231,34 +290,33 @@ def test_ai_runs_need_their_family(
     runs = f"/api/v1/projects/{project['id']}/runs"
     for body in (
         {"operation": "context_build", "ai_classification": True},
-        {"operation": "context_build", "ai_enrichment": True},  # 1.5.0: familia litellm_enrichment
+        {"operation": "context_build", "ai_enrichment": True},  # 1.5.0: tarea enrich
         {"operation": "taxonomy_draft"},
     ):
         response = user_client.post(runs, json=body)
         assert response.status_code == 422 and response.json()["code"] == "ai_not_configured", body
 
-    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
-    admin_api.put(f"{URL}/litellm_taxonomy_manifest_draft", json={"fields": LITELLM})
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
     built = user_client.post(runs, json={"operation": "context_build", "ai_classification": True})
     assert built.status_code == 202, built.text
     assert KEY not in built.text and built.json()["params"]["ai_classification"] is True
 
 
-def test_enrichment_runs_need_their_own_family(
+def test_one_family_serves_every_task(
     user_client: TestClient, admin_api: TestClient, project: dict[str, object], fernet: str
 ) -> None:
-    """Configurar la clasificación no basta para las descripciones con IA (1.5.0)."""
+    """2.0: configurada la familia ``litellm``, clasificar, describir y el borrador se pueden encolar (sin modelo, el
+    alias recomendado de cada tarea)."""
     runs = f"/api/v1/projects/{project['id']}/runs"
-    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
-    body = {"operation": "context_build", "ai_enrichment": True}
-    assert user_client.post(runs, json=body).json()["code"] == "ai_not_configured"
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
 
-    admin_api.put(f"{URL}/litellm_enrichment", json={"fields": LITELLM})
-    built = user_client.post(runs, json=body)
+    built = user_client.post(
+        runs, json={"operation": "context_build", "ai_classification": True, "ai_enrichment": True}
+    )
+    draft = user_client.post(runs, json={"operation": "taxonomy_draft"})
 
     assert built.status_code == 202, built.text
-    assert built.json()["params"]["ai_enrichment"] is True
-    assert user_client.get("/api/v1/ai/status").json()["families"]["litellm_enrichment"] is True
+    assert built.json()["params"]["ai_enrichment"] is True and draft.status_code == 202
 
 
 def test_taxonomy_draft_roles(
@@ -268,7 +326,7 @@ def test_taxonomy_draft_roles(
     fernet: str,
     make_user: Callable[..., User],
 ) -> None:
-    admin_api.put(f"{URL}/litellm_taxonomy_manifest_draft", json={"fields": LITELLM})
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
     runs = f"/api/v1/projects/{project['id']}/runs"
     viewer_user = make_user("lectora")
     user_client.post(f"/api/v1/projects/{project['id']}/members", json={"user_id": viewer_user.id, "role": "viewer"})
@@ -301,10 +359,8 @@ def test_usage_never_logs_the_key(
 
 # --- probar la conexión ---------------------------------------------------------------------------------------------
 
-TEST = f"{URL}/litellm_classification/test"
-CHAT_OK = {
-    "choices": [{"message": {"content": json.dumps({"domain": "prueba", "confidence": 0.9, "reasoning": "ok"})}}]
-}
+TEST = f"{URL}/litellm/test"
+CHAT_OK = {"choices": [{"message": {"content": json.dumps({"ok": True})}}]}
 
 
 def _probe(monkeypatch: pytest.MonkeyPatch, key_info: httpx.Response, chat: httpx.Response | None = None) -> list[str]:
@@ -329,7 +385,7 @@ def test_probe_checks_the_key_without_spending_tokens(
     admin_api: TestClient, fernet: str, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     paths = _probe(monkeypatch, httpx.Response(200, json={"info": {"spend": 0, "models": ["clasificador"]}}))
-    admin_api.put(f"{URL}/litellm_classification", json={"fields": {**LITELLM, "model": "clasificador"}})
+    admin_api.put(f"{URL}/litellm", json={"fields": {**LITELLM, "model_classify": "clasificador"}})
 
     response = admin_api.post(TEST, json={})
 
@@ -374,7 +430,7 @@ def test_probe_reports_the_kind_of_error(
 def test_probe_warns_when_the_key_cannot_use_the_model(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     _probe(monkeypatch, httpx.Response(200, json={"info": {"models": ["otro-modelo"]}}))
 
-    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model": "clasificador"}}).json()
+    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model_classify": "clasificador"}}).json()
 
     assert body["ok"] is True and body["model_access"] == "denied"
 
@@ -391,7 +447,7 @@ def test_model_check_sends_one_minimal_request(admin_api: TestClient, monkeypatc
 def test_a_missing_model_is_reported_as_such(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     _probe(monkeypatch, httpx.Response(200, json={"info": {}}), httpx.Response(400, json={"error": "no existe"}))
 
-    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model": "no-existe"}, "model_check": True}).json()
+    body = admin_api.post(TEST, json={"fields": {**LITELLM, "model_classify": "no-existe"}, "model_check": True}).json()
 
     assert (body["ok"], body["error"], body["model_checked"]) == (False, "ai_model", True)
 
@@ -413,7 +469,7 @@ def test_the_saved_key_never_goes_to_another_url(
 ) -> None:
     """S1: probar otra base_url con la clave guardada permitiría llevársela a un servidor propio."""
     hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(200, json={"info": {}}))
-    admin_api.put(f"{URL}/litellm_classification", json={"fields": LITELLM})
+    admin_api.put(f"{URL}/litellm", json={"fields": LITELLM})
 
     other = admin_api.post(TEST, json={"fields": {"base_url": "https://evil.example"}})
     same = admin_api.post(TEST, json={"fields": {"base_url": LITELLM["base_url"] + "/"}})  # misma URL normalizada
@@ -482,4 +538,53 @@ def test_probe_never_leaks_the_key(
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "ai_settings.test")).one()
     assert KEY not in response.text and KEY not in caplog.text
     assert KEY not in json.dumps(entry.details) and "litellm.example" not in json.dumps(entry.details)
-    assert entry.details == {"model_check": True, "error": None, "form_fields": ["base_url", "virtual_key"]}
+    assert entry.details == {
+        "model_check": True,
+        "task": "classify",
+        "error": None,
+        "form_fields": ["base_url", "virtual_key"],
+    }
+
+
+def test_model_check_reports_json_schema_support_per_task(
+    admin_api: TestClient, fernet: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """2.0 (U9): «Probar el modelo» de una tarea usa su modelo y su clave, y dice si admite ``json_schema`` estricto."""
+    proxy = FakeLiteLLM(keys={KEY, "sk-propia-enrich-5555"}).install(monkeypatch)
+    admin_api.put(
+        f"{URL}/litellm",
+        json={"fields": {**LITELLM, "model_enrich": "descriptor", "virtual_key_enrich": "sk-propia-enrich-5555"}},
+    )
+
+    strict = admin_api.post(TEST, json={"model_check": True, "task": "enrich"}).json()
+    connection_test.clear_rate_limit()
+    proxy.json_schema = False
+    fallback = admin_api.post(TEST, json={"model_check": True}).json()
+
+    assert (strict["ok"], strict["task"], strict["response_format"]) == (True, "enrich", "json_schema")
+    assert (fallback["ok"], fallback["task"], fallback["response_format"]) == (True, "classify", "json_object")
+    enrich = proxy.sent("enrich")
+    assert [(r.body["model"], r.key) for r in enrich] == [("descriptor", "sk-propia-enrich-5555")]
+    assert [r.body["model"] for r in proxy.sent("classify")] == ["doc-organize-classify", "doc-organize-classify"]
+
+
+def test_model_check_of_embeddings(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    proxy = FakeLiteLLM(keys={KEY}).install(monkeypatch)
+
+    body = admin_api.post(TEST, json={"fields": LITELLM, "model_check": True, "task": "embed"}).json()
+
+    assert (body["ok"], body["task"], body["response_format"]) == (True, "embed", None)
+    assert [r.path for r in proxy.requests] == ["/key/info", "/embeddings"]
+
+
+def test_task_keys_never_go_to_another_url(admin_api: TestClient, fernet: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """S1 con claves por tarea: con otra URL basta escribir la general; las guardadas de cada tarea no se envían."""
+    proxy = FakeLiteLLM(keys={"sk-otra-0000"}).install(monkeypatch)
+    admin_api.put(f"{URL}/litellm", json={"fields": {**LITELLM, "virtual_key_classify": "sk-propia-classify-7777"}})
+
+    body = admin_api.post(
+        TEST, json={"fields": {"base_url": "https://otro.example", "virtual_key": "sk-otra-0000"}, "model_check": True}
+    ).json()
+
+    assert body["ok"] is True
+    assert {r.key for r in proxy.requests} == {"sk-otra-0000"}

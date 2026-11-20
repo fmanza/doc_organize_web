@@ -1,5 +1,6 @@
-"""IA (Fase 8) sin red: cifrado MultiFernet, ``hint``, validación de ``base_url`` y configuración de los clientes reales
-de doc_organize 0.14.0 (reintentos, presupuesto y clave fuera de la URL) sobre ``httpx.MockTransport``."""
+"""IA (Fase 8; doc_organize 2.0 en W2) sin red: cifrado MultiFernet, ``hint``, validación de ``base_url`` y
+configuración del cliente único (``AiSettings`` por tarea: modelo, clave, reintentos y presupuesto) y del de uso (clave
+fuera de la URL) sobre ``httpx.MockTransport``."""
 
 from __future__ import annotations
 
@@ -75,31 +76,53 @@ def test_base_url_rejected(url: str) -> None:
         validate_base_url(url)
 
 
-def test_config_carries_timeout_retries_and_model() -> None:
+def test_settings_carry_timeout_retries_and_a_model_and_key_per_task() -> None:
     connection = AiConnection(
-        family="litellm_classification",
-        values={"base_url": "https://litellm.example.internal", "virtual_key": KEY, "model": "clasificador"},
+        family="litellm",
+        values={
+            "base_url": "https://litellm.example.internal",
+            "virtual_key": KEY,
+            "model_classify": "clasificador",
+            "virtual_key_enrich": "sk-enrich-1111",
+            "budget_enrich": "5",
+        },
         timeout_s=12.0,
         retries=3,
         budget=7,
     )
 
-    config = library_ai.config_for(connection)
+    settings = library_ai.ai_settings_for(connection)
 
-    assert (config.timeout_s, config.retries, config.model) == (12.0, 3, "clasificador")
-    assert library_ai.classification_limits(connection) == {
+    assert (settings.timeout_s, settings.retries, settings.redact_credentials) == (12.0, 3, True)
+    assert settings.model_for("classify") == "clasificador" and settings.key_for("classify") == KEY
+    assert settings.model_for("enrich") == "doc-organize-enrich" and settings.key_for("enrich") == "sk-enrich-1111"
+    assert settings.model_for("taxonomy_design") == "doc-organize-taxonomy-design"
+    assert KEY not in repr(settings) and "sk-enrich" not in repr(settings)
+    assert library_ai.build_limits(connection, ["classify"]) == {
         "ai_max_failures": library_ai.MAX_CONNECTION_FAILURES,
         "ai_max_documents": 7,
     }
-    copilot = library_ai.config_for(
+    # 2.0.0rc1: el presupuesto propio de cada tarea va en TaskSettings.max_documents (la librería aplica el menor).
+    assert library_ai.build_limits(connection, ["classify", "enrich"])["ai_max_documents"] == 7
+    assert settings.max_documents_for("enrich") == 5 and settings.max_documents_for("classify") is None
+    # Las tareas largas (borrador y agentes) llevan su propio plazo y reintentos.
+    assert settings.timeout_for("taxonomy_design") == connection.long_timeout_s
+    assert settings.timeout_for("agent") == connection.long_timeout_s and settings.timeout_for("classify") == 12.0
+    copilot = library_ai._usage_config(
         AiConnection(family="github_copilot_usage", values={"username": "octo", "pat": KEY}, retries=1)
     )
     assert copilot.retries == 1 and copilot.personal_access_token == KEY
 
 
-def test_usage_and_draft_families_are_not_classifiers() -> None:
+def test_only_the_litellm_family_builds_an_llm_client() -> None:
     with pytest.raises(ValueError):
-        library_ai.classification_client(AiConnection(family="litellm_usage", values={}))
+        library_ai.llm_client(AiConnection(family="litellm_usage", values={}))
+
+
+def test_legacy_variables_name_their_replacement() -> None:
+    """D15: las variables de 1.x se detectan (sin valores) con su equivalente de 2.0."""
+    found = library_ai.legacy_env({"DOC_ORGANIZE_LITELLM_TAXONOMY_MANIFEST_DRAFT_MODEL": "x", "OTRA": "y"})
+    assert found == {"DOC_ORGANIZE_LITELLM_TAXONOMY_MANIFEST_DRAFT_MODEL": "DOC_ORGANIZE_LITELLM_MODEL_TAXONOMY_DESIGN"}
 
 
 def test_usage_does_not_put_the_key_in_the_url(monkeypatch: pytest.MonkeyPatch) -> None:

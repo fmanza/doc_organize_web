@@ -1,7 +1,8 @@
 # Contexto y taxonomías
 
-La pantalla **Contexto** (botón «Contexto» del proyecto) clasifica los documentos convertidos por **dominios**, los
-copia a una **carpeta reorganizada** del proyecto (`organizado/<dominio>/<tipo>/<documento>/`) y genera un **sitio**
+La pantalla **Contexto** (botón «Contexto» del proyecto) clasifica los documentos convertidos en los **ejes** de su
+taxonomía (el dominio, el tipo de material y los ejes que solo etiquetan, como «Impuestos»), los copia a una **carpeta
+reorganizada** del proyecto (`organizado/<dominio>/<tipo>/<documento>/`) y genera un **sitio**
 navegable con Zensical. Todo se escribe en la carpeta del proyecto, en la ubicación de destino: los originales y las
 conversiones no cambian.
 
@@ -17,8 +18,8 @@ Los editores y propietarios eligen el **catálogo de dominios**:
 |---|---|
 | **Descubrir dominios** | Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido |
 | **Catálogo propio** | Solo los dominios que escribas (un eje: dominio) |
-| **Plantilla** | Dominios y tipos de material de una [plantilla de taxonomía](#plantillas-de-taxonomía) (dos ejes) |
-| **Manifiesto del proyecto** | Los del [manifiesto](#manifiesto-del-proyecto) del proyecto (dos ejes) |
+| **Plantilla** | Los ejes de una [plantilla de taxonomía](#plantillas-de-taxonomía): dominio, tipo de material y los que solo etiquetan |
+| **Manifiesto del proyecto** | Los ejes del [manifiesto](#manifiesto-del-proyecto) del proyecto |
 
 También eligen:
 
@@ -28,8 +29,9 @@ También eligen:
   dominios»: ahí todo documento con carpeta puntúa 1,0.
 - **Construir el sitio**: si lo desmarcas, se borra el sitio anterior.
 
-**Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar, copiar a la carpeta
-reorganizada y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia y el sitio no se cortan a
+**Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar (decisiones de
+personas, reglas, semántica si el proyecto la activa e IA si se pide, en ese orden), copiar a la carpeta reorganizada
+y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia y el sitio no se cortan a
 medias. Reconstruir sustituye el contexto anterior.
 
 Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
@@ -40,8 +42,8 @@ clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
 | | Descubrir dominios | Manifiesto del proyecto |
 |---|---|---|
 | Dominios | Uno por carpeta (nombre de la carpeta inmediata) | Lista cerrada del manifiesto |
-| Ejes | Dominio | Dominio y tipo de material |
-| Asignación | Por carpeta, sin puntuación (los de la raíz, al dominio de la carpeta escaneada) | Palabras del dominio y sus palabras clave (`keywords`) en el título y el contenido, más la carpeta, con umbral; el tipo de material, igual por separado |
+| Ejes | Dominio | Dominio, tipo de material y los ejes que solo etiquetan |
+| Asignación | Por carpeta, sin puntuación (los de la raíz, al dominio de la carpeta escaneada) | Palabras de cada valor y sus palabras clave (`keywords`) en el título y el contenido, más la carpeta, con umbral, eje por eje; lo que queda vacío, con semántica o IA si se activan |
 | Dominios nuevos | Sí, uno por carpeta | No |
 | Estado | Borrador | Confirmado |
 | Cuándo | Carpetas ya temáticas; primer contexto rápido | Vocabulario propio, independiente de las carpetas |
@@ -51,7 +53,8 @@ tiene letras ni números.
 
 ## Ver el contexto
 
-La página muestra los dominios con sus documentos y los **sin clasificar**, paginados. Cada documento enlaza a su
+La página muestra los dominios con sus documentos (con los valores de cada eje como insignias) y los **sin
+clasificar**, paginados. Cada documento enlaza a su
 conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 
 - **No copiados**: documentos que no se pudieron copiar. Por ejemplo, el original, su Markdown o sus imágenes pasan por
@@ -84,6 +87,65 @@ contiene) o por **La IA propuso otro**. La búsqueda también mira el autor y la
 
 Los contextos construidos antes de la 1.5.0 no tienen estos datos hasta que se reconstruyen.
 
+### ¿Está al día? (2.0)
+
+Cada escaneo (y cada construcción) compara el contexto con la caché: si un original **cambió**, si hay documentos
+**nuevos** convertidos que el contexto no tiene, si alguno **ya no está**, o si el sitio es anterior a la última
+construcción, la página Contexto lo avisa con los recuentos, unos ejemplos y «Ir a reconstruir». No se leen los
+originales: la comparación usa la huella que guarda la caché del escaneo, así que solo es tan reciente como el último
+escaneo. Los contextos construidos antes de la 2.0 no tienen huella de los originales: reconstruye una vez.
+
+### Versiones de un documento (2.0)
+
+Los documentos con marcador de versión en el nombre (`v1.2`, `rev2`, `versión 3`, `ed. 2`; las fechas no cuentan), en
+la misma carpeta, con la misma extensión y el resto del nombre igual, son **versiones** del mismo documento. Qué hacer
+con ellas se elige en «Contexto e IA del proyecto» (página del proyecto; propietario o editor, se aplica al
+reconstruir):
+
+- **Marcar la vigente** (por defecto): todas entran en el contexto y las antiguas llevan la insignia «Versión
+  antigua»; «Solo vigentes» las oculta de la lista.
+- **Solo la vigente**: las antiguas quedan fuera del contexto (la tarjeta «Versiones de un documento» las lista) y el
+  historial lo anota como «Versión antigua», no como documento que sale.
+- **Todas, sin marcar**: como antes de la 2.0.
+
+La vigente es la versión más alta, salvo que una persona elija otra con «Marcar como vigente» (en la tarjeta de
+versiones o en «Revisar clasificación»), que se guarda como decisión y se aplica al reconstruir.
+
+### Clasificación semántica (2.0)
+
+Con «Clasificación semántica» activada en «Contexto e IA del proyecto» (propietario o editor; desactivada por
+defecto), cada construcción rellena, **antes de la IA**, los ejes que las reglas y las decisiones dejaron vacíos
+comparando el texto de cada documento con el nombre, la descripción y las palabras clave de cada valor (embeddings).
+Los valores que asigna llevan la marca «Semántica» y la «Similitud mínima» (0,75 por defecto) decide cuándo se
+asigna. Con la IA activada, además, los documentos parecidos ya clasificados con fiabilidad le sirven de ejemplo.
+
+Necesita «Modelos de IA» configurado (tarea «Embeddings»; sin modelo propio, el alias `doc-organize-embed`): si no lo
+está, la construcción se hace sin semántica y lo avisa. El texto de los documentos sale hacia el servicio de
+embeddings (redactado si la redacción está activada). Los vectores se guardan en `.doc_organize/embeddings/` de la
+carpeta del proyecto, como `Conversión/`: reconstruir no vuelve a pedir los que no han cambiado, y borrar el contexto
+no los borra. El resultado de la construcción dice cuántos textos se embebieron, cuántos salieron del índice y cuántos
+documentos recibieron algún valor.
+
+### Ejes: filtros, insignias y evidencia (2.0)
+
+Con doc_organize 2.0 la taxonomía es una lista de **ejes**: el dominio (organiza las carpetas), el tipo de material y
+los que solo etiquetan (marcos normativos, sistema de gestión...). En la lista de documentos:
+
+- Hay un **filtro por eje** (salvo el dominio, que se elige en la tabla) con el número de documentos de cada valor.
+  Valores del mismo eje se combinan con O («Marco A o Marco B») y ejes distintos con Y. Como mucho 20 valores a la vez.
+- Cada documento muestra sus valores como insignias. Las que no salen de las reglas llevan quién las puso: **IA**,
+  **Semántica** (embeddings) o **Persona** (una decisión).
+- En «Cómo se clasificó», los valores de la IA traen su **cita** del documento y si se encontró en el texto enviado
+  («Cita no encontrada»: su confianza queda bajo el umbral y conviene revisarlo), y el **prompt y el modelo** con los
+  que se clasificó.
+
+Los contextos construidos antes de la 2.0 solo tienen dominio y tipo de material; la cita y la procedencia aparecen al
+reconstruir.
+
+Al guardar un manifiesto o una plantilla se avisa de las **claves que no se usan** al clasificar y de los **ejes
+implícitos** (listas de valores de nivel superior, formato de 1.x): conviene declararlos en `axes:` con su nombre y
+descripción.
+
 ### Por qué no se clasificó un documento (1.6.0)
 
 En **Sin clasificar**, la columna **Motivo** dice por qué cada documento se quedó fuera:
@@ -108,6 +170,32 @@ puede traer HTML o scripts, así que se muestra **aislado** ([ADR-010](../adr/AD
 Desde la 1.9.0 (doc_organize 1.7.0), el sitio y la carpeta reorganizada se publican con las **credenciales**
 (contraseñas, tokens, claves) sustituidas por `«REDACTADO»`, también en los títulos del menú. `Conversión/` y los
 originales no cambian.
+
+### Entregar el contexto (2.0)
+
+La tarjeta **Entregar el contexto** del resumen prepara el contexto para quien no tiene cuenta en la aplicación o para
+un chat de IA. Cada entrega es una ejecución (con progreso y cancelación) que puede lanzar cualquier miembro, como las
+[exportaciones](documentos.md); el fichero se descarga desde su detalle y caduca con la retención de siempre.
+
+- **Excel del contexto**: los documentos con sus ejes (también desde Documentos → Exportar).
+- **Sitio sin conexión (ZIP + SHA-256)**: el sitio para abrirlo desde el disco (doble clic en `sitio/index.html`; si el
+  navegador limita la búsqueda, `start_server.py` lo sirve en `127.0.0.1`). No pide nada a terceros y el HTML de los
+  documentos se **neutraliza** (se ve como texto), porque fuera de la aplicación no hay aislamiento. Las credenciales
+  se redactan según «Contexto e IA del proyecto». Antes de empaquetarlo se comprueba (sin recursos de terceros,
+  enlaces que existen, búsqueda sin conexión); si no pasa, la ejecución falla y el log dice por qué. Se construye sobre
+  una copia en el espacio de trabajo: **el sitio que ves aquí no cambia**. Opción: `llms.txt` en la raíz.
+- **Paquete para IA**: `llms.txt`, un `.md` por documento con su ficha (ejes, quién lo clasificó, versión, ruta del
+  original relativa a su carpeta) y `context.json`, para subirlo a un proyecto de un chat o a un agente. Opciones: sin
+  el texto, también las versiones antiguas, un tope de caracteres por documento y `llms-full.txt`. Las credenciales se
+  redactan **siempre**; solo un administrador de la instancia puede desactivarlo.
+
+El detalle de la ejecución enseña la **huella SHA-256** del ZIP (el mismo contexto da el mismo ZIP) para comprobar
+que el fichero que recibe el destinatario es el mismo, y queda en la auditoría junto con las opciones. Ambos ZIP
+llevan el texto de los documentos: sale de la aplicación y puede ser confidencial.
+
+El sitio sin conexión lleva solo las páginas (redactadas y neutralizadas), sus imágenes, `llms.txt` y los recursos
+del tema: ni la copia de cada original ni su conversión (`.json`), que no se pueden redactar.
+Las imágenes de los documentos sí van tal cual.
 
 ## Manifiesto del proyecto
 
@@ -147,6 +235,22 @@ catálogo, «Construir» se desactiva hasta que guardes. Hay tres formas de part
 
 Si el editor ya tiene otro texto, cualquiera de las tres pide confirmación antes de sustituirlo.
 
+### Diseñar con IA y comprobar por reglas (2.0)
+
+En el bloque del manifiesto hay dos ayudas más, que **nunca guardan nada**:
+
+- **Diseñar taxonomía con IA (agente)**: un agente (tarea «Agentes» de «Modelos de IA») explora los documentos y
+  mejora el manifiesto, una plantilla o empieza de cero, con cambios pequeños que comprueba con las reglas contra
+  todos los documentos, siguiendo tus indicaciones si las das. El «Tope de pasos» limita las llamadas al modelo. Al
+  terminar enseña si mejora el de partida (cobertura y conflictos por eje, antes y después), su justificación y el
+  coste; «Cargar la propuesta en el editor» la pone en el editor para revisarla y guardarla (con sus versiones, como
+  cualquier cambio), y si un borrador anterior era mejor, «Cargar el mejor borrador comprobado». Quien gestiona las
+  plantillas puede «Guardar como plantilla…». Si no termina (tope o cancelación), se puede cargar su último borrador.
+  El texto de los documentos sale hacia el servicio de IA; queda en la auditoría.
+- **Comprobar manifiesto**: clasifica por reglas, sin IA, todos los documentos convertidos con el texto del editor
+  (aunque no esté guardado) y da por eje la cobertura, los conflictos (dos entradas casi empatadas) y las entradas
+  vacías.
+
 ### Versiones, restaurar y borrar (1.8.0)
 
 Cada cambio del manifiesto guarda antes **lo que había**, para poder deshacerlo: al guardar, al borrar, al restaurar
@@ -168,6 +272,92 @@ página avisa de que hay que reconstruir.
 
 Las versiones viven en la base de datos de la aplicación (`config.db`) y viajan en sus copias de seguridad; restaurar
 una copia trae las versiones de ese momento, que pueden no coincidir con el manifiesto actual del destino.
+
+## Revisar clasificación (2.0)
+
+«Revisar clasificación» (botón del resumen del contexto) lista lo que conviene mirar tras la última construcción, de lo
+más urgente a lo menos: decisiones desfasadas, documentos sin clasificar, reglas e IA que no coinciden en el dominio,
+citas de la IA no encontradas en el texto, valores con confianza baja y versiones cuya vigente no se ha confirmado.
+
+Sobre cada documento, el propietario y los editores (con el destino de lectura y escritura) pueden **decidir**:
+
+- **Confirmar** la clasificación que tiene (todos sus ejes).
+- **Cambiar…** los valores de un eje, solo entre los del catálogo (uno en el dominio y el tipo de material).
+- **Excluir** el documento del contexto.
+- **Marcar como vigente** una versión de un grupo de versiones.
+
+Las decisiones se guardan en `.doc_organize/decisions.json` de la carpeta del proyecto, con quién decidió y cuándo, y
+quedan en la auditoría. Se aplican en la **siguiente construcción**, antes de la IA, y ni las reglas ni la IA las
+cambian (en el contexto aparecen con la marca «Persona»). Si el original cambia, la decisión deja de aplicarse y vuelve
+a la cola como «Decisión desfasada»; si el documento desaparece o el valor ya no está en el catálogo, la tarjeta
+«Decisiones» lo avisa. «Revocar» la retira (pasa al historial). Las decisiones solo se aplican con plantilla o
+manifiesto.
+
+### Propuestas del revisor (2.0)
+
+La tarjeta **Propuestas del revisor (IA)** pide a un agente (tarea «Agentes» de «Modelos de IA») que repase los
+primeros documentos de la cola (20 por defecto, hasta 100) y proponga una decisión para cada uno, con su motivo y una
+cita del texto. Es una ejecución con progreso y cancelación; el **tope de pasos** (llamadas al modelo, 40 por defecto)
+acota el gasto y el resultado dice cuántos pasos, herramientas y tokens usó. El texto de esos documentos sale hacia el
+servicio de IA.
+
+Las propuestas **no se aplican**: cada una se **acepta** (se guarda como decisión de quien la acepta, con las mismas
+comprobaciones que una decisión hecha a mano, y se aplica al reconstruir) o se **descarta**. Una nueva pasada sustituye
+las propuestas pendientes. Lanzar el revisor, aceptar y descartar: propietario o editor con el destino de lectura y
+escritura; todo queda en la auditoría.
+
+## Calidad (2.0)
+
+«Calidad» (botón del resumen del contexto) mide cuánto acierta la clasificación contra una **referencia**:
+
+- **Excel etiquetado a mano** (hasta 5 MB): una fila por documento, con su clave en la columna `documento` (carpeta y
+  ruta, como en «Revisar clasificación») y, por eje, el valor correcto en su columna (por defecto `dominio_ok` para el
+  dominio y `tipo_ok` para el tipo de material; se pueden indicar otras, `eje:columna`). Varios valores separados por
+  coma; `ninguno` si ninguno encaja; vacía = sin etiquetar. Se guarda en la app, no en el destino.
+- **Decisiones del proyecto**: cada «Confirmar» y «Cambiar eje» cuenta como etiqueta.
+
+**Evaluar** compara el contexto construido con la referencia: por eje, exactitud, cobertura, precisión y *recall*, la
+exactitud según quién clasificó (reglas, IA, semántica, persona) y las confusiones más frecuentes.
+
+**Comparar cambios** clasifica los documentos de la referencia con otra configuración (otra plantilla o el
+manifiesto, la IA con otro modelo o alcance, o un perfil sin guardar) **sin guardar nada**, y enseña la exactitud de
+cada eje frente a la del contexto actual. Con IA, el contenido de esos documentos sale hacia el servicio y el máximo de
+documentos acota el gasto. Ambas son ejecuciones (con progreso y cancelación) que pueden lanzar el propietario y los
+editores; la comparación queda en la auditoría.
+
+**Informe del auditor** (sin IA, cualquier miembro): por eje, cuántos documentos tienen valor, cuántos hay de cada valor,
+cuántos con confianza baja o con la cita sin verificar, y lo que conviene revisar en el catálogo (valores sin
+documentos, valores que acaparan casi todo…). Se calcula sobre el último contexto construido.
+
+## Perfil del proyecto y vista previa del prompt (2.0)
+
+El **perfil** es lo que el modelo debe saber del proyecto al clasificar con IA: contexto, reglas de desempate,
+glosario y ejemplos, cada uno en su sección:
+
+```markdown
+## Contexto del proyecto
+Documentación de calidad y seguridad de una empresa de servicios.
+
+## Reglas de desempate
+- Una norma publicada es normativa aunque hable de procedimientos.
+
+## Glosario
+- SoA: declaración de aplicabilidad.
+
+## Ejemplos
+- «Política de seguridad» → gobernanza, política
+```
+
+- El de la **plantilla** o el **manifiesto** va en su cuerpo, tras el front matter; el de una plantilla lo editan quienes
+  gestionan plantillas.
+- El del **proyecto** («Perfil del proyecto» en la página Contexto) se guarda en `.doc_organize/profile.md` de la
+  carpeta del proyecto y se **añade** detrás del de la plantilla o el manifiesto. Lo pueden cambiar el propietario y
+  los editores, con el destino de lectura y escritura; queda en la auditoría sin el texto.
+- **Vista previa del prompt** muestra lo que recibiría el modelo (instrucciones, perfil compuesto y catálogo con sus
+  descripciones) con la plantilla elegida o el manifiesto, y con el perfil que hay en el editor aunque no esté guardado.
+  **No llama al modelo** ni gasta nada. En el editor de plantillas hay la misma vista previa, con el perfil de la
+  plantilla solo.
+- Doc_organize envía como mucho 8000 caracteres y 20 ejemplos del perfil compuesto.
 
 ## Plantillas de taxonomía
 

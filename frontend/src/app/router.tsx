@@ -83,6 +83,14 @@ export const routes: RouteObject[] = [
             ...page(async () => (await import('../features/context/ContextPage')).ContextPage),
           },
           {
+            path: 'projects/:projectId/context/quality',
+            ...page(async () => (await import('../features/context/QualityPage')).QualityPage),
+          },
+          {
+            path: 'projects/:projectId/context/review',
+            ...page(async () => (await import('../features/context/ReviewPage')).ReviewPage),
+          },
+          {
             path: 'projects/:projectId/context/site',
             ...page(async () => (await import('../features/context/SiteViewerPage')).SiteViewerPage),
           },
@@ -116,6 +124,10 @@ export const routes: RouteObject[] = [
                   {
                     path: 'info',
                     ...page(async () => (await import('../features/admin/InfoPage')).InfoPage),
+                  },
+                  {
+                    path: 'diagnostics',
+                    ...page(async () => (await import('../features/admin/DiagnosticsPage')).DiagnosticsPage),
                   },
                   {
                     path: 'ai/settings',

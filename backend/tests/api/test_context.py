@@ -232,6 +232,7 @@ def test_manifest_is_validated_and_written_by_editors(
         "error": None,
         "domains": [],
         "material_types": [],
+        "front_matter": {"axes": [], "implicit_axes": [], "ignored_keys": [], "legacy_format": False},
         "etag": "none",
         "last_changed_at": None,
     }

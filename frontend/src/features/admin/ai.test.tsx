@@ -6,12 +6,12 @@ import { ADMIN, callsTo, session, stubApi, USER } from '../../test/api';
 import { renderRoute } from '../../test/render';
 
 function field(name: string, overrides: Record<string, unknown> = {}) {
-  const secret = name === 'virtual_key' || name === 'pat';
+  const secret = name.startsWith('virtual_key') || name === 'pat';
   return {
     name,
     env_var: `DOC_ORGANIZE_X_${name.toUpperCase()}`,
     secret,
-    required: name !== 'model',
+    required: ['base_url', 'virtual_key', 'username', 'pat'].includes(name),
     source: 'none',
     value: null,
     hint: null,
@@ -29,24 +29,28 @@ function family(
   return { key, configured, fields: names.map((name) => field(name, overrides[name] ?? {})) };
 }
 
-const LITELLM = ['base_url', 'virtual_key', 'model'];
+// doc_organize 2.0 (W2): una familia `litellm` con modelo y clave por tarea.
+const LITELLM = [
+  'base_url',
+  'virtual_key',
+  'model_classify',
+  'model_enrich',
+  'virtual_key_enrich',
+  'budget_enrich',
+];
 const SETTINGS = {
   encryption_configured: true,
   families: [
     family(
-      'litellm_classification',
+      'litellm',
       LITELLM,
       {
         base_url: { source: 'db', value: 'https://litellm.example.internal' },
         virtual_key: { source: 'db', hint: '…ab12' },
+        virtual_key_enrich: { source: 'env', hint: '***' },
       },
       true,
     ),
-    family('litellm_taxonomy_classification', LITELLM, {
-      virtual_key: { source: 'env', hint: '***' },
-    }),
-    family('litellm_taxonomy_manifest_draft', LITELLM),
-    family('litellm_enrichment', LITELLM),
     family('litellm_usage', ['base_url', 'virtual_key']),
     family('github_copilot_usage', ['username', 'pat']),
   ],
@@ -68,14 +72,18 @@ describe('AiSettingsPage', () => {
 
     renderRoute('/admin/ai-settings'); // URL de 1.5: redirige a /admin/ai/settings (W1)
 
-    const classification = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
-    expect(within(classification).getByText('Configurada')).toBeInTheDocument();
-    expect(within(classification).getByText('Guardada: …ab12')).toBeInTheDocument();
-    expect(within(classification).getByLabelText(/Clave virtual/, { selector: 'input' })).toHaveValue('');
-    const taxonomy = screen.getByRole('region', { name: 'Clasificación por taxonomía (dos ejes)' });
-    expect(within(taxonomy).getByText('Variable del servidor')).toBeInTheDocument();
-    // 1.5.0: tarjeta propia para las descripciones con IA.
-    expect(screen.getByRole('region', { name: 'Descripciones y palabras clave' })).toBeInTheDocument();
+    const models = await screen.findByRole('region', { name: 'Modelos de IA' });
+    expect(within(models).getByText('Configurada')).toBeInTheDocument();
+    expect(within(models).getByText('Guardada: …ab12')).toBeInTheDocument();
+    expect(within(models).getByLabelText(/Clave virtual/, { selector: 'input' })).toHaveValue('');
+    // 2.0: modelo, clave y presupuesto por tarea en la misma tarjeta.
+    expect(within(models).getByText('Variable del servidor')).toBeInTheDocument();
+    expect(
+      within(models).getByLabelText(/Clave propia para describir/, { selector: 'input' }),
+    ).toBeInTheDocument();
+    expect(
+      within(models).getByLabelText(/Máximo de documentos a describir/, { selector: 'input' }),
+    ).toBeInTheDocument();
 
     const usage = screen.getByRole('region', { name: 'Uso de LiteLLM' });
     const save = within(usage).getByRole('button', { name: 'Guardar Uso de LiteLLM' });
@@ -102,7 +110,7 @@ describe('AiSettingsPage', () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
       'GET /api/v1/admin/ai-settings': { body: SETTINGS },
-      'POST /api/v1/admin/ai-settings/litellm_classification/test': {
+      'POST /api/v1/admin/ai-settings/litellm/test': {
         body: {
           ok: true,
           error: null,
@@ -116,20 +124,25 @@ describe('AiSettingsPage', () => {
     const user = userEvent.setup();
 
     renderRoute('/admin/ai/settings');
-    const card = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
-    await user.type(within(card).getByLabelText(/Modelo/, { selector: 'input' }), 'clasificador');
-    await user.click(
-      within(card).getByRole('button', { name: 'Probar la conexión de Clasificación de dominios (un eje)' }),
+    const card = await screen.findByRole('region', { name: 'Modelos de IA' });
+    await user.type(
+      within(card).getByLabelText(/Modelo para clasificar/, { selector: 'input' }),
+      'clasificador',
     );
+    await user.click(within(card).getByRole('button', { name: 'Probar la conexión de Modelos de IA' }));
 
     expect(await within(card).findByText('Conexión correcta (412 ms)')).toBeInTheDocument();
     expect(within(card).getByText(/esta clave no tiene acceso al modelo/)).toBeInTheDocument();
-    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm_classification/test');
-    expect(await request?.clone().json()).toEqual({ fields: { model: 'clasificador' }, model_check: false });
-    expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm_classification')).toHaveLength(0);
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm/test');
+    expect(await request?.clone().json()).toEqual({
+      fields: { model_classify: 'clasificador' },
+      model_check: false,
+      task: 'classify',
+    });
+    expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm')).toHaveLength(0);
 
     // Al editar, el resultado deja de valer.
-    await user.type(within(card).getByLabelText(/Modelo/, { selector: 'input' }), '-2');
+    await user.type(within(card).getByLabelText(/Modelo para clasificar/, { selector: 'input' }), '-2');
     expect(within(card).queryByText('Conexión correcta (412 ms)')).not.toBeInTheDocument();
   });
 
@@ -137,7 +150,7 @@ describe('AiSettingsPage', () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
       'GET /api/v1/admin/ai-settings': { body: SETTINGS },
-      'POST /api/v1/admin/ai-settings/litellm_classification/test': {
+      'POST /api/v1/admin/ai-settings/litellm/test': {
         body: {
           ok: false,
           error: 'ai_model',
@@ -151,15 +164,13 @@ describe('AiSettingsPage', () => {
     const user = userEvent.setup();
 
     renderRoute('/admin/ai/settings');
-    const card = await screen.findByRole('region', { name: 'Clasificación de dominios (un eje)' });
-    await user.click(
-      within(card).getByRole('button', { name: 'Probar el modelo de Clasificación de dominios (un eje)' }),
-    );
+    const card = await screen.findByRole('region', { name: 'Modelos de IA' });
+    await user.click(within(card).getByRole('button', { name: 'Probar el modelo de Modelos de IA' }));
 
     expect(await within(card).findByText('La prueba falló')).toBeInTheDocument();
     expect(within(card).getByText(/El modelo no respondió/)).toBeInTheDocument();
-    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm_classification/test');
-    expect(await request?.clone().json()).toEqual({ fields: {}, model_check: true });
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm/test');
+    expect(await request?.clone().json()).toEqual({ fields: {}, model_check: true, task: 'classify' });
   });
 
   it('solo las familias con modelo lo prueban, y sin obligatorios no se prueba (1.7)', async () => {
@@ -174,11 +185,83 @@ describe('AiSettingsPage', () => {
     ).toBeDisabled();
   });
 
+  it('agrupa los campos por tarea y prueba el modelo de la tarea elegida (W3)', async () => {
+    const tasks = family(
+      'litellm',
+      ['base_url', 'virtual_key', 'model_classify', 'model_enrich', 'virtual_key_enrich', 'budget_enrich'],
+      {
+        base_url: { source: 'db', value: 'https://litellm.example.internal' },
+        virtual_key: { source: 'db', hint: '…ab12' },
+        model_classify: { task: 'classify' },
+        model_enrich: { task: 'enrich', source: 'db', value: 'descriptor' },
+        virtual_key_enrich: { task: 'enrich' },
+        budget_enrich: { task: 'enrich', env_var: null },
+      },
+      true,
+    );
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-settings': {
+        body: {
+          ...SETTINGS,
+          families: [tasks],
+          legacy_variables: [
+            {
+              name: 'DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL',
+              replacement: 'DOC_ORGANIZE_LITELLM_MODEL_ENRICH',
+            },
+          ],
+        },
+      },
+      'POST /api/v1/admin/ai-settings/litellm/test': {
+        body: {
+          ok: true,
+          error: null,
+          model_access: 'unknown',
+          model_checked: true,
+          task: 'enrich',
+          response_format: 'json_object',
+          elapsed_ms: 300,
+          tested_at: '2026-11-20T09:00:00Z',
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/settings');
+
+    const card = await screen.findByRole('region', { name: 'Modelos de IA' });
+    expect(
+      screen.getByText(/DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL → DOC_ORGANIZE_LITELLM_MODEL_ENRICH/),
+    ).toBeInTheDocument();
+    const enrich = within(card).getByRole('group', { name: 'Describir (descripción y palabras clave)' });
+    expect(within(enrich).getByLabelText(/Modelo para describir/, { selector: 'input' })).toHaveValue(
+      'descriptor',
+    );
+    expect(within(card).getByLabelText(/Modelo para clasificar/, { selector: 'input' })).toHaveAttribute(
+      'placeholder',
+      'doc-organize-classify',
+    );
+    expect(
+      within(card).queryByRole('button', { name: 'Probar el modelo de Modelos de IA' }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(card).getByRole('button', {
+        name: 'Probar el modelo de la tarea Describir (descripción y palabras clave)',
+      }),
+    );
+
+    expect(await within(card).findByText(/Tarea probada: Describir/)).toBeInTheDocument();
+    expect(within(card).getByText(/no admite json_schema/)).toBeInTheDocument();
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/admin/ai-settings/litellm/test');
+    expect(await request?.clone().json()).toEqual({ fields: {}, model_check: true, task: 'enrich' });
+  });
+
   it('borra un valor guardado', async () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
       'GET /api/v1/admin/ai-settings': { body: SETTINGS },
-      'PUT /api/v1/admin/ai-settings/litellm_classification': { body: SETTINGS.families[0] },
+      'PUT /api/v1/admin/ai-settings/litellm': { body: SETTINGS.families[0] },
     });
     const user = userEvent.setup();
 
@@ -189,9 +272,9 @@ describe('AiSettingsPage', () => {
     );
 
     await waitFor(() =>
-      expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm_classification')).toHaveLength(1),
+      expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm')).toHaveLength(1),
     );
-    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm_classification');
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm');
     expect(await request?.clone().json()).toEqual({ fields: { virtual_key: null } });
   });
 

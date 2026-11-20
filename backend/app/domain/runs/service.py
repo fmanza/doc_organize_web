@@ -27,6 +27,7 @@ from app.db.models import (
     utcnow,
 )
 from app.domain.ai import settings as ai_settings
+from app.domain.context import quality
 from app.domain.context import service as context
 from app.domain.duplicates import service as duplicates
 from app.domain.identity import audit
@@ -50,11 +51,20 @@ from app.domain.runs.errors import (
 )
 from app.domain.runs.operations import (
     OPERATIONS,
+    ContextAuditParams,
     ContextBuildParams,
+    ContextDryRunParams,
+    ContextEvaluateParams,
+    ContextReviewAgentParams,
     DedupApplyParams,
+    ExportAiBundleParams,
+    ExportSiteParams,
+    ExportXlsxParams,
     ProjectMoveParams,
     RunParams,
     ScanParams,
+    TaxonomyAgentParams,
+    TaxonomyCheckParams,
     TaxonomyDraftParams,
     is_write,
     min_role,
@@ -216,8 +226,28 @@ def enqueue(
         params = duplicates.validate_apply(db, project, params)
     if isinstance(params, ContextBuildParams):
         params = context.validate_build(db, settings, project, params, actor=actor)
+    if isinstance(params, ExportXlsxParams) and params.kind == "context_documents":
+        context.get_context(db, project)  # ContextNotFoundError (404) sin contexto construido
+    if isinstance(params, ExportSiteParams | ExportAiBundleParams):
+        context.get_context(db, project)
+    if isinstance(params, ExportAiBundleParams) and not params.redact and not actor.is_instance_admin:
+        from app.domain.context.errors import RedactionRequiredError
+
+        raise RedactionRequiredError("Solo un administrador puede sacar el paquete para IA sin redactar credenciales.")
     if isinstance(params, TaxonomyDraftParams):
-        ai_settings.require_configured(db, settings, "litellm_taxonomy_manifest_draft")
+        ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
+    if isinstance(params, ContextEvaluateParams):
+        quality.validate_evaluate(db, settings, project, params)
+    if isinstance(params, ContextDryRunParams):
+        params = quality.validate_dry_run(db, settings, project, params, actor=actor)
+    if isinstance(params, TaxonomyAgentParams):
+        params = quality.validate_taxonomy_agent(db, settings, project, params, actor=actor)
+    if isinstance(params, TaxonomyCheckParams):
+        quality.validate_taxonomy_check(params)
+    if isinstance(params, ContextReviewAgentParams):
+        quality.validate_review_agent(db, settings, project)
+    if isinstance(params, ContextAuditParams):
+        quality.validate_audit(db, project)
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

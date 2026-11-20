@@ -304,6 +304,57 @@ describe('ProjectDetailPage', () => {
   });
 });
 
+describe('W4: IA del proyecto', () => {
+  it('desactivar la redacción pide confirmación y la guarda', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes(),
+      'PUT /api/v1/projects/7/ai-settings': { body: { ...PROJECT, ai_redact_credentials: false } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
+    const toggle = within(card).getByRole('switch', { name: /Redactar credenciales/ });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/se enviarán tal cual/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Desactivar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings');
+    expect(await request?.json()).toEqual({ ai_redact_credentials: false });
+  });
+});
+
+describe('W6: semántica del proyecto', () => {
+  it('con la semántica activada avisa si falta la IA y se puede desactivar', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes({ ...PROJECT, context_semantic: true }),
+      'GET /api/v1/ai/status': {
+        body: {
+          families: { litellm: false, litellm_usage: false, github_copilot_usage: false },
+          tasks: { classify: false, enrich: false, taxonomy_design: false, agent: false, embed: false },
+        },
+      },
+      'PUT /api/v1/projects/7/ai-settings': { body: PROJECT },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
+    expect(
+      await within(card).findByText(/no está configurado: la construcción se hará sin semántica/),
+    ).toBeInTheDocument();
+    expect(within(card).getByRole('textbox', { name: /Similitud mínima/ })).toHaveValue('0.75');
+    await user.click(within(card).getByRole('switch', { name: /Clasificación semántica/ }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings');
+    expect(await request?.json()).toEqual({ context_semantic: false });
+  });
+});
+
 describe('Fase 10: menú del proyecto', () => {
   it('con un proyecto abierto, Duplicados va la primera', async () => {
     stubApi({

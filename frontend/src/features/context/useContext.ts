@@ -23,6 +23,10 @@ export interface ContextDocumentFilters {
   only: DocumentFilter | null;
   language: string | null;
   keyword: string;
+  /** Filtros por eje `clave:slug` (W3): O dentro del eje, Y entre ejes. */
+  axis?: string[];
+  /** Solo las versiones vigentes (W6). */
+  current?: boolean;
 }
 
 /** Tamaño máximo de una plantilla o manifiesto (`MAX_TEMPLATE_BYTES` de la API). */
@@ -47,11 +51,10 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
   };
 }
 
-/** Familia de IA que usa `catalog`: con plantilla o manifiesto clasifica en dos ejes (taxonomía). */
-export function aiFamily(catalog: Catalog): 'litellm_classification' | 'litellm_taxonomy_classification' {
-  return catalog === 'template' || catalog === 'manifest'
-    ? 'litellm_taxonomy_classification'
-    : 'litellm_classification';
+/** Tarea de IA que clasifica (doc_organize 2.0): la misma con cualquier catálogo (`litellm`, modelo por tarea). */
+export function aiTask(catalog: Catalog): 'classify' {
+  void catalog;
+  return 'classify';
 }
 
 /** Resultado del run `taxonomy_draft` (lo que devuelve el job). */
@@ -135,15 +138,23 @@ export function useContextDocuments(
 ) {
   const { only, language } = filters;
   const keyword = filters.keyword.trim() || null;
+  const axis = filters.axis?.length ? filters.axis : null;
+  const current = filters.current ?? false;
   return useQuery({
-    queryKey: ['projects', projectId, 'context', 'documents', { domain, only, language, keyword, ...list }],
+    queryKey: [
+      'projects',
+      projectId,
+      'context',
+      'documents',
+      { domain, only, language, keyword, axis, current, ...list },
+    ],
     enabled,
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/documents', {
           params: {
             path: { project_id: projectId },
-            query: { domain, only, language, keyword, ...list },
+            query: { domain, only, language, keyword, axis, current, ...list },
           },
         }),
       ),
@@ -347,6 +358,8 @@ export function useContextHistory(projectId: number, limit = 10) {
 
 /** Construcciones y cambios del contexto (1.5.0) en Excel; el historial se conserva al borrar el contexto. */
 export const CONTEXT_HISTORY_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_history' };
+/** Excel del contexto (2.0): documentos con sus ejes y, en otra hoja, cuántos hay de cada valor. */
+export const CONTEXT_XLSX: RunRequest = { operation: 'export_xlsx', kind: 'context_documents' };
 
 // --- manifiesto en la página del contexto (1.8.0) ---------------------------------------------------------------
 

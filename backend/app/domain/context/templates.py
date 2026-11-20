@@ -37,6 +37,8 @@ class TemplateView:
     markdown: str | None = None
     domains: list[tuple[str, str]] = field(default_factory=list)
     material_types: list[tuple[str, str]] = field(default_factory=list)
+    #: Catálogo completo con ejes y avisos del front matter (W3); solo al pedir una.
+    info: library.TemplateInfo | None = None
 
 
 @cache
@@ -106,6 +108,7 @@ def get_template(db: Session, user: User, name: str) -> TemplateView:
             markdown=markdown,
             domains=info.domains,
             material_types=info.material_types,
+            info=info,
         )
     row = _custom(db, user.scope_tenant_id, name)
     if row is None:
@@ -123,6 +126,7 @@ def get_template(db: Session, user: User, name: str) -> TemplateView:
         markdown=row.markdown,
         domains=info.domains,
         material_types=info.material_types,
+        info=info,
     )
 
 

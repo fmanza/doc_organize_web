@@ -27,6 +27,7 @@ import {
   MAX_TEMPLATE_BYTES,
   nameFromFile,
   type TaxonomyTemplate,
+  type TaxonomyTemplateDetail,
   TEMPLATE_NAME,
   templateDownloadUrl,
   useDeleteTemplate,
@@ -34,6 +35,9 @@ import {
   useTemplate,
   useTemplates,
 } from '../context/useContext';
+import { FrontMatterNotices } from '../context/Axes';
+import { PromptPreview } from '../context/ProfileCard';
+import { useTemplatePromptPreview } from './useTemplatePreview';
 
 /** Lo que se edita: plantilla nueva (con su nombre) o existente (nombre fijo); `source` para duplicar o importar. */
 interface Editing {
@@ -274,10 +278,13 @@ function TemplateEditor({
 }) {
   const { t } = useTranslation();
   const save = useSaveTemplate();
+  const preview = useTemplatePromptPreview();
   // Al editar o duplicar se parte del Markdown guardado; al crear o importar, del que trae `editing`.
   const loaded = useTemplate(editing.markdown === undefined ? (editing.source ?? editing.name) : null);
   const [name, setName] = useState(editing.name);
   const [draft, setDraft] = useState<string | null>(editing.markdown ?? null);
+  // W3: si al guardar doc_organize avisa de claves que no usa o de ejes implícitos, el editor sigue abierto para verlo.
+  const [savedReport, setSavedReport] = useState<TaxonomyTemplateDetail['front_matter'] | null>(null);
 
   const markdown = draft ?? loaded.data?.markdown ?? '';
   const nameTaken = !editing.fixedName && taken.includes(name);
@@ -312,22 +319,59 @@ function TemplateEditor({
             label={t('templates.fields.markdown')}
             description={t('templates.markdownHelp')}
             value={markdown}
-            onChange={(event) => setDraft(event.currentTarget.value)}
+            onChange={(event) => {
+              setDraft(event.currentTarget.value);
+              setSavedReport(null);
+            }}
             rows={18}
             resize="vertical"
             styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             error={tooLarge ? t('context.manifest.tooLarge') : undefined}
           />
         )}
+        <FrontMatterNotices
+          report={savedReport ?? (draft === null ? loaded.data?.front_matter : undefined)}
+        />
+        {savedReport && (
+          <Text size="sm" c="teal" role="status">
+            {t('templates.savedWithNotices')}
+          </Text>
+        )}
+        {preview.isError && <ErrorAlert error={preview.error} />}
+        {preview.data && <PromptPreview preview={preview.data} />}
         {save.isError && <ErrorAlert error={save.error} />}
         <Group justify="flex-end">
+          <Button
+            variant="default"
+            mr="auto"
+            loading={preview.isPending}
+            disabled={!markdown.trim() || tooLarge}
+            onClick={() => preview.mutate(markdown)}
+          >
+            {t('context.profile.preview')}
+          </Button>
           <Button variant="default" onClick={onClose}>
-            {t('common.cancel')}
+            {t(savedReport ? 'common.close' : 'common.cancel')}
           </Button>
           <Button
             loading={save.isPending}
             disabled={!nameValid || !markdown.trim() || tooLarge}
-            onClick={() => save.mutate({ name, markdown }, { onSuccess: onClose })}
+            onClick={() =>
+              save.mutate(
+                { name, markdown },
+                {
+                  onSuccess: (saved) => {
+                    const report = saved.front_matter;
+                    if (report && (report.ignored_keys.length > 0 || report.implicit_axes.length > 0)) {
+                      setDraft(markdown);
+                      setSavedReport(report);
+                    } else {
+                      onClose();
+                    }
+                  },
+                },
+              )
+            }
           >
             {t('common.save')}
           </Button>

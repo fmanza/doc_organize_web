@@ -5,6 +5,221 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-20
+
+Versión MAJOR, publicada a la vez que **doc_organize 2.0.0** (plan único de 2.0, hitos W2 a W9). La web pasa a la 2.0
+de la librería:
+- contexto por **ejes**, con filtros, insignias, evidencia y procedencia;
+- IA con un solo cliente y ajustes **por tarea**;
+- editor de perfil y vista previa del prompt;
+- frescura, redacción por proyecto y diagnóstico;
+- «Revisar clasificación» y «Calidad»;
+- versiones y semántica;
+- asistente de taxonomía, propuestas del revisor e informe del auditor;
+- tres entregas con su SHA-256: Excel del contexto, sitio sin conexión y paquete para IA.
+
+**Antes de actualizar**:
+- Haz una copia de seguridad: `python -m app.cli backup`.
+- Las migraciones `0015` a `0024` se aplican al arrancar.
+- Las variables de IA de la 1.x ya no se leen y dan error con su equivalente (D15). Ver la guía de IA.
+
+**Validación**:
+- E2E completos sobre la librería 2.0.
+- Preproducción con datos reales: migraciones de ida y vuelta desde la base de datos de producción, diagnóstico sin
+  errores, y contexto y entregas correctos.
+
+### Changed
+
+- **doc_organize 2.0.0** (antes 2.0.0rc3): misma API que la rc3, fijada por URL y SHA-256 (ADR-006).
+
+- **Sin `ai_settings_v1`** (migración `0024`, cierre de la 2.0.0): se borra la copia de la configuración de IA de la
+  1.x. Su bajada recrea la tabla vacía y la de la `0016` rehace entonces las familias de 1.x desde la de 2.0.
+  `migration_roundtrip.py` da por buena esa reconstrucción (compara familias y campos de `ai_settings`, no valores).
+- **Documentación de la 2.0 final**: guía de IA (tareas y alias `doc-organize-<tarea>`, claves por tarea opcionales,
+  `embed`, semántica, agentes, plazo de 120 s, `num_ctx` de Ollama, variables de 1.x con D15, vuelta a 1.x), sección
+  «IA» del despliegue, contexto por ejes, índices (`README`, `docs/README.md`) al día y fuera las referencias a las
+  versiones candidatas. Textos de ayuda de la interfaz (plazo de IA, documentos por ejecución por tarea, catálogos por
+  ejes).
+- **Tiempo máximo por petición de IA: 120 s por defecto** (antes 30 s, `DOW_AI_TIMEOUT_SECONDS` o el ajuste de
+  administración). En la preproducción de W9, con el modelo local de 14B, tres clasificaciones seguidas pasaron de 30 s
+  y el corte por conexión dejó 33 de 39 documentos sin IA; con 120 s, 38 de 39 y ninguna parada. Es el valor por
+  defecto de doc_organize. Quien lo haya fijado (variable o ajuste) conserva su valor.
+- **doc_organize 2.0.0rc3** (antes 2.0.0rc2): el sitio sin conexión ya no lleva la copia de cada original ni su
+  conversión (`.json`) sin redactar, la fuga que encontraron los E2E de W9. Los tests de entrega lo comprueban.
+- **doc_organize 2.0.0rc2** (antes 2.0.0rc1), con lo que pidió la web en W4–W8 y sin los apaños de la rc1:
+  - Excel del contexto con `write_context_documents_xlsx(roots=)`: claves relativas sin copiar el contexto, columnas
+    «Grupo de versiones», «Versión» y «Vigente» y hoja «Valores» (quién asignó cada valor, confianza y cita).
+  - Sitio sin conexión con `SiteGenerator.generate(work_dir=)`: la librería copia la carpeta reorganizada al workspace
+    del run y construye ahí; se quitan la copia propia, el traslado de `markdown_path` y la limpieza de los problemas.
+  - Agentes: progreso por paso (`on_step`) en el diseñador y el revisor; la propuesta guarda `ReviewProposal.id`
+    (`proposal_key`, migración `0023`, con bajada); la cobertura del informe por reglas va en cada eje (`coverage`),
+    sin el diccionario que añadía la web.
+  - «Comparar cambios» pasa el contexto actual como `baseline` y el resultado trae `changes` (hasta 200) y
+    `changes_total`: qué documentos cambian de valor y en qué eje, también en la página.
+  - Diagnóstico: con modelo propio, la tarea `embed` se comprueba pidiendo un vector (`AiEndpoint(kind="embedding")`).
+  - Construcción con semántica: el resultado añade `index_vectors` e `index_bytes` (`embedding_index_info`).
+  - La clave de los grupos de versiones ya es relativa en la librería (se ve igual en la web).
+- **doc_organize 2.0.0rc1** (antes 2.0.0a2): plazo y reintentos por tarea (`TaskSettings.timeout_s`/`retries`: el
+  borrador y los agentes usan los «largos», `ai_draft_timeout_seconds`/`ai_draft_retries`, sin cliente aparte) y
+  presupuesto por tarea (`TaskSettings.max_documents`, que la librería combina con `ai_max_documents`: clasificar y
+  describir ya no comparten el menor), `default_model_alias`, `compose_profile_text` en la vista previa y en
+  «Comparar cambios», y la cita de la IA también sin manifiesto.
+- **doc_organize 2.0.0a2** (prerrelease, antes 1.7.1, ADR-006): la integración de IA (`integrations/doc_organize/ai.py`)
+  pasa al **cliente único** de 2.0 (`LlmClient` con `AiSettings`: modelo y clave por tarea, salida `json_schema`
+  estricta con caída a `json_object`, caché de resultados de IA en el proyecto). `ContextBuilder.build(llm=,
+  ai_scope="unclassified", enrich=)` sustituye a los clientes de clasificación y enriquecimiento; los recuentos salen
+  de `Context.ai_stats` y los modelos de `ai_provenance`. El resultado del run añade `cached`, tokens,
+  `response_format` y `scope`, y el log dice cuántos documentos se resolvieron con la caché (reconstruir sin cambios no
+  llama al modelo). El borrador de manifiesto usa `draft_taxonomy` (manifiesto v2 con perfil inicial).
+- **Configuración IA: una familia `litellm` para todas las tareas** (migración `0016`, con bajada): las cuatro
+  familias `litellm_classification`, `litellm_taxonomy_classification`, `litellm_enrichment` y
+  `litellm_taxonomy_manifest_draft` pasan a `litellm`, con URL y clave generales y, por tarea (`classify`, `enrich`,
+  `taxonomy_design`, `agent`, `embed`), modelo, clave propia y presupuesto opcionales. Cada tarea conserva la clave y
+  el modelo que tenía. Bajar a la 1.x rehace las cuatro familias desde `litellm` (la copia de 1.x, `ai_settings_v1`,
+  se borra en la `0024`). Variables de entorno
+  de doc_organize 2.0 (`DOC_ORGANIZE_LITELLM_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`); las de 1.x ya no se leen y, si
+  siguen definidas, el error al encolar dice cuál usar (D15/U17).
+- API (**cambio de contrato**): `AiFamilyKey` es `litellm`, `litellm_usage` o `github_copilot_usage`;
+  `GET /ai/status` añade `tasks`; `GET /admin/ai-settings` añade `legacy_variables` y `task` en cada campo;
+  `POST /admin/ai-settings/{family}/test` acepta `task` y devuelve `task` y `response_format`. OpenAPI y
+  `schema.d.ts` regenerados. La página de contexto y la de configuración usan la familia nueva (los ajustes por tarea
+  con su propia pantalla llegan en W3).
+
+### Added
+
+- **Preproducción de la 2.0** (W9, guía `preproduccion_2_0.md`): `scripts/preprod/roundtrip.sh` (ida y vuelta de
+  las migraciones sobre una copia de producción hecha con `app.cli backup`, sin escribir en su volumen),
+  `scripts/preprod/up.sh`/`down.sh` (instancia aislada `dow-preprod` con `docker-compose.preprod.yml`: documentos de
+  solo lectura y salidas en una carpeta vacía) y `backend/scripts/preprod_smoke.py` (diagnóstico, escaneo, contexto y
+  las tres entregas por la API, con su SHA-256, sin imprimir nombres ni claves). `migration_roundtrip.py` reintenta
+  borrar su copia temporal y avisa si no puede.
+- **E2E de la 2.0** (W9, Playwright, LiteLLM falso con `json_schema`, herramientas y embeddings) sobre la carpeta
+  sintética `w9` (`scripts/e2e_data.sh`, la misma en CI y en local): migración de un manifiesto 1.x al restaurarlo,
+  ajustes de IA por tarea, diagnóstico de los modelos (también embeddings), perfil y vista previa, contexto por ejes
+  con IA, semántica y versiones (evidencia y procedencia en la página), frescura, revisar clasificación, Calidad,
+  revisor, auditor y diseñador, y las tres entregas descargadas con su SHA-256 y sin la credencial sintética en las
+  páginas. El LiteLLM falso responde a los agentes con un guion de `tool_calls` y da cita (`evidence`).
+- **Sitio sin conexión y paquete para IA** (W8, F3/F7): runs `export_site` (`SiteGenerator.generate(offline=True,
+  llms_txt=, redact_credentials=<ajuste del proyecto>)`, `check_site_offline` y `write_site_zip`, reproducible) y
+  `export_ai_bundle` (`write_ai_context_bundle` con `include_text`, `current_only`, `redact`, `max_file_chars`,
+  `max_full_chars` y las raíces de escaneo de las claves). El sitio se construye sobre una **copia** de la carpeta
+  reorganizada en el workspace del run (las rutas de conversión del contexto se trasladan a esa raíz): no escribe en el
+  destino, no toca el sitio que sirve la web ni necesita el bloqueo de escritura. Si no pasa la comprobación, falla con
+  `site_offline_invalid` y los problemas en el log. `redact=false` solo para administradores de la instancia
+  (`redaction_required`, S-F7-1). Permisos como las exportaciones; artefactos con cuota y retención; SHA-256 en el
+  resultado y en la auditoría (`project.export_site`, `project.export_ai_bundle`). Tarjeta «Entregar el contexto» en el
+  resumen y aviso con la huella en el detalle de la ejecución.
+- **Excel del contexto** (W8, D4): `export_xlsx` con `kind: "context_documents"` (`write_context_documents_xlsx`):
+  hojas «Documentos» (una columna por eje que etiqueta, quién clasificó y la confianza) y «Ejes» (documentos por valor
+  del catálogo). Las rutas de los originales van relativas a su carpeta de origen (`<carpeta>/<ruta>`), sin rutas del
+  contenedor. Sin contexto construido, el encolado responde 404 `context_not_found`. Botón «Excel del contexto» en
+  «Documentos → Exportar».
+- **Propuestas del revisor e informe del auditor** (W7, M9): run `context_review_agent` con `ReviewAgent` (tarea
+  `agent`, primeros 1–100 documentos de la cola, tope de pasos de 1 a 80, indicaciones, cancelación); las propuestas
+  se guardan en la BD (tabla `context_review_proposals`, migración `0022`) **sin aplicarse** (D14) y sustituyen a las
+  pendientes de la pasada anterior. `GET …/context/review/proposals` las lista con su documento; `POST
+  …/proposals/{id}/accept` las guarda como decisión de quien acepta (mismas validaciones que una decisión,
+  `project.proposal_accept` además de `project.decision_add`) y `…/discard` las descarta (`project.proposal_discard`);
+  propietario o editor con destino `rw`. `GET …/context/review` cuenta `reviewer_proposal`. Run `context_audit`
+  (`audit_taxonomy`, sin IA, también para lectores): `GET …/context/quality` añade `audit` con el último informe.
+  Tarjetas «Propuestas del revisor (IA)» en «Revisar clasificación» (pasos, tokens y resumen visibles) e «Informe del
+  auditor» en «Calidad».
+- **Diseñar taxonomía con IA** (W7, M8): run `taxonomy_agent` con `TaxonomyDesignAgent` (tarea `agent`, plazo largo
+  por tarea, tope de pasos de 1 a 60, cancelación con `CancelToken`) a partir del manifiesto, una plantilla o desde
+  cero, con indicaciones; **no guarda nada**: el resultado trae la propuesta, el último borrador si no terminó, el
+  mejor borrador comprobado si difiere, los informes por reglas de partida y propuesta, `improves`, la justificación,
+  los pasos y los tokens; auditado (`project.taxonomy_agent`). Run `taxonomy_check` (`check_taxonomy_rules`, sin IA)
+  con el texto del editor. Panel en el bloque del manifiesto con «Cargar la propuesta en el editor» (se guarda a mano,
+  con `If-Match` y versiones), «Cargar el mejor borrador comprobado» y «Guardar como plantilla…» (`templates.manage`),
+  y «Comprobar manifiesto».
+- **Clasificación semántica** (W6, G4): `context_semantic` y `context_semantic_threshold` del proyecto llegan a
+  `build(semantic=, semantic_threshold=)` con la tarea `embed` de «Modelos de IA» (el cliente se crea también sin
+  alcance de IA); sin «Modelos de IA» configurado se construye sin semántica y se avisa en el log. El resultado del run
+  añade `semantic` (`ai_stats.semantic_classification`: embebidos, del índice, asignados, fallidos) y una línea de log.
+  «Contexto e IA del proyecto» tiene el interruptor y la similitud mínima, con aviso si falta la IA. El índice vive en
+  `.doc_organize/embeddings/` del destino, como `Conversión/` (borrar el contexto no lo toca).
+- **Versiones de un documento** (W6, F5): «Contexto e IA del proyecto» elige `context_versions` (`mark` por defecto,
+  D8; `current_only`; `all`), que se pasa a `build(versions=)`. `PUT /projects/{id}/ai-settings` pasa a admitir cambios
+  parciales de `ai_redact_credentials`, `context_versions`, `context_semantic` y `context_semantic_threshold` (columna
+  nueva, migración `0021`), auditados con el valor anterior y el nuevo de cada uno. La construcción guarda el modo, los
+  grupos de versiones (rutas relativas) y las versiones antiguas fuera del contexto; `GET …/context` los devuelve y
+  cada documento trae `version`, `version_group` e `is_current`; filtro `current=true`. Página: tarjeta «Versiones de
+  un documento» con «Marcar como vigente» (`set_current_version`), insignia «Versión antigua», «Solo vigentes» y los
+  cambios `superseded` y `excluded` en el historial. La clave del grupo se guarda sin la ruta del contenedor (también en
+  `context_documents.version_group`).
+- **Calidad** (W5, G3): referencia en Excel (`PUT`/`DELETE …/context/quality/gold`, cuerpo `.xlsx` de hasta 5 MB con
+  hoja, columna del documento y `eje:columna`; comprobada con `load_gold_xlsx`, guardada en el volumen de datos,
+  auditada sin el contenido) o las decisiones del proyecto (`gold_from_decisions`). Runs `context_evaluate`
+  (`evaluate_classification` del contexto guardado) y `context_dry_run` (`dry_run_classify` sin guardar, con otra
+  plantilla o el manifiesto, otro modelo de clasificar, otro alcance de la IA o un perfil sin guardar, y un máximo de
+  documentos con IA; comparado con la evaluación del contexto actual; auditado `project.dry_run`). `GET
+  …/context/quality` da la referencia y los últimos resultados. Página «Calidad».
+- **Revisar clasificación** (W5, F6): la construcción guarda la cola de `review_queue` en `context_review_items` y las
+  decisiones aplicadas y no aplicadas (`decisions_applied`, `stale_decisions`, `orphan_decisions`), y cada documento su
+  `document_key`, huella y versión (migración `0020`, aditiva). Las claves de las decisiones son la ruta relativa a la
+  raíz de la ubicación de origen (`scan_roots`). API: `GET …/context/review` (por prioridad y motivo, con el documento
+  y su decisión vigente), `GET …/context/decisions`, `POST …/context/decisions` (`confirm`, `set_axis`, `exclude`,
+  `set_current_version`; validadas contra el catálogo; propietario o editor con destino `rw`; auditoría
+  `project.decision_add`) y `POST …/decisions/{id}/revoke` (`project.decision_revoke`). Las decisiones se guardan con
+  `ClassificationDecisionStore` en `.doc_organize/decisions.json` y se aplican al reconstruir. Página «Revisar
+  clasificación».
+- **Diagnóstico** (W4, F2): «Administración → Diagnóstico» (admin de instancia) y `POST /admin/diagnostics` ejecutan
+  `check_environment` en un subproceso (la API no carga docling) y, con `check_ai`, prueban los modelos de clasificar,
+  describir, diseñar la taxonomía y agentes de la familia `litellm`, con la clave de cada tarea (que le llega por la
+  entrada estándar). La respuesta se limpia de claves, URL del proxy y rutas del contenedor; uno cada 30 s y auditado
+  (`admin.diagnostics`, sin detalles).
+- **Redacción de credenciales por proyecto** (W4, D7): «IA del proyecto» en la página del proyecto, con
+  `PUT /projects/{id}/ai-settings` (propietario o editor, destino `rw`, auditoría `project.ai_settings_update` con el
+  valor anterior y el nuevo) y `ai_redact_credentials` en `ProjectOut`. Llega a lo que sale hacia la IA (construcción y
+  borrador: `AiSettings.redact_credentials`) y al sitio (`SiteGenerator.generate(redact_credentials=)`). Desactivarla
+  pide confirmación.
+- **Frescura del contexto** (W4, `check_context_freshness`): la construcción y cada escaneo comparan el contexto con
+  la caché (sin leer originales) y guardan el resultado en `project_contexts.freshness` (migración `0019`, aditiva):
+  recuentos de cambiados, nuevos, que ya no están y sin huella, sitio desfasado y unos pocos ejemplos con rutas
+  relativas. `GET …/context` lo devuelve en `freshness` y la página avisa con «Ir a reconstruir»; el escaneo lo deja en
+  su log. La construcción pasa a la librería la huella de cada original (`ConversionResult.source_sha256`), sin la que
+  no se puede saber si cambió.
+- **Perfil del proyecto y vista previa del prompt** (W3, D11): `GET`/`PUT`/`DELETE …/context/profile`
+  (`.doc_organize/profile.md` en el destino; propietario o editor con destino `rw`, `If-Match`, sin seguir enlaces,
+  escritura atómica, auditoría `project.profile_save`/`project.profile_delete` sin el texto) y
+  `POST …/context/prompt-preview` (plantilla o manifiesto, con el perfil guardado o un borrador; `render_prompt_preview`,
+  sin llamar al modelo). `POST /taxonomy-templates/prompt-preview` para la plantilla (`templates.manage`). Página:
+  tarjeta «Perfil del proyecto» con su vista previa, y vista previa en el editor de plantillas.
+- **Ajustes de IA por tarea** (W3): la tarjeta «Modelos de IA» agrupa por tarea el modelo (con el alias recomendado a
+  la vista), la clave propia y el presupuesto, y cada tarea tiene su «Probar el modelo», que dice si el modelo admite
+  `json_schema`. La página avisa de las variables de entorno de 1.x que siguen definidas, con su equivalente.
+- **Contexto por ejes** (W3): `GET …/context/documents?axis=clave:slug` (repetible hasta 20; O dentro del eje, Y entre
+  ejes; patrón validado, 422 si no) y `axes` en cada documento (valor, confianza, quién lo asignó, cita y si se
+  verificó); `GET …/context` añade `taxonomy_axes` con el recuento de cada valor y `ai_provenance` (prompt, versión,
+  origen y modelo por tarea). Página: filtro por eje con recuentos, insignias con la marca «IA», «Semántica» o
+  «Persona», y evidencia y procedencia en «Cómo se clasificó». Migración `0018` (aditiva):
+  `context_document_axis_values.evidence` y `project_contexts.ai_provenance`. El historial admite los cambios
+  `superseded` y `excluded` de 2.0.
+- **Avisos del front matter** (W3): plantillas y manifiesto devuelven `front_matter` (`axes`, `implicit_axes`,
+  `ignored_keys`, `legacy_format`, de `inspect_taxonomy_front_matter`); el editor de plantillas y el del manifiesto
+  avisan de las claves que no se usan y de los ejes implícitos.
+- **Ejes del contexto en la BD** (migración `0017`, con bajada; U3): tabla genérica `context_document_axis_values`
+  (`project_id`, `seq`, `axis`, `slug`, `name`, `confidence`, `classified_by`, `evidence_verified`; índice
+  `(project_id, axis, slug)` y clave primaria que empieza por `(project_id, seq)`, `ON DELETE CASCADE` desde
+  `context_documents`) y `project_contexts.taxonomy_axes`. `context_build` proyecta los valores de todos los ejes en la
+  misma transacción y por lotes; los contextos ya construidos se rellenan con sus ejes de 1.x (`domains` y, con
+  plantilla o manifiesto, `material_types`). `domain_slug` y `material_type` siguen como columnas derivadas.
+- **Plantillas al formato 2.0** (`0017`): `taxonomy_templates.markdown` se migra con `migrate_manifest_v1` y el texto
+  de 1.x queda en `markdown_v1` (la bajada lo devuelve).
+- **Restaurar una versión del manifiesto de 1.x la guarda migrada a 2.0** (U4); la versión conserva el texto original.
+- **Ajustes de IA por proyecto** (`0017`): `projects.ai_redact_credentials` (D7, por defecto sí; se aplica ya a lo que
+  sale hacia la IA), `context_versions` (D8, por defecto `mark`; se pasa a `ContextBuilder.build(versions=)`) y
+  `context_semantic` (D13, por defecto no; se usará en W6). Sin pantalla todavía (W4/W6).
+- `backend/scripts/migration_roundtrip.py`: prueba de ida y vuelta de las migraciones sobre una **copia** de
+  `config.db` (sube a `head`, lee todos los modelos, baja y compara las filas tabla a tabla sin imprimir valores).
+- LiteLLM falso para los tests (`backend/tests/fake_litellm.py`): exige `json_schema` estricto y valida cada
+  respuesta contra el esquema recibido, simula modelos sin `json_schema`, herramientas, embeddings y `/key/info`.
+
+### Fixed
+
+- `GET …/context/documents` respondía 500 con un documento cuyo dominio asignó la semántica (`classified_by` =
+  `semantic`, W6): el esquema solo admitía `rules` y `ai`.
+
 ## [1.9.1] - 2026-11-18
 
 Adopta doc_organize 1.7.1: el sitio del contexto ocupa mucho menos en proyectos grandes. Sin migraciones ni cambios en

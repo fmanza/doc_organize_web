@@ -38,6 +38,8 @@ import {
   sameText,
   useTaxonomyDraft,
 } from './useContext';
+import { AgentPanel, RulesCheck } from './AgentPanel';
+import { FrontMatterNotices } from './Axes';
 
 export interface ManifestCardProps {
   projectId: number;
@@ -123,6 +125,7 @@ export function ManifestCard({
           })}
         </Text>
       )}
+      {saved.markdown !== null && !saved.error && <FrontMatterNotices report={saved.front_matter} />}
       {copiedFrom !== null && (
         <Alert color="blue" mb="xs" role="status">
           <Group justify="space-between" wrap="nowrap">
@@ -139,6 +142,13 @@ export function ManifestCard({
           onDraft={(markdown) => onReplace(markdown, t('context.manifest.replaceBodyDraft'))}
         />
       )}
+      {editable && (
+        <AgentPanel
+          projectId={projectId}
+          hasManifest={saved.markdown !== null && !saved.error}
+          onLoad={(markdown) => onReplace(markdown, t('context.agent.replaceBody'))}
+        />
+      )}
       <Textarea
         ref={editor}
         label={t('context.manifest.markdown')}
@@ -150,6 +160,7 @@ export function ManifestCard({
         styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
         error={tooLarge ? t('context.manifest.tooLarge') : undefined}
       />
+      {editable && <RulesCheck projectId={projectId} markdown={text} />}
       {save.isError && <ErrorAlert error={save.error} mt="xs" />}
       {remove.isError && <ErrorAlert error={remove.error} mt="xs" />}
       {notice && (
@@ -456,7 +467,7 @@ function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markd
   const status = useAiStatus();
   const [sampleSize, setSampleSize] = useState(25);
   const draft = useTaxonomyDraft(projectId, onDraft);
-  const available = status.data?.litellm_taxonomy_manifest_draft === true;
+  const available = status.data?.taxonomy_design === true;
 
   return (
     <Card withBorder mb="sm" component="section" aria-label={t('context.ai.draftTitle')}>
@@ -464,7 +475,7 @@ function DraftPanel({ projectId, onDraft }: { projectId: number; onDraft: (markd
         {t('context.ai.draftTitle')}
       </Text>
       <Text size="xs" c="dimmed" mb="xs">
-        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.litellm_taxonomy_manifest_draft')}
+        {t(available ? 'context.ai.draftHelp' : 'context.ai.notConfigured.taxonomy_design')}
       </Text>
       <Group align="flex-end">
         <NumberInput

@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Center,
+  Fieldset,
   Group,
   Loader,
   PasswordInput,
@@ -20,6 +21,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import {
   type AiFamily,
   type AiField,
+  type AiTask,
   type AiTestResult,
   useAiSettings,
   useTestAiFamily,
@@ -53,6 +55,18 @@ export function AiSettingsPage() {
           {t('ai.settings.noEncryption')}
         </Alert>
       )}
+      {(settings.data.legacy_variables ?? []).length > 0 && (
+        <Alert color="orange" title={t('ai.settings.legacyTitle')}>
+          {t('ai.settings.legacy')}
+          <Stack gap={2} mt={4}>
+            {(settings.data.legacy_variables ?? []).map((item) => (
+              <Text key={item.name} size="sm" ff="monospace">
+                {item.name} → {item.replacement}
+              </Text>
+            ))}
+          </Stack>
+        </Alert>
+      )}
       {settings.data.families.map((family) => (
         <FamilyCard key={family.key} family={family} encryption={settings.data.encryption_configured} />
       ))}
@@ -84,6 +98,12 @@ function TestResult({ result }: { result: AiTestResult }) {
   return (
     <Alert color="teal" role="status" mt="xs" title={t('ai.settings.testOk', time)}>
       {t(result.model_checked ? 'ai.settings.testOkModel' : 'ai.settings.testOkKey')}
+      {result.model_checked && result.task && (
+        <Text size="sm" mt={4}>
+          {t('ai.settings.testedTask', { task: t(`ai.tasks.${result.task}`) })}
+          {result.response_format && ` ${t(`ai.settings.format.${result.response_format}`)}`}
+        </Text>
+      )}
       {result.model_access === 'denied' && (
         <Text size="sm" c="orange" mt={4}>
           {t('ai.settings.modelDenied')}
@@ -112,8 +132,10 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
   const testable = family.fields.every(
     (field) => !field.required || field.name in changes || field.source !== 'none',
   );
-  const hasModel = family.fields.some((field) => field.name === 'model');
-  const test = (modelCheck: boolean) => probe.mutate({ family: family.key, fields: changes, modelCheck });
+  // Con modelos por tarea, cada tarea tiene su «Probar el modelo»; el botón general queda para familias sin tareas.
+  const hasModel = family.fields.some((field) => field.name.startsWith('model') && !field.task);
+  const test = (modelCheck: boolean, task?: AiTask) =>
+    probe.mutate({ family: family.key, fields: changes, modelCheck, task });
   const save = () =>
     update.mutate(
       { family: family.key, fields: changes },
@@ -128,6 +150,83 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
       { onSuccess: () => setValues((current) => ({ ...current, [name]: '' })) },
     );
 
+  // doc_organize 2.0: la familia `litellm` agrupa por tarea su modelo, su clave propia y su presupuesto.
+  const general = family.fields.filter((field) => !field.task);
+  const byTask = new Map<AiTask, AiField[]>();
+  for (const field of family.fields) {
+    if (field.task) {
+      byTask.set(field.task, [...(byTask.get(field.task) ?? []), field]);
+    }
+  }
+  const tasks = [...byTask.entries()];
+  const renderField = (field: AiField) => {
+    const label = t(`ai.fields.${field.name}`);
+    const description = (
+      <Stack gap={2} component="span">
+        <Group gap={6} component="span">
+          {sourceBadge(field, t)}
+          {field.secret && field.hint && (
+            <Text size="xs" component="span">
+              {t('ai.settings.hint', { hint: field.hint })}
+            </Text>
+          )}
+          {!field.secret && field.source === 'env' && field.value && (
+            <Text size="xs" component="span" ff="monospace">
+              {field.value}
+            </Text>
+          )}
+        </Group>
+        <Text size="xs" c="dimmed" component="span">
+          {field.env_var}
+        </Text>
+        {field.undecryptable && (
+          <Text size="xs" c="orange" component="span">
+            {t('ai.settings.undecryptable')}
+          </Text>
+        )}
+      </Stack>
+    );
+    const Input = field.secret ? PasswordInput : TextInput;
+    return (
+      <Stack key={field.name} gap={4}>
+        <Input
+          label={label}
+          description={description}
+          required={field.required}
+          value={values[field.name] ?? ''}
+          placeholder={
+            field.secret
+              ? t('ai.settings.secretPlaceholder')
+              : field.task && field.name.startsWith('model')
+                ? `doc-organize-${field.task.replace('_', '-')}` // alias recomendado (sin modelo propio)
+                : field.name.startsWith('budget')
+                  ? t('ai.settings.budgetPlaceholder')
+                  : undefined
+          }
+          autoComplete={field.secret ? 'new-password' : 'off'}
+          onChange={(event) => {
+            const next = event.currentTarget.value;
+            setValues((current) => ({ ...current, [field.name]: next }));
+            probe.reset(); // el resultado era de otros valores
+          }}
+        />
+        {field.source === 'db' && (
+          <Group justify="flex-end">
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              color="red"
+              onClick={() => clear(field.name)}
+              aria-label={t('ai.settings.clearLabel', { label })}
+            >
+              {t('ai.settings.clear')}
+            </Button>
+          </Group>
+        )}
+      </Stack>
+    );
+  };
+
   return (
     <Card withBorder component="section" aria-label={title}>
       <Group justify="space-between" mb="xs">
@@ -141,67 +240,29 @@ function FamilyCard({ family, encryption }: { family: AiFamily; encryption: bool
       <Text size="sm" c="dimmed" mb="sm">
         {t(`ai.families.${family.key}.intro`)}
       </Text>
-      <SimpleGrid cols={{ base: 1, md: 2 }}>
-        {family.fields.map((field) => {
-          const label = t(`ai.fields.${field.name}`);
-          const description = (
-            <Stack gap={2} component="span">
-              <Group gap={6} component="span">
-                {sourceBadge(field, t)}
-                {field.secret && field.hint && (
-                  <Text size="xs" component="span">
-                    {t('ai.settings.hint', { hint: field.hint })}
-                  </Text>
-                )}
-                {!field.secret && field.source === 'env' && field.value && (
-                  <Text size="xs" component="span" ff="monospace">
-                    {field.value}
-                  </Text>
-                )}
-              </Group>
-              <Text size="xs" c="dimmed" component="span">
-                {field.env_var}
-              </Text>
-              {field.undecryptable && (
-                <Text size="xs" c="orange" component="span">
-                  {t('ai.settings.undecryptable')}
-                </Text>
-              )}
-            </Stack>
-          );
-          const Input = field.secret ? PasswordInput : TextInput;
-          return (
-            <Stack key={field.name} gap={4}>
-              <Input
-                label={label}
-                description={description}
-                required={field.required}
-                value={values[field.name] ?? ''}
-                placeholder={field.secret ? t('ai.settings.secretPlaceholder') : undefined}
-                autoComplete={field.secret ? 'new-password' : 'off'}
-                onChange={(event) => {
-                  const next = event.currentTarget.value;
-                  setValues((current) => ({ ...current, [field.name]: next }));
-                  probe.reset(); // el resultado era de otros valores
-                }}
-              />
-              {field.source === 'db' && (
-                <Group justify="flex-end">
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    color="red"
-                    onClick={() => clear(field.name)}
-                    aria-label={t('ai.settings.clearLabel', { label })}
-                  >
-                    {t('ai.settings.clear')}
-                  </Button>
-                </Group>
-              )}
-            </Stack>
-          );
-        })}
-      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, md: 2 }}>{general.map(renderField)}</SimpleGrid>
+      {tasks.map(([task, fields]) => (
+        <Fieldset key={task} legend={t(`ai.tasks.${task}`)} mt="sm">
+          <SimpleGrid cols={{ base: 1, md: 3 }}>{fields.map(renderField)}</SimpleGrid>
+          {fields.some((field) => field.name.startsWith('model')) && (
+            <Group justify="flex-end" mt="xs">
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() => test(true, task)}
+                loading={
+                  probe.isPending && probe.variables?.modelCheck === true && probe.variables?.task === task
+                }
+                disabled={!testable || probe.isPending}
+                title={t('ai.settings.testModelHint')}
+                aria-label={t('ai.settings.testTaskLabel', { task: t(`ai.tasks.${task}`) })}
+              >
+                {t('ai.settings.testModel')}
+              </Button>
+            </Group>
+          )}
+        </Fieldset>
+      ))}
       {blockedBySecret && (
         <Text size="sm" c="orange" mt="xs">
           {t('ai.settings.secretNeedsEncryption')}

@@ -107,3 +107,99 @@ class SiteNotFoundError(AppError):
     status = 404
     title = "No encontrado"
     code = "site_not_found"
+
+
+class ProfileReplacedError(AppError):
+    """``.doc_organize/profile.md`` (o su carpeta) no es un fichero (carpeta) normal: no se lee ni se sobrescribe."""
+
+    status = 409
+    title = "El perfil no es un fichero normal"
+    code = "profile_replaced"
+
+
+class ProfileChangedError(AppError):
+    """El perfil del proyecto cambió desde que se leyó (``If-Match`` distinto)."""
+
+    status = 409
+    title = "El perfil ha cambiado"
+    code = "profile_changed"
+
+
+class ProfileEtagRequiredError(AppError):
+    """Falta ``If-Match`` al cambiar el perfil del proyecto."""
+
+    status = 428
+    title = "Falta If-Match"
+    code = "etag_required"
+
+
+class ProfileTooLargeError(AppError):
+    """El perfil del proyecto pasa del tamaño máximo."""
+
+    status = 422
+    title = "Perfil demasiado grande"
+    code = "profile_invalid"
+
+
+class PromptPreviewError(AppError):
+    """No hay catálogo con el que componer la vista previa del prompt (sin manifiesto, o no es válido)."""
+
+    status = 422
+    title = "Vista previa del prompt no disponible"
+    code = "prompt_preview_invalid"
+
+
+class DecisionDocumentNotFoundError(AppError):
+    """El documento de la decisión no está en el contexto construido."""
+
+    status = 404
+    title = "Documento no encontrado en el contexto"
+    code = "decision_document_not_found"
+
+
+class DecisionInvalidError(AppError):
+    """La decisión no es válida (eje o valor fuera del catálogo, varios valores en un eje que no los admite…)."""
+
+    status = 422
+    title = "Decisión no válida"
+    code = "decision_invalid"
+
+
+class DecisionNotFoundError(AppError):
+    """No hay ninguna decisión vigente con ese identificador."""
+
+    status = 404
+    title = "Decisión no encontrada"
+    code = "decision_not_found"
+
+
+class GoldInvalidError(AppError):
+    """La referencia no sirve: no es un Excel, falta la hoja o la columna, o no tiene documentos etiquetados."""
+
+    status = 422
+    title = "Referencia no válida"
+    code = "gold_invalid"
+
+
+class GoldNotFoundError(AppError):
+    """No hay referencia en Excel subida (o no hay decisiones con las que hacer una)."""
+
+    status = 422
+    title = "Sin referencia"
+    code = "gold_not_found"
+
+
+class RedactionRequiredError(AppError):
+    """Solo un administrador de la instancia puede sacar el paquete para IA sin redactar credenciales (S-F7-1)."""
+
+    status = 403
+    title = "Redactar credenciales es obligatorio"
+    code = "redaction_required"
+
+
+class ProposalNotFoundError(AppError):
+    """No hay ninguna propuesta pendiente del revisor con ese identificador en el proyecto."""
+
+    status = 404
+    title = "Propuesta no encontrada"
+    code = "proposal_not_found"

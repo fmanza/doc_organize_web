@@ -3,8 +3,8 @@
 - ZIP: ``Conversión/`` del proyecto y ``cache_export.json`` (las entradas de las cachés de todas las carpetas de
   origen). Antes de escribir se calcula su tamaño (``preview_project_zip``): con ``dry_run`` el run devuelve solo eso,
   y sin él se comprueba que caben en la cuota del usuario y en el espacio libre del workspace.
-- Excel: la caché (``cache``), los errores de escaneo (``errors``: estado actual e histórico) o el historial del
-  contexto (``context_history``, 1.5.0).
+- Excel: la caché (``cache``), los errores de escaneo (``errors``: estado actual e histórico), el historial del
+  contexto (``context_history``, 1.5.0) o los documentos del contexto con sus ejes (``context_documents``, 2.0).
 
 ``cache_export.json`` y los Excel no llevan rutas del contenedor: las rutas de documentos van relativas a su carpeta de
 origen (``2024/facturas/a.pdf``) y los mensajes de error, enmascarados. Excepción aceptada por el mantenedor hasta que
@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 import shutil
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Final
 
@@ -30,6 +31,7 @@ from app.integrations.doc_organize.export import ProgressFn
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations._files import project_paths
 from app.jobs.operations.common import require_project
+from app.jobs.operations.context import context_folders
 
 EXPORT_DIR: Final = "export"
 #: Margen de espacio libre que se deja en el workspace al escribir un ZIP.
@@ -56,6 +58,8 @@ def _request(ctx: JobContext, project: Project) -> ExportRequest:
         states=[folder_state(paths.state, subpath) for subpath in folders],
         rename=namer.display,
         clean=namer.text,
+        project_name=project.name,
+        created_at=project.created_at,
     )
 
 
@@ -120,13 +124,17 @@ XLSX_KINDS: Final[dict[str, tuple[str, Callable[..., int]]]] = {
     "cache": ("-cache.xlsx", library.write_cache_xlsx),
     "errors": ("-errores.xlsx", library.write_errors_xlsx),
     "context_history": ("-historial-contexto.xlsx", library.write_context_history_xlsx),
+    "context_documents": ("-contexto.xlsx", library.write_context_documents_xlsx),
 }
 
 
 def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None) -> dict[str, Any]:
-    """Escribe el Excel de la caché o de los errores de escaneo como artefacto del run."""
+    """Escribe el Excel pedido (``XLSX_KINDS``) como artefacto del run."""
     project = require_project(project)
     request = _request(ctx, project)
+    if params.kind == "context_documents":
+        _, folders, _ = context_folders(ctx, project)
+        request = replace(request, roots=tuple(library.context.scan_roots(folders)))
     suffix, write = XLSX_KINDS[params.kind]
     name = _file_name(project, suffix)
     target: Path = ctx.workdir / EXPORT_DIR / name
@@ -135,6 +143,8 @@ def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None)
         rows = write(target, request, on_progress=_progress(ctx), is_cancelled=lambda: ctx.cancelled)
     except ExportCancelled:
         raise JobCancelled() from None
+    except library.ContextMissingError:
+        raise JobFailed("context_not_found", "El proyecto no tiene contexto: constrúyelo primero.") from None
     except (library.DocOrganizeOperationError, OSError):
         target.unlink(missing_ok=True)
         raise JobFailed("export_failed", "No se pudo escribir la exportación.") from None

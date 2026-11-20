@@ -113,11 +113,33 @@ class ExportZipParams(_Params):
 
 
 class ExportXlsxParams(_Params):
-    """Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico) o del
-    historial del contexto (``context_history``, 1.5.0: construcciones y cambios)."""
+    """Excel de la caché (``cache``), de los errores de escaneo (``errors``, estado actual e histórico), del
+    historial del contexto (``context_history``, 1.5.0: construcciones y cambios) o de los documentos del contexto con
+    sus ejes (``context_documents``, 2.0: hojas «Documentos» y «Ejes»)."""
 
     operation: Literal["export_xlsx"] = "export_xlsx"
-    kind: Literal["cache", "errors", "context_history"]
+    kind: Literal["cache", "errors", "context_history", "context_documents"]
+
+
+class ExportSiteParams(_Params):
+    """Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en
+    el workspace (no toca el sitio que sirve la web), se comprueba con ``check_site_offline`` y se empaqueta con
+    ``write_site_zip``. ``llms_txt`` añade el índice para IA en la raíz del sitio."""
+
+    operation: Literal["export_site"] = "export_site"
+    llms_txt: bool = False
+
+
+class ExportAiBundleParams(_Params):
+    """Paquete para IA del contexto (W8, F7: ``write_ai_context_bundle``): ``llms.txt``, un ``.md`` por documento con
+    su ficha y ``context.json``. ``redact=False`` solo lo puede pedir un administrador de la instancia (S-F7-1)."""
+
+    operation: Literal["export_ai_bundle"] = "export_ai_bundle"
+    include_text: bool = True
+    current_only: bool = True
+    redact: bool = True
+    max_file_chars: int | None = Field(default=None, ge=1_000, le=10_000_000)
+    max_full_chars: int | None = Field(default=None, ge=1_000, le=100_000_000)
 
 
 class DedupPreviewParams(_Params):
@@ -176,10 +198,10 @@ class ContextBuildParams(_Params):
     ``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.
     ``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se
     descarta) y no se devuelve en el run.
-    ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8): familia de un eje con
-    ``discover``/``domains`` y de taxonomía con ``template``/``manifest`` (ver ``context_ai_family``).
-    ``ai_enrichment`` (1.5.0) pide a la IA (familia ``litellm_enrichment``) descripción y palabras clave de los
-    documentos clasificados que no las declaran; tiene su propio presupuesto de documentos.
+    ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
+    ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+    ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
+    clasificados que no las declaran; tiene su propio presupuesto de documentos.
     """
 
     operation: Literal["context_build"] = "context_build"
@@ -210,11 +232,14 @@ class ContextDeleteParams(_Destructive):
     operation: Literal["context_delete"] = "context_delete"
 
 
-def context_ai_family(
-    params: ContextBuildParams,
-) -> Literal["litellm_classification", "litellm_taxonomy_classification"]:
-    """Familia de IA que usa ``params``: la de taxonomía (dos ejes) si hay plantilla o manifiesto."""
-    return "litellm_taxonomy_classification" if params.catalog in ("template", "manifest") else "litellm_classification"
+def context_ai_tasks(params: ContextBuildParams) -> list[Literal["classify", "enrich"]]:
+    """Tareas de IA (doc_organize 2.0) que usa ``params``: clasificar y describir, cada una si se pidió."""
+    tasks: list[Literal["classify", "enrich"]] = []
+    if params.ai_classification:
+        tasks.append("classify")
+    if params.ai_enrichment:
+        tasks.append("enrich")
+    return tasks
 
 
 class TaxonomyDraftParams(_Params):
@@ -227,6 +252,86 @@ class TaxonomyDraftParams(_Params):
     sample_size: int = Field(default=25, ge=1, le=60)
 
 
+class ContextEvaluateParams(_Params):
+    """Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.
+
+    No escribe nada: el informe (por eje: exactitud, cobertura, precisión, *recall*, confusiones y desglose por quién
+    clasificó) va en el resultado del run.
+    """
+
+    operation: Literal["context_evaluate"] = "context_evaluate"
+    gold: Literal["xlsx", "decisions"] = "xlsx"
+
+
+class ContextDryRunParams(_Params):
+    """Comparar cambios (W5, G3): clasificar los documentos de la referencia con otra configuración (plantilla o
+    manifiesto, modelo de clasificar, alcance de la IA o perfil), **sin guardar nada**, y compararlo con el contexto
+    actual. ``template_markdown`` lo fija la API al encolar (como en ``context_build``); con IA, ``max_documents`` es el
+    presupuesto de documentos enviados."""
+
+    operation: Literal["context_dry_run"] = "context_dry_run"
+    gold: Literal["xlsx", "decisions"] = "xlsx"
+    catalog: Literal["template", "manifest"] = "manifest"
+    template_name: TemplateName | None = None
+    ai_scope: Literal["off", "unclassified", "missing_axes"] = "off"
+    model_classify: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$")] | None = None
+    profile_markdown: str | None = Field(default=None, max_length=32_768)
+    max_documents: int = Field(default=50, ge=1, le=5000)
+    template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
+
+    @model_validator(mode="after")
+    def _catalog_fields(self) -> ContextDryRunParams:
+        if (self.catalog == "template") != (self.template_name is not None):
+            raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        return self
+
+
+class TaxonomyAgentParams(_Params):
+    """Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,
+    una plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.
+
+    **No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la
+    API al encolar. ``max_steps`` es el tope de llamadas al modelo.
+    """
+
+    operation: Literal["taxonomy_agent"] = "taxonomy_agent"
+    catalog: Literal["manifest", "template", "none"] = "manifest"
+    template_name: TemplateName | None = None
+    instructions: str = Field(default="", max_length=2000)
+    max_steps: int = Field(default=30, ge=1, le=60)
+    template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
+
+    @model_validator(mode="after")
+    def _catalog_fields(self) -> TaxonomyAgentParams:
+        if (self.catalog == "template") != (self.template_name is not None):
+            raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        return self
+
+
+class TaxonomyCheckParams(_Params):
+    """Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin
+    IA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje."""
+
+    operation: Literal["taxonomy_check"] = "taxonomy_check"
+    markdown: str = Field(min_length=1, max_length=MAX_TEMPLATE_BYTES)
+
+
+class ContextReviewAgentParams(_Params):
+    """Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de
+    la cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14)."""
+
+    operation: Literal["context_review_agent"] = "context_review_agent"
+    max_items: int = Field(default=20, ge=1, le=100)
+    max_steps: int = Field(default=40, ge=1, le=80)
+    instructions: str = Field(default="", max_length=2000)
+
+
+class ContextAuditParams(_Params):
+    """Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas."""
+
+    operation: Literal["context_audit"] = "context_audit"
+
+
 RunParams = Annotated[
     NoopParams
     | HistoryClearParams
@@ -235,12 +340,20 @@ RunParams = Annotated[
     | ScanParams
     | ExportZipParams
     | ExportXlsxParams
+    | ExportSiteParams
+    | ExportAiBundleParams
     | SearchIndexParams
     | DedupPreviewParams
     | DedupApplyParams
     | ContextBuildParams
     | ContextDeleteParams
-    | TaxonomyDraftParams,
+    | TaxonomyDraftParams
+    | ContextEvaluateParams
+    | ContextDryRunParams
+    | TaxonomyAgentParams
+    | TaxonomyCheckParams
+    | ContextReviewAgentParams
+    | ContextAuditParams,
     Field(discriminator="operation"),
 ]
 RUN_PARAMS: Final[TypeAdapter[RunParams]] = TypeAdapter(RunParams)
@@ -283,6 +396,9 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     # Exportar no cambia el proyecto: cualquier miembro, como en la web integrada (decisión del mantenedor, Fase 5).
     "export_zip": OperationSpec(min_role="viewer", produces_artifacts=True),
     "export_xlsx": OperationSpec(min_role="viewer", produces_artifacts=True),
+    # Entrega del contexto (W8): como las exportaciones; el sitio se construye sobre una copia (no escribe en el destino).
+    "export_site": OperationSpec(min_role="viewer", produces_artifacts=True),
+    "export_ai_bundle": OperationSpec(min_role="viewer", produces_artifacts=True),
     "search_index": OperationSpec(min_role="editor"),
     # Duplicados (Fase 6): mover saca ficheros del origen, así que es de owner (ver min_role).
     "dedup_preview": OperationSpec(min_role="editor", produces_artifacts=True),
@@ -292,6 +408,14 @@ OPERATIONS: Final[dict[str, OperationSpec]] = {
     "context_delete": OperationSpec(min_role="owner", destructive=True),
     # IA (Fase 8): el borrador no escribe en el proyecto, pero envía su contenido fuera (decisión D4: editor).
     "taxonomy_draft": OperationSpec(min_role="editor"),
+    # Calidad (W5): no escriben en el proyecto; la clasificación de prueba puede enviar contenido a la IA (editor).
+    "context_evaluate": OperationSpec(min_role="editor"),
+    "context_dry_run": OperationSpec(min_role="editor"),
+    # Agentes (W7): no escriben en el proyecto; el diseñador envía contenido a la IA (editor, como el borrador).
+    "taxonomy_agent": OperationSpec(min_role="editor"),
+    "taxonomy_check": OperationSpec(min_role="editor"),
+    "context_review_agent": OperationSpec(min_role="editor"),
+    "context_audit": OperationSpec(min_role="viewer"),
 }
 
 
@@ -349,4 +473,9 @@ def stored_params(params: RunParams) -> dict[str, object]:
 
 
 #: Parámetros guardados que no se devuelven en la API (``public_params``).
-HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {"context_build": ("template_markdown",)}
+HIDDEN_PARAMS: Final[dict[str, tuple[str, ...]]] = {
+    "context_build": ("template_markdown",),
+    "context_dry_run": ("template_markdown", "profile_markdown"),
+    "taxonomy_agent": ("template_markdown",),
+    "taxonomy_check": ("markdown",),
+}

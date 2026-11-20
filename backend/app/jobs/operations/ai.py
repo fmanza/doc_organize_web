@@ -9,6 +9,7 @@ de los documentos sale de la app.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Final
 
 from app.db.models import Project
@@ -30,14 +31,20 @@ AI_ERRORS: Final[dict[str, str]] = {
 def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -> dict[str, Any]:
     """Pide el borrador y lo devuelve como resultado del run (Markdown + resumen del catálogo)."""
     project = require_project(project)
-    connection = ai_connection(ctx, "litellm_taxonomy_manifest_draft")
-    _, folders, _ = context_folders(ctx, project)
+    # Redacción por proyecto (D7, W4): también en la muestra del borrador.
+    connection = replace(ai_connection(ctx, "litellm"), redact_credentials=project.ai_redact_credentials)
+    output, folders, _ = context_folders(ctx, project)
     ctx.progress("ai_sample", 0, None)
     ctx.check_cancelled()
     ctx.progress("ai_request", 0, None)
     try:
         draft = library_ai.draft_manifest(
-            connection, folders, params.sample_size, name=project.name, created_at=project.created_at
+            connection,
+            folders,
+            params.sample_size,
+            name=project.name,
+            created_at=project.created_at,
+            project_root=output,
         )
     except library_ai.NoConvertedDocumentsError:
         raise JobFailed(
@@ -47,8 +54,8 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
         if exc.timed_out:  # conectó pero no respondió: no es un fallo de conexión (el modelo es lento)
             raise JobFailed(
                 "ai_timeout",
-                f"El servicio de IA no respondió a tiempo ({connection.timeout_s:g} s por intento). Sube «Tiempo"
-                " máximo del borrador de IA» en los ajustes o usa un modelo más rápido.",
+                f"El servicio de IA no respondió a tiempo ({connection.long_timeout_s:g} s por intento). Sube «Tiempo"
+                " máximo del borrador y los agentes de IA» en los ajustes o usa un modelo más rápido.",
             ) from None
         raise JobFailed(exc.code, AI_ERRORS[exc.code]) from None
     if len(draft.markdown.encode("utf-8")) > MAX_TEMPLATE_BYTES:  # va a runs.result (config.db) y al editor

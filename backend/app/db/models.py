@@ -19,6 +19,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -27,6 +28,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
     text,
+    true,
 )
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -252,6 +254,11 @@ class AppSetting(Base):
 class AiSetting(Base):
     """Campo de una familia de IA guardado por un admin (Fase 8, ADR-004); sin fila, vale ``DOC_ORGANIZE_*``.
 
+    Desde doc_organize 2.0 (migración ``0016``) las familias son ``litellm`` (todas las tareas: URL y clave generales y,
+    por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``), ``litellm_usage`` y
+    ``github_copilot_usage``. Bajar a la 1.x rehace las cuatro familias ``litellm_*`` desde la familia ``litellm``
+    (la copia de 1.x, ``ai_settings_v1``, se borra en la ``0024``).
+
     De instancia (como en la web integrada): los tenants llegan en la Fase 9. Un campo secreto solo se guarda cifrado
     con MultiFernet en ``ciphertext``; uno no secreto, en claro en ``value``. Nunca los dos.
     """
@@ -281,7 +288,10 @@ class Project(Base):
     """
 
     __tablename__ = "projects"
-    __table_args__ = (CheckConstraint("status IN ('active', 'deleted')", name="status"),)
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'deleted')", name="status"),
+        CheckConstraint("context_versions IN ('all', 'mark', 'current_only')", name="context_versions"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
@@ -294,6 +304,13 @@ class Project(Base):
     #: Guardar la cuenta propietaria de cada fichero al escanear (1.5.0, ``ScanOptions.capture_owner``): dato personal,
     #: solo lo activa el ``owner`` y es fijo por proyecto para que un escaneo no lo borre por olvidar la opción.
     capture_owner: Mapped[bool] = mapped_column(default=False, server_default=false())
+    #: doc_organize 2.0 (migración ``0017``): redactar credenciales de lo que sale hacia la IA (D7), qué hacer con las
+    #: versiones de un documento al construir el contexto (D8: ``mark`` en la web) y sub-fase semántica (D13, opt-in).
+    ai_redact_credentials: Mapped[bool] = mapped_column(default=True, server_default=true())
+    context_versions: Mapped[str] = mapped_column(String(16), default="mark", server_default="mark")
+    context_semantic: Mapped[bool] = mapped_column(default=False, server_default=false())
+    #: Similitud mínima de la sub-fase semántica (W6, migración ``0021``; ``semantic_threshold`` de la librería).
+    context_semantic_threshold: Mapped[float] = mapped_column(Float, default=0.75, server_default="0.75")
     status: Mapped[str] = mapped_column(String(16), default="active")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -521,6 +538,8 @@ class TaxonomyTemplate(Base):
     title: Mapped[str | None] = mapped_column(String(256), default=None)
     description: Mapped[str | None] = mapped_column(String(1024), default=None)
     markdown: Mapped[str] = mapped_column(Text)
+    #: Texto de 1.x que la migración ``0017`` pasó al formato 2.0 (``markdown``); nulo si ya era 2.0.
+    markdown_v1: Mapped[str | None] = mapped_column(Text, default=None)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
@@ -552,6 +571,27 @@ class ProjectContext(Base):
     ai_classification_model: Mapped[str | None] = mapped_column(String(128), default=None)
     ai_enrichment_model: Mapped[str | None] = mapped_column(String(128), default=None)
     domains: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    #: Ejes del contexto (doc_organize 2.0, ``Context.taxonomy_axes``): ``key``, ``name``, ``description``,
+    #: ``multiple``, ``organizes`` y ``values`` (``slug``, ``name``), sin palabras clave ni ejemplos.
+    taxonomy_axes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Prompt (``prompt_id``, ``version``, ``source``, ``sha256``) y modelo de cada tarea de IA de la construcción
+    #: (``Context.ai_provenance``, migración ``0018``); vacío sin IA o en contextos anteriores.
+    ai_provenance: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Frescura respecto a la caché del último escaneo (``check_context_freshness``, migración ``0019``): ``checked_at``,
+    #: ``up_to_date``, recuentos de ``changed``/``added``/``removed``/``unknown``, ``stale_site`` y unos pocos
+    #: ejemplos con rutas relativas. Nula si aún no se ha comprobado.
+    freshness: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    #: Decisiones de personas de la construcción (W5, ``0020``): cuántas se aplicaron y las que no, con su motivo
+    #: (``decision_id``, ``document_key``, ``reason``, ``detail``).
+    decisions_applied: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    stale_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    orphan_decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    #: Versiones de un documento (W6, F5; ``0021``): modo de la construcción, grupos (``key``, ``members`` con ruta
+    #: relativa, ``versions``, ``current``, ``confirmed``) y versiones antiguas fuera del contexto con ``current_only``.
+    versions_mode: Mapped[str | None] = mapped_column(String(16), default=None)
+    version_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
+    superseded: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    superseded_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     built_by_run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
     built_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -597,6 +637,7 @@ class ContextDocument(Base):
     __table_args__ = (
         Index("ix_context_documents_project_domain", "project_id", "domain_slug", "seq"),
         Index("ix_context_documents_project_language", "project_id", "language"),
+        Index("ix_context_documents_project_key", "project_id", "document_key"),
     )
 
     project_id: Mapped[int] = mapped_column(
@@ -632,3 +673,98 @@ class ContextDocument(Base):
     #: Por qué no se clasificó (1.6.0, G42): ``incomplete_artifacts`` (sin ``.md`` o ``.json``) o ``below_threshold``
     #: (las reglas no llegan al umbral y la IA no lo asignó). Nulo si está clasificado o en contextos anteriores.
     unclassified_reason: Mapped[str | None] = mapped_column(String(32), default=None)
+    # W5 (doc_organize 2.0, F6; migración ``0020``): clave de las decisiones (``<carpeta>/<ruta>`` relativa a la raíz de
+    # la ubicación de origen), huella del original y versión del documento. Nulos en contextos anteriores.
+    document_key: Mapped[str | None] = mapped_column(String(4096), default=None)
+    source_sha256: Mapped[str | None] = mapped_column(String(64), default=None)
+    version: Mapped[str | None] = mapped_column(String(64), default=None)
+    version_group: Mapped[str | None] = mapped_column(String(4096), default=None)
+    is_current: Mapped[bool | None] = mapped_column(default=None)
+
+
+class ContextDocumentAxisValue(Base):
+    """Un valor de un eje de un documento del contexto (doc_organize 2.0, ``AxisValue``; migración ``0017``, U3).
+
+    Tabla **genérica** para todos los ejes (dominio, tipo de material y los que solo etiquetan), indexada para filtrar y
+    contar por ``(project_id, axis, slug)``. ``context_documents.domain_slug``/``material_type`` repiten los de los ejes
+    organizadores. ``classified_by``: ``rules``, ``semantic``, ``ai`` o ``human``; ``evidence_verified`` nulo sin cita.
+    """
+
+    __tablename__ = "context_document_axis_values"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "seq"],
+            ["context_documents.project_id", "context_documents.seq"],
+            name="document",
+            ondelete="CASCADE",
+        ),
+        Index("ix_context_document_axis_values_project_axis_slug", "project_id", "axis", "slug"),
+    )
+
+    project_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    axis: Mapped[str] = mapped_column(String(41), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(256))
+    confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    classified_by: Mapped[str | None] = mapped_column(String(8), default=None)
+    evidence_verified: Mapped[bool | None] = mapped_column(default=None)
+    #: Cita literal que dio la IA para el valor (2.0, D10; migración ``0018``); nula sin cita o en contextos anteriores.
+    evidence: Mapped[str | None] = mapped_column(String(500), default=None)
+
+
+class ContextReviewItem(Base):
+    """Un motivo para revisar un documento (``review_queue`` de la última construcción, W5; migración ``0020``).
+
+    ``seq`` apunta al documento del contexto (nulo en una decisión desfasada de un documento que ya no está).
+    ``reason``: ``stale_decision``, ``unclassified``, ``rules_ai_disagreement``, ``unverified_evidence``,
+    ``low_confidence`` o ``unconfirmed_version``; ``priority`` es la de la librería (0 = lo más urgente).
+    """
+
+    __tablename__ = "context_review_items"
+    __table_args__ = (Index("ix_context_review_items_project_priority", "project_id", "priority", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project_contexts.project_id", ondelete="CASCADE"))
+    seq: Mapped[int | None] = mapped_column(Integer, default=None)
+    document_key: Mapped[str] = mapped_column(String(4096))
+    reason: Mapped[str] = mapped_column(String(32))
+    priority: Mapped[int] = mapped_column(Integer)
+    axis: Mapped[str | None] = mapped_column(String(41), default=None)
+    value: Mapped[str | None] = mapped_column(String(128), default=None)
+    confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    detail: Mapped[str | None] = mapped_column(String(1000), default=None)
+
+
+ProposalStatus = Literal["pending", "accepted", "discarded"]
+
+
+class ContextReviewProposal(Base):
+    """Una propuesta del revisor (``ReviewAgent``, W7; migración ``0022``) para un documento de la cola de revisión.
+
+    No se aplica sola (D14): ``pending`` hasta que una persona la acepta (se guarda como decisión, ``decision_id``) o
+    la descarta. Una ejecución nueva del revisor sustituye a las pendientes del proyecto.
+    """
+
+    __tablename__ = "context_review_proposals"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'accepted', 'discarded')", name="status"),
+        Index("ix_context_review_proposals_project_status", "project_id", "status", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+    document_key: Mapped[str] = mapped_column(String(4096))
+    action: Mapped[str] = mapped_column(String(32))
+    axes: Mapped[dict[str, list[str]]] = mapped_column(JSON, default=dict, server_default="{}")
+    rationale: Mapped[str | None] = mapped_column(Text, default=None)
+    evidence: Mapped[str | None] = mapped_column(Text, default=None)
+    source_sha256: Mapped[str | None] = mapped_column(String(64), default=None)
+    #: ``ReviewProposal.id`` de doc_organize (rc2): identifica la propuesta fuera de la web (trazabilidad).
+    proposal_key: Mapped[str | None] = mapped_column(String(64), default=None)
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    decision_id: Mapped[str | None] = mapped_column(String(64), default=None)

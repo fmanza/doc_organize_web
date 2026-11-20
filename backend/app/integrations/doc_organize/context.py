@@ -1,15 +1,17 @@
-"""Contexto, sitio y plantillas de taxonomía de doc_organize 0.14.0 (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8f).
+"""Contexto, sitio y plantillas de taxonomía de doc_organize (WB-7.1, WB-7.2, WB-7.3; L-8, L-8a…L-8f; 2.0 en W2).
 
 Construir y borrar el contexto solo se llama desde el subproceso de un job: importa doc_organize **dentro** de la
 función (G15). Las plantillas y el manifiesto (texto pequeño, sin Docling) también los usa la API.
 
-Firmas verificadas en el tag ``v0.14.0``, sin cambios en ``v1.0.0rc2`` (que solo retira la web, ``auth`` y lo
-obsoleto)::
+Firmas verificadas en el tag ``v2.0.0rc2``::
 
-    ContextBuilder().build(project, documents: list[ConversionResult], candidate_domains=None, threshold=0.5,
-        ai_classification_enabled=False, ai_classification_client=None, output_folder_name="organizado", ...,
-        taxonomy_manifest=None, taxonomy_classification_client=None, taxonomy_template_name=None, *,
-        on_progress=None, cancel_token=None, ai_max_failures=None, ai_max_documents=None) -> Context
+    ContextBuilder().build(project, documents: list[ConversionResult], *, candidate_domains=None, threshold=0.5,
+        taxonomy_manifest=None, taxonomy_template_name=None, output_folder_name="organizado", llm=None,
+        ai_scope="off", enrich=False, prompts=None, ai_cache=True, profile=None, decisions=True, scan_roots=None,
+        versions="all", semantic=False, ..., on_progress=None, cancel_token=None, ai_max_failures=None,
+        ai_max_documents=None, persist=True) -> Context
+    Context.ai_stats (AiStats), Context.model_for_task(task), Context.taxonomy_axes, DomainDocument.classification
+    TaxonomyManifest.axes / .folder_axis / .subfolder_axis / .tag_axes  # sin .domains ni .material_types (2.0)
     DomainDocument.organized_path    # .md copiado, relativo a la carpeta reorganizada (L-8d)
     Reorganizer().reorganize(project, context, on_document_copied=None, *, on_document_failed=None) -> Path
     Reorganizer().delete_output(project, context)
@@ -26,10 +28,11 @@ resolvedor de ubicaciones, ya resueltas. Desde 0.14.0 tampoco se sobrescriben do
 las escrituras atómicas no siguen enlaces (G31) y ``Context`` valida ``output_folder_name`` al leer ``context.json``
 (G32): la web ya no necesita sus rodeos.
 
-Con doc_organize 1.5.0 (firmas de arriba sin cambios), ``ContextBuilder.build`` lee el ``context.json`` anterior y añade
-una línea a ``historial_contexto/CONTEXT_HISTORY.jsonl`` en ``output_root`` (nombre que ya no admite la carpeta
-reorganizada), abre cada original para sus propiedades (autor, descripción, palabras clave) y clasifica sin distinguir
-tildes. ``ContextRegistry.load_context`` lanza ``ContextError`` ante cualquier ``context.json`` dañado.
+Con doc_organize 1.5.0, ``ContextBuilder.build`` lee el ``context.json`` anterior y añade una línea a
+``historial_contexto/CONTEXT_HISTORY.jsonl`` en ``output_root``, abre cada original para sus propiedades (autor,
+descripción, palabras clave) y clasifica sin distinguir tildes. ``ContextRegistry.load_context`` lanza ``ContextError``
+ante cualquier ``context.json`` dañado. Con 2.0 lee también los ``context.json`` y manifiestos de 1.x (los migra en
+memoria) y escribe los de 2.0.
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ import os
 import stat as stat_mode
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager, AsyncExitStack
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -65,13 +68,31 @@ class TemplateInvalidError(Exception):
 
 
 @dataclass(frozen=True)
+class AxisInfo:
+    """Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas, si admite varios
+    valores y cuántos valores tiene."""
+
+    key: str
+    name: str
+    organizes: str | None
+    multiple: bool
+    values: int
+
+
+@dataclass(frozen=True)
 class TemplateInfo:
-    """Resumen de una plantilla: catálogo de dominios y tipos de material ``(slug, nombre)``."""
+    """Resumen de una plantilla: catálogo de dominios y tipos de material ``(slug, nombre)`` y, desde doc_organize 2.0,
+    sus ejes y lo que avisa ``inspect_taxonomy_front_matter``: ejes implícitos (formato de 1.x), claves que no se usan
+    y si el texto es de 1.x."""
 
     title: str | None
     description: str | None
     domains: list[tuple[str, str]]
     material_types: list[tuple[str, str]]
+    axes: list[AxisInfo] = field(default_factory=list)
+    implicit_axes: list[str] = field(default_factory=list)
+    ignored_keys: list[str] = field(default_factory=list)
+    legacy_format: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +112,21 @@ class SourceFolder:
     conversion_dir: Path
 
 
+def location_root(folder: SourceFolder) -> Path:
+    """Raíz de la ubicación de origen de ``folder`` (``folder.root`` sin los niveles de ``folder.folder``).
+
+    La muestra del borrador muestra las carpetas relativas a ella (``2024/obras``), nunca por encima (G36), y es la raíz
+    de escaneo de las decisiones (W5): ``document_key`` = ``<carpeta>/<ruta>``, la misma que ve el usuario.
+    """
+    levels = len(PurePosixPath(folder.folder).parts)
+    return folder.root.parents[levels - 1] if levels else folder.root
+
+
+def scan_roots(folders: list[SourceFolder]) -> list[str]:
+    """Raíces de escaneo de un proyecto para las claves de los documentos (``scan_roots``/``roots`` de doc_organize)."""
+    return sorted({str(location_root(folder)) for folder in folders})
+
+
 @dataclass(frozen=True)
 class ContextRequest:
     """Una construcción del contexto.
@@ -102,10 +138,10 @@ class ContextRequest:
         template_name: Plantilla de la que viene ``manifest_markdown`` (solo informativo en ``context.json``).
         build_site: Generar y construir el sitio Zensical; si no, se borra el que hubiera.
         site_timeout: Segundos máximos de ``zensical build``.
-        ai: Clasificación con IA de lo que las reglas dejan sin clasificar (Fase 8): familia de un eje o de
-            taxonomía según haya manifiesto. ``None`` = sin IA.
-        enrichment: Descripción y palabras clave con IA de los documentos que no las declaran (1.5.0, familia
-            ``litellm_enrichment``), con su propio presupuesto. ``None`` = sin IA.
+        ai: Conexión de la familia ``litellm`` (doc_organize 2.0, cliente único), o ``None`` = sin IA.
+        ai_scope: Qué clasifica la IA (``ContextBuilder.build(ai_scope=)``): ``off``, ``unclassified`` (lo que las
+            reglas dejan sin clasificar, la Sub-fase B de 1.x) o ``missing_axes``.
+        enrich: Descripción y palabras clave con IA de los documentos que no las declaran (1.5.0, tarea ``enrich``).
     """
 
     name: str
@@ -120,7 +156,29 @@ class ContextRequest:
     build_site: bool = True
     site_timeout: float | None = None
     ai: AiConnection | None = None
-    enrichment: AiConnection | None = None
+    ai_scope: str = "off"
+    enrich: bool = False
+    #: Sub-fase semántica (W6, G4; ``build(semantic=, semantic_threshold=)``): embeddings con la tarea ``embed``.
+    semantic: bool = False
+    semantic_threshold: float = 0.75
+    versions: str = "all"
+    #: Redactar credenciales en el sitio publicado (``SiteGenerator.generate(redact_credentials=)``, D7); lo que va a
+    #: la IA lo redacta ``AiSettings.redact_credentials`` (``AiConnection``).
+    redact_credentials: bool = True
+
+
+@dataclass(frozen=True)
+class AxisValueDoc:
+    """Un valor de un eje de un documento (``AxisValue`` de doc_organize 2.0), sin la cita (solo si se verificó)."""
+
+    axis: str
+    slug: str
+    name: str
+    confidence: float | None
+    classified_by: str | None
+    evidence_verified: bool | None = None
+    #: Cita literal del documento que dio la IA (2.0, D10); ``None`` sin cita.
+    evidence: str | None = None
 
 
 @dataclass(frozen=True)
@@ -152,6 +210,14 @@ class ContextDoc:
     #: Sin clasificar (1.6.0): ``incomplete_artifacts`` o ``below_threshold``; nulo si está clasificado o el contexto es
     #: anterior a 1.6.0.
     unclassified_reason: str | None = None
+    #: Valores de todos los ejes (doc_organize 2.0, ``classification``): organizadores y los que solo etiquetan.
+    axes: list[AxisValueDoc] = field(default_factory=list)
+    # W5: clave de las decisiones, huella del original y versión del documento.
+    document_key: str | None = None
+    source_sha256: str | None = None
+    version: str | None = None
+    version_group: str | None = None
+    is_current: bool | None = None
 
 
 @dataclass
@@ -186,18 +252,60 @@ class ContextOutcome:
     built_with_version: str | None = None
     ai_classification_model: str | None = None
     ai_enrichment_model: str | None = None
+    #: Ejes del contexto (``Context.taxonomy_axes``) sin palabras clave ni ejemplos (doc_organize 2.0).
+    taxonomy_axes: list[dict[str, Any]] = field(default_factory=list)
+    #: Con qué prompt y modelo se hizo cada tarea de IA (``Context.ai_provenance``, 2.0): ``task``, ``prompt_id``,
+    #: ``version``, ``source``, ``sha256`` y ``model``.
+    ai_provenance: list[dict[str, Any]] = field(default_factory=list)
+    #: W5: cola de revisión (``review_queue``) y decisiones aplicadas y no aplicadas de la construcción.
+    review: list[dict[str, Any]] = field(default_factory=list)
+    decisions_applied: int = 0
+    stale_decisions: list[dict[str, Any]] = field(default_factory=list)
+    orphan_decisions: list[dict[str, Any]] = field(default_factory=list)
+    #: W6 (G4): recuento de la sub-fase semántica (``ai_stats.semantic_classification``), o ``None`` sin ella.
+    semantic: dict[str, Any] | None = None
+    #: W6 (F5): modo de versiones, grupos (rutas del contenedor: el job las hace relativas) y versiones antiguas fuera
+    #: del contexto (``current_only``).
+    versions_mode: str | None = None
+    version_groups: list[dict[str, Any]] = field(default_factory=list)
+    superseded: list[str] = field(default_factory=list)
 
 
 # --- plantillas y manifiesto (también en la API) ---------------------------------------------------------------------
 
 
-def _info(manifest: Any) -> TemplateInfo:
+def _info(manifest: Any, text: str | None = None) -> TemplateInfo:
+    report = _front_matter_report(text) if text is not None else None
     return TemplateInfo(
         title=manifest.title,
         description=manifest.description,
-        domains=[(entry.slug, entry.name) for entry in manifest.domains],
-        material_types=[(entry.slug, entry.name) for entry in manifest.material_types],
+        domains=[(entry.slug, entry.name) for entry in manifest.folder_axis.entries],
+        material_types=[(entry.slug, entry.name) for entry in manifest.subfolder_axis.entries],
+        axes=[
+            AxisInfo(
+                key=axis.key,
+                name=axis.name,
+                organizes=axis.organizes,
+                multiple=bool(axis.multiple),
+                values=len(axis.entries),
+            )
+            for axis in manifest.axes
+        ],
+        implicit_axes=list(report.implicit_axes) if report else [],
+        ignored_keys=list(report.ignored_keys) if report else [],
+        legacy_format=bool(report.legacy_format) if report else False,
     )
+
+
+def _front_matter_report(text: str) -> Any:
+    """``inspect_taxonomy_front_matter`` de ``text``, o ``None`` si no se puede leer (``parse_template`` ya da el error)."""
+    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter
+    from doc_organize.core.exceptions import DocOrganizeError
+
+    try:
+        return inspect_taxonomy_front_matter(text)
+    except (DocOrganizeError, ValueError):
+        return None
 
 
 def parse_template(text: str) -> TemplateInfo:
@@ -210,9 +318,174 @@ def parse_template(text: str) -> TemplateInfo:
     from doc_organize.core.exceptions import TaxonomyTemplateError
 
     try:
-        return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE))
+        return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE), text)
     except TaxonomyTemplateError as exc:
         raise TemplateInvalidError(str(exc)) from None
+
+
+def migrate_markdown_v1(text: str) -> str | None:
+    """``text`` en el formato 2.0 (``migrate_manifest_v1``) si es un manifiesto o plantilla de 1.x; ``None`` si ya es
+    2.0 o no se puede migrar (doc_organize lo seguirá intentando leer y dará su error al validarlo)."""
+    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter, migrate_manifest_v1
+    from doc_organize.core.exceptions import DocOrganizeError
+
+    try:
+        if not inspect_taxonomy_front_matter(text).legacy_format:
+            return None
+        return str(migrate_manifest_v1(text))
+    except (DocOrganizeError, ValueError):
+        return None
+
+
+@dataclass(frozen=True)
+class ProfileSections:
+    """Secciones de un perfil de proyecto (``ProjectProfile`` de doc_organize 2.0, G2): lo que se envía al modelo."""
+
+    context: str | None = None
+    tie_breakers: str | None = None
+    glossary: str | None = None
+    examples: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PromptPreview:
+    """Lo que recibiría el modelo al clasificar (``render_prompt_preview``), sin llamar a nadie.
+
+    Attributes:
+        messages: ``(rol, texto)`` de cada mensaje.
+        template_profile: Perfil del cuerpo de la plantilla o el manifiesto.
+        project_profile: Perfil propio del proyecto (``profile.md``), que se añade detrás (D11).
+        profile: El perfil compuesto que va en el prompt.
+    """
+
+    messages: list[tuple[str, str]]
+    template_profile: ProfileSections | None
+    project_profile: ProfileSections | None
+    profile: ProfileSections | None
+
+
+def profile_file(output_root: Path) -> Path:
+    """``<raíz>/.doc_organize/profile.md``: perfil propio del proyecto (``PROJECT_PROFILE_FILE``, D11)."""
+    from doc_organize.context.project_profile import PROJECT_PROFILE_FILE
+
+    return Path(Path(output_root) / Path(str(PROJECT_PROFILE_FILE)))
+
+
+def _sections(profile: Any) -> ProfileSections | None:
+    if profile is None or profile.is_empty:
+        return None
+    return ProfileSections(
+        context=profile.context,
+        tie_breakers=profile.tie_breakers,
+        glossary=profile.glossary,
+        examples=list(profile.examples),
+    )
+
+
+def parse_profile_text(text: str) -> ProfileSections | None:
+    """Secciones de perfil de ``text`` (``parse_profile``); ``None`` si no tiene ninguna reconocida."""
+    from doc_organize.context.project_profile import parse_profile
+
+    return _sections(parse_profile(text))
+
+
+def prompt_preview(
+    manifest_markdown: str, *, project_profile: str | None = None, project_root: Path | None = None
+) -> PromptPreview:
+    """Mensajes de la clasificación con ``manifest_markdown`` y el perfil del proyecto ``project_profile`` añadido
+    detrás del de la plantilla (``render_prompt_preview``, sin llamar al modelo). Con ``project_root`` se usan los
+    prompts propios del proyecto si los tiene.
+
+    Raises:
+        TemplateInvalidError: El Markdown no es una plantilla o manifiesto válido.
+    """
+    from doc_organize.ai import PromptRegistry
+    from doc_organize.ai.services import render_prompt_preview
+    from doc_organize.context.project_profile import compose_profile_text, parse_profile
+    from doc_organize.context.taxonomy_templates import parse_taxonomy_template
+    from doc_organize.core.exceptions import TaxonomyTemplateError
+
+    try:
+        manifest = parse_taxonomy_template(manifest_markdown, source=TEMPLATE_SOURCE)
+    except TaxonomyTemplateError as exc:
+        raise TemplateInvalidError(str(exc)) from None
+    project = parse_profile(project_profile) if project_profile else None
+    template = manifest.profile
+    composed = compose_profile_text(template, project_profile)  # D11, doc_organize 2.0.0rc1
+    prompts = PromptRegistry(str(project_root)) if project_root is not None else PromptRegistry()
+    messages = render_prompt_preview(manifest, prompts=prompts, profile=composed)
+    return PromptPreview(
+        messages=[(str(m["role"]), str(m["content"])) for m in messages],
+        template_profile=_sections(template),
+        project_profile=_sections(project),
+        profile=_sections(composed),
+    )
+
+
+class DecisionInvalidError(Exception):
+    """La decisión no es válida para doc_organize (``ClassificationDecision``); el mensaje dice por qué."""
+
+
+def decisions_file(output_root: Path) -> Path:
+    """``<raíz>/.doc_organize/decisions.json``: decisiones de personas del proyecto (``DECISIONS_FILE``, F6)."""
+    from doc_organize.context.decisions import DECISIONS_FILE
+
+    return Path(Path(output_root) / Path(str(DECISIONS_FILE)))
+
+
+def _decision_dict(decision: Any) -> dict[str, Any]:
+    return dict(decision.model_dump(mode="json"))
+
+
+def load_decisions(output_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Decisiones vigentes y el historial de revocadas (``ClassificationDecisionStore``)."""
+    from doc_organize.context.decisions import ClassificationDecisionStore
+
+    store = ClassificationDecisionStore(output_root)
+    active = asyncio.run(store.load())
+    revoked = asyncio.run(store.revoked())
+    return [_decision_dict(d) for d in active], [_decision_dict(d) for d in revoked]
+
+
+def add_decision(
+    output_root: Path,
+    *,
+    document_key: str,
+    action: str,
+    axes: dict[str, list[str]],
+    author: str,
+    reason: str | None,
+    source_sha256: str | None,
+) -> dict[str, Any]:
+    """Guarda una decisión (``ClassificationDecisionStore.add``: escritura atómica y con bloqueo; sustituye a las que
+    decidían lo mismo, que pasan al historial).
+
+    Raises:
+        DecisionInvalidError: doc_organize no la acepta (p. ej. ``set_axis`` con más de un eje).
+    """
+    from doc_organize.context.decisions import ClassificationDecisionStore
+    from doc_organize.core.models import ClassificationDecision
+    from pydantic import ValidationError
+
+    try:
+        decision = ClassificationDecision(
+            document_key=document_key,
+            action=action,
+            axes=axes,
+            author=author,
+            reason=reason,
+            source_sha256=source_sha256,
+        )
+    except ValidationError as exc:
+        raise DecisionInvalidError(str(exc.errors()[0].get("msg", "decisión no válida"))) from None
+    return _decision_dict(asyncio.run(ClassificationDecisionStore(output_root).add(decision)))
+
+
+def revoke_decision(output_root: Path, decision_id: str, *, author: str, reason: str | None) -> bool:
+    """Revoca una decisión vigente (pasa al historial); ``False`` si no existe."""
+    from doc_organize.context.decisions import ClassificationDecisionStore
+
+    return bool(asyncio.run(ClassificationDecisionStore(output_root).revoke(decision_id, author=author, reason=reason)))
 
 
 def builtin_templates() -> dict[str, TemplateInfo]:
@@ -432,9 +705,66 @@ def converted_documents(folders: list[SourceFolder]) -> tuple[list[Any], int]:
                     json_path=str(json_path),
                     images_dir=str(images) if os.path.lexists(images) else None,
                     success=True,
+                    # doc_organize 2.0 (F4): la huella del original queda en el contexto para comprobar su frescura.
+                    source_sha256=entry.sha256_hash or None,
                 )
             )
     return documents, missing
+
+
+@dataclass(frozen=True)
+class Freshness:
+    """Si el contexto sigue al día respecto a la caché del último escaneo (``FreshnessReport``, doc_organize 2.0 F4).
+
+    Las rutas son las del contenedor: quien las muestre las hace relativas.
+    """
+
+    changed: list[str]
+    added: list[str]
+    removed: list[str]
+    unknown: list[str]
+    stale_site: bool
+
+    @property
+    def up_to_date(self) -> bool:
+        """Sin cambios, altas, bajas ni sitio desfasado (los ``unknown`` no cuentan, como en la librería)."""
+        return not (self.changed or self.added or self.removed or self.stale_site)
+
+
+def context_freshness(
+    output_root: Path, folders: list[SourceFolder], *, name: str, created_at: datetime
+) -> Freshness | None:
+    """Compara el ``context.json`` del proyecto con sus cachés (``check_context_freshness``), sin leer originales ni
+    ``.json``. ``None`` si no hay contexto (o no se puede leer: cuenta como sin contexto, G32).
+
+    Raises:
+        DocOrganizeOperationError: No se pudieron leer las cachés.
+    """
+    from doc_organize import ContextRegistry
+    from doc_organize.context.freshness import check_context_freshness
+    from doc_organize.core.exceptions import ContextError, DocOrganizeError
+    from doc_organize.export import load_cache_entries
+
+    project = _project(name, output_root, created_at)
+    try:
+        context = asyncio.run(ContextRegistry().load_context(project))
+    except (ContextError, OSError, ValueError):
+        return None
+    caches = [folder.cache_db for folder in folders if folder.cache_db.is_file()]
+    try:
+        entries = asyncio.run(load_cache_entries(caches)) if caches else []
+    except (DocOrganizeError, OSError) as exc:
+        raise DocOrganizeOperationError("No se pudieron leer las cachés del proyecto.") from exc
+    roots = [folder.root for folder in folders]
+    in_project = [e for e in entries if any(Path(e.file_path).is_relative_to(root) for root in roots)]
+    report = check_context_freshness(project, context, in_project)
+    return Freshness(
+        changed=list(report.changed),
+        added=list(report.added),
+        removed=list(report.removed),
+        unknown=list(report.unknown),
+        stale_site=bool(report.stale_site),
+    )
 
 
 def existing_folder_name(output_root: Path, *, name: str, created_at: datetime) -> str | None:
@@ -478,10 +808,45 @@ def _traceability(document: Any) -> dict[str, Any]:
     }
 
 
-def _unclassified(context: Any) -> list[ContextDoc]:
+def _axes(classification: Any) -> list[AxisValueDoc]:
+    """Valores de ``DocumentClassification.axes`` (``AxisValue``), en el orden de la librería."""
+    if classification is None:
+        return []
+    return [
+        AxisValueDoc(
+            axis=str(key),
+            slug=str(value.slug),
+            name=str(value.name),
+            confidence=value.confidence,
+            classified_by=str(value.classified_by) if value.classified_by else None,
+            evidence_verified=value.evidence_verified,
+            evidence=value.evidence,
+        )
+        for key, values in classification.axes.items()
+        for value in values
+    ]
+
+
+def _taxonomy_axes(context: Any) -> list[dict[str, Any]]:
+    """``Context.taxonomy_axes`` para ``project_contexts.taxonomy_axes`` (sin palabras clave ni ejemplos)."""
+    return [
+        {
+            "key": axis.key,
+            "name": axis.name,
+            "description": axis.description,
+            "multiple": bool(axis.multiple),
+            "organizes": axis.organizes,
+            "values": [{"slug": entry.slug, "name": entry.name} for entry in axis.entries],
+        }
+        for axis in context.taxonomy_axes
+    ]
+
+
+def _unclassified(context: Any, keys: dict[str, str] | None = None) -> list[ContextDoc]:
     """Documentos sin clasificar (G42, doc_organize 1.6.0): con su motivo, lo que propusieron las reglas y sus
     propiedades si ``unclassified_details`` los trae (uno por ruta, en el mismo orden); si no (contexto de 1.5.0 o
     detalle dañado), solo el nombre y la extensión, como hasta 1.5.0."""
+    keys = keys or {}
     details = list(getattr(context, "unclassified_details", None) or [])
     paths = list(context.unclassified_documents)
     if [detail.source_path for detail in details] == paths:
@@ -501,6 +866,12 @@ def _unclassified(context: Any) -> list[ContextDoc]:
                 rules_domain=detail.rules_domain,
                 rules_confidence=detail.rules_confidence,
                 unclassified_reason=str(detail.reason),
+                axes=_axes(getattr(detail, "classification", None)),
+                document_key=keys.get(detail.source_path),
+                source_sha256=detail.source_sha256,
+                version=detail.version,
+                version_group=detail.version_group,
+                is_current=detail.is_current,
             )
             for detail in details
         ]
@@ -513,13 +884,29 @@ def _unclassified(context: Any) -> list[ContextDoc]:
             material_type_name=None,
             source_path=path,
             organized_path=None,
+            document_key=keys.get(path),
         )
         for path in paths
     ]
 
 
-def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> ContextOutcome:
+def _issue(issue: Any) -> dict[str, Any]:
+    return {
+        "decision_id": str(issue.decision_id),
+        "document_key": str(issue.document_key),
+        "reason": str(issue.reason),
+        "detail": issue.detail,
+    }
+
+
+def _outcome(context: Any, failed: list[tuple[str, str]], missing: int, roots: list[str]) -> ContextOutcome:
+    from doc_organize.context.evaluation import document_keys
+    from doc_organize.context.review_queue import review_queue
+
     failed_paths = {path for path, _ in failed}
+    sources = [d.source_path for domain in context.domains for d in domain.documents]
+    sources += [detail.source_path for detail in context.unclassified_details] + list(context.unclassified_documents)
+    keys = document_keys(sources, roots or None)
     docs: list[ContextDoc] = []
     domains: list[dict[str, Any]] = []
     for domain in context.domains:
@@ -545,10 +932,16 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
                     organized_path=None if document.source_path in failed_paths else organized,
                     failed=document.source_path in failed_paths,
                     classified_by=str(document.classified_by) if document.classified_by else None,
+                    axes=_axes(document.classification),
+                    document_key=keys.get(document.source_path),
+                    source_sha256=document.source_sha256,
+                    version=document.version,
+                    version_group=document.version_group,
+                    is_current=document.is_current,
                     **_traceability(document),
                 )
             )
-    docs.extend(_unclassified(context))
+    docs.extend(_unclassified(context, keys))
     return ContextOutcome(
         output_folder_name=context.output_folder_name,
         domains=domains,
@@ -557,8 +950,36 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int) -> Conte
         missing=missing,
         site_built=bool(context.site_built),
         built_with_version=context.built_with_version,
-        ai_classification_model=context.ai_classification_model,
-        ai_enrichment_model=context.ai_enrichment_model,
+        ai_classification_model=context.model_for_task("classify") if context.ai_stats.scope != "off" else None,
+        ai_enrichment_model=context.model_for_task("enrich") if context.ai_stats.enrich else None,
+        taxonomy_axes=_taxonomy_axes(context),
+        ai_provenance=[
+            {
+                "task": str(item.task),
+                "prompt_id": str(item.prompt_id),
+                "version": str(item.version),
+                "source": str(item.source),
+                "sha256": str(item.sha256),
+                "model": str(item.model),
+            }
+            for item in context.ai_provenance
+        ],
+        review=[item.model_dump() for item in review_queue(context, roots=roots or None)],
+        decisions_applied=int(context.decisions_applied),
+        stale_decisions=[_issue(issue) for issue in context.stale_decisions],
+        orphan_decisions=[_issue(issue) for issue in context.orphan_decisions],
+        versions_mode=str(context.versions_mode),
+        version_groups=[
+            {
+                "key": str(group.key),
+                "members": list(group.members),
+                "versions": list(group.versions),
+                "current": str(group.current),
+                "confirmed": bool(group.confirmed),
+            }
+            for group in context.version_groups
+        ],
+        superseded=list(context.superseded_documents),
     )
 
 
@@ -590,20 +1011,11 @@ def build_context(
     )
     from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
-    from app.integrations.doc_organize.ai import (
-        classification_client,
-        classification_limits,
-        classification_stats,
-        enrichment_client,
-        enrichment_stats,
-    )
+    from app.integrations.doc_organize.ai import build_limits, classification_stats, enrichment_stats, llm_client
 
-    if request.ai is not None:
-        expected = (
-            "litellm_taxonomy_classification" if request.manifest_markdown is not None else "litellm_classification"
-        )
-        if request.ai.family != expected:
-            raise ValueError(f"La clasificación con IA de este catálogo usa {expected}")
+    uses_ai = request.ai_scope != "off" or request.enrich or request.semantic
+    if uses_ai and request.ai is None:
+        raise ValueError("La clasificación o las descripciones con IA necesitan la conexión de la familia litellm")
     if is_cancelled():
         return None
     on_progress("context_gather", 0, None, None)
@@ -615,6 +1027,7 @@ def build_context(
         except TaxonomyTemplateError as exc:
             raise TemplateInvalidError(str(exc)) from None
     project = _project(request.name, request.output_root, request.created_at)
+    roots = scan_roots(request.folders)  # W5: claves de las decisiones relativas a la raíz de la ubicación
     failed: list[tuple[str, str]] = []
     token = CancelToken()
     stop = threading.Event()
@@ -645,22 +1058,24 @@ def build_context(
             "output_folder_name": request.output_folder_name,
             "taxonomy_manifest": manifest,
             "taxonomy_template_name": request.template_name if manifest is not None else None,
+            "versions": request.versions,
+            "scan_roots": roots,
             "cancel_token": token,
         }
-        ai = request.ai or request.enrichment
-        if ai is None:
+        if not uses_ai or request.ai is None:
             return await ContextBuilder().build(project, documents, **kwargs)
-        # Los límites son argumentos comunes de build(), pero cada fase cuenta su propio presupuesto (doc_organize 1.5.0).
-        kwargs |= {"on_progress": _ai_progress, **classification_limits(ai)}
-        async with AsyncExitStack() as stack:
-            if request.ai is not None:
-                client_arg = "taxonomy_classification_client" if manifest is not None else "ai_classification_client"
-                kwargs[client_arg] = await stack.enter_async_context(classification_client(request.ai))
-                kwargs["ai_classification_enabled"] = True
-            if request.enrichment is not None:
-                kwargs["ai_enrichment_client"] = await stack.enter_async_context(enrichment_client(request.enrichment))
-                kwargs["ai_enrichment_enabled"] = True
-            return await ContextBuilder().build(project, documents, **kwargs)
+        tasks: list[Any] = (["classify"] if request.ai_scope != "off" else []) + (["enrich"] if request.enrich else [])
+        # Los límites son argumentos comunes de build(); cada fase cuenta su propio presupuesto (doc_organize 1.5.0).
+        kwargs |= {
+            "on_progress": _ai_progress,
+            "ai_scope": request.ai_scope,
+            "enrich": request.enrich,
+            "semantic": request.semantic,
+            "semantic_threshold": request.semantic_threshold,
+            **build_limits(request.ai, tasks),
+        }
+        async with llm_client(request.ai) as llm:
+            return await ContextBuilder().build(project, documents, llm=llm, **kwargs)
 
     async def _run() -> ContextOutcome | None:
         on_progress("context_classify", 0, len(documents), None)
@@ -681,7 +1096,9 @@ def build_context(
             generator = SiteGenerator()
             if request.build_site:
                 on_progress("context_site", 0, None, None)
-                site = await generator.generate(project, context, build=False)
+                site = await generator.generate(
+                    project, context, build=False, redact_credentials=request.redact_credentials
+                )
                 search_excluded = list(site.search_excluded)
                 context.site_generated = True
                 try:
@@ -697,11 +1114,26 @@ def build_context(
                 context.site_generated = False
                 context.site_built = False
             await ContextRegistry().save_context(project, context)
-        outcome = _outcome(context, failed, missing)
+        outcome = _outcome(context, failed, missing, roots)
         outcome.site_error = site_error
         outcome.site_search_excluded = search_excluded
-        outcome.ai = classification_stats(context) if request.ai is not None else None
-        outcome.enrichment = enrichment_stats(context) if request.enrichment is not None else None
+        outcome.ai = classification_stats(context) if request.ai_scope != "off" else None
+        outcome.enrichment = enrichment_stats(context) if request.enrich else None
+        if request.semantic:
+            phase = context.ai_stats.semantic_classification
+            outcome.semantic = {
+                "enabled": bool(context.ai_stats.semantic),
+                "embedded": int(phase.sent),
+                "cached": int(phase.cached),
+                "assigned": int(phase.assigned),
+                "failed": int(phase.failed),
+            }
+            # rc2: tamaño del índice de embeddings (``.doc_organize/embeddings/`` del destino), todos los modelos.
+            from doc_organize import embedding_index_info
+
+            indexes = await asyncio.to_thread(embedding_index_info, request.output_root)
+            outcome.semantic["index_vectors"] = sum(int(info.vectors) for info in indexes)
+            outcome.semantic["index_bytes"] = sum(int(info.size_bytes) for info in indexes)
         return outcome
 
     watcher = threading.Thread(target=_bridge, name="dow-context-cancel", daemon=True)

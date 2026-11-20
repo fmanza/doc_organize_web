@@ -23,6 +23,7 @@ from app.core.config import Settings
 from app.db.models import (
     ACTIVE_RUN_STATUSES,
     ContextDocument,
+    ContextDocumentAxisValue,
     ManifestVersionAction,
     Project,
     ProjectContext,
@@ -52,7 +53,7 @@ from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.errors import FolderNotFoundError, LocationUnavailableError
 from app.domain.locations.paths import resolve_within, run_with_timeout
 from app.domain.runs.errors import WriteLockedError
-from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, context_ai_family
+from app.domain.runs.operations import MAX_TEMPLATE_BYTES, ContextBuildParams, context_ai_tasks
 from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 
@@ -101,6 +102,60 @@ def _keywords_contain(keyword: str) -> ColumnElement[bool]:
     return func.lower(cast(ContextDocument.keywords, Text)).contains(escaped, autoescape=True)
 
 
+#: Valores de eje que se pueden filtrar a la vez (``axis=clave:slug``, P6 del plan web).
+MAX_AXIS_FILTERS: Final = 20
+
+
+def parse_axis_filters(values: list[str]) -> dict[str, list[str]]:
+    """``["clave:slug", ...]`` (ya validados con ``AXIS_FILTER_PATTERN`` en la API) → eje → slugs, sin repetir."""
+    found: dict[str, list[str]] = {}
+    for value in values:
+        axis, _, slug = value.partition(":")
+        slugs = found.setdefault(axis, [])
+        if slug not in slugs:
+            slugs.append(slug)
+    return found
+
+
+def _axis_condition(project_id: int, axis: str, slugs: list[str]) -> ColumnElement[bool]:
+    """El documento tiene alguno de ``slugs`` en ``axis`` (``EXISTS`` sobre el índice ``(project_id, axis, slug)``)."""
+    return (
+        select(ContextDocumentAxisValue.seq)
+        .where(
+            ContextDocumentAxisValue.project_id == project_id,
+            ContextDocumentAxisValue.seq == ContextDocument.seq,
+            ContextDocumentAxisValue.axis == axis,
+            ContextDocumentAxisValue.slug.in_(slugs),
+        )
+        .exists()
+    )
+
+
+def axis_counts(db: Session, project_id: int) -> dict[tuple[str, str], int]:
+    """(eje, valor) → documentos que lo tienen, en una consulta agrupada."""
+    rows = db.execute(
+        select(ContextDocumentAxisValue.axis, ContextDocumentAxisValue.slug, func.count())
+        .where(ContextDocumentAxisValue.project_id == project_id)
+        .group_by(ContextDocumentAxisValue.axis, ContextDocumentAxisValue.slug)
+    )
+    return {(axis, slug): int(count) for axis, slug, count in rows}
+
+
+def document_axes(db: Session, project_id: int, seqs: list[int]) -> dict[int, list[ContextDocumentAxisValue]]:
+    """Valores de eje de los documentos ``seqs`` (una página), en una consulta."""
+    found: dict[int, list[ContextDocumentAxisValue]] = {seq: [] for seq in seqs}
+    if not seqs:
+        return found
+    rows = db.scalars(
+        select(ContextDocumentAxisValue)
+        .where(ContextDocumentAxisValue.project_id == project_id, ContextDocumentAxisValue.seq.in_(seqs))
+        .order_by(ContextDocumentAxisValue.seq, ContextDocumentAxisValue.axis, ContextDocumentAxisValue.slug)
+    )
+    for row in rows:
+        found[row.seq].append(row)
+    return found
+
+
 def list_documents(
     db: Session,
     project: Project,
@@ -109,6 +164,8 @@ def list_documents(
     only: DocumentFilter | None = None,
     language: str | None = None,
     keyword: str | None = None,
+    axes: dict[str, list[str]] | None = None,
+    current_only: bool = False,
     limit: int,
     offset: int,
     listing: ListQuery | None = None,
@@ -117,6 +174,8 @@ def list_documents(
 
     Filtros 1.5.0: ``language`` (código exacto), ``keyword`` (alguna palabra clave lo contiene) y ``only="ai_disagrees"``
     (la IA propuso un dominio distinto del asignado). La búsqueda ``q`` mira también el autor y la descripción.
+    ``axes`` (W3, doc_organize 2.0): eje → slugs; los valores de un eje se combinan con O y los ejes entre sí con Y.
+    Un eje o valor que no existe da una lista vacía.
 
     Raises:
         ContextNotFoundError: Sin contexto o sin ese dominio.
@@ -139,6 +198,10 @@ def list_documents(
         where.append(ContextDocument.language == language.strip().lower())
     if keyword and keyword.strip():
         where.append(_keywords_contain(keyword))
+    for axis, slugs in (axes or {}).items():
+        where.append(_axis_condition(project.id, axis, slugs))
+    if current_only:  # W6: las versiones antiguas (``is_current`` falso) fuera; sin grupo, cuentan como vigentes
+        where.append(or_(ContextDocument.is_current.is_(None), ContextDocument.is_current.is_(True)))
     listing = listing or ListQuery()
     query = apply_search(
         select(ContextDocument).where(*where),
@@ -519,6 +582,9 @@ def restore_manifest(
             info = templates.validate_markdown(markdown)
         except TemplateInvalidError as exc:
             raise ManifestVersionInvalidError(exc.detail) from None
+        # U4 (doc_organize 2.0): una versión guardada en formato 1.x se restaura migrada a 2.0; la versión conserva
+        # el texto original.
+        markdown = library.migrate_markdown_v1(markdown) or markdown
         change = _write_change(project, markdown)
     else:
 
@@ -593,8 +659,6 @@ def validate_build(
         if manifest.error:
             raise InvalidContextBuildError(f"El manifiesto del proyecto no es válido: {manifest.error}")
         markdown = manifest.markdown
-    if params.ai_classification:
-        ai_settings.require_configured(db, settings, context_ai_family(params))
-    if params.ai_enrichment:
-        ai_settings.require_configured(db, settings, "litellm_enrichment")
+    if context_ai_tasks(params):  # doc_organize 2.0: todas las tareas usan la familia ``litellm``
+        ai_settings.require_configured(db, settings, "litellm")
     return params.model_copy(update={"output_folder_name": folder, "template_markdown": markdown})

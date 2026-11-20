@@ -96,7 +96,13 @@
           "tenant_switch": "Cambio de tenant activo"
         },
         "project": {
-          "taxonomy_draft": "Borrador de manifiesto con IA"
+          "taxonomy_draft": "Borrador de manifiesto con IA",
+          "export_site": "Sitio sin conexión entregado",
+          "export_ai_bundle": "Paquete para IA entregado",
+          "taxonomy_agent": "Diseño de taxonomía con IA",
+          "review_agent": "Propuestas del revisor (IA)",
+          "proposal_accept": "Propuesta del revisor aceptada",
+          "proposal_discard": "Propuesta del revisor descartada"
         },
         "ai_settings": {
           "update": "Cambio de configuración IA"
@@ -285,23 +291,23 @@
       },
       "ai_timeout_seconds": {
         "label": "Tiempo máximo por petición de IA (s)",
-        "hint": "Para clasificar documentos; el panel de uso espera como mucho 10 s."
+        "hint": "Cada petición de clasificar, describir y embeddings (120 s por defecto; con un modelo local de 14B, algunas clasificaciones pasan de 30 s). El panel de uso espera como mucho 10 s (5–300)."
       },
       "ai_retries": {
         "label": "Reintentos de conexión con la IA",
         "hint": "Solo ante fallos de conexión (0–5)."
       },
       "ai_draft_timeout_seconds": {
-        "label": "Tiempo máximo del borrador de IA (s)",
-        "hint": "La petición del borrador de manifiesto es larga: un modelo local puede tardar minutos (5–900)."
+        "label": "Tiempo máximo del borrador y los agentes de IA (s)",
+        "hint": "Tareas largas: la petición del borrador de manifiesto y cada llamada de los agentes; un modelo local puede tardar minutos (5–900)."
       },
       "ai_draft_retries": {
-        "label": "Reintentos del borrador de IA",
-        "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, un borrador que no responde falla sin repetir la petición."
+        "label": "Reintentos del borrador y los agentes de IA",
+        "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, una petición que no responde falla sin repetirse."
       },
       "ai_max_documents_per_run": {
         "label": "Documentos con IA por ejecución",
-        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA."
+        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea (clasificar y describir cuentan cada uno el suyo). Una tarea con máximo propio en «Modelos de IA» usa el menor."
       }
     },
     "aiMoved": "Los tiempos, reintentos y límites de la IA están ahora en",
@@ -491,7 +497,29 @@
     "scanView": "Ver escaneo",
     "documents": "Documentos",
     "duplicates": "Duplicados",
-    "context": "Contexto"
+    "context": "Contexto",
+    "ai": {
+      "title": "Contexto e IA del proyecto",
+      "redact": "Redactar credenciales",
+      "redactHelp": "Antes de enviar texto a la IA y de publicar el sitio del contexto, las contraseñas, tokens y claves que aparezcan se sustituyen por «REDACTADO». Activado por defecto. Se aplica desde la siguiente construcción.",
+      "redactOff": "Desactivado: las credenciales que haya en los documentos se envían tal cual a la IA y se publican en el sitio.",
+      "readOnly": "El destino es de solo lectura: este ajuste no se puede cambiar.",
+      "confirmTitle": "¿Desactivar la redacción?",
+      "confirm": "Las contraseñas, tokens y claves de los documentos se enviarán tal cual al servicio de IA y aparecerán en el sitio del contexto. Hazlo solo si el servicio de IA y el sitio son de confianza para esos datos.",
+      "confirmButton": "Desactivar",
+      "versions": "Versiones de un mismo documento",
+      "versionsHelp": "Documentos con marcador de versión en el nombre («v1.2», «rev2», «versión 3»…) en la misma carpeta. Se aplica desde la siguiente construcción.",
+      "versionModes": {
+        "mark": "Marcar la vigente (todas entran en el contexto)",
+        "current_only": "Solo la vigente (las antiguas quedan fuera)",
+        "all": "Todas, sin marcar (como antes de la 2.0)"
+      },
+      "semantic": "Clasificación semántica (embeddings)",
+      "semanticHelp": "Antes de la IA, rellena los ejes vacíos comparando cada documento con la descripción de cada valor (tarea «Embeddings» de «Modelos de IA»). Los valores llevan la marca «Semántica». El texto de los documentos sale hacia el servicio de embeddings; el índice se guarda en la carpeta del proyecto.",
+      "threshold": "Similitud mínima",
+      "thresholdHelp": "Entre 0 y 1 (por defecto 0,75): cuanto más alto, menos valores y más seguros.",
+      "semanticNotConfigured": "«Modelos de IA» no está configurado: la construcción se hará sin semántica hasta que un administrador lo configure."
+    }
   },
   "runs": {
     "title": "Ejecuciones",
@@ -541,7 +569,15 @@
       "dedup_apply": "Aplicar duplicados",
       "context_build": "Construir contexto",
       "context_delete": "Borrar contexto",
-      "taxonomy_draft": "Borrador de manifiesto con IA"
+      "taxonomy_draft": "Borrador de manifiesto con IA",
+      "context_evaluate": "Evaluar la clasificación",
+      "context_dry_run": "Comparar cambios de clasificación",
+      "export_site": "Sitio sin conexión",
+      "export_ai_bundle": "Paquete para IA",
+      "taxonomy_agent": "Diseñar taxonomía con IA",
+      "taxonomy_check": "Comprobar manifiesto",
+      "context_review_agent": "Propuestas del revisor (IA)",
+      "context_audit": "Informe del auditor"
     },
     "phases": {
       "noop": "Prueba",
@@ -575,7 +611,14 @@
       "context_ai": "Clasificando con IA",
       "context_enrichment": "Completando descripciones con IA",
       "ai_sample": "Eligiendo la muestra",
-      "ai_request": "Esperando al servicio de IA"
+      "ai_request": "Esperando al servicio de IA",
+      "quality_evaluate": "Evaluando contra la referencia",
+      "quality_classify": "Clasificación de prueba",
+      "quality_ai": "Clasificando con IA (prueba)",
+      "site_build": "Construyendo el sitio sin conexión",
+      "site_check": "Comprobando el sitio",
+      "agent_corpus": "Leyendo los documentos",
+      "agent_run": "El agente está trabajando"
     },
     "fields": {
       "operation": "Operación",
@@ -695,7 +738,34 @@
       "material_types": "Tipos de material",
       "segments": "Tramos",
       "excluded": "Excluidos que se borrarán (subcarpeta excluida o patrón)",
-      "excluded_cached": "Documentos de la caché excluidos del escaneo"
+      "excluded_cached": "Documentos de la caché excluidos del escaneo",
+      "sha256": "SHA-256",
+      "zip_size_bytes": "Tamaño del ZIP",
+      "neutralized_items": "Contenido de terceros neutralizado",
+      "neutralized_pages": "Páginas neutralizadas",
+      "credentials_redacted": "Páginas con credenciales redactadas",
+      "search_excluded": "Páginas fuera del buscador",
+      "llms_txt": "Con llms.txt",
+      "file_name": "Fichero",
+      "redact_credentials": "Credenciales redactadas",
+      "superseded_skipped": "Versiones antiguas fuera",
+      "missing_text": "Sin texto",
+      "redacted_documents": "Documentos con credenciales redactadas",
+      "full_text_truncated": "llms-full.txt cortado",
+      "include_text": "Con el texto",
+      "current_only": "Solo vigentes",
+      "redact": "Credenciales redactadas",
+      "max_file_chars": "Caracteres por documento",
+      "max_full_chars": "Caracteres de llms-full.txt",
+      "semantic": {
+        "enabled": "Clasificación semántica",
+        "embedded": "Documentos embebidos",
+        "cached": "Vectores del índice",
+        "assigned": "Asignados por similitud",
+        "failed": "Fallidos (semántica)",
+        "index_vectors": "Vectores en el índice",
+        "index_bytes": "Tamaño del índice"
+      }
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -742,7 +812,16 @@
       "close": "Cerrar el aviso",
       "enable": "Avisarme en el navegador cuando termine una ejecución"
     },
-    "search": "Buscar ejecuciones"
+    "search": "Buscar ejecuciones",
+    "delivery": {
+      "export_site": "Sitio sin conexión",
+      "export_ai_bundle": "Paquete para IA",
+      "sha256": "Huella SHA-256 del ZIP (compárala con la del fichero recibido):",
+      "warning": {
+        "export_site": "El contenido de terceros de las páginas está neutralizado, pero el sitio lleva el texto de los documentos: puede ser confidencial. Entrégalo solo a quien deba verlo.",
+        "export_ai_bundle": "El paquete lleva el texto de los documentos y sale de la aplicación: puede ser confidencial. Súbelo solo a servicios de IA autorizados."
+      }
+    }
   },
   "scan": {
     "title": "Escanear «{{name}}»",
@@ -884,7 +963,8 @@
       "zip": "Exportar ZIP",
       "cacheXlsx": "Excel de la caché",
       "errorsXlsx": "Excel de errores",
-      "contextHistoryXlsx": "Excel del historial del contexto"
+      "contextHistoryXlsx": "Excel del historial del contexto",
+      "contextXlsx": "Excel del contexto"
     },
     "viewer": {
       "back": "Documentos",
@@ -1043,8 +1123,8 @@
       "help": {
         "discover": "Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido.",
         "domains": "Solo se usan los dominios que escribas (un eje).",
-        "template": "Dominios y tipos de material de una plantilla (dos ejes).",
-        "manifest": "Dominios y tipos de material del manifiesto del proyecto (abajo)."
+        "template": "Los ejes de una plantilla: dominio, tipo de material y los que solo etiquetan.",
+        "manifest": "Los ejes del manifiesto del proyecto (abajo): dominio, tipo de material y los que solo etiquetan."
       },
       "useTemplateAsManifest": "Personalizar para este proyecto",
       "useTemplateAsManifestHint": "Copia la plantilla al manifiesto del proyecto para retocarla. La plantilla no cambia.",
@@ -1106,7 +1186,9 @@
       "kinds": {
         "added": "Entra",
         "removed": "Sale",
-        "reclassified": "Cambia"
+        "reclassified": "Cambia",
+        "superseded": "Versión antigua",
+        "excluded": "Excluido por una persona"
       },
       "none": "sin clasificar",
       "older": "Hay {{count}} construcciones más antiguas en el Excel."
@@ -1196,10 +1278,9 @@
       "classify": "Clasificar con IA lo que las reglas dejen sin clasificar",
       "classifyHelp": "Solo se envían los documentos pendientes, hasta el máximo por ejecución de los ajustes. Si la clave se rechaza, se deja de llamar al servicio.",
       "notConfigured": {
-        "litellm_classification": "Un administrador tiene que configurar la «Clasificación de dominios» en Configuración IA.",
-        "litellm_taxonomy_classification": "Con plantilla o manifiesto, un administrador tiene que configurar la «Clasificación por taxonomía».",
-        "litellm_taxonomy_manifest_draft": "Un administrador tiene que configurar el «Borrador de manifiesto» en Configuración IA.",
-        "litellm_enrichment": "Un administrador tiene que configurar «Descripciones y palabras clave» en Configuración IA."
+        "classify": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
+        "enrich": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
+        "taxonomy_design": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA."
       },
       "enrich": "Completar descripción y palabras clave con IA",
       "enrichHelp": "Solo los documentos clasificados que no las declaran, con su propio máximo por ejecución. Lo que declara el documento no se sustituye.",
@@ -1222,6 +1303,155 @@
       "below_threshold": "Por debajo del umbral",
       "below_thresholdHelp": "Las reglas no llegaron al umbral y la IA no le asignó dominio. «Cómo se clasificó» dice qué propusieron.",
       "rebuild": "Reconstruye el contexto para ver por qué no se clasificaron y sus propiedades (contexto anterior a la 1.6)."
+    },
+    "axes": {
+      "option": "{{name}} ({{count}})",
+      "byAi": "IA",
+      "bySemantic": "Semántica",
+      "byHuman": "Persona",
+      "evidence": "{{axis}} · {{value}}: «{{evidence}}»",
+      "verified": "Cita verificada",
+      "notVerified": "Cita no encontrada en el texto",
+      "provenance": "Clasificado con el prompt {{prompt}} (versión {{version}}, {{source}}) y el modelo {{model}}.",
+      "sources": {
+        "builtin": "incluido en doc_organize",
+        "project": "propio del proyecto"
+      }
+    },
+    "frontMatter": {
+      "ignoredTitle": "Claves que no se usan",
+      "ignored": "Estas claves no se usan al clasificar: {{keys}}.",
+      "implicitTitle": "Ejes implícitos",
+      "implicit": "Se leen como ejes: {{keys}}. Puedes declararlos en «axes:» con su nombre y descripción."
+    },
+    "profile": {
+      "title": "Perfil del proyecto",
+      "intro": "Lo que el modelo debe saber de este proyecto al clasificar: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo se usa al clasificar con IA.",
+      "markdown": "Perfil (Markdown con las secciones «## Contexto del proyecto», «## Reglas de desempate», «## Glosario» y «## Ejemplos»)",
+      "noSections": "El perfil guardado no tiene ninguna de las secciones que lee doc_organize: no se envía nada al modelo.",
+      "tooLarge": "El perfil pasa de 32 KiB.",
+      "save": "Guardar perfil",
+      "delete": "Borrar perfil",
+      "saved": "Perfil guardado.",
+      "deleted": "Perfil borrado.",
+      "preview": "Vista previa del prompt",
+      "previewNeedsCatalog": "La vista previa necesita una plantilla elegida o el manifiesto del proyecto.",
+      "previewTitle": "Vista previa del prompt",
+      "previewHelp": "Lo que recibiría el modelo al clasificar un documento, sin llamarlo. El extracto de cada documento va en el último mensaje.",
+      "fromTemplate": "Con perfil de la plantilla",
+      "noTemplateProfile": "Sin perfil en la plantilla",
+      "fromProject": "Con perfil del proyecto",
+      "noProjectProfile": "Sin perfil del proyecto",
+      "examples_one": "{{count}} ejemplo",
+      "examples_other": "{{count}} ejemplos",
+      "roles": {
+        "system": "Mensaje de sistema (instrucciones, perfil y catálogo)",
+        "user": "Mensaje del documento"
+      }
+    },
+    "freshness": {
+      "title": "El contexto está desactualizado",
+      "changed_one": "{{count}} original cambiado",
+      "changed_other": "{{count}} originales cambiados",
+      "added_one": "{{count}} documento nuevo sin incluir",
+      "added_other": "{{count}} documentos nuevos sin incluir",
+      "removed_one": "{{count}} documento que ya no está",
+      "removed_other": "{{count}} documentos que ya no están",
+      "staleSite": "el sitio es anterior a la última construcción",
+      "examples": "Ver ejemplos",
+      "kinds": {
+        "changed": "Cambiado",
+        "added": "Nuevo",
+        "removed": "Ya no está"
+      },
+      "checkedAt": "Comparado con la caché del último escaneo ({{date}}). Reconstruye para ponerlo al día.",
+      "rebuild": "Ir a reconstruir",
+      "unknownTitle": "Sin huella de los originales",
+      "unknown_one": "{{count}} documento del contexto no tiene huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambia.",
+      "unknown_other": "{{count}} documentos del contexto no tienen huella del original (contexto anterior a la 2.0): reconstruye una vez para poder saber si cambian."
+    },
+    "versions": {
+      "title": "Versiones de un documento",
+      "intro": "Grupos de versiones del mismo documento en la última construcción. La vigente es la versión más alta, salvo que una persona elija otra.",
+      "mode": {
+        "mark": "Se marcan las antiguas (todas están en el contexto).",
+        "current_only": "Solo la vigente entra en el contexto.",
+        "all": "Las versiones no se tienen en cuenta."
+      },
+      "current": "Vigente",
+      "confirmed": "confirmada",
+      "proposed": "propuesta",
+      "setCurrent": "Marcar como vigente",
+      "setCurrentLabel": "Marcar {{path}} como vigente",
+      "pending": "Decidido: se aplica al reconstruir.",
+      "superseded_one": "{{count}} versión antigua fuera del contexto",
+      "superseded_other": "{{count}} versiones antiguas fuera del contexto",
+      "old": "Versión antigua",
+      "oldTitle": "Hay una versión más reciente de este documento",
+      "onlyCurrent": "Solo vigentes"
+    },
+    "delivery": {
+      "title": "Entregar el contexto",
+      "intro": "Para quien no tiene cuenta en la aplicación o para un chat de IA. Cada entrega es una ejecución: cuando termine, descarga el fichero desde su detalle, donde verás también su huella SHA-256 (queda en la auditoría).",
+      "xlsx": "Excel del contexto",
+      "xlsxHelp": "Documentos con sus ejes y, en otra hoja, cuántos hay de cada valor.",
+      "siteTitle": "Sitio sin conexión (ZIP + SHA-256)",
+      "siteHelp": "El sitio del contexto para abrirlo desde el disco (doble clic en sitio/index.html), sin pedir nada a terceros. El contenido de terceros de las páginas se neutraliza y las credenciales se redactan según el ajuste del proyecto. No cambia el sitio que ves aquí.",
+      "llmsTxt": "Añadir llms.txt (índice para IA) en el sitio",
+      "site": "Sitio sin conexión",
+      "bundleTitle": "Paquete para IA",
+      "bundleHelp": "llms.txt, un fichero de texto por documento con su ficha (ejes, quién lo clasificó, versión) y context.json, para subirlo a un proyecto de un chat o a un agente de IA.",
+      "includeText": "Con el texto de los documentos",
+      "currentOnly": "Solo las versiones vigentes",
+      "fullText": "Añadir llms-full.txt (todo el texto en un fichero)",
+      "maxFileChars": "Caracteres por documento (opcional)",
+      "maxFileCharsHelp": "Corta el texto de cada documento (se avisa del corte). Vacío: sin tope.",
+      "redact": "Redactar credenciales",
+      "redactHelp": "Solo un administrador puede desactivarlo; queda en la auditoría.",
+      "bundleWarning": "El paquete es todo el corpus en texto: sale de la aplicación y puede ser confidencial. Trátalo como la exportación del proyecto.",
+      "notRedacted": "Sin redactar, el paquete lleva los valores de contraseñas, claves y tokens que haya en los documentos.",
+      "bundle": "Paquete para IA"
+    },
+    "agent": {
+      "title": "Diseñar taxonomía con IA (agente)",
+      "intro": "Un agente explora los documentos y mejora el manifiesto (o una plantilla, o empieza de cero) con cambios pequeños que comprueba con las reglas contra todos los documentos. Propone; no guarda nada.",
+      "base": "Partir de",
+      "bases": {
+        "manifest": "El manifiesto",
+        "template": "Una plantilla",
+        "none": "Desde cero"
+      },
+      "instructions": "Indicaciones (opcional)",
+      "instructionsPlaceholder": "p. ej. separa calidad de medio ambiente",
+      "maxSteps": "Tope de pasos",
+      "maxStepsHelp": "Llamadas al modelo como mucho (1–60).",
+      "start": "Diseñar con IA",
+      "warning": "El agente lee el texto de los documentos: sale hacia el servicio de IA (tarea «Agentes»).",
+      "stop": {
+        "finished": "Terminó",
+        "max_steps": "Llegó al tope de pasos",
+        "max_tokens": "Llegó al tope de tokens",
+        "max_tool_calls": "Llegó al tope de herramientas",
+        "invalid_answer": "Respuesta no válida",
+        "cancelled": "Cancelado"
+      },
+      "improves": "Mejora el de partida",
+      "notImproves": "No mejora el de partida",
+      "usage": "{{steps}} de {{max}} pasos · {{tools}} herramientas · {{tokens}} tokens · {{edits}} cambios",
+      "load": "Cargar la propuesta en el editor",
+      "loadDraft": "Cargar el último borrador en el editor",
+      "loadBest": "Cargar el mejor borrador comprobado",
+      "saveTemplate": "Guardar como plantilla…",
+      "replaceBody": "La propuesta del agente sustituirá el texto del editor (sin guardarlo).",
+      "rules": "Informe por reglas",
+      "coverageBefore": "Cobertura antes",
+      "conflictsBefore": "Conflictos antes",
+      "conflicts": "Conflictos",
+      "empty": "Entradas vacías",
+      "check": "Comprobar manifiesto",
+      "checkHelp": "Por reglas, sin IA y sin guardar: cobertura y conflictos de cada eje con el texto del editor.",
+      "documents_one": "{{count}} documento comprobado.",
+      "documents_other": "{{count}} documentos comprobados."
     }
   },
   "templates": {
@@ -1257,7 +1487,8 @@
       "confirm": "Borrar plantilla"
     },
     "nameTaken": "Ya existe una plantilla con ese nombre: elige otro (o edítala desde la lista).",
-    "search": "Buscar plantillas"
+    "search": "Buscar plantillas",
+    "savedWithNotices": "Plantilla guardada. Revisa los avisos antes de cerrar."
   },
   "ai": {
     "settings": {
@@ -1290,24 +1521,21 @@
       "testOkModel": "El servidor, la clave y el modelo responden (con los valores del formulario, sin guardar).",
       "testFailed": "La prueba falló",
       "testAuthHint": "Algunos proxies no dejan a la clave consultar sus datos: prueba el modelo para confirmarlo.",
-      "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado."
+      "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado.",
+      "testTaskLabel": "Probar el modelo de la tarea {{task}}",
+      "testedTask": "Tarea probada: {{task}}.",
+      "format": {
+        "json_schema": "El modelo admite la salida json_schema estricta.",
+        "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
+      },
+      "budgetPlaceholder": "El general de Parámetros",
+      "legacyTitle": "Variables de entorno de la 1.x",
+      "legacy": "Estas variables siguen definidas en el servidor y doc_organize 2.0 ya no las lee. Cámbialas por su equivalente:"
     },
     "families": {
-      "litellm_classification": {
-        "title": "Clasificación de dominios (un eje)",
-        "intro": "LiteLLM Proxy que clasifica, al construir el contexto, los documentos que las reglas dejan sin dominio (catálogo descubierto o propio)."
-      },
-      "litellm_taxonomy_classification": {
-        "title": "Clasificación por taxonomía (dos ejes)",
-        "intro": "LiteLLM Proxy que asigna dominio y tipo de material cuando el contexto usa una plantilla o el manifiesto del proyecto."
-      },
-      "litellm_taxonomy_manifest_draft": {
-        "title": "Borrador de manifiesto",
-        "intro": "LiteLLM Proxy que propone un manifiesto de taxonomía a partir de una muestra de documentos."
-      },
-      "litellm_enrichment": {
-        "title": "Descripciones y palabras clave",
-        "intro": "LiteLLM Proxy que, al construir el contexto, propone descripción y palabras clave de los documentos que no las declaran."
+      "litellm": {
+        "title": "Modelos de IA",
+        "intro": "LiteLLM Proxy de todas las tareas de IA: clasificar, describir, diseñar la taxonomía, agentes y embeddings. Cada tarea puede tener su modelo, su clave y su máximo de documentos por ejecución; sin modelo usa el alias recomendado «doc-organize-<tarea>» del proxy y sin clave, la general."
       },
       "litellm_usage": {
         "title": "Uso de LiteLLM",
@@ -1322,6 +1550,18 @@
       "base_url": "URL del servicio",
       "virtual_key": "Clave virtual",
       "model": "Modelo (alias en el proxy)",
+      "model_classify": "Modelo para clasificar",
+      "model_enrich": "Modelo para describir",
+      "model_taxonomy_design": "Modelo para diseñar la taxonomía",
+      "model_agent": "Modelo de los agentes",
+      "model_embed": "Modelo de embeddings",
+      "virtual_key_classify": "Clave propia para clasificar",
+      "virtual_key_enrich": "Clave propia para describir",
+      "virtual_key_taxonomy_design": "Clave propia para diseñar la taxonomía",
+      "virtual_key_agent": "Clave propia de los agentes",
+      "virtual_key_embed": "Clave propia de embeddings",
+      "budget_classify": "Máximo de documentos a clasificar por ejecución",
+      "budget_enrich": "Máximo de documentos a describir por ejecución",
       "username": "Usuario de GitHub",
       "pat": "Token personal (PAT)"
     },
@@ -1359,6 +1599,13 @@
       "title": "Parámetros de la IA",
       "intro": "Tiempos, reintentos y tope de documentos por ejecución. Se aplican sin reiniciar. Los servicios, modelos y claves están en",
       "configure": "IA › Configuración"
+    },
+    "tasks": {
+      "classify": "Clasificar",
+      "enrich": "Describir (descripción y palabras clave)",
+      "taxonomy_design": "Diseñar la taxonomía (borrador de manifiesto)",
+      "agent": "Agentes",
+      "embed": "Embeddings (semántica)"
     }
   },
   "info": {
@@ -1369,5 +1616,180 @@
     "library": "doc_organize (workers)",
     "noneAlive": "Ningún worker en marcha",
     "noneAliveBody": "Ningún worker ha dado señales de vida recientemente: los escaneos y las construcciones quedarán en cola hasta que arranque alguno."
+  },
+  "review": {
+    "open": "Revisar clasificación",
+    "back": "Volver al contexto",
+    "title": "Revisar clasificación",
+    "intro": "Lo que conviene mirar según la última construcción, de lo más urgente a lo menos. Tus decisiones se guardan en el proyecto y se aplican en la siguiente construcción, antes de la IA; ni las reglas ni la IA las cambian.",
+    "reason": "Motivo",
+    "allReasons": "Todos los motivos",
+    "option": "{{label}} ({{count}})",
+    "total_one": "{{formatted}} motivo de revisión",
+    "total_other": "{{formatted}} motivos de revisión",
+    "empty": "Nada que revisar.",
+    "document": "Documento",
+    "why": "Motivo",
+    "decision": "Decisión",
+    "reasons": {
+      "stale_decision": "Decisión desfasada",
+      "unclassified": "Sin clasificar",
+      "rules_ai_disagreement": "Reglas e IA no coinciden",
+      "unverified_evidence": "Cita no verificada",
+      "low_confidence": "Confianza baja",
+      "unconfirmed_version": "Versión vigente sin confirmar",
+      "reviewer_proposal": "Propuesta del revisor"
+    },
+    "version": "Versión {{version}}",
+    "current": "vigente",
+    "decided": "{{action}}, por {{author}} el {{date}}: se aplica al reconstruir.",
+    "noDecision": "Sin decisión",
+    "actions": {
+      "confirm": "Confirmar",
+      "set_axis": "Cambiar eje",
+      "exclude": "Excluir",
+      "set_current_version": "Marcar como vigente"
+    },
+    "change": "Cambiar…",
+    "changeTitle": "Fijar los valores de un eje",
+    "axis": "Eje",
+    "value": "Valor",
+    "values": "Valores",
+    "decisionsTitle": "Decisiones",
+    "decisionsIntro": "Decisiones vigentes del proyecto (la última construcción aplicó {{applied}}).",
+    "notApplied": "No se aplicaron en la última construcción",
+    "issues": {
+      "source_changed": "el original cambió desde la decisión",
+      "unknown_axis": "el eje ya no está en el catálogo",
+      "unknown_value": "el valor ya no está en el catálogo",
+      "missing_document": "el documento ya no está",
+      "no_manifest": "sin manifiesto o plantilla no se aplican",
+      "not_versioned": "el documento no tiene versiones"
+    },
+    "noDecisions": "Ninguna decisión vigente.",
+    "by": "Por {{author}} el {{date}}",
+    "revoke": "Revocar",
+    "revokeLabel": "Revocar la decisión de {{key}}",
+    "history_one": "Historial: {{count}} decisión revocada o sustituida",
+    "history_other": "Historial: {{count}} decisiones revocadas o sustituidas",
+    "revokedBy": "revocada por {{author}} el {{date}}",
+    "proposals": {
+      "title": "Propuestas del revisor (IA)",
+      "intro": "Un agente repasa la cola de revisión y propone decisiones con su motivo y una cita. No se aplica ninguna: cada propuesta la aceptas (se guarda como decisión tuya) o la descartas. Una nueva pasada sustituye las propuestas pendientes.",
+      "maxItems": "Documentos a revisar",
+      "maxItemsHelp": "Los primeros de la cola (1–100).",
+      "maxSteps": "Tope de pasos",
+      "maxStepsHelp": "Llamadas al modelo como mucho (1–80).",
+      "instructions": "Indicaciones (opcional)",
+      "start": "Pedir propuestas",
+      "warning": "El revisor lee el texto de los documentos de la cola: sale hacia el servicio de IA (tarea «Agentes»).",
+      "usage": "{{steps}} de {{max}} pasos · {{tools}} herramientas · {{tokens}} tokens · {{proposals}} propuestas de {{reviewed}} documentos",
+      "empty": "No hay propuestas pendientes.",
+      "accept": "Aceptar",
+      "discard": "Descartar",
+      "acceptLabel": "Aceptar la propuesta para {{key}}",
+      "discardLabel": "Descartar la propuesta para {{key}}",
+      "evidence": "Cita: «{{evidence}}»",
+      "noDocument": "El documento ya no está en el contexto."
+    }
+  },
+  "quality": {
+    "open": "Calidad",
+    "title": "Calidad de la clasificación",
+    "intro": "Cuánto acierta la clasificación contra una referencia: un Excel etiquetado a mano o las decisiones del proyecto. «Comparar cambios» prueba otra configuración sin guardar nada.",
+    "source": "Referencia",
+    "sources": {
+      "xlsx": "Excel subido",
+      "decisions": "Decisiones del proyecto"
+    },
+    "noGold": "Sin referencia en Excel: súbela abajo o usa las decisiones del proyecto.",
+    "noDecisions": "El proyecto no tiene decisiones vigentes con las que hacer una referencia.",
+    "goldTitle": "Referencia en Excel",
+    "goldIntro": "Una fila por documento: su clave (carpeta/ruta, como en «Revisar clasificación») y, por eje, el valor correcto (varios separados por coma; «ninguno» si ninguno encaja; vacía = sin etiquetar).",
+    "goldInfo": "{{file}}: {{labels}} documentos etiquetados ({{axes}}), subida el {{date}} por {{author}}.",
+    "file": "Excel (.xlsx, hasta 5 MB)",
+    "sheet": "Hoja",
+    "documentColumn": "Columna del documento",
+    "columns": "Columnas por eje",
+    "columnsHelp": "eje:columna, separadas por comas (p. ej. domains:dominio_ok, material_types:tipo_ok).",
+    "upload": "Subir referencia",
+    "evaluationTitle": "Evaluación del contexto",
+    "evaluate": "Evaluar",
+    "noEvaluation": "Todavía no hay ninguna evaluación.",
+    "lastRun": "Última: {{date}}",
+    "matched": "{{matched}} documentos de la referencia en el contexto (de {{documents}}).",
+    "missing_one": "{{count}} de la referencia no está en el contexto.",
+    "missing_other": "{{count}} de la referencia no están en el contexto.",
+    "axis": "Eje",
+    "labelled": "Etiquetados",
+    "accuracy": "Exactitud",
+    "coverage": "Cobertura",
+    "precision": "Precisión",
+    "recall": "Recall",
+    "detail": "Detalle de {{axis}}",
+    "by": {
+      "rules": "Reglas",
+      "ai": "IA",
+      "semantic": "Semántica",
+      "human": "Persona",
+      "unclassified": "Sin clasificar"
+    },
+    "confusion": "«{{label}}» clasificado como «{{assigned}}»: {{count}}",
+    "compareTitle": "Comparar cambios",
+    "compareIntro": "Clasifica los documentos de la referencia con otra plantilla (o el manifiesto), otro modelo, otro alcance de la IA o un perfil sin guardar, sin tocar el contexto, y compara la exactitud con la del contexto actual.",
+    "catalog": "Plantilla",
+    "manifest": "Manifiesto del proyecto",
+    "scope": "Clasificar con IA",
+    "scopes": {
+      "off": "Sin IA",
+      "unclassified": "Lo que las reglas no clasifican",
+      "missing_axes": "También los ejes vacíos"
+    },
+    "model": "Modelo para clasificar",
+    "budget": "Máximo de documentos con IA",
+    "profile": "Perfil del proyecto (opcional)",
+    "profileHelp": "Sustituye al guardado solo en esta prueba.",
+    "aiWarning": "El contenido de los documentos de la referencia sale de la aplicación hacia el servicio de IA.",
+    "compare": "Comparar",
+    "comparison": "Comparación",
+    "current": "Contexto actual",
+    "candidate": "Prueba",
+    "aiUsed": "IA: {{calls}} llamadas, {{tokens}} tokens, modelo {{model}}",
+    "audit": {
+      "title": "Informe del auditor",
+      "intro": "Estadísticas por eje de la última construcción y lo que conviene revisar en el catálogo (valores sin documentos, muy cargados, poca confianza…). Sin IA.",
+      "start": "Auditar",
+      "none": "Todavía no hay informe.",
+      "documents": "{{documents}} documentos · {{unclassified}} sin clasificar",
+      "withValue": "Con valor",
+      "values": "Valores",
+      "lowConfidence": "Confianza baja",
+      "unverified": "Cita sin verificar",
+      "findings": "Qué revisar",
+      "noFindings": "Nada que señalar."
+    },
+    "changes_one": "{{count}} cambio de valor frente al contexto actual",
+    "changes_other": "{{count}} cambios de valor frente al contexto actual",
+    "changesTitle": "Documentos que cambian"
+  },
+  "diagnostics": {
+    "title": "Diagnóstico",
+    "intro": "Comprueba el entorno del servidor web con doc_organize: Python, docling y sus modelos, los extras (Excel, sitio con un build de prueba, audio y vídeo), la GPU y LibreOffice. La conversión la hacen los workers: sus capacidades están en Información.",
+    "checkAi": "Probar también los modelos de IA",
+    "checkAiHelp": "Envía un texto sintético a los modelos de clasificar, describir y diseñar la taxonomía (y agentes, si tiene modelo) y pide un vector al de embeddings si tiene modelo propio: gasta unos pocos tokens.",
+    "run": "Ejecutar diagnóstico",
+    "running": "Comprobando… puede tardar un minuto.",
+    "result": "Resultado del diagnóstico",
+    "ok": "Sin errores",
+    "failed": "Hay comprobaciones con error",
+    "checkedAt": "Comprobado el {{date}}.",
+    "check": "Comprobación",
+    "status": "Estado",
+    "detail": "Detalle",
+    "statuses": {
+      "ok": "Correcto",
+      "warning": "Aviso",
+      "error": "Error"
+    }
   }
 }
