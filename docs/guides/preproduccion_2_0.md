@@ -1,6 +1,6 @@
 # Preproducción de la 2.0
 
-Runbook para probar la 2.0 (doc_organize 2.0.0rc3) con datos reales **antes** de actualizar producción, sin tocar
+Runbook para probar la 2.0 con datos reales **antes** de actualizar producción, sin tocar
 producción ni los documentos. Tres pruebas, cada una con su script:
 
 1. **Migraciones de ida y vuelta** sobre una copia de la base de datos de producción.
@@ -79,7 +79,7 @@ Sin `--ai-url`, la instancia no tiene IA y se construye solo por reglas. Con él
 
 **Correcto** si termina con «Todo correcto.» y código 0. Después revisa en la web aislada
 (`http://127.0.0.1:18090`) el contexto, «Revisar clasificación» y «Calidad». Comprueba también que el ZIP del sitio sin
-conexión no lleva ningún original ni `.json` de conversión (desde la rc3 no los publica).
+conexión no lleva ningún original ni `.json` de conversión.
 
 ## Limpieza
 

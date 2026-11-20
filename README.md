@@ -5,11 +5,12 @@ Aplicación web multiusuario (FastAPI + React) sobre la librería
 a Markdown y JSON con Docling y OCR, duplicados y contexto navegable por dominios, con proyectos, miembros y
 ejecuciones en segundo plano.
 
-> **Estado: 0.5.0 — Fase 4 (escaneo y conversión).** Usuarios y sesiones, ubicaciones locales/red, ajustes
-> administrables, proyectos con miembros, ejecuciones en segundo plano con progreso en vivo y escaneo incremental
-> con OCR, GPU opcional y modelos sin Internet. Las
-> funcionalidades llegan fase a fase según el [ROADMAP](docs/plan/ROADMAP.md); hasta alcanzar la
-> [paridad](docs/plan/PARIDAD.md), la interfaz de doc_organize sigue siendo su web integrada.
+Con doc_organize 2.0: contexto por **ejes** de taxonomía (plantillas y manifiesto del proyecto, con perfil), IA por
+tarea a través de un LiteLLM Proxy (clasificar con cita, describir, embeddings para la clasificación semántica y
+agentes para diseñar la taxonomía y revisar la clasificación), decisiones de personas, versiones de un documento,
+calidad contra una referencia, y entregas del contexto (Excel, sitio sin conexión y paquete para IA, con su SHA-256).
+Multiusuario con tenants, roles y auditoría. La documentación está en [docs/](docs/README.md) (se publica con
+Zensical).
 
 ## Arranque rápido
 

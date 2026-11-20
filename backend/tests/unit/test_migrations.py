@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from alembic import command
@@ -307,3 +308,77 @@ def test_0017_backfills_axes_migrates_templates_and_goes_back(settings: Settings
         }
     assert after == before
     assert "context_document_axis_values" not in inspect(get_engine()).get_table_names()
+
+
+# --- 0024: sin ai_settings_v1 (cierre de la 2.0.0) --------------------------------------------------------------------
+
+
+def test_0024_drops_the_1x_copy_and_the_roundtrip_rebuilds_1x_from_2_0(settings: Settings) -> None:
+    """0014 → head → 0014 con configuración: sin la copia, la 1.x se rehace desde la familia ``litellm``."""
+    config = _config()
+    command.upgrade(config, "0014")
+    _insert_ai_rows(LEGACY_ROWS)
+
+    command.upgrade(config, "head")
+    assert "ai_settings_v1" not in inspect(get_engine()).get_table_names()
+
+    command.downgrade(config, "0014")
+
+    with get_engine().connect() as conn:
+        rows = _ai_rows(conn)
+    assert not any(family == "litellm" for family, *_ in rows)
+    expected = {
+        # Las dos de clasificación salen de la tarea `classify` (manda la de taxonomía al subir).
+        ("litellm_taxonomy_classification", "base_url", "https://proxy.example", None),
+        ("litellm_taxonomy_classification", "virtual_key", None, "gAAAA-taxonomia"),
+        ("litellm_taxonomy_classification", "model", "modelo-taxonomia", None),
+        ("litellm_classification", "base_url", "https://proxy.example", None),
+        ("litellm_classification", "model", "modelo-taxonomia", None),
+        ("litellm_enrichment", "virtual_key", None, "gAAAA-descripciones"),
+        ("litellm_taxonomy_manifest_draft", "virtual_key", None, "gAAAA-borrador"),
+        ("litellm_taxonomy_manifest_draft", "model", "modelo-borrador", None),
+        ("litellm_usage", "base_url", "https://proxy.example", None),  # las de uso no cambian
+        ("litellm_usage", "virtual_key", None, "gAAAA-uso"),
+        ("github_copilot_usage", "username", "octo-cat", None),
+    }
+    assert expected <= rows
+    assert ("litellm_classification", "model", "modelo-un-eje", None) not in rows  # lo que 2.0 no guardaba
+
+
+def test_0024_roundtrip_without_ai_settings(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0014")
+    command.upgrade(config, "head")
+    command.downgrade(config, "0014")
+    with get_engine().connect() as conn:
+        assert _ai_rows(conn) == set()
+    assert "ai_settings_v1" not in inspect(get_engine()).get_table_names()
+
+
+def test_roundtrip_script_accepts_the_rebuilt_ai_settings(settings: Settings, tmp_path: Path) -> None:
+    """``scripts/migration_roundtrip.py`` sobre una base de la 1.x con IA: la 1.x rehecha desde 2.0 no es un fallo."""
+    import shutil
+    import subprocess
+    import sys
+
+    config = _config()
+    command.upgrade(config, "0015")
+    _insert_ai_rows(LEGACY_ROWS)
+    get_engine().dispose()
+    copy = tmp_path / "copia" / "config.db"
+    copy.parent.mkdir()
+    shutil.copy(settings.data_dir / "config.db", copy)
+
+    result = subprocess.run(  # noqa: S603 - el script del propio repositorio
+        [sys.executable, str(BACKEND_DIR / "scripts" / "migration_roundtrip.py"), str(copy)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env={**{k: v for k, v in os.environ.items() if k != "DOW_DATA_DIR"}, "PYTHONIOENCODING": "utf-8"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "ai_settings: reconstruida desde la configuración de 2.0 (0024)" in result.stdout
+    assert "gAAAA" not in result.stdout  # sin valores

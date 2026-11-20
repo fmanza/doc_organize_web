@@ -291,7 +291,7 @@
       },
       "ai_timeout_seconds": {
         "label": "Tiempo máximo por petición de IA (s)",
-        "hint": "Para clasificar documentos; el panel de uso espera como mucho 10 s."
+        "hint": "Cada petición de clasificar, describir y embeddings (120 s por defecto; con un modelo local de 14B, algunas clasificaciones pasan de 30 s). El panel de uso espera como mucho 10 s (5–300)."
       },
       "ai_retries": {
         "label": "Reintentos de conexión con la IA",
@@ -307,7 +307,7 @@
       },
       "ai_max_documents_per_run": {
         "label": "Documentos con IA por ejecución",
-        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA."
+        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea (clasificar y describir cuentan cada uno el suyo). Una tarea con máximo propio en «Modelos de IA» usa el menor."
       }
     },
     "aiMoved": "Los tiempos, reintentos y límites de la IA están ahora en",
@@ -1123,8 +1123,8 @@
       "help": {
         "discover": "Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido.",
         "domains": "Solo se usan los dominios que escribas (un eje).",
-        "template": "Dominios y tipos de material de una plantilla (dos ejes).",
-        "manifest": "Dominios y tipos de material del manifiesto del proyecto (abajo)."
+        "template": "Los ejes de una plantilla: dominio, tipo de material y los que solo etiquetan.",
+        "manifest": "Los ejes del manifiesto del proyecto (abajo): dominio, tipo de material y los que solo etiquetan."
       },
       "useTemplateAsManifest": "Personalizar para este proyecto",
       "useTemplateAsManifestHint": "Copia la plantilla al manifiesto del proyecto para retocarla. La plantilla no cambia.",
