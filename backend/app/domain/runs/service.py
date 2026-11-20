@@ -59,6 +59,8 @@ from app.domain.runs.operations import (
     ProjectMoveParams,
     RunParams,
     ScanParams,
+    TaxonomyAgentParams,
+    TaxonomyCheckParams,
     TaxonomyDraftParams,
     is_write,
     min_role,
@@ -228,6 +230,10 @@ def enqueue(
         quality.validate_evaluate(db, settings, project, params)
     if isinstance(params, ContextDryRunParams):
         params = quality.validate_dry_run(db, settings, project, params, actor=actor)
+    if isinstance(params, TaxonomyAgentParams):
+        params = quality.validate_taxonomy_agent(db, settings, project, params, actor=actor)
+    if isinstance(params, TaxonomyCheckParams):
+        quality.validate_taxonomy_check(params)
     if needs_preview(params):
         _check_preview(db, project, params)
     run = Run(

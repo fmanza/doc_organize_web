@@ -3911,7 +3911,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check";
             /**
              * Status
              * @enum {string}
@@ -3950,7 +3950,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run";
+            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check";
             /** Params */
             params: {
                 [key: string]: unknown;
@@ -4320,6 +4320,42 @@ export interface components {
             url: string;
         };
         /**
+         * TaxonomyAgentParams
+         * @description Diseñar la taxonomía con IA (W7, ``TaxonomyDesignAgent``, tarea ``agent``): mejora el manifiesto del proyecto,
+         *     una plantilla o, sin ninguno, diseña uno, probando cada cambio con las reglas contra todos los documentos.
+         *
+         *     **No guarda nada**: la propuesta va en el resultado para revisarla. ``template_markdown`` (el de partida) lo fija la
+         *     API al encolar. ``max_steps`` es el tope de llamadas al modelo.
+         */
+        TaxonomyAgentParams: {
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "manifest" | "template" | "none";
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Steps
+             * @default 30
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default taxonomy_agent
+             * @constant
+             */
+            operation: "taxonomy_agent";
+            /** Template Markdown */
+            template_markdown?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+        };
+        /**
          * TaxonomyAxisSummaryOut
          * @description Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.
          */
@@ -4334,6 +4370,21 @@ export interface components {
             organizes: ("folder" | "subfolder") | null;
             /** Values */
             values: number;
+        };
+        /**
+         * TaxonomyCheckParams
+         * @description Comprobar un manifiesto por reglas (W7, ``check_taxonomy_rules``) contra todos los documentos convertidos, sin
+         *     IA y sin guardar nada: cobertura, conflictos, entradas vacías y palabras clave sin uso por eje.
+         */
+        TaxonomyCheckParams: {
+            /** Markdown */
+            markdown: string;
+            /**
+             * Operation
+             * @default taxonomy_check
+             * @constant
+             */
+            operation: "taxonomy_check";
         };
         /**
          * TaxonomyDraftParams
@@ -8114,7 +8165,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"];
+                "application/json": components["schemas"]["NoopParams"] | components["schemas"]["HistoryClearParams"] | components["schemas"]["ProjectMoveParams"] | components["schemas"]["ProjectDeleteParams"] | components["schemas"]["ScanParams"] | components["schemas"]["ExportZipParams"] | components["schemas"]["ExportXlsxParams"] | components["schemas"]["SearchIndexParams"] | components["schemas"]["DedupPreviewParams"] | components["schemas"]["DedupApplyParams"] | components["schemas"]["ContextBuildParams"] | components["schemas"]["ContextDeleteParams"] | components["schemas"]["TaxonomyDraftParams"] | components["schemas"]["ContextEvaluateParams"] | components["schemas"]["ContextDryRunParams"] | components["schemas"]["TaxonomyAgentParams"] | components["schemas"]["TaxonomyCheckParams"];
             };
         };
         responses: {
@@ -8814,7 +8865,7 @@ export interface operations {
             query?: {
                 project_id?: number | null;
                 status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | null;
-                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run") | null;
+                operation?: ("noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

@@ -38,6 +38,7 @@ import {
   sameText,
   useTaxonomyDraft,
 } from './useContext';
+import { AgentPanel, RulesCheck } from './AgentPanel';
 import { FrontMatterNotices } from './Axes';
 
 export interface ManifestCardProps {
@@ -141,6 +142,13 @@ export function ManifestCard({
           onDraft={(markdown) => onReplace(markdown, t('context.manifest.replaceBodyDraft'))}
         />
       )}
+      {editable && (
+        <AgentPanel
+          projectId={projectId}
+          hasManifest={saved.markdown !== null && !saved.error}
+          onLoad={(markdown) => onReplace(markdown, t('context.agent.replaceBody'))}
+        />
+      )}
       <Textarea
         ref={editor}
         label={t('context.manifest.markdown')}
@@ -152,6 +160,7 @@ export function ManifestCard({
         styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
         error={tooLarge ? t('context.manifest.tooLarge') : undefined}
       />
+      {editable && <RulesCheck projectId={projectId} markdown={text} />}
       {save.isError && <ErrorAlert error={save.error} mt="xs" />}
       {remove.isError && <ErrorAlert error={remove.error} mt="xs" />}
       {notice && (
