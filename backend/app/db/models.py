@@ -733,3 +733,35 @@ class ContextReviewItem(Base):
     value: Mapped[str | None] = mapped_column(String(128), default=None)
     confidence: Mapped[float | None] = mapped_column(Float, default=None)
     detail: Mapped[str | None] = mapped_column(String(1000), default=None)
+
+
+ProposalStatus = Literal["pending", "accepted", "discarded"]
+
+
+class ContextReviewProposal(Base):
+    """Una propuesta del revisor (``ReviewAgent``, W7; migración ``0022``) para un documento de la cola de revisión.
+
+    No se aplica sola (D14): ``pending`` hasta que una persona la acepta (se guarda como decisión, ``decision_id``) o
+    la descarta. Una ejecución nueva del revisor sustituye a las pendientes del proyecto.
+    """
+
+    __tablename__ = "context_review_proposals"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'accepted', 'discarded')", name="status"),
+        Index("ix_context_review_proposals_project_status", "project_id", "status", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+    document_key: Mapped[str] = mapped_column(String(4096))
+    action: Mapped[str] = mapped_column(String(32))
+    axes: Mapped[dict[str, list[str]]] = mapped_column(JSON, default=dict, server_default="{}")
+    rationale: Mapped[str | None] = mapped_column(Text, default=None)
+    evidence: Mapped[str | None] = mapped_column(Text, default=None)
+    source_sha256: Mapped[str | None] = mapped_column(String(64), default=None)
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    decision_id: Mapped[str | None] = mapped_column(String(64), default=None)

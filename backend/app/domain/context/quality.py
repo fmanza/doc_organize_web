@@ -257,3 +257,33 @@ def validate_taxonomy_check(params: TaxonomyCheckParams) -> None:
     from app.domain.context import templates
 
     templates.validate_markdown(params.markdown)
+
+
+def validate_review_agent(db: Session, settings: Settings, project: Project) -> None:
+    """Al encolar el revisor: contexto construido con ejes, destino de lectura y escritura (aceptar propuestas
+    escribe decisiones) e IA configurada.
+
+    Raises:
+        ContextNotFoundError, InvalidContextBuildError, DestinationReadOnlyError, AiNotConfiguredError.
+    """
+    from app.domain.ai import settings as ai_settings
+    from app.domain.context.errors import DestinationReadOnlyError, InvalidContextBuildError
+    from app.domain.context.service import get_context
+
+    row = get_context(db, project)
+    if not row.taxonomy_axes or row.catalog_kind not in ("template", "manifest"):
+        raise InvalidContextBuildError("El revisor necesita un contexto construido con plantilla o manifiesto.")
+    if project.destination_location.access != "rw":
+        raise DestinationReadOnlyError("La ubicación de destino es de solo lectura.")
+    ai_settings.require_configured(db, settings, "litellm")  # tarea ``agent``
+
+
+def validate_audit(db: Session, project: Project) -> None:
+    """Al encolar el auditor: hay contexto construido.
+
+    Raises:
+        ContextNotFoundError.
+    """
+    from app.domain.context.service import get_context
+
+    get_context(db, project)

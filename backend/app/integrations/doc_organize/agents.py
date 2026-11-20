@@ -196,3 +196,89 @@ def design_taxonomy(
         "report": _report(proposal.report),
         "best_report": _report(proposal.best_report) if best_differs else None,
     }
+
+
+@dataclass(frozen=True)
+class ReviewRequest:
+    """Una ejecución del revisor de la clasificación."""
+
+    name: str
+    created_at: Any
+    output_root: Path
+    folders: list[SourceFolder]
+    connection: AiConnection
+    max_items: int = 20
+    max_steps: int = 40
+    instructions: str = ""
+
+
+def _load_context(output_root: Path, name: str, created_at: Any) -> Any:
+    from doc_organize import ContextRegistry
+    from doc_organize.core.exceptions import ContextError
+
+    from app.integrations.doc_organize.context import _project
+
+    try:
+        return asyncio.run(ContextRegistry().load_context(_project(name, output_root, created_at)))
+    except (ContextError, OSError, ValueError) as exc:
+        raise DocOrganizeOperationError("No se pudo leer el contexto del proyecto.") from exc
+
+
+def review(request: ReviewRequest, *, is_cancelled: Callable[[], bool]) -> dict[str, Any]:
+    """Pide al ``ReviewAgent`` (tarea ``agent``) propuestas para los primeros ``max_items`` documentos de la cola de
+    revisión. Las propuestas **no se aplican** (D14): van en el resultado para guardarlas como pendientes.
+
+    Raises:
+        DocOrganizeOperationError: Sin contexto legible, sin ejes de taxonomía o fallo del proxy de IA.
+    """
+    from doc_organize import PromptRegistry, ReviewAgent
+    from doc_organize.context.review_agent import DEFAULT_REVIEW_LIMITS
+    from doc_organize.core.exceptions import AiError
+
+    context = _load_context(request.output_root, request.name, request.created_at)
+    if not context.taxonomy_axes:
+        raise DocOrganizeOperationError("El revisor necesita un contexto construido con plantilla o manifiesto.")
+    limits = replace(DEFAULT_REVIEW_LIMITS, max_steps=request.max_steps)
+    token, stop = _with_cancel(is_cancelled)
+
+    async def _run() -> Any:
+        async with llm_client(request.connection) as llm:
+            agent = ReviewAgent(llm, prompts=PromptRegistry(str(request.output_root)), limits=limits)
+            return await agent.propose(
+                context,
+                max_items=request.max_items,
+                roots=scan_roots(request.folders),
+                instructions=request.instructions,
+                cancel_token=token,
+            )
+
+    try:
+        result = asyncio.run(_run())
+    except AiError as exc:
+        raise DocOrganizeOperationError(f"El servicio de IA falló ({type(exc).__name__}).") from None
+    except ValueError as exc:
+        raise DocOrganizeOperationError(str(exc)) from None
+    finally:
+        stop.set()
+    return {
+        **_run_stats(result.run),
+        "max_steps": request.max_steps,
+        "max_items": request.max_items,
+        "reviewed": len({item.document_key for item in result.items}),
+        "summary": result.summary,
+        "proposals": [proposal.model_dump(mode="json") for proposal in result.proposals],
+    }
+
+
+def audit(output_root: Path, *, name: str, created_at: Any) -> dict[str, Any]:
+    """Informe del auditor (``audit_taxonomy``), sin IA: estadísticas por eje y propuestas sobre el catálogo.
+
+    Raises:
+        DocOrganizeOperationError: Sin contexto legible.
+    """
+    from doc_organize import audit_taxonomy
+
+    report = audit_taxonomy(_load_context(output_root, name, created_at))
+    data: dict[str, Any] = report.model_dump(mode="json")
+    data["markdown"] = report.to_markdown()
+    return data

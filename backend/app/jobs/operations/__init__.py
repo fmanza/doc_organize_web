@@ -46,4 +46,6 @@ REGISTRY: Final[dict[str, Operation]] = {
     "context_dry_run": quality.run_dry_run,
     "taxonomy_agent": agents.run_design,
     "taxonomy_check": agents.run_check,
+    "context_review_agent": agents.run_review,
+    "context_audit": agents.run_audit,
 }

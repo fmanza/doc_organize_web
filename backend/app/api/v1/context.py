@@ -45,6 +45,8 @@ from app.api.v1.schemas import (
     PromptPreviewIn,
     PromptPreviewOut,
     PromptProvenanceOut,
+    ProposalList,
+    ProposalOut,
     QualityOut,
     QualityRunOut,
     ReviewDocumentOut,
@@ -864,6 +866,7 @@ def get_quality(project_id: int, user: CurrentUser, db: DbSession, settings: Set
         decisions_available=decisions,
         evaluation=_latest(db, project_id, "context_evaluate"),
         dry_run=_latest(db, project_id, "context_dry_run"),
+        audit=_latest(db, project_id, "context_audit"),
     )
 
 
@@ -928,3 +931,80 @@ def delete_gold(project_id: int, user: CurrentUser, db: DbSession, settings: Set
     """Borra la referencia subida."""
     access = projects.get_access(db, project_id, user, min_role="editor")
     quality.delete_gold(db, settings, access.project, actor=user, ctx=ctx)
+
+
+# --- propuestas del revisor (W7) ---------------------------------------------------------------------------------------
+
+
+@router.get(
+    "/projects/{project_id}/context/review/proposals",
+    response_model=ProposalList,
+    summary="Propuestas pendientes del revisor",
+    responses=_ERRORS,
+)
+def get_proposals(project_id: int, user: CurrentUser, db: DbSession) -> ProposalList:
+    """Las propuestas del revisor (``context_review_agent``) que nadie ha aceptado ni descartado, con su documento."""
+    access = projects.get_access(db, project_id, user)
+    rows = decisions_service.list_proposals(db, access.project)
+    axes = context.document_axes(db, access.project.id, [doc.seq for _, doc in rows if doc is not None])
+    items = []
+    for proposal, doc in rows:
+        document = None
+        if doc is not None:
+            out = _document_out(doc, axes.get(doc.seq))
+            document = ReviewDocumentOut(
+                seq=doc.seq,
+                title=doc.title,
+                folder=doc.folder,
+                path=doc.path,
+                domain_slug=doc.domain_slug,
+                output_path=out.output_path,
+                version=doc.version,
+                version_group=doc.version_group,
+                is_current=doc.is_current,
+                axes=out.axes,
+            )
+        items.append(
+            ProposalOut(
+                id=proposal.id,
+                document_key=proposal.document_key,
+                action=proposal.action,
+                axes=proposal.axes or {},
+                rationale=proposal.rationale,
+                evidence=proposal.evidence,
+                created_at=proposal.created_at,
+                run_id=proposal.run_id,
+                document=document,
+            )
+        )
+    return ProposalList(items=items)
+
+
+@router.post(
+    "/projects/{project_id}/context/review/proposals/{proposal_id}/accept",
+    response_model=DecisionOut,
+    summary="Aceptar una propuesta del revisor",
+    responses={**_DECISION_ERRORS, 404: {"description": "Sin la propuesta (proposal_not_found) o sin el documento"}},
+)
+def accept_proposal(
+    project_id: int, proposal_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep, ctx: Context
+) -> DecisionOut:
+    """La propuesta se guarda como decisión de quien la acepta (se aplica al reconstruir). Propietario o editor."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    return _decision_out(
+        decisions_service.accept_proposal(db, settings, access.project, proposal_id, actor=user, ctx=ctx)
+    )
+
+
+@router.post(
+    "/projects/{project_id}/context/review/proposals/{proposal_id}/discard",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Descartar una propuesta del revisor",
+    responses={**_DECISION_ERRORS, 404: {"description": "Sin la propuesta (proposal_not_found)"}},
+)
+def discard_proposal(
+    project_id: int, proposal_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep, ctx: Context
+) -> None:
+    """No se aplica nada; la propuesta deja de estar pendiente. Propietario o editor."""
+    access = projects.get_access(db, project_id, user, min_role="editor")
+    decisions_service.discard_proposal(db, settings, access.project, proposal_id, actor=user, ctx=ctx)

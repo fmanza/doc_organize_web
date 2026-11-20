@@ -918,6 +918,20 @@
         "title": "CatalogEntryOut",
         "type": "object"
       },
+      "ContextAuditParams": {
+        "additionalProperties": false,
+        "description": "Informe del auditor de la taxonomía (W7, ``audit_taxonomy``), sin IA: estadísticas por eje y propuestas.",
+        "properties": {
+          "operation": {
+            "const": "context_audit",
+            "default": "context_audit",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ContextAuditParams",
+        "type": "object"
+      },
       "ContextAxisOut": {
         "description": "Un eje del contexto (``Context.taxonomy_axes``, doc_organize 2.0) con sus valores y recuentos.",
         "properties": {
@@ -2064,6 +2078,40 @@
           "built_at"
         ],
         "title": "ContextOut",
+        "type": "object"
+      },
+      "ContextReviewAgentParams": {
+        "additionalProperties": false,
+        "description": "Pedir propuestas al revisor (W7, ``ReviewAgent``, tarea ``agent``) para los primeros ``max_items`` documentos de\nla cola de revisión. Las propuestas se guardan como pendientes y **no se aplican** (D14).",
+        "properties": {
+          "instructions": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "max_items": {
+            "default": 20,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Items",
+            "type": "integer"
+          },
+          "max_steps": {
+            "default": 40,
+            "maximum": 80.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "context_review_agent",
+            "default": "context_review_agent",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "title": "ContextReviewAgentParams",
         "type": "object"
       },
       "CsrfToken": {
@@ -5016,9 +5064,126 @@
         "title": "PromptProvenanceOut",
         "type": "object"
       },
+      "ProposalList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProposalList",
+        "type": "object"
+      },
+      "ProposalOut": {
+        "description": "Una propuesta pendiente del revisor (``ReviewAgent``): no se aplica hasta que una persona la acepta.",
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "set_axis",
+              "exclude",
+              "set_current_version"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "axes": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "title": "Axes",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDocumentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_key": {
+            "title": "Document Key",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "id",
+          "document_key",
+          "action",
+          "created_at"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
       "QualityOut": {
         "description": "Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.",
         "properties": {
+          "audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Último informe del auditor (W7)"
+          },
           "decisions_available": {
             "description": "Hay decisiones de personas con las que hacer una referencia",
             "title": "Decisions Available",
@@ -5539,7 +5704,9 @@
               "context_evaluate",
               "context_dry_run",
               "taxonomy_agent",
-              "taxonomy_check"
+              "taxonomy_check",
+              "context_review_agent",
+              "context_audit"
             ],
             "title": "Operation",
             "type": "string"
@@ -5660,7 +5827,9 @@
               "context_evaluate",
               "context_dry_run",
               "taxonomy_agent",
-              "taxonomy_check"
+              "taxonomy_check",
+              "context_review_agent",
+              "context_audit"
             ],
             "title": "Operation",
             "type": "string"
@@ -10620,6 +10789,168 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/context/review/proposals": {
+      "get": {
+        "description": "Las propuestas del revisor (``context_review_agent``) que nadie ha aceptado ni descartado, con su documento.",
+        "operationId": "get_proposals_api_v1_projects__project_id__context_review_proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propuestas pendientes del revisor",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/accept": {
+      "post": {
+        "description": "La propuesta se guarda como decisión de quien la acepta (se aplica al reconstruir). Propietario o editor.",
+        "operationId": "accept_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin la propuesta (proposal_not_found) o sin el documento"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Aceptar una propuesta del revisor",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/discard": {
+      "post": {
+        "description": "No se aplica nada; la propuesta deja de estar pendiente. Propietario o editor.",
+        "operationId": "discard_proposal_api_v1_projects__project_id__context_review_proposals__proposal_id__discard_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente (editor)"
+          },
+          "404": {
+            "description": "Sin la propuesta (proposal_not_found)"
+          },
+          "409": {
+            "description": "Escritura en curso (write_locked) o carpeta .doc_organize que no es normal"
+          },
+          "422": {
+            "description": "Decisión no válida (decision_invalid) o destino de solo lectura"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Descartar una propuesta del revisor",
+        "tags": [
+          "context"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/context/site-session": {
       "post": {
         "description": "URL del sitio aislado con un token ligado a esta sesión y a este proyecto (caduca en una hora, ADR-010).",
@@ -11790,6 +12121,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/TaxonomyCheckParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextReviewAgentParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContextAuditParams"
                   }
                 ],
                 "title": "Body"
@@ -12624,7 +12961,9 @@
                     "context_evaluate",
                     "context_dry_run",
                     "taxonomy_agent",
-                    "taxonomy_check"
+                    "taxonomy_check",
+                    "context_review_agent",
+                    "context_audit"
                   ],
                   "type": "string"
                 },
