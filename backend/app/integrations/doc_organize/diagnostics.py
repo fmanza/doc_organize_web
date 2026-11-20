@@ -6,7 +6,7 @@ y la API no carga doc_organize al arrancar (G15). Por eso se ejecuta en un **sub
 (con sus claves) le llegan por la entrada estándar, nunca en la línea de órdenes, y el resultado sale en JSON por la
 salida estándar.
 
-Firma verificada en el tag ``v2.0.0a2``::
+Firma verificada en el tag ``v2.0.0rc1``::
 
     check_environment(*, check_ai=False, ai_endpoints=None, artifacts_path=None, build_site=True, transport=None)
         -> EnvironmentReport(checks=[EnvironmentCheck(name, status, detail, remedy)], checked_at)

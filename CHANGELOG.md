@@ -10,6 +10,11 @@ doc_organize 2.0.0.
 
 ### Changed
 
+- **doc_organize 2.0.0rc1** (antes 2.0.0a2): plazo y reintentos por tarea (`TaskSettings.timeout_s`/`retries`: el
+  borrador y los agentes usan los «largos», `ai_draft_timeout_seconds`/`ai_draft_retries`, sin cliente aparte) y
+  presupuesto por tarea (`TaskSettings.max_documents`, que la librería combina con `ai_max_documents`: clasificar y
+  describir ya no comparten el menor), `default_model_alias`, `compose_profile_text` en la vista previa y en
+  «Comparar cambios», y la cita de la IA también sin manifiesto.
 - **doc_organize 2.0.0a2** (prerrelease, antes 1.7.1, ADR-006): la integración de IA (`integrations/doc_organize/ai.py`)
   pasa al **cliente único** de 2.0 (`LlmClient` con `AiSettings`: modelo y clave por tarea, salida `json_schema`
   estricta con caída a `json_object`, caché de resultados de IA en el proyecto). `ContextBuilder.build(llm=,

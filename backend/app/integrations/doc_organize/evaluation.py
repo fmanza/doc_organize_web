@@ -1,6 +1,6 @@
 """Calidad de la clasificación (W5, doc_organize 2.0 G3): referencia, evaluación y clasificación de prueba.
 
-Firmas verificadas en el tag ``v2.0.0a2``::
+Firmas verificadas en el tag ``v2.0.0rc1``::
 
     load_gold_xlsx(path, *, columns=None, sheet="Referencia", document_column="documento") -> GoldStandard
     gold_from_decisions(decisions) -> GoldStandard
@@ -166,7 +166,7 @@ def dry_run(
     from doc_organize import CancelToken, ContextRegistry, parse_taxonomy_template
     from doc_organize.context.dry_run import dry_run_classify
     from doc_organize.context.evaluation import evaluate_classification
-    from doc_organize.context.project_profile import compose_profile, parse_profile
+    from doc_organize.context.project_profile import compose_profile, compose_profile_text
     from doc_organize.core.exceptions import (
         ContextError,
         DocOrganizeError,
@@ -193,9 +193,7 @@ def dry_run(
             raise TemplateInvalidError(str(exc)) from None
     profile = None
     if request.profile_markdown is not None:
-        project_profile = parse_profile(request.profile_markdown)
-        template_profile = manifest.profile if manifest is not None else None
-        profile = template_profile.merged(project_profile) if template_profile is not None else project_profile
+        profile = compose_profile_text(manifest.profile if manifest is not None else None, request.profile_markdown)
     elif manifest is not None:
         profile = compose_profile(manifest.profile, request.output_root)
     documents, _ = converted_documents(request.folders)

@@ -323,11 +323,11 @@ def test_taxonomy_draft_errors_carry_no_details(
 
 def test_draft_has_its_own_timeout_and_no_retries(db: Session, migrated: Settings) -> None:
     """Hotfix 1.4.5: el borrador es una petición larga; el resto de tareas sigue con el plazo general."""
-    draft = ai_settings.connection(db, migrated, "litellm", draft=True)
-    classification = ai_settings.connection(db, migrated, "litellm")
+    settings = library_ai.ai_settings_for(ai_settings.connection(db, migrated, "litellm"))
 
-    assert (draft.timeout_s, draft.retries) == (300.0, 0)
-    assert (classification.timeout_s, classification.retries) == (30.0, 2)
+    # doc_organize 2.0.0rc1: plazo y reintentos por tarea (TaskSettings.timeout_s/retries).
+    assert (settings.timeout_for("taxonomy_design"), settings.retries_for("taxonomy_design")) == (300.0, 0)
+    assert (settings.timeout_for("classify"), settings.retries_for("classify")) == (30.0, 2)
 
 
 @pytest.mark.parametrize(
@@ -383,10 +383,7 @@ def test_chat_response_helper_is_valid_json() -> None:
 def test_evidence_and_provenance_reach_the_api(
     run: Any, project: Project, litellm: FakeLiteLLM, user_client: TestClient, admin: Any
 ) -> None:
-    """W3: la cita de la IA (y si se verificó) en el valor del eje y el prompt y modelo de la tarea en el contexto.
-
-    Con plantilla o manifiesto: sin catálogo de ejes, doc_organize 2.0.0a2 no guarda la cita del dominio.
-    """
+    """W3: la cita de la IA (y si se verificó) en el valor del eje y el prompt y modelo de la tarea en el contexto."""
     admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
     assert admin_client.put("/api/v1/taxonomy-templates/ejes", json={"markdown": AXES_TEMPLATE}).status_code == 201
     litellm.answers["classify"] = classify_answer(
@@ -407,6 +404,20 @@ def test_evidence_and_provenance_reach_the_api(
     body = user_client.get(f"/api/v1/projects/{project.id}/context").json()
     (classify,) = [p for p in body["ai_provenance"] if p["task"] == "classify"]
     assert classify["model"] == "doc-organize-classify" and classify["source"] == "builtin" and classify["version"]
+    page = user_client.get(f"/api/v1/projects/{project.id}/context/documents", params={"domain": "informes"}).json()
+    (receta,) = [d for d in page["items"] if d["path"] == "receta.txt"]
+    (value,) = receta["axes"]["domains"]
+    assert value["classified_by"] == "ai" and value["evidence"] == "harina huevos azúcar"
+    assert value["evidence_verified"] is True
+
+
+def test_evidence_without_manifest(run: Any, project: Project, litellm: FakeLiteLLM, user_client: TestClient) -> None:
+    """doc_organize 2.0.0rc1 (petición de W3): sin manifiesto, la cita del dominio que asigna la IA también se guarda."""
+    litellm.answers["classify"] = classify_answer({"domains": ["informes"]}, evidence="harina huevos azúcar")
+    ctx, params = run(AI_DOMAINS)
+
+    operation.run_build(ctx, params, project)
+
     page = user_client.get(f"/api/v1/projects/{project.id}/context/documents", params={"domain": "informes"}).json()
     (receta,) = [d for d in page["items"] if d["path"] == "receta.txt"]
     (value,) = receta["axes"]["domains"]
