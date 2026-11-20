@@ -82,7 +82,7 @@ En **Administración → IA → Parámetros** hay cinco ajustes más (hasta la 1
 
 | Ajuste | Por defecto | Qué hace |
 |---|---|---|
-| Tiempo máximo por petición de IA | 30 s | Para clasificar documentos (el panel de uso espera como mucho 10 s) |
+| Tiempo máximo por petición de IA | 120 s | Para clasificar documentos (el panel de uso espera como mucho 10 s). Con un modelo local de 14B, una clasificación tarda de media unos 25 s y algunas pasan de 30 s |
 | Reintentos de conexión con la IA | 2 | Solo ante fallos de conexión |
 | Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea: clasificar y completar descripciones cuentan cada uno el suyo. Una tarea con máximo propio en «Modelos de IA» usa el menor de los dos |
 | Tiempo máximo del borrador y los agentes de IA | 300 s | Para las tareas largas: la petición del borrador (una sola y larga) y cada llamada de los agentes; con un modelo local puede tardar minutos (5–900) |

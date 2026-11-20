@@ -327,7 +327,7 @@ def test_draft_has_its_own_timeout_and_no_retries(db: Session, migrated: Setting
 
     # doc_organize 2.0.0rc1: plazo y reintentos por tarea (TaskSettings.timeout_s/retries).
     assert (settings.timeout_for("taxonomy_design"), settings.retries_for("taxonomy_design")) == (300.0, 0)
-    assert (settings.timeout_for("classify"), settings.retries_for("classify")) == (30.0, 2)
+    assert (settings.timeout_for("classify"), settings.retries_for("classify")) == (120.0, 2)
 
 
 @pytest.mark.parametrize(

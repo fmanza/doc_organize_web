@@ -190,11 +190,9 @@ El detalle de la ejecución enseña la **huella SHA-256** del ZIP (el mismo cont
 que el fichero que recibe el destinatario es el mismo, y queda en la auditoría junto con las opciones. Ambos ZIP
 llevan el texto de los documentos: sale de la aplicación y puede ser confidencial.
 
-!!! warning "El sitio sin conexión lleva también los originales"
-    Con doc_organize 2.0.0rc2, el sitio incluye la copia de cada original y su conversión (`.json`) que hay en la
-    carpeta reorganizada, **sin redactar**: la redacción de credenciales solo se aplica a las páginas. Revisa el
-    contenido antes de entregar el sitio de un proyecto con credenciales en sus documentos (el paquete para IA no
-    lleva los originales).
+El sitio sin conexión lleva solo las páginas (redactadas y neutralizadas), sus imágenes, `llms.txt` y los recursos
+del tema: ni la copia de cada original ni su conversión (`.json`), que no se pueden redactar (doc_organize 2.0.0rc3).
+Las imágenes de los documentos sí van tal cual.
 
 ## Manifiesto del proyecto
 

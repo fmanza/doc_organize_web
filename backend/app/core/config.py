@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     run_retention_days: int = Field(default=30, ge=1, le=3650)
     user_quota_mb: int = Field(default=0, ge=0, le=10_000_000)
     context_site_timeout_seconds: int = Field(default=600, ge=10, le=24 * 3600)
-    ai_timeout_seconds: int = Field(default=30, ge=5, le=300)
+    ai_timeout_seconds: int = Field(default=120, ge=5, le=300)
     ai_retries: int = Field(default=2, ge=0, le=5)
     ai_max_documents_per_run: int = Field(default=500, ge=1, le=100_000)
     ai_draft_timeout_seconds: int = Field(default=300, ge=5, le=900)

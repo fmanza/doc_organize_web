@@ -10,6 +10,12 @@ doc_organize 2.0.0.
 
 ### Changed
 
+- **Tiempo máximo por petición de IA: 120 s por defecto** (antes 30 s, `DOW_AI_TIMEOUT_SECONDS` o el ajuste de
+  administración). En la preproducción de W9, con el modelo local de 14B, tres clasificaciones seguidas pasaron de 30 s
+  y el corte por conexión dejó 33 de 39 documentos sin IA; con 120 s, 38 de 39 y ninguna parada. Es el valor por
+  defecto de doc_organize. Quien lo haya fijado (variable o ajuste) conserva su valor.
+- **doc_organize 2.0.0rc3** (antes 2.0.0rc2): el sitio sin conexión ya no lleva la copia de cada original ni su
+  conversión (`.json`) sin redactar, la fuga que encontraron los E2E de W9. Los tests de entrega lo comprueban.
 - **doc_organize 2.0.0rc2** (antes 2.0.0rc1), con lo que pidió la web en W4–W8 y sin los apaños de la rc1:
   - Excel del contexto con `write_context_documents_xlsx(roots=)`: claves relativas sin copiar el contexto, columnas
     «Grupo de versiones», «Versión» y «Vigente» y hoja «Valores» (quién asignó cada valor, confianza y cita).
