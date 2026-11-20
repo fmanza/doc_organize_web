@@ -73,9 +73,12 @@ test('entregar el contexto: Excel, sitio sin conexión y paquete para IA, con su
   expect(siteFiles.has('VER_SITIO.md') && siteFiles.has('start_server.py')).toBe(true);
   // Ni la copia del original ni su conversión (.json), que no se pueden redactar (doc_organize 2.0.0rc3).
   const published = [...siteFiles.keys()].filter(
-    (file) => file.startsWith('sitio/') && !file.startsWith('sitio/assets/') && !file.startsWith('sitio/search'),
+    (file) =>
+      file.startsWith('sitio/') && !file.startsWith('sitio/assets/') && !file.startsWith('sitio/search'),
   );
-  expect(published.filter((file) => /\.(pdf|docx?|xlsx?|json|txt)$/i.test(file) && file !== 'sitio/llms.txt')).toEqual([]);
+  expect(
+    published.filter((file) => /\.(pdf|docx?|xlsx?|json|txt)$/i.test(file) && file !== 'sitio/llms.txt'),
+  ).toEqual([]);
   // Credenciales redactadas en las páginas (ajuste del proyecto).
   const pages = [...siteFiles].filter(([file]) => file.endsWith('.html') || file.endsWith('.md'));
   const page_ = pages.find(([file]) => file.includes('nota_acceso') && file.endsWith('.html'));
