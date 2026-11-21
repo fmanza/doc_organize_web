@@ -5,6 +5,15 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Diagnóstico, comprobación `gpu`**: se ejecuta en el proceso web, que usa la imagen de CPU, así que siempre decía
+  que no había GPU, aunque el worker de la cola `gpu` sí la tenga. Ahora la dicen los workers vivos de la cola `gpu`,
+  con su `gpu_active`: «GPU CUDA activa en N de M worker(s)», o un aviso si ninguno la ve. Sin workers de GPU queda la
+  comprobación de la web.
+- **Diagnóstico, tabla**: las columnas «Comprobación» y «Estado» se ajustan a su contenido, sin partir. Antes el
+  detalle largo se quedaba el ancho y la insignia del estado salía cortada aunque hubiera espacio.
+
 ## [2.0.0] - 2026-11-20
 
 Versión MAJOR, publicada a la vez que **doc_organize 2.0.0** (plan único de 2.0, hitos W2 a W9). La web pasa a la 2.0

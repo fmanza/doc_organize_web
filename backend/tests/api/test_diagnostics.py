@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.db.models import AuditEntry, User
+from app.db.models import AuditEntry, User, Worker
 from app.domain.ai import diagnostics
 from app.integrations.doc_organize import ai as library_ai
 from app.integrations.doc_organize.diagnostics import DiagnosticCheck, DiagnosticsReport, _clean
@@ -110,3 +110,35 @@ def test_ai_check_uses_each_task_model_and_key_without_leaking(
 def test_clean_hides_every_secret() -> None:
     assert _clean("a https://x.example/v1 b sk-1 c", ["https://x.example", "sk-1"]) == "a «oculto»/v1 b «oculto» c"
     assert _clean(None, ["x"]) is None
+
+
+@pytest.mark.parametrize("gpu_active", [True, False])
+def test_gpu_check_comes_from_the_gpu_workers(
+    admin_api: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch, gpu_active: bool
+) -> None:
+    """El proceso web no tiene GPU: la comprobación ``gpu`` la dicen los workers vivos de la cola ``gpu``."""
+    web = DiagnosticCheck("gpu", "warning", "Sin soporte de GPU en este proceso (PyTorch sin CUDA): el OCR irá por CPU")
+    fake = DiagnosticsReport(checks=[DiagnosticCheck("python", "ok", "3.12"), web], checked_at="2026-11-21T00:00:00Z")
+    monkeypatch.setattr(diagnostics, "run_diagnostics", lambda **_: fake)
+    db.add_all(
+        [
+            Worker(id="w:cpu", queues=["cpu"], version="t", capabilities={"gpu_active": False}),
+            Worker(id="w:gpu", queues=["gpu"], version="t", capabilities={"gpu_active": gpu_active}),
+        ]
+    )
+    db.commit()
+
+    checks = {check["name"]: check for check in admin_api.post(URL, json={}).json()["checks"]}
+
+    assert checks["gpu"]["status"] == ("ok" if gpu_active else "warning")
+    assert ("1 de 1 worker(s) de la cola gpu" in checks["gpu"]["detail"]) is gpu_active
+
+
+def test_without_gpu_workers_the_web_check_stays(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    web = DiagnosticCheck("gpu", "warning", "Sin soporte de GPU en este proceso (PyTorch sin CUDA): el OCR irá por CPU")
+    fake = DiagnosticsReport(checks=[web], checked_at="2026-11-21T00:00:00Z")
+    monkeypatch.setattr(diagnostics, "run_diagnostics", lambda **_: fake)
+
+    [check] = admin_api.post(URL, json={}).json()["checks"]
+
+    assert check["detail"] == web.detail

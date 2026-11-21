@@ -8,6 +8,8 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 
 const STATUS_COLOR: Record<string, string> = { ok: 'teal', warning: 'yellow', error: 'red' };
+// Comprobación y estado al ancho de su contenido, sin partir: el detalle (largo) se queda el resto y la insignia no se corta.
+const NARROW = { width: '1%', whiteSpace: 'nowrap' } as const;
 
 /**
  * Diagnóstico del entorno (W4, `check_environment` de doc_organize): Python, docling y sus modelos, extras, sitio de
@@ -58,20 +60,20 @@ export function DiagnosticsPage() {
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{t('diagnostics.check')}</Table.Th>
-                  <Table.Th>{t('diagnostics.status')}</Table.Th>
+                  <Table.Th style={NARROW}>{t('diagnostics.check')}</Table.Th>
+                  <Table.Th style={NARROW}>{t('diagnostics.status')}</Table.Th>
                   <Table.Th>{t('diagnostics.detail')}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {report.checks.map((check) => (
                   <Table.Tr key={check.name}>
-                    <Table.Td>
+                    <Table.Td style={NARROW}>
                       <Text size="sm" ff="monospace">
                         {check.name}
                       </Text>
                     </Table.Td>
-                    <Table.Td>
+                    <Table.Td style={NARROW}>
                       <Badge variant="light" color={STATUS_COLOR[check.status] ?? 'gray'}>
                         {t(`diagnostics.statuses.${check.status}`)}
                       </Badge>
