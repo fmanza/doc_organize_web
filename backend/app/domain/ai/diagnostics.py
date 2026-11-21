@@ -22,9 +22,15 @@ from app.domain.ai import settings as ai_settings
 from app.domain.ai.errors import AiNotConfiguredError, DiagnosticsFailedError, DiagnosticsTooSoonError
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.runs import workers as run_workers
 from app.integrations.doc_organize import models as library_models
 from app.integrations.doc_organize.ai import TaskKey
-from app.integrations.doc_organize.diagnostics import AiEndpointSpec, DiagnosticsReport, run_diagnostics
+from app.integrations.doc_organize.diagnostics import (
+    AiEndpointSpec,
+    DiagnosticCheck,
+    DiagnosticsReport,
+    run_diagnostics,
+)
 
 MIN_INTERVAL_SECONDS: Final = 30.0
 #: Tareas cuyo modelo se prueba con ``check_ai``: las de clasificar, describir y diseñar la taxonomía siempre (con su
@@ -100,6 +106,7 @@ def run(
             raise DiagnosticsFailedError(str(exc)) from None
     finally:
         _lock.release()
+    report = with_worker_gpu(report, db, settings)
     audit.record(
         db,
         action=AuditAction.ADMIN_DIAGNOSTICS,
@@ -115,3 +122,35 @@ def run(
     )
     db.commit()
     return report
+
+
+def with_worker_gpu(report: DiagnosticsReport, db: Session, settings: Settings) -> DiagnosticsReport:
+    """La comprobación ``gpu`` con lo que publican los workers de la cola ``gpu``.
+
+    ``check_environment`` corre en el proceso web, que no convierte ni tiene GPU (imagen de CPU): su resultado solo
+    dice que la web no tiene GPU. Quien hace el OCR por GPU es el worker de la cola ``gpu``, que publica
+    ``gpu_active`` en sus capacidades. Si hay alguno vivo, la comprobación dice si tiene GPU; si no, queda la de la web.
+    """
+    gpu_workers = [
+        worker
+        for worker in run_workers.list_workers(db)
+        if "gpu" in (worker.queues or []) and run_workers.is_alive(worker, settings)
+    ]
+    if not gpu_workers:
+        return report
+    active = [worker for worker in gpu_workers if (worker.capabilities or {}).get("gpu_active")]
+    if active:
+        check = DiagnosticCheck(
+            "gpu", "ok", f"GPU CUDA activa en {len(active)} de {len(gpu_workers)} worker(s) de la cola gpu"
+        )
+    else:
+        check = DiagnosticCheck(
+            "gpu",
+            "warning",
+            f"Ningún worker de la cola gpu ({len(gpu_workers)}) tiene una GPU CUDA activa: el OCR irá por CPU",
+            "Comprueba los drivers NVIDIA del equipo y que el contenedor worker-gpu ve la GPU (nvidia-smi dentro).",
+        )
+    checks = [check if item.name == "gpu" else item for item in report.checks]
+    if all(item.name != "gpu" for item in report.checks):
+        checks.append(check)
+    return DiagnosticsReport(checks=checks, checked_at=report.checked_at)
