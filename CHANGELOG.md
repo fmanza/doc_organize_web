@@ -5,6 +5,14 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-22
+
+Correcciones del diagnóstico, encontradas al desplegar la 2.0.0. Sin migraciones.
+
+### Changed
+
+- **doc_organize 2.0.1** (antes 2.0.0): la versión de PyTorch solo CPU ya no cuenta como «soporte de GPU instalado».
+
 ### Fixed
 
 - **Diagnóstico, comprobación `gpu`**: se ejecuta en el proceso web, que usa la imagen de CPU, así que siempre decía
