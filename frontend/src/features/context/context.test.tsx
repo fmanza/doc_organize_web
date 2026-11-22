@@ -341,6 +341,28 @@ describe('ContextPage', () => {
     expect(screen.getByRole('button', { name: 'Descargar Excel' })).toBeInTheDocument();
   });
 
+  it('avisa de un contexto a medio guardar y deja completarlo o borrarlo (2.1)', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': NOT_BUILT,
+      'GET /api/v1/projects/7/context/leftover': { body: { output_folder_name: 'organizado' } },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+
+    const alert = await screen.findByText('Hay un contexto a medio guardar');
+    const box = alert.closest('[role="status"]') as HTMLElement;
+    expect(within(box).getByText(/carpeta «organizado»/)).toBeInTheDocument();
+    expect(within(box).getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
+    await user.click(within(box).getByRole('link', { name: 'Ir a Construir' }));
+    expect(
+      await screen.findByText(/Se construye en la carpeta «organizado», que quedó a medias/),
+    ).toBeInTheDocument();
+  });
+
   it('un lector no construye ni edita el manifiesto', async () => {
     stubApi({
       ...session(USER),

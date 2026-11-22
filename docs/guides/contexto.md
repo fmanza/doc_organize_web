@@ -420,7 +420,14 @@ ficheros:
 2. Escribir el nombre del proyecto y confirmar.
 
 Se borran la carpeta reorganizada, el sitio, `context.json` y `domains/`. Las conversiones, los originales, el
-manifiesto y el [historial](#historial) se conservan. Vaciar el histórico del proyecto también borra el contexto, su
+manifiesto y el [historial](#historial) se conservan.
+
+**Contexto a medio guardar (2.1).** Si una construcción se interrumpe (por ejemplo, porque se reinicia el worker)
+después de escribir en el destino y antes de guardar el contexto, la página dice que no hay contexto pero en la carpeta
+del proyecto quedan `context.json` y la carpeta reorganizada. La página lo detecta y avisa «Hay un contexto a medio
+guardar», con **Ir a Construir** (la construcción reutiliza esa carpeta y sustituye lo que hay) y **Borrar contexto**
+(propietarios, con el destino de lectura y escritura). Construir de nuevo aprovecha la caché de IA de lo que ya se
+había clasificado o descrito. Vaciar el histórico del proyecto también borra el contexto, su
 historial y el manifiesto (este se puede restaurar desde [Versiones](#versiones-restaurar-y-borrar-180)).
 
 ## Historial

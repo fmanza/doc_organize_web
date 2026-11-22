@@ -612,6 +612,14 @@ class RunProgress(BaseModel):
     current: str | None = None
 
 
+class ContextLeftoverOut(BaseModel):
+    """Contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o ninguno."""
+
+    output_folder_name: str | None = Field(
+        description="Carpeta reorganizada del context.json que hay en el destino; null si no hay restos"
+    )
+
+
 class AiUsageRowOut(BaseModel):
     """Consumo de IA de una ejecución en una tarea (web 2.1). Sin coste: el proxy no lo da por llamada."""
 

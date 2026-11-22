@@ -57,6 +57,7 @@ import {
   templateQuery,
   useContextDocuments,
   useContextHistory,
+  useContextLeftover,
   useProjectContext,
 } from './useContext';
 import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
@@ -92,6 +93,7 @@ export function ContextPage() {
   const [searchParams] = useSearchParams();
   const project = useProject(projectId);
   const context = useProjectContext(projectId);
+  const leftover = useContextLeftover(projectId, context.isSuccess && context.data === null);
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   // Selección derivada de `built_at` sin efectos (A4): al terminar una construcción vuelve a la del contexto nuevo.
@@ -212,12 +214,30 @@ export function ContextPage() {
       </Anchor>
     );
   const panel = (name: ContextStep) => ({ hidden: step !== name, 'data-step': name });
+  const leftoverFolder = built ? null : (leftover.data ?? null);
 
   return (
     <Stack>
       <ContextNav projectId={projectId} active={step} />
       <Text c="dimmed">{t('context.intro')}</Text>
       {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
+      {leftoverFolder && (
+        <Alert color="orange" title={t('context.leftover.title')} role="status">
+          <Text size="sm">{t('context.leftover.body', { folder: leftoverFolder })}</Text>
+          <Group mt="xs" gap="xs">
+            {canBuild && (
+              <Button component={Link} to={stepHref(projectId, 'construir')} size="xs" variant="light">
+                {t('context.leftover.build')}
+              </Button>
+            )}
+            {canDo(project.data, 'owner') && writable && (
+              <Button size="xs" color="red" variant="light" onClick={() => setDeleting(true)}>
+                {t('projects.danger.context_delete.button')}
+              </Button>
+            )}
+          </Group>
+        </Alert>
+      )}
 
       <div {...panel('taxonomia')}>
         <TaxonomyStep
@@ -245,6 +265,7 @@ export function ContextPage() {
             selection={selection}
             domains={domains}
             notReady={notReady}
+            leftoverFolder={leftoverFolder}
           />
         </div>
       )}
@@ -443,12 +464,15 @@ function BuildCard({
   selection,
   domains,
   notReady,
+  leftoverFolder,
 }: {
   project: ProjectOut;
   context: ContextOut | null;
   selection: Selection;
   domains: string[];
   notReady: NotReady | null;
+  /** Carpeta de un contexto a medio guardar: la construcción la reutiliza (el job lo hace igual). */
+  leftoverFolder: string | null;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -507,6 +531,8 @@ function BuildCard({
         <Group align="flex-end">
           {context ? (
             <Text size="sm">{t('context.build.folderFixed', { folder: context.output_folder_name })}</Text>
+          ) : leftoverFolder ? (
+            <Text size="sm">{t('context.build.folderLeftover', { folder: leftoverFolder })}</Text>
           ) : (
             <TextInput
               label={t('context.build.folder')}

@@ -2393,6 +2393,28 @@
         "title": "ContextHistoryOut",
         "type": "object"
       },
+      "ContextLeftoverOut": {
+        "description": "Contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o ninguno.",
+        "properties": {
+          "output_folder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Carpeta reorganizada del context.json que hay en el destino; null si no hay restos",
+            "title": "Output Folder Name"
+          }
+        },
+        "required": [
+          "output_folder_name"
+        ],
+        "title": "ContextLeftoverOut",
+        "type": "object"
+      },
       "ContextOut": {
         "description": "Resumen del contexto construido del proyecto (proyección del último ``context_build``).",
         "properties": {
@@ -10859,6 +10881,55 @@
           }
         },
         "summary": "Historial del contexto",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/context/leftover": {
+      "get": {
+        "description": "Si en el destino hay un contexto que la web no llegó a guardar (construcción interrumpida): su carpeta, para\nofrecer completarlo («Construir») o borrarlo. ``null`` si hay contexto guardado o no hay restos.",
+        "operationId": "get_context_leftover_api_v1_projects__project_id__context_leftover_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextLeftoverOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "404": {
+            "description": "No encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Contexto a medio guardar",
         "tags": [
           "context"
         ]

@@ -17,7 +17,7 @@ import pytest
 from doc_organize import CacheEntry
 from doc_organize.core.models import ConversionStatus, DocumentStatus
 from fastapi.testclient import TestClient
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings
@@ -482,3 +482,44 @@ def test_delete_refuses_a_folder_other_than_the_previewed_one(
 
     assert failed.value.code == "context_changed"
     assert (output / "otra").is_dir() and (output / "organizado").is_dir()
+
+
+def test_a_context_left_on_disk_is_detected_and_can_be_deleted(
+    run: Any, project: Project, db: Session, migrated: Settings, user_client: TestClient
+) -> None:
+    """2.1: una construcción interrumpida tras escribir en disco deja ``context.json`` y la carpeta reorganizada sin
+    contexto guardado. La API lo detecta (``/context/leftover``), «Borrar contexto» lo borra y «Construir» lo completa."""
+    output = migrated.locations_root / "salidas" / "Proyecto A"
+    url = f"/api/v1/projects/{project.id}/context/leftover"
+    assert user_client.get(url).json() == {"output_folder_name": None}  # sin nada en disco
+
+    ctx, params = run(DOMAINS)
+    operation.run_build(ctx, params, project)
+    _finish(db, ctx)
+    assert user_client.get(url).json() == {"output_folder_name": None}  # guardado: no son restos
+
+    # La web no llegó a guardar el contexto (lo que deja un worker reiniciado a mitad de la construcción).
+    for model in (ContextDocument, ProjectContext):
+        db.execute(delete(model).where(model.project_id == project.id))
+    db.commit()
+    assert user_client.get(f"/api/v1/projects/{project.id}/context").status_code == 404
+    assert user_client.get(url).json() == {"output_folder_name": "organizado"}
+
+    preview_ctx, preview_params = run({"operation": "context_delete"})
+    preview = operation.run_delete(preview_ctx, preview_params, project)
+    assert preview["output_folder_name"] == "organizado" and preview["files"] > 0
+    _finish(db, preview_ctx)
+    db.execute(update(Run).where(Run.id == preview_ctx.run_id).values(finished_at=Run.created_at, result=preview))
+    db.commit()
+    real_ctx, real_params = run(
+        {
+            "operation": "context_delete",
+            "dry_run": False,
+            "preview_run_id": preview_ctx.run_id,
+            "confirm_name": "Proyecto A",
+        }
+    )
+    operation.run_delete(real_ctx, real_params, project)
+
+    assert not (output / "organizado").exists() and not (output / "context.json").exists()
+    assert user_client.get(url).json() == {"output_folder_name": None}

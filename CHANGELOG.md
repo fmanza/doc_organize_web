@@ -38,6 +38,9 @@ ROADMAP (`0.<fase+1>.0`).
   clasifican» (por defecto, como antes) o «También los ejes vacíos» (`ai_scope="missing_axes"` de doc_organize), que
   rellena los ejes de etiqueta vacíos, también los `rules: false`, en documentos que las reglas ya colocaron. Campo
   `ai_scope` de `context_build` (opcional; 422 con catálogos sin ejes de etiqueta). Sale en el resultado del run.
+- **Contexto a medio guardar**: si una construcción se interrumpe después de escribir `context.json` y la carpeta
+  reorganizada pero antes de guardar el contexto, la página ya no dice solo «sin contexto»: avisa y ofrece «Ir a
+  Construir» (reutiliza esa carpeta) y «Borrar contexto». `GET /projects/{id}/context/leftover`.
 - Tarjeta **Consumo de IA** en el detalle de cada ejecución (`GET /runs/{id}` devuelve `ai_usage`).
 - El borrador de manifiesto guarda sus tokens y su modelo; construir el contexto, los agentes y la semántica guardan
   el modelo de cada tarea.

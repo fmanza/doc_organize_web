@@ -711,6 +711,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/leftover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto a medio guardar
+         * @description Si en el destino hay un contexto que la web no llegó a guardar (construcción interrumpida): su carpeta, para
+         *     ofrecer completarlo («Construir») o borrarlo. ``null`` si hay contexto guardado o no hay restos.
+         */
+        get: operations["get_context_leftover_api_v1_projects__project_id__context_leftover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/profile": {
         parameters: {
             query?: never;
@@ -2643,6 +2664,17 @@ export interface components {
             items: components["schemas"]["ContextBuildOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * ContextLeftoverOut
+         * @description Contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o ninguno.
+         */
+        ContextLeftoverOut: {
+            /**
+             * Output Folder Name
+             * @description Carpeta reorganizada del context.json que hay en el destino; null si no hay restos
+             */
+            output_folder_name: string | null;
         };
         /**
          * ContextOut
@@ -7220,6 +7252,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_context_leftover_api_v1_projects__project_id__context_leftover_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextLeftoverOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

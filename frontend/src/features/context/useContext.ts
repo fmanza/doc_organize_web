@@ -129,6 +129,24 @@ export function useProjectContext(projectId: number) {
   });
 }
 
+/**
+ * Carpeta de un contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o `null`. Solo se pregunta
+ * sin contexto guardado. La clave cuelga de `['projects', id]`: al terminar cualquier run del proyecto se vuelve a leer.
+ */
+export function useContextLeftover(projectId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'context', 'leftover'],
+    enabled,
+    staleTime: 0,
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/context/leftover', {
+          params: { path: { project_id: projectId } },
+        }),
+      ).output_folder_name ?? null,
+  });
+}
+
 /** Documentos de un dominio (`domain`) o sin clasificar (`null`), paginados en el servidor. */
 export function useContextDocuments(
   projectId: number,

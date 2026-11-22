@@ -1177,7 +1177,8 @@
         "domains": "Escribe al menos un dominio en el paso Taxonomía.",
         "template": "Elige una plantilla en el paso Taxonomía.",
         "unsavedManifest": "Hay cambios sin guardar en el manifiesto: guárdalos antes de construir."
-      }
+      },
+      "folderLeftover": "Se construye en la carpeta «{{folder}}», que quedó a medias: se sustituye lo que hay."
     },
     "domains": {
       "title": "Dominios",
@@ -1535,6 +1536,11 @@
       "body": "Hay cambios sin guardar en el manifiesto o en el perfil del proyecto. Si sales de la página, se pierden.",
       "stay": "Seguir editando",
       "leave": "Salir sin guardar"
+    },
+    "leftover": {
+      "title": "Hay un contexto a medio guardar",
+      "body": "En la carpeta del proyecto quedó un contexto que no terminó de guardarse (carpeta «{{folder}}»), por ejemplo porque se interrumpió la construcción. Constrúyelo para completarlo (reutiliza esa carpeta y sustituye lo que hay) o bórralo.",
+      "build": "Ir a Construir"
     }
   },
   "templates": {
