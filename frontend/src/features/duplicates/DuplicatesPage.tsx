@@ -31,7 +31,9 @@ import { formatBytes, formatCount, formatDateTime } from '../../components/forma
 import { canDo, useEnqueueRun, useProject } from '../projects/useProjects';
 import { RunResult } from '../runs/RunResult';
 import { useRun } from '../runs/useRuns';
+import { useAiStatus } from '../admin/useAi';
 import { ApplyModal } from './ApplyModal';
+import { CompareModal } from './CompareModal';
 import {
   decision,
   type DuplicateGroup,
@@ -50,8 +52,25 @@ const REASON_COLOR: Record<DuplicateReason, string> = {
   exact_duplicate: 'blue',
   version_conflict: 'grape',
   fuzzy_name_match: 'orange',
+  same_content: 'teal',
+  semantic_content_match: 'cyan',
 };
+const REASONS: readonly DuplicateReason[] = [
+  'exact_duplicate',
+  'version_conflict',
+  'fuzzy_name_match',
+  'same_content',
+  'semantic_content_match',
+];
+/** Motivos por contenido (2.2): tienen similitud y se pueden comparar lado a lado. */
+const CONTENT_REASONS: ReadonlySet<DuplicateReason> = new Set(['same_content', 'semantic_content_match']);
 const DEFAULT_FUZZY = 85;
+/** Umbral por defecto de «contenido parecido» (el de doc_organize 2.2). */
+const DEFAULT_SEMANTIC = 0.9;
+
+function percent(value: number): string {
+  return `${Math.round(value * 100)} %`;
+}
 
 /**
  * Resolutor de duplicados en dos pasos (sustituye a `duplicates_resolver.html.j2`): buscar (vista previa, sin tocar
@@ -69,6 +88,11 @@ export function DuplicatesPage() {
   const enqueue = useEnqueueRun(projectId);
   const [fuzzy, setFuzzy] = useState(false);
   const [threshold, setThreshold] = useState<number>(DEFAULT_FUZZY);
+  const [content, setContent] = useState(false);
+  const [semantic, setSemantic] = useState(false);
+  const [semanticThreshold, setSemanticThreshold] = useState<number>(DEFAULT_SEMANTIC);
+  const aiTasks = useAiStatus();
+  const dedupReady = aiTasks.data?.dedup === true;
   const [reason, setReason] = useState<DuplicateReason | null>(null);
   const list = useListState(GROUP_SORT, '', GROUPS_PAGE_SIZE);
   const { paging } = list;
@@ -144,7 +168,12 @@ export function DuplicatesPage() {
               loading={enqueue.isPending}
               onClick={() =>
                 enqueue.mutate(
-                  { operation: 'dedup_preview', fuzzy_threshold: fuzzy ? threshold : null },
+                  {
+                    operation: 'dedup_preview',
+                    fuzzy_threshold: fuzzy ? threshold : null,
+                    content: content || semantic,
+                    semantic_threshold: semantic && dedupReady ? semanticThreshold : null,
+                  },
                   { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
                 )
               }
@@ -152,6 +181,50 @@ export function DuplicatesPage() {
               {t('duplicates.search.run')}
             </Button>
           </Group>
+          <Title order={4} size="h5" mt="md" mb={4}>
+            {t('duplicates.search.contentTitle')}
+          </Title>
+          <Text size="sm" c="dimmed" mb="xs">
+            {t('duplicates.search.contentIntro')}
+          </Text>
+          <Group align="flex-end">
+            <Switch
+              label={t('duplicates.search.content')}
+              description={t('duplicates.search.contentHelp')}
+              checked={content || semantic}
+              disabled={semantic}
+              onChange={(event) => setContent(event.currentTarget.checked)}
+            />
+            <Switch
+              label={t('duplicates.search.semantic')}
+              description={
+                dedupReady ? t('duplicates.search.semanticHelp') : t('duplicates.search.semanticUnavailable')
+              }
+              checked={semantic && dedupReady}
+              disabled={!dedupReady}
+              onChange={(event) => setSemantic(event.currentTarget.checked)}
+            />
+            {semantic && dedupReady && (
+              <NumberInput
+                label={t('duplicates.search.semanticThreshold')}
+                min={0.5}
+                max={1}
+                step={0.01}
+                decimalScale={2}
+                clampBehavior="strict"
+                value={semanticThreshold}
+                onChange={(value) =>
+                  setSemanticThreshold(typeof value === 'number' ? value : DEFAULT_SEMANTIC)
+                }
+                w={160}
+              />
+            )}
+          </Group>
+          {semantic && dedupReady && (
+            <Alert color="blue" mt="sm">
+              {t('duplicates.search.semanticPrivacy')}
+            </Alert>
+          )}
           {enqueue.isError && <ErrorAlert error={enqueue.error} mt="sm" />}
         </Card>
       )}
@@ -205,9 +278,7 @@ export function DuplicatesPage() {
               }}
               data={[
                 { value: 'all', label: t('duplicates.reasons.all') },
-                { value: 'exact_duplicate', label: t('duplicates.reasons.exact_duplicate') },
-                { value: 'version_conflict', label: t('duplicates.reasons.version_conflict') },
-                { value: 'fuzzy_name_match', label: t('duplicates.reasons.fuzzy_name_match') },
+                ...REASONS.map((value) => ({ value, label: t(`duplicates.reasons.${value}`) })),
               ]}
             />
             <Group align="flex-end">
@@ -341,6 +412,9 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
     ? members.filter((member, index) => index < FOLDED_MEMBERS || member.key === choice.keep)
     : members;
   const hidden = group.members.length - visible.length;
+  const [comparing, setComparing] = useState(false);
+  const byContent = CONTENT_REASONS.has(group.reason);
+  const semanticGroup = group.reason === 'semantic_content_match';
   return (
     <Card
       withBorder
@@ -361,6 +435,26 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
             <Badge color="teal" variant="outline">
               {t('duplicates.chosen')}
             </Badge>
+          )}
+          {semanticGroup && group.similarity != null && (
+            <Badge color="cyan" variant="outline" title={t('duplicates.similarity.semanticHint')}>
+              {t('duplicates.similarity.semantic', { value: percent(group.similarity) })}
+            </Badge>
+          )}
+          {semanticGroup && group.lexical_similarity != null && (
+            <Badge color="gray" variant="outline" title={t('duplicates.similarity.lexicalHint')}>
+              {t('duplicates.similarity.lexical', { value: percent(group.lexical_similarity) })}
+            </Badge>
+          )}
+          {group.contained && (
+            <Badge color="yellow" variant="outline" title={t('duplicates.similarity.containedHint')}>
+              {t('duplicates.similarity.contained')}
+            </Badge>
+          )}
+          {byContent && (
+            <Button size="compact-xs" variant="subtle" onClick={() => setComparing(true)}>
+              {t('duplicates.compare.open')}
+            </Button>
           )}
         </Group>
         <Checkbox
@@ -439,6 +533,7 @@ function GroupCard({ number, manual, projectId, group, choice, editable, onChang
           {t('duplicates.showAll', { count: hidden })}
         </Button>
       )}
+      {comparing && <CompareModal projectId={projectId} group={group} onClose={() => setComparing(false)} />}
     </Card>
   );
 }

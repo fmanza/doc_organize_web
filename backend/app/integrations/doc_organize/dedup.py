@@ -44,13 +44,35 @@ class DedupDocument:
 
 @dataclass(frozen=True)
 class DedupGroup:
-    """Grupo de duplicados: ``reason`` es ``exact_duplicate``, ``version_conflict`` o ``fuzzy_name_match``;
-    ``canonical`` es la ruta que doc_organize conserva por defecto (la más antigua)."""
+    """Grupo de duplicados: ``reason`` es ``exact_duplicate``, ``version_conflict``, ``fuzzy_name_match`` o, por
+    contenido (doc_organize 2.2), ``same_content`` y ``semantic_content_match``; ``canonical`` es la ruta que doc_organize
+    conserva por defecto (la más antigua). Las similitudes solo las llevan los grupos por contenido."""
 
     group_id: str
     reason: str
     canonical: str
     members: list[DedupDocument]
+    similarity: float | None = None
+    lexical_similarity: float | None = None
+    contained: bool = False
+
+
+@dataclass(frozen=True)
+class ContentOutcome:
+    """Resultado de la búsqueda por contenido (``ContentDuplicateFinder``, doc_organize 2.2).
+
+    Attributes:
+        groups: Grupos ``same_content`` y ``semantic_content_match``.
+        compared: Documentos comparados.
+        not_compared: Rutas absolutas de los que no se pudieron comparar (sin conversión, ilegibles o casi vacíos).
+        embedded, reused: Bloques cuyos vectores se pidieron al modelo o salieron del índice del proyecto.
+    """
+
+    groups: list[DedupGroup]
+    compared: int
+    not_compared: list[str]
+    embedded: int = 0
+    reused: int = 0
 
 
 @dataclass
@@ -111,6 +133,72 @@ def find_groups(docs: list[DedupDocument], fuzzy_threshold: int | None = None) -
     ]
 
 
+def find_content_groups(
+    docs: list[DedupDocument],
+    conversions: list[Any],
+    *,
+    project_root: Path,
+    semantic_threshold: float | None = None,
+    connection: Any | None = None,
+) -> ContentOutcome:
+    """Grupos por contenido entre ``docs``, sobre su conversión (``ConversionResult`` de ``converted_documents``).
+
+    Sin ``semantic_threshold`` solo «mismo contenido» (sin IA). Con él, también «contenido parecido» con la tarea
+    ``dedup`` de ``connection`` (familia ``litellm``, con modelo propio). Los vectores quedan en el índice de embeddings de
+    ``project_root`` (el mismo que usa el contexto). Un documento sin conversión cuenta como no comparado.
+
+    Raises:
+        AiServiceError: La IA no está configurada para ``dedup`` o falló (``code``: ``ai_auth``, ``ai_connection``,
+            ``ai_error``).
+    """
+    from doc_organize import ContentDocument, ContentDuplicateFinder
+    from doc_organize.core.exceptions import AiConfigurationError, AiError
+
+    from app.integrations.doc_organize.ai import AiServiceError, _ai_error, llm_client
+
+    by_path = {doc.path: doc for doc in docs}
+    converted = {conversion.source_path: conversion for conversion in conversions if conversion.source_path in by_path}
+    documents = [
+        ContentDocument(metadata=_metadata(by_path[path]), conversion=item) for path, item in converted.items()
+    ]
+    without = sorted(path for path in by_path if path not in converted)
+
+    async def _find() -> Any:
+        if semantic_threshold is None:
+            return await ContentDuplicateFinder(project_root).find(documents)
+        if connection is None:
+            raise AiServiceError("ai_error")
+        async with llm_client(connection) as llm:
+            finder = ContentDuplicateFinder(project_root, llm, semantic_threshold=semantic_threshold)
+            return await finder.find(documents, semantic=True)
+
+    try:
+        report = asyncio.run(_find())
+    except AiConfigurationError:
+        raise AiServiceError("ai_error") from None
+    except AiError as exc:
+        raise _ai_error(exc) from None
+    groups = [
+        DedupGroup(
+            group_id=group.group_id,
+            reason=group.reason.value,
+            canonical=group.canonical_doc.full_path,
+            members=[by_path[m.full_path] for m in [group.canonical_doc, *group.duplicates]],
+            similarity=group.similarity,
+            lexical_similarity=group.lexical_similarity,
+            contained=group.contained,
+        )
+        for group in report.groups
+    ]
+    return ContentOutcome(
+        groups=groups,
+        compared=report.compared,
+        not_compared=[*without, *report.not_compared],
+        embedded=report.embedded,
+        reused=report.reused,
+    )
+
+
 def apply_groups[T](
     items: list[T],
     *,
@@ -121,6 +209,8 @@ def apply_groups[T](
     mode: str,
     on_group: Callable[[int, int, DedupGroup | None, str, list[str]], None],
     is_cancelled: Callable[[], bool],
+    conversions: dict[str, Any] | None = None,
+    conversion_dir: Path | None = None,
 ) -> ApplyOutcome:
     """Aplica cada elemento con ``move_group`` y escribe **siempre** el informe con ``finalize_report``.
 
@@ -129,6 +219,11 @@ def apply_groups[T](
     doc_organize en un grupo cuenta sus ficheros como fallidos y se sigue con los demás. Para entre grupos si se
     cancela. ``on_group(índice, total, grupo o None, conservado, fallidos)`` se llama tras cada elemento. Cada descartado
     va a ``duplicates_dir / <ruta relativa a relative_to>`` (G24); uno que no cuelgue de ``relative_to`` falla.
+
+    ``conversions`` (web 2.2, doc_organize 2.2): la conversión de cada original por ruta absoluta. En ``move``, la del
+    descartado se mueve con él a ``duplicados/Conversión/<ruta relativa a conversion_dir>``: deja de entrar en el
+    contexto y se puede devolver sin convertir de nuevo. Sus rutas fallidas van también a ``failed``, pero no cuentan
+    en ``processed`` (que son originales).
 
     Raises:
         DocOrganizeOperationError: doc_organize no pudo escribir el informe (lo aplicado ya está auditado).
@@ -161,15 +256,22 @@ def apply_groups[T](
                 user_choice=members[keep],
             )
             try:
+                extra: dict[str, Any] = {}
+                if mode == "move" and conversions:
+                    extra = {
+                        "conversions": {path: conversions[path] for path in members if path in conversions},
+                        "conversion_dir": conversion_dir,
+                    }
                 exact, versions, failed = await manager.move_group(
-                    library_group, duplicates_dir, mode=mode, relative_to=relative_to
+                    library_group, duplicates_dir, mode=mode, relative_to=relative_to, **extra
                 )
             except DocOrganizeError:  # p. ej. InvalidPathError: el grupo entero falla, los demás siguen
                 exact, versions, failed = 0, 0, [path for path in members if path != keep]
             counts["exact"] += exact
             counts["versions"] += versions
-            # move_group cuenta los parecidos como versiones: lo hecho es lo que no falló.
-            outcome.processed += len(members) - 1 - len(failed)
+            # move_group cuenta los parecidos como versiones: lo hecho es lo que no falló (solo originales: en ``failed``
+            # también pueden ir artefactos de conversión).
+            outcome.processed += sum(1 for path in members if path != keep and path not in failed)
             outcome.failed.extend(failed)
             outcome.groups_done += 1
             applied.append(library_group)

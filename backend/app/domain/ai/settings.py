@@ -41,11 +41,13 @@ from app.integrations.doc_organize.ai import (
     COPILOT_ENV_VARS,
     FAMILIES,
     FAMILIES_BY_KEY,
+    OWN_MODEL_TASKS,
     TASKS,
     AiConnection,
     FamilyKey,
     FamilySpec,
     FieldSpec,
+    TaskKey,
     legacy_env,
 )
 
@@ -168,9 +170,26 @@ def legacy_variables() -> dict[str, str | None]:
 
 
 def configured_tasks(db: Session, settings: Settings) -> dict[str, bool]:
-    """Tarea de IA → si se puede usar: todas dependen de la familia ``litellm`` (sin modelo, el alias recomendado)."""
+    """Tarea de IA → si se puede usar: todas dependen de la familia ``litellm`` (sin modelo, el alias recomendado),
+    salvo las de ``OWN_MODEL_TASKS`` (2.2: duplicados por contenido), que además necesitan su propio modelo."""
     configured = configured_families(db, settings).get("litellm", False)
-    return dict.fromkeys(TASKS, configured)
+    values = resolve(db, settings, "litellm") if configured else {}
+    return {task: configured and (task not in OWN_MODEL_TASKS or bool(values.get(f"model_{task}"))) for task in TASKS}
+
+
+def require_task(db: Session, settings: Settings, task: TaskKey) -> None:
+    """Que la tarea ``task`` se pueda usar (``configured_tasks``).
+
+    Raises:
+        AiNotConfiguredError: Falta la familia ``litellm`` o, en las de ``OWN_MODEL_TASKS``, su modelo propio.
+    """
+    if not configured_tasks(db, settings).get(task, False):
+        detail = (
+            f"La tarea de IA «{task}» necesita su propio modelo: configúralo en IA › Modelos."
+            if task in OWN_MODEL_TASKS
+            else "Configura los modelos de IA en IA › Modelos."
+        )
+        raise AiNotConfiguredError(detail)
 
 
 def resolve(db: Session, settings: Settings, key: FamilyKey) -> dict[str, str]:

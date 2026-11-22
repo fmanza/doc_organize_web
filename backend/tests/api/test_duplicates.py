@@ -4,6 +4,7 @@ El trabajo del worker está en ``tests/jobs/test_dedup_operation.py``."""
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from datetime import timedelta
 
@@ -83,6 +84,30 @@ def test_preview_is_for_editors(
     assert viewer.post(runs, json={"operation": "dedup_preview"}).status_code == 403
     assert editor.post(runs, json={"operation": "dedup_preview", "fuzzy_threshold": 85}).status_code == 202
     assert editor.post(runs, json={"operation": "dedup_preview", "fuzzy_threshold": 20}).status_code == 422
+
+
+def test_similar_content_needs_its_own_dedup_model(
+    user_client: TestClient, project: dict[str, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Web 2.2: «contenido parecido» usa la tarea ``dedup`` con su propio modelo; sin él se rechaza al encolar."""
+    for name in list(os.environ):
+        if name.startswith("DOC_ORGANIZE_LITELLM_"):
+            monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_BASE_URL", "https://litellm.example.internal")
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_VIRTUAL_KEY", "sk-test")
+    runs = f"/api/v1/projects/{project['id']}/runs"
+
+    same_content = user_client.post(runs, json={"operation": "dedup_preview", "content": True})
+    without_model = user_client.post(runs, json={"operation": "dedup_preview", "semantic_threshold": 0.9})
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_MODEL_DEDUP", "bge-m3")
+    with_model = user_client.post(runs, json={"operation": "dedup_preview", "semantic_threshold": 0.9})
+    too_low = user_client.post(runs, json={"operation": "dedup_preview", "semantic_threshold": 0.2})
+
+    assert same_content.status_code == 202  # sin IA
+    assert without_model.status_code == 422 and without_model.json()["code"] == "ai_not_configured"
+    assert "propio modelo" in without_model.json()["detail"]
+    assert with_model.status_code == 202 and with_model.json()["params"]["content"] is True
+    assert too_low.status_code == 422
 
 
 def test_apply_checks_preview_groups_and_keep(user_client: TestClient, project: dict[str, object], db: Session) -> None:

@@ -164,7 +164,11 @@ export function ApplyModal({
                 {t('duplicates.apply.changed', { count: preview.result.skipped_changed })}
               </Alert>
             )}
-            {mode === 'move' && <Alert color="orange">{t('duplicates.apply.moveWarning')}</Alert>}
+            {mode === 'move' && (
+              <Alert color="orange">
+                {t('duplicates.apply.moveWarning')} {t('duplicates.apply.moveConversions')}
+              </Alert>
+            )}
             <TextInput
               label={t('duplicates.apply.confirm', { name: projectName })}
               value={name}

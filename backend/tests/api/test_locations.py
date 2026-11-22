@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
@@ -421,7 +422,7 @@ def test_capabilities_for_any_session(user_client: TestClient, published_capabil
     assert body["queues"] == ["cpu"]
     assert body["capabilities"]["gpu_active"] is False
     assert body["capabilities"]["ffmpeg_installed"] is True
-    assert body["doc_organize_version"] == "2.0.1"
+    assert body["doc_organize_version"] == version("doc_organize")
 
 
 def test_capabilities_add_up_the_live_workers(user_client: TestClient, db: Session) -> None:

@@ -39,6 +39,9 @@ def _group_out(row: DuplicateGroupRow) -> DuplicateGroupOut:
     return DuplicateGroupOut(
         group_id=row.group_id,
         reason=row.reason,
+        similarity=row.similarity,
+        lexical_similarity=row.lexical_similarity,
+        contained=bool(row.contained),
         members=[
             DuplicateMemberOut(
                 key=member_key(m),
@@ -66,7 +69,9 @@ def list_duplicate_groups(
     user: CurrentUser,
     db: DbSession,
     reason: Annotated[
-        Literal["exact_duplicate", "version_conflict", "fuzzy_name_match"] | None, Query(description="Solo este motivo")
+        Literal["exact_duplicate", "version_conflict", "fuzzy_name_match", "same_content", "semantic_content_match"]
+        | None,
+        Query(description="Solo este motivo"),
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,

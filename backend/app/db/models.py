@@ -520,6 +520,11 @@ class DuplicateGroupRow(Base):
     position: Mapped[int] = mapped_column(Integer)
     member_count: Mapped[int] = mapped_column(Integer)
     members: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    #: Web 2.2 (migración ``0027``): solo en los grupos por contenido; similitud semántica y de texto (la menor entre
+    #: sus miembros) y si alguno está contenido en otro.
+    similarity: Mapped[float | None] = mapped_column(Float, default=None)
+    lexical_similarity: Mapped[float | None] = mapped_column(Float, default=None)
+    contained: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class TaxonomyTemplate(Base):

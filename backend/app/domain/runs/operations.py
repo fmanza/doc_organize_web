@@ -147,10 +147,22 @@ class DedupPreviewParams(_Params):
 
     ``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea
     duplicado exacto ni conflicto de versión.
+
+    Por contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el
+    mismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la
+    tarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).
     """
 
     operation: Literal["dedup_preview"] = "dedup_preview"
     fuzzy_threshold: int | None = Field(default=None, ge=50, le=100)
+    content: bool = False
+    semantic_threshold: float | None = Field(default=None, ge=0.5, le=1.0)
+
+    @model_validator(mode="after")
+    def _semantic_implies_content(self) -> DedupPreviewParams:
+        if self.semantic_threshold is not None:
+            self.content = True
+        return self
 
 
 class DedupChoice(BaseModel):

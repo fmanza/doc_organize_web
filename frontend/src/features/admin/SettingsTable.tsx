@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { type SettingOut, useUpdateSettings } from './useSettings';
 
-function SettingRow({ setting }: { setting: SettingOut }) {
+function SettingRow({ setting, usedIn }: { setting: SettingOut; usedIn?: readonly string[] | undefined }) {
   const { t } = useTranslation();
   const update = useUpdateSettings();
   const [value, setValue] = useState<string | number>(setting.value);
@@ -19,6 +19,18 @@ function SettingRow({ setting }: { setting: SettingOut }) {
         <Text size="xs" c="dimmed">
           {t(`settings.keys.${setting.key}.hint`)}
         </Text>
+        {usedIn && usedIn.length > 0 && (
+          <Group gap={4} mt={4} aria-label={t('settings.usedInLabel', { label })}>
+            <Text size="xs" c="dimmed">
+              {t('settings.usedIn')}
+            </Text>
+            {usedIn.map((feature) => (
+              <Badge key={feature} size="xs" variant="outline" color="gray">
+                {feature}
+              </Badge>
+            ))}
+          </Group>
+        )}
         {update.isError && <ErrorAlert error={update.error} mt="xs" />}
       </Table.Td>
       <Table.Td>
@@ -73,9 +85,16 @@ function SettingRow({ setting }: { setting: SettingOut }) {
 
 /**
  * Tabla de ajustes administrables (ADR-012): la usan «Ajustes» (una por sección) e «IA › Parámetros». Todos se guardan
- * con el mismo `PATCH /admin/settings`, con su validación y su auditoría.
+ * con el mismo `PATCH /admin/settings`, con su validación y su auditoría. `usedIn` (2.2): clave → funcionalidades que
+ * usan ese ajuste, para decirlo junto a cada uno.
  */
-export function SettingsTable({ settings }: { settings: SettingOut[] }) {
+export function SettingsTable({
+  settings,
+  usedIn,
+}: {
+  settings: SettingOut[];
+  usedIn?: Readonly<Record<string, readonly string[]>>;
+}) {
   const { t } = useTranslation();
   return (
     <Table.ScrollContainer minWidth={720}>
@@ -90,7 +109,11 @@ export function SettingsTable({ settings }: { settings: SettingOut[] }) {
         </Table.Thead>
         <Table.Tbody>
           {settings.map((setting) => (
-            <SettingRow key={`${setting.key}-${setting.value}`} setting={setting} />
+            <SettingRow
+              key={`${setting.key}-${setting.value}`}
+              setting={setting}
+              usedIn={usedIn?.[setting.key]}
+            />
           ))}
         </Table.Tbody>
       </Table>

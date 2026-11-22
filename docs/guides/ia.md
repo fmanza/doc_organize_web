@@ -33,16 +33,22 @@ uso de GitHub Copilot.
 
 ## Configuración IA (administradores)
 
-**Administración → IA → Configuración** tiene una tarjeta por servicio:
+**Administración → IA → Configuración** (rediseñada en la 2.2) tiene:
 
-| Servicio | Para qué | Campos |
+| Bloque | Para qué | Campos |
 |---|---|---|
-| Modelos de IA | Todas las tareas: clasificar, completar descripciones, borrador de manifiesto, agentes y embeddings | URL y clave virtual generales; por tarea, modelo, clave propia y (clasificar y describir) máximo de documentos por ejecución, todos opcionales |
+| Conexión con LiteLLM | El proxy que usan todas las tareas | URL y clave virtual generales |
+| Modelos por funcionalidad | Una fila por funcionalidad: clasificar, describir, diseño de taxonomía, agentes, contexto semántico y duplicados por contenido | Por funcionalidad, modelo, clave propia y (clasificar y describir) máximo de documentos por ejecución, todos opcionales |
 | Uso de LiteLLM | Gasto y presupuesto de la clave en el panel de uso | URL, clave virtual |
 
-- La tarjeta «Modelos de IA» tiene arriba la URL y la clave general y, debajo, un bloque por tarea (clasificar,
-  describir, diseñar la taxonomía, agentes y embeddings) con su modelo (vacío: el alias recomendado, que se ve en el
-  campo), su clave propia y, en clasificar y describir, su máximo de documentos por ejecución.
+- La tabla **Modelos por funcionalidad** dice, en cada fila, **dónde se usa** esa funcionalidad, su modelo (el propio o
+  el alias recomendado, en gris), si tiene clave propia, su presupuesto y el resultado de su **última prueba**.
+  **Editar** abre un panel lateral con sus campos; **Probar** prueba su modelo; **Probar todos los modelos** los prueba
+  uno tras otro.
+- **Duplicados por contenido** (tarea `dedup`, 2.2) solo funciona con **su propio modelo**: sin él la fila dice
+  «Desactivada: sin modelo» y la opción «Contenido parecido (IA)» de Duplicados no se puede usar. No usa el de
+  embeddings del contexto porque envía el texto completo de cada documento: usa un modelo local (por ejemplo
+  `bge-m3` en Ollama, alias `doc-organize-dedup`).
 - Un **cliente único** hace todas las tareas con el mismo LiteLLM Proxy. Cada tarea usa su modelo o, si no se
   configura, el alias recomendado `doc-organize-<tarea>`: `doc-organize-classify`, `doc-organize-enrich`,
   `doc-organize-taxonomy-design`, `doc-organize-agent` y `doc-organize-embed`. Si usas los alias, defínelos en el
@@ -79,18 +85,23 @@ se toma de lo guardado o de la variable del servidor. Así puedes comprobar un c
 - **Probar conexión** comprueba que el servidor responde y que la clave es válida, sin gastar tokens:
   - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
     configurado, lo avisa.
-- **Probar el modelo** (en cada tarea de «Modelos de IA») envía además una petición mínima al modelo de esa tarea, con
+- **Probar** (en cada fila de «Modelos por funcionalidad») envía además una petición mínima al modelo de esa tarea, con
   su clave, y con salida `json_schema` estricta (en embeddings, pide un vector), que gasta unos pocos tokens. Es la
   prueba que detecta un nombre de modelo mal escrito, y dice si el modelo admite `json_schema` (si no, doc_organize usa
   `json_object` y valida la respuesta igualmente). Si «Probar conexión» dice que la clave fue rechazada, prueba el
   modelo: algunos proxies no dejan a la clave consultar sus propios datos.
-- El resultado dice el tiempo que tardó o el tipo de error: clave rechazada, sin conexión (o sin respuesta a tiempo), el
-  modelo no respondió u otro error. Nunca muestra lo que contestó el servidor.
+- El resultado sale en un **aviso flotante** (abajo a la derecha) que dice **qué modelo** se probó y, si el proxy lo
+  dice, cuál contestó detrás del alias (`doc-organize-dedup → ollama/bge-m3`), la dimensión de los vectores en las de
+  embeddings y el tiempo que tardó, o el tipo de error: clave rechazada, sin conexión (o sin respuesta a tiempo), el
+  modelo no respondió u otro error. Los avisos de error se quedan hasta cerrarlos. Nunca muestra lo que contestó el
+  servidor ni las claves.
 - Si cambias la URL, escribe también la clave general: la guardada nunca se envía a otro servidor, y las claves propias
   de cada tarea guardadas tampoco (la prueba usa la general).
-- Como mucho una prueba por tarjeta cada 10 segundos. Cada prueba queda en la auditoría, sin URL ni claves.
+- Como mucho una prueba de cada modelo cada 10 segundos (y una de la conexión). Cada prueba queda en la auditoría,
+  sin URL ni claves.
 
-En **Administración → IA → Parámetros** hay cinco ajustes más:
+En **Administración → IA → Parámetros** hay cinco ajustes más. Cada uno dice, debajo, **qué funcionalidades lo
+usan**:
 
 | Ajuste | Por defecto | Qué hace |
 |---|---|---|

@@ -15,6 +15,7 @@ abre G42 y G43, menores. La medición en red del 2026-11-16 (`MEDICION_CONTEXTO_
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
+| G45 | doc_organize 2.2.0 (duplicados por contenido, tarea `dedup`, `served_model`) aún sin publicar | La web 2.2 en desarrollo depende de la rama `feat/2.2.0-dedup-contenido` (doc_organize#101) por git, con el commit en `uv.lock`. La imagen Docker instala sin `git`: el job `image` del CI falla mientras dure | Ninguno en el código: antes de publicar la web, volver al wheel de la release v2.2.0 en `backend/pyproject.toml` (`[tool.uv.sources]`) y `uv lock` | doc_organize#101 | Publicar doc_organize 2.2.0 |
 
 ## Resueltos
 

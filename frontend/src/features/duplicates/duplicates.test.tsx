@@ -28,6 +28,7 @@ function member(key: string, modified: string, canonical: boolean) {
 const EXACT: DuplicateGroup = {
   group_id: 'g-exact',
   reason: 'exact_duplicate',
+  contained: false,
   members: [
     member('2024/factura.pdf', '2026-01-01T00:00:00Z', true),
     member('2025/copias/factura (copia).pdf', '2026-03-01T00:00:00Z', false),
@@ -36,6 +37,7 @@ const EXACT: DuplicateGroup = {
 const FUZZY: DuplicateGroup = {
   group_id: 'g-fuzzy',
   reason: 'fuzzy_name_match',
+  contained: false,
   members: [
     member('2024/presupuesto obra.pdf', '2026-01-02T00:00:00Z', true),
     member('2025/presupuesto obras.pdf', '2026-01-03T00:00:00Z', false),
@@ -107,6 +109,96 @@ describe('DuplicatesPage', () => {
     expect(keepCopy).toBeChecked();
   });
 
+  it('2.2: busca por contenido; «contenido parecido» solo con el modelo de duplicados', async () => {
+    const fetchMock = routes({
+      'GET /api/v1/ai/status': {
+        body: { families: { litellm: true }, tasks: { classify: true, dedup: false } },
+      },
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: DRY_ID, operation: 'dedup_preview' }),
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/duplicates');
+
+    const semantic = await screen.findByRole('switch', { name: /Contenido parecido \(IA\)/ });
+    expect(semantic).toBeDisabled();
+    expect(screen.getByText(/Necesita el modelo propio de «Duplicados por contenido»/)).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: /Mismo contenido/ }));
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toEqual({
+      operation: 'dedup_preview',
+      fuzzy_threshold: null,
+      content: true,
+      semantic_threshold: null,
+    });
+  });
+
+  it('2.2: con el modelo de duplicados pide el umbral y avisa de lo que se envía', async () => {
+    const fetchMock = routes({
+      'GET /api/v1/ai/status': { body: { families: { litellm: true }, tasks: { dedup: true } } },
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: DRY_ID, operation: 'dedup_preview' }),
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/duplicates');
+    const semantic = await screen.findByRole('switch', { name: /Contenido parecido \(IA\)/ });
+    await waitFor(() => expect(semantic).toBeEnabled());
+    await user.click(semantic);
+
+    expect(screen.getByText(/Se envía el texto completo/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Similitud mínima (0,5–1)' })).toHaveValue('0.9');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toMatchObject({ content: true, semantic_threshold: 0.9 });
+  });
+
+  it('2.2: un grupo parecido muestra sus similitudes y compara el texto plano lado a lado', async () => {
+    const similar: DuplicateGroup = {
+      group_id: 'g-similar',
+      reason: 'semantic_content_match',
+      similarity: 0.93,
+      lexical_similarity: 0.41,
+      contained: true,
+      members: [
+        member('2024/contrato.docx', '2026-01-01T00:00:00Z', true),
+        member('2025/contrato v2.docx', '2026-02-01T00:00:00Z', false),
+      ],
+    };
+    routes({
+      [`GET /api/v1/runs/${PREVIEW_ID}/duplicate-groups`]: {
+        body: { run: PREVIEW, items: [similar], total: 1 },
+      },
+      'GET /api/v1/projects/7/outputs': (request) => ({
+        body: new URL(request.url).searchParams.get('path')?.startsWith('2024')
+          ? ['Cláusula común', '<script>alert(1)</script>'].join('\n')
+          : ['Cláusula común', 'Cláusula nueva'].join('\n'),
+      }),
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/duplicates');
+
+    expect(await screen.findByText('Significado 93 %')).toBeInTheDocument();
+    expect(screen.getByText('Texto 41 %')).toBeInTheDocument();
+    expect(screen.getByText('Contenido en otro')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ver diferencias' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Comparar documentos' });
+
+    expect(await within(dialog).findByText(/<script>alert\(1\)<\/script>/)).toBeInTheDocument(); // texto
+    expect(within(dialog).getByText(/Cláusula nueva/)).toBeInTheDocument();
+    expect(document.querySelector('script')).toBeNull();
+  });
+
   it('aplica en dos pasos: vista previa y nombre del proyecto', async () => {
     const fetchMock = routes({
       'POST /api/v1/projects/7/runs': async (request) => {
@@ -158,6 +250,7 @@ describe('Fase 10: grupos largos', () => {
     const big: DuplicateGroup = {
       group_id: 'g-big',
       reason: 'exact_duplicate',
+      contained: false,
       members: Array.from({ length: 8 }, (_, index) =>
         member(`2024/copia-${index}.pdf`, `2026-01-0${index + 1}T00:00:00Z`, index === 0),
       ),
