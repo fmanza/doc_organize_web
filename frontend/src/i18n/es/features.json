@@ -182,6 +182,16 @@
     "deleteTitle": "Borrar ubicación",
     "deleteBody": "Se quitará «{{name}}» de la aplicación. La carpeta y sus documentos no se tocan.",
     "deleteConfirm": "Escribe «{{name}}» para confirmar",
+    "inUse": {
+      "checking": "Comprobando qué proyectos la usan",
+      "title": "La ubicación está en uso",
+      "active_one": "La usa este proyecto activo. Bórralo antes de borrar la ubicación:",
+      "active_other": "La usan estos {{count}} proyectos activos. Bórralos antes de borrar la ubicación:",
+      "alsoDeleted_one": "También la usa un proyecto borrado, que conserva su historial de ejecuciones.",
+      "alsoDeleted_other": "También la usan {{count}} proyectos borrados, que conservan su historial de ejecuciones.",
+      "onlyDeleted_one": "Solo la usa un proyecto borrado, que conserva su historial de ejecuciones: por ahora no se puede borrar la ubicación.",
+      "onlyDeleted_other": "Solo la usan {{count}} proyectos borrados, que conservan su historial de ejecuciones: por ahora no se puede borrar la ubicación."
+    },
     "fields": {
       "name": "Nombre",
       "folder": "Carpeta",
@@ -528,6 +538,7 @@
     "all": "Todas",
     "preview": "(vista previa)",
     "backToProject": "{{name}}",
+    "backToProjects": "Proyectos",
     "queuedHint": "En cola: empezará cuando haya un worker libre.",
     "failed": "La ejecución ha fallado",
     "cancel": "Cancelar ejecución",
@@ -1306,6 +1317,7 @@
     },
     "site": {
       "open": "Ver el sitio",
+      "back": "Volver a {{step}}",
       "title": "Sitio del contexto",
       "isolated": "El sitio se muestra aislado: sus scripts no pueden usar tu sesión ni leer datos de la aplicación.",
       "expires": "El acceso caduca el {{date}}",

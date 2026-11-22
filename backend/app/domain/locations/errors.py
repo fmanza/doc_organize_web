@@ -48,6 +48,17 @@ class LocationConflictError(AppError):
     title = "La ubicación ya existe"
 
 
+class LocationInUseError(AppError):
+    """Algún proyecto (activo o borrado, que conserva su historial) usa la ubicación como origen o destino (2.1.1).
+
+    Antes se reutilizaba ``LocationConflictError`` y el usuario veía «La ubicación ya existe» al borrar.
+    """
+
+    status = 409
+    title = "La ubicación está en uso"
+    code = "location_in_use"
+
+
 class InvalidIgnorePatternsError(AppError):
     """Los patrones de nombre de la ubicación no son válidos (demasiados, vacíos, con separadores o largos)."""
 

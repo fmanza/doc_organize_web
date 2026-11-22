@@ -8,6 +8,7 @@ import { RunNotifier } from '../features/runs/RunNotifier';
 import { Icon } from '../components/Icon';
 import { NAV_ICON_SIZE, NAV_ICONS, type NavIconKey } from '../components/icons';
 import { useMe } from '../features/auth/useAuth';
+import { useProject } from '../features/projects/useProjects';
 import { type AdminPage, visibleAdminMenu } from './adminMenu';
 import { TenantSwitcher } from './TenantSwitcher';
 
@@ -25,6 +26,42 @@ const PROJECT_SECTIONS = [
 /** Icono de una entrada del menú (decorativo: el nombre accesible es el texto). */
 function navIcon(key: NavIconKey) {
   return <Icon of={NAV_ICONS[key]} size={NAV_ICON_SIZE} />;
+}
+
+/**
+ * El proyecto abierto y sus secciones, bajo «Proyectos» (2.1.1). Antes eran hijos del enlace «Proyectos», y un
+ * `NavLink` de Mantine con hijos no navega: con un proyecto abierto ya no se podía volver a la lista. Si el proyecto
+ * no existe o se ha borrado (la API da 404 y al terminar un borrado se invalida su consulta), el bloque no se muestra,
+ * en vez de quedar con enlaces a un proyecto que ya no está.
+ */
+function ProjectNav({ projectId }: { projectId: number }) {
+  const { t } = useTranslation();
+  const project = useProject(projectId);
+  if (!project.data) {
+    return null;
+  }
+  return (
+    <Stack gap={0} pl="md" role="group" aria-label={t('nav.currentProject', { name: project.data.name })}>
+      <NavLink
+        component={RouterNavLink}
+        to={`/projects/${projectId}`}
+        label={project.data.name}
+        description={t('nav.project')}
+        leftSection={navIcon('project')}
+        end
+      />
+      {PROJECT_SECTIONS.map((key) => (
+        <NavLink
+          key={key}
+          component={RouterNavLink}
+          to={`/projects/${projectId}/${key}`}
+          label={t(`nav.${key}`)}
+          leftSection={navIcon(key)}
+          pl="lg"
+        />
+      ))}
+    </Stack>
+  );
 }
 
 function AdminLink({ page }: { page: AdminPage }) {
@@ -124,20 +161,11 @@ export function Layout() {
               to="/projects"
               label={t('nav.projects')}
               leftSection={navIcon('projects')}
-              end={projectId !== undefined}
-              opened={projectId !== undefined}
-            >
-              {projectId !== undefined &&
-                PROJECT_SECTIONS.map((key) => (
-                  <NavLink
-                    key={key}
-                    component={RouterNavLink}
-                    to={`/projects/${projectId}/${key}`}
-                    label={t(`nav.${key}`)}
-                    leftSection={navIcon(key)}
-                  />
-                ))}
-            </NavLink>
+              end
+            />
+            {projectId !== undefined && Number.isInteger(Number(projectId)) && (
+              <ProjectNav projectId={Number(projectId)} />
+            )}
             <NavLink
               component={RouterNavLink}
               to="/runs"

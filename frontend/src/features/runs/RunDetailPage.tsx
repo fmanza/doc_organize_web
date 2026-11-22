@@ -102,10 +102,15 @@ export function RunDetailPage() {
 
   return (
     <Stack>
-      {run.project_id !== null && (
-        <BackLink to={`/projects/${run.project_id}`}>
-          {t('runs.backToProject', { name: run.project_name })}
-        </BackLink>
+      {/* 2.1.1: tras borrar el proyecto, volver a él lleva a una página que ya no existe. */}
+      {run.operation === 'project_delete' && run.status === 'succeeded' ? (
+        <BackLink to="/projects">{t('runs.backToProjects')}</BackLink>
+      ) : (
+        run.project_id !== null && (
+          <BackLink to={`/projects/${run.project_id}`}>
+            {t('runs.backToProject', { name: run.project_name })}
+          </BackLink>
+        )
       )}
       <Group justify="space-between">
         <Title order={2}>

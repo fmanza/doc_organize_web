@@ -28,8 +28,19 @@ const NAV: readonly ContextNavStep[] = [
  * desactualización y los pasos en orden de trabajo (Taxonomía → Construir → Resultado → Revisar → Calidad →
  * Entregar, e Historial). Los pasos que necesitan un contexto se ven deshabilitados hasta construirlo; «Construir»
  * solo aparece a quien puede construir.
+ *
+ * `subpage` (2.1.1): la página es una subpágina del paso activo (p. ej. el visor del sitio dentro de «Entregar»). El
+ * paso se resalta, pero como enlace para volver a él, no como la página actual.
  */
-export function ContextNav({ projectId, active }: { projectId: number; active: ContextNavStep }) {
+export function ContextNav({
+  projectId,
+  active,
+  subpage = false,
+}: {
+  projectId: number;
+  active: ContextNavStep;
+  subpage?: boolean;
+}) {
   const { t } = useTranslation();
   const project = useProject(projectId);
   const context = useProjectContext(projectId);
@@ -55,8 +66,8 @@ export function ContextNav({ projectId, active }: { projectId: number; active: C
         component={Link}
         to={stepHref(projectId, step)}
         size="xs"
-        variant={current ? 'filled' : 'subtle'}
-        aria-current={current ? 'page' : undefined}
+        variant={current ? (subpage ? 'light' : 'filled') : 'subtle'}
+        aria-current={current && !subpage ? 'page' : undefined}
       >
         {label}
       </Button>

@@ -368,15 +368,12 @@ describe('Fase 10: menú del proyecto', () => {
 
     const nav = await screen.findByRole('navigation', { name: 'Navegación principal' });
     await within(nav).findByRole('link', { name: 'Duplicados' });
-    const names = within(nav)
+    // 2.1.1: las secciones van en el bloque del proyecto abierto, tras el enlace al propio proyecto.
+    const group = within(nav).getByRole('group', { name: 'Proyecto abierto: Proyecto A' });
+    const names = within(group)
       .getAllByRole('link')
       .map((link) => link.textContent);
-    expect(names.slice(names.indexOf('Proyectos') + 1, names.indexOf('Proyectos') + 5)).toEqual([
-      'Duplicados',
-      'Escaneo',
-      'Documentos',
-      'Contexto',
-    ]);
+    expect(names.slice(1)).toEqual(['Duplicados', 'Escaneo', 'Documentos', 'Contexto']);
     const buttons = screen.getAllByRole('link').filter((link) => link.closest('nav') === null);
     const order = buttons
       .map((link) => link.textContent)

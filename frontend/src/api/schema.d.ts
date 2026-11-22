@@ -514,6 +514,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/{location_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Proyectos que usan la ubicación
+         * @description Proyectos activos (con nombre) y borrados (solo cuántos) que usan la ubicación, para avisar antes de borrarla.
+         *     Solo los del tenant del administrador: un proyecto solo usa ubicaciones de su tenant.
+         */
+        get: operations["location_usage_api_v1_locations__location_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/permissions": {
         parameters: {
             query?: never;
@@ -3521,6 +3542,16 @@ export interface components {
             total: number;
         };
         /**
+         * LocationProjectRef
+         * @description Proyecto activo que usa una ubicación.
+         */
+        LocationProjectRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /**
          * LocationPublic
          * @description Ubicación vista por cualquier usuario: sin la ruta del contenedor.
          */
@@ -3606,6 +3637,27 @@ export interface components {
             tenant_id?: number | null;
             /** Usage */
             usage?: ("source" | "destination" | "both") | null;
+        };
+        /**
+         * LocationUsageOut
+         * @description Proyectos que usan una ubicación (2.1.1): mientras haya alguno, no se puede borrar.
+         */
+        LocationUsageOut: {
+            /**
+             * Active Projects
+             * @description Proyectos activos que la usan, por nombre
+             */
+            active_projects: components["schemas"]["LocationProjectRef"][];
+            /**
+             * Can Delete
+             * @description Ningún proyecto, activo o borrado, la usa
+             */
+            can_delete: boolean;
+            /**
+             * Deleted Projects
+             * @description Proyectos borrados que la usan (conservan su historial)
+             */
+            deleted_projects: number;
         };
         /**
          * LoginRequest
@@ -6439,7 +6491,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Algún proyecto la usa */
+            /** @description Algún proyecto, activo o borrado, la usa (location_in_use) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6545,6 +6597,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin rol de administrador o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    location_usage_api_v1_locations__location_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationUsageOut"];
                 };
             };
             /** @description No autenticado */

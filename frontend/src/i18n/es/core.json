@@ -58,6 +58,8 @@
     "home": "Inicio",
     "locations": "Ubicaciones",
     "projects": "Proyectos",
+    "project": "Proyecto abierto",
+    "currentProject": "Proyecto abierto: {{name}}",
     "runs": "Ejecuciones",
     "scan": "Escaneo",
     "documents": "Documentos",
