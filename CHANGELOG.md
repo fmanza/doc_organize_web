@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-22
+
+Contexto en pasos de trabajo, consumo de IA por ejecución y sin GitHub Copilot. Sigue con doc_organize 2.0.1.
+Migraciones `0025` (borra la configuración de Copilot, sin vuelta atrás) y `0026` (tabla `ai_usage`).
+
 ### Changed
 
 - **Contexto en pasos de trabajo**: una cabecera común (también en Revisar, Calidad y el sitio) con el estado del
