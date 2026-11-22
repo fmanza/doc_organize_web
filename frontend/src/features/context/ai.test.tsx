@@ -34,7 +34,7 @@ function status(tasks: Record<string, boolean>) {
   return {
     'GET /api/v1/ai/status': {
       body: {
-        families: { litellm: configured, litellm_usage: false, github_copilot_usage: false },
+        families: { litellm: configured, litellm_usage: false },
         tasks: {
           classify: false,
           enrich: false,

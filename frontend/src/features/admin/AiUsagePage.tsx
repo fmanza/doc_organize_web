@@ -1,39 +1,50 @@
 import {
   Alert,
   Anchor,
-  Badge,
   Button,
   Card,
   Center,
   Group,
   Loader,
+  Progress,
+  SegmentedControl,
+  SimpleGrid,
   Stack,
   Table,
   Text,
   Title,
 } from '@mantine/core';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { PageControls } from '../../components/Paging';
-import { SearchBox, SortableTh } from '../../components/listing';
-import { useClientTable } from '../../components/useListState';
 import { formatDateTime } from '../../components/format';
-import { type AiUsageSource, useAiUsage, useRefreshAiUsage } from './useAi';
+import { TokensByDayChart } from './AiUsageCharts';
+import { type AiUsage, type AiUsagePeriod, type AiUsageSource, useAiUsage, useRefreshAiUsage } from './useAi';
 
 const money = new Intl.NumberFormat('es-ES', {
   style: 'currency',
   currency: 'USD',
   maximumFractionDigits: 4,
 });
-const quantity = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 });
+const number = new Intl.NumberFormat('es-ES');
+const PERIODS: readonly AiUsagePeriod[] = ['7d', '30d', 'month', 'all'];
 
-/** Panel de uso y coste de IA (LiteLLM y GitHub Copilot), con la caché corta del servidor. */
+type Local = NonNullable<AiUsage['local']>;
+type Totals = Local['totals'];
+type Group = Local['by_task'][number];
+
+/**
+ * Uso de IA (2.1): el gasto y el presupuesto de la clave de LiteLLM, y el consumo que registra la web en cada
+ * ejecución (documentos, caché y tokens) por periodo, día local, tarea, modelo, proyecto y ejecución. El proxy no da
+ * el coste por llamada, así que el coste solo es el de la clave.
+ */
 export function AiUsagePage() {
   const { t } = useTranslation();
-  const usage = useAiUsage();
-  const refresh = useRefreshAiUsage();
+  const [period, setPeriod] = useState<AiUsagePeriod>('30d');
+  const usage = useAiUsage(period);
+  const refresh = useRefreshAiUsage(period);
 
   return (
     <Stack>
@@ -50,6 +61,13 @@ export function AiUsagePage() {
           {t('ai.usage.parameters')}
         </Anchor>
       </Text>
+      <SegmentedControl
+        w="fit-content"
+        value={period}
+        onChange={(value) => setPeriod(value as AiUsagePeriod)}
+        aria-label={t('ai.usage.local.period')}
+        data={PERIODS.map((value) => ({ value, label: t(`ai.usage.local.periods.${value}`) }))}
+      />
       {refresh.isError && <ErrorAlert error={refresh.error} />}
       {usage.isPending ? (
         <Center>
@@ -58,36 +76,68 @@ export function AiUsagePage() {
       ) : usage.isError ? (
         <ErrorAlert error={usage.error} />
       ) : (
-        usage.data.map((source) => <SourceCard key={source.source} source={source} />)
+        <>
+          {usage.data.local && <Indicators totals={usage.data.local.totals} />}
+          {usage.data.sources.map((source) => (
+            <KeyCard key={source.source} source={source} />
+          ))}
+          {usage.data.local && <LocalUsage local={usage.data.local} />}
+        </>
       )}
     </Stack>
   );
 }
 
-type UsageItem = NonNullable<ReturnType<typeof useAiUsage>['data']>[number]['items'][number];
+const tokens = (value: number, estimated: boolean) => `${estimated ? '≈ ' : ''}${number.format(value)}`;
 
-const USAGE_COLUMNS = {
-  date: (item: UsageItem) => item.date,
-  product: (item: UsageItem) => item.product,
-  quantity: (item: UsageItem) => item.quantity,
-  cost: (item: UsageItem) => item.cost_usd,
-};
-
-function SourceCard({ source }: { source: AiUsageSource }) {
+/** Fila de indicadores del periodo. */
+function Indicators({ totals }: { totals: Totals }) {
   const { t } = useTranslation();
-  const title = t(`ai.usage.sources.${source.source}`);
-  // Una tabla por fuente: cada una con su página y su orden en la URL (`?github-page=2`).
-  const table = useClientTable(
-    source.items,
-    USAGE_COLUMNS,
-    (item) => `${item.date} ${item.product} ${item.sku ?? ''}`,
-    `${source.source}-`,
-  );
+  const asked = totals.calls + totals.cached;
+  const saved = asked > 0 ? Math.round((totals.cached / asked) * 100) : 0;
+  const tiles: [string, string, string | null][] = [
+    ['runs', number.format(totals.runs), null],
+    ['calls', number.format(totals.calls), null],
+    [
+      'cached',
+      number.format(totals.cached),
+      asked > 0 ? t('ai.usage.local.savedShare', { percent: saved }) : null,
+    ],
+    ['prompt', tokens(totals.prompt_tokens, totals.tokens_estimated), null],
+    ['completion', tokens(totals.completion_tokens, totals.tokens_estimated), null],
+  ];
   return (
-    <Card withBorder component="section" aria-label={title}>
+    <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs" component="dl" m={0}>
+      {tiles.map(([key, value, hint]) => (
+        <Card key={key} withBorder padding="sm">
+          <Text size="xs" c="dimmed" component="dt">
+            {t(`ai.usage.local.kpi.${key}`)}
+          </Text>
+          <Text component="dd" m={0} fz="xl" fw={600}>
+            {value}
+          </Text>
+          {hint && (
+            <Text size="xs" c="dimmed">
+              {hint}
+            </Text>
+          )}
+        </Card>
+      ))}
+    </SimpleGrid>
+  );
+}
+
+/** Gasto acumulado y presupuesto de la clave de LiteLLM (`/key/info`). */
+function KeyCard({ source }: { source: AiUsageSource }) {
+  const { t } = useTranslation();
+  const budget = source.budget;
+  const spend = budget?.spend ?? source.total_cost_usd;
+  const used = budget?.max_budget ? Math.min(((budget.spend ?? 0) / budget.max_budget) * 100, 100) : null;
+  return (
+    <Card withBorder component="section" aria-label={t('ai.usage.key.title')}>
       <Group justify="space-between" mb="xs">
         <Title order={3} size="h4">
-          {title}
+          {t('ai.usage.key.title')}
         </Title>
         {source.fetched_at && (
           <Text size="xs" c="dimmed">
@@ -110,71 +160,200 @@ function SourceCard({ source }: { source: AiUsageSource }) {
         </Alert>
       ) : (
         <Stack gap="xs">
-          <Group gap="lg">
-            <Text size="sm">
-              {t('ai.usage.period', { start: source.period_start, end: source.period_end })}
-            </Text>
-            {source.total_cost_usd !== null && (
-              <Badge variant="light" size="lg">
-                {t('ai.usage.total', { cost: money.format(source.total_cost_usd) })}
-              </Badge>
+          <Group gap="xl">
+            <Stat
+              label={t('ai.usage.key.spend')}
+              value={spend === null || spend === undefined ? '—' : money.format(spend)}
+            />
+            {budget?.max_budget != null && (
+              <Stat label={t('ai.usage.key.budget')} value={money.format(budget.max_budget)} />
+            )}
+            {budget?.remaining != null && (
+              <Stat label={t('ai.usage.key.remaining')} value={money.format(budget.remaining)} />
+            )}
+            {budget?.budget_reset_at && (
+              <Stat label={t('ai.usage.key.reset')} value={formatDateTime(budget.budget_reset_at)} />
             )}
           </Group>
-          {source.items.length === 0 ? (
-            <Text c="dimmed" role="status">
-              {t('ai.usage.empty')}
-            </Text>
-          ) : (
-            <>
-              <SearchBox
-                value={table.q}
-                onChange={table.setQ}
-                label={t('ai.usage.search', { source: title })}
-              />
-              <Table.ScrollContainer minWidth={560}>
-                <Table>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <SortableTh state={table} sortKey="date">
-                        {t('ai.usage.date')}
-                      </SortableTh>
-                      <SortableTh state={table} sortKey="product">
-                        {t('ai.usage.product')}
-                      </SortableTh>
-                      <SortableTh state={table} sortKey="quantity">
-                        {t('ai.usage.quantity')}
-                      </SortableTh>
-                      <SortableTh state={table} sortKey="cost">
-                        {t('ai.usage.cost')}
-                      </SortableTh>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {table.pageRows.map((item, index) => (
-                      <Table.Tr key={`${item.date}-${item.product}-${item.sku ?? ''}-${index}`}>
-                        <Table.Td>{item.date}</Table.Td>
-                        <Table.Td>
-                          {item.product}
-                          {item.sku && (
-                            <Text size="xs" c="dimmed">
-                              {item.sku}
-                            </Text>
-                          )}
-                        </Table.Td>
-                        <Table.Td>
-                          {quantity.format(item.quantity)} {item.unit_type}
-                        </Table.Td>
-                        <Table.Td>{item.cost_usd === null ? '—' : money.format(item.cost_usd)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-              <PageControls state={table.paging} total={table.total} label={t('paging.label')} />
-            </>
+          {used !== null && (
+            <Progress value={used} aria-label={t('ai.usage.key.used', { percent: Math.round(used) })} />
           )}
+          <Text size="xs" c="dimmed">
+            {t(budget?.max_budget != null ? 'ai.usage.key.help' : 'ai.usage.key.noBudget')}
+          </Text>
         </Stack>
       )}
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
+      <Text fw={500}>{value}</Text>
+    </div>
+  );
+}
+
+/** Consumo registrado por la web: tokens por día y tablas por tarea, modelo, proyecto y ejecución. */
+function LocalUsage({ local }: { local: Local }) {
+  const { t } = useTranslation();
+  if (local.totals.runs === 0) {
+    return (
+      <Text c="dimmed" role="status">
+        {t('ai.usage.local.empty')}
+      </Text>
+    );
+  }
+  return (
+    <>
+      <Card withBorder component="section" aria-label={t('ai.usage.local.byDay')}>
+        <Title order={3} size="h4" mb="xs">
+          {t('ai.usage.local.byDay')}
+        </Title>
+        <TokensByDayChart
+          days={local.by_day.map((day) => ({
+            day: day.day,
+            prompt_tokens: day.prompt_tokens,
+            completion_tokens: day.completion_tokens,
+          }))}
+          timezone={local.timezone}
+        />
+      </Card>
+      <GroupTable
+        title={t('ai.usage.local.byTask')}
+        groups={local.by_task}
+        name={(group) => t(`ai.tasks.${group.key}`, { defaultValue: group.key })}
+      />
+      <GroupTable
+        title={t('ai.usage.local.byModel')}
+        groups={local.by_model}
+        name={(group) => group.key || t('ai.usage.local.unknownModel')}
+      />
+      <GroupTable
+        title={t('ai.usage.local.byProject')}
+        groups={local.by_project}
+        name={(group) =>
+          group.project_id !== null && group.project_id !== undefined ? (
+            <Anchor component={Link} to={`/projects/${group.project_id}`}>
+              {group.label ?? group.key}
+            </Anchor>
+          ) : (
+            (group.label ?? t('ai.usage.local.deletedProject'))
+          )
+        }
+      />
+      <TopRuns runs={local.top_runs} />
+    </>
+  );
+}
+
+function Counts({ totals }: { totals: Totals }) {
+  return (
+    <>
+      <Table.Td>{number.format(totals.runs)}</Table.Td>
+      <Table.Td>{number.format(totals.calls)}</Table.Td>
+      <Table.Td>{number.format(totals.cached)}</Table.Td>
+      <Table.Td>{tokens(totals.prompt_tokens, totals.tokens_estimated)}</Table.Td>
+      <Table.Td>{tokens(totals.completion_tokens, totals.tokens_estimated)}</Table.Td>
+    </>
+  );
+}
+
+function CountHeaders() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <Table.Th>{t('ai.usage.local.kpi.runs')}</Table.Th>
+      <Table.Th>{t('ai.usage.local.kpi.calls')}</Table.Th>
+      <Table.Th>{t('ai.usage.local.kpi.cached')}</Table.Th>
+      <Table.Th>{t('ai.usage.local.kpi.prompt')}</Table.Th>
+      <Table.Th>{t('ai.usage.local.kpi.completion')}</Table.Th>
+    </>
+  );
+}
+
+function GroupTable({
+  title,
+  groups,
+  name,
+}: {
+  title: string;
+  groups: Group[];
+  name: (group: Group) => React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card withBorder component="section" aria-label={title}>
+      <Title order={3} size="h4" mb="xs">
+        {title}
+      </Title>
+      <Table.ScrollContainer minWidth={560}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t('ai.usage.local.name')}</Table.Th>
+              <CountHeaders />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {groups.map((group) => (
+              <Table.Tr key={group.key}>
+                <Table.Td>{name(group)}</Table.Td>
+                <Counts totals={group} />
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Card>
+  );
+}
+
+function TopRuns({ runs }: { runs: Local['top_runs'] }) {
+  const { t } = useTranslation();
+  if (runs.length === 0) {
+    return null;
+  }
+  return (
+    <Card withBorder component="section" aria-label={t('ai.usage.local.topRuns')}>
+      <Title order={3} size="h4" mb="xs">
+        {t('ai.usage.local.topRuns')}
+      </Title>
+      <Table.ScrollContainer minWidth={640}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t('ai.usage.local.run')}</Table.Th>
+              <Table.Th>{t('ai.usage.local.project')}</Table.Th>
+              <CountHeaders />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {runs.map((run, index) => (
+              <Table.Tr key={run.run_id ?? index}>
+                <Table.Td>
+                  {run.run_id ? (
+                    <Anchor component={Link} to={`/runs/${run.run_id}`}>
+                      {t(`runs.operations.${run.operation}`, { defaultValue: run.operation })}
+                    </Anchor>
+                  ) : (
+                    t(`runs.operations.${run.operation}`, { defaultValue: run.operation })
+                  )}
+                  <Text size="xs" c="dimmed">
+                    {formatDateTime(run.created_at)}
+                  </Text>
+                </Table.Td>
+                <Table.Td>{run.project_name ?? t('ai.usage.local.deletedProject')}</Table.Td>
+                <Counts totals={run} />
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </Card>
   );
 }

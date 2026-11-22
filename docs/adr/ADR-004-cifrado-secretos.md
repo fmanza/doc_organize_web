@@ -26,3 +26,8 @@ taxonomía, borrador de manifiesto, PAT de GitHub Copilot). La web integrada de 
 ## Consecuencias
 
 - Perder `dow_fernet_keys` obliga a reintroducir las credenciales IA; el backup de `config.db` no basta sin la clave.
+
+## Nota (2026-11-22, web 2.1)
+
+El PAT de GitHub Copilot ya no se guarda: la familia `github_copilot_usage` se quitó y la migración `0025` borró su
+configuración cifrada. Las credenciales cifradas que quedan son las de LiteLLM.

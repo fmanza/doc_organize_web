@@ -108,10 +108,10 @@ def test_settings_carry_timeout_retries_and_a_model_and_key_per_task() -> None:
     # Las tareas largas (borrador y agentes) llevan su propio plazo y reintentos.
     assert settings.timeout_for("taxonomy_design") == connection.long_timeout_s
     assert settings.timeout_for("agent") == connection.long_timeout_s and settings.timeout_for("classify") == 12.0
-    copilot = library_ai._usage_config(
-        AiConnection(family="github_copilot_usage", values={"username": "octo", "pat": KEY}, retries=1)
+    usage = library_ai._usage_config(
+        AiConnection(family="litellm_usage", values={"base_url": "https://proxy.test", "virtual_key": KEY}, retries=1)
     )
-    assert copilot.retries == 1 and copilot.personal_access_token == KEY
+    assert usage.retries == 1 and usage.virtual_key == KEY
 
 
 def test_only_the_litellm_family_builds_an_llm_client() -> None:

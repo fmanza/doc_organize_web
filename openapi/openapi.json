@@ -18,8 +18,7 @@
           "key": {
             "enum": [
               "litellm",
-              "litellm_usage",
-              "github_copilot_usage"
+              "litellm_usage"
             ],
             "title": "Key",
             "type": "string"
@@ -159,16 +158,80 @@
         "title": "AiFieldOut",
         "type": "object"
       },
+      "AiKeyBudgetOut": {
+        "description": "Gasto y presupuesto de la clave según ``/key/info`` del proxy (lo que diga; ``None`` si no lo dice).",
+        "properties": {
+          "budget_reset_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Reset At"
+          },
+          "max_budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Budget"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "spend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend"
+          }
+        },
+        "required": [
+          "spend",
+          "max_budget",
+          "remaining",
+          "budget_reset_at"
+        ],
+        "title": "AiKeyBudgetOut",
+        "type": "object"
+      },
       "AiLegacyVariableOut": {
-        "description": "Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.",
+        "description": "Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de\nGitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla).",
         "properties": {
           "name": {
             "title": "Name",
             "type": "string"
           },
           "replacement": {
-            "title": "Replacement",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacement"
           }
         },
         "required": [
@@ -193,7 +256,7 @@
             "type": "array"
           },
           "legacy_variables": {
-            "description": "Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+            "description": "Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)",
             "items": {
               "$ref": "#/components/schemas/AiLegacyVariableOut"
             },
@@ -375,6 +438,128 @@
         "title": "AiTestOut",
         "type": "object"
       },
+      "AiUsageDayOut": {
+        "description": "Totales de un día en la zona horaria pedida.",
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "tokens_estimated": {
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "runs",
+          "calls",
+          "cached",
+          "failed",
+          "prompt_tokens",
+          "completion_tokens",
+          "tokens_estimated",
+          "day"
+        ],
+        "title": "AiUsageDayOut",
+        "type": "object"
+      },
+      "AiUsageGroupOut": {
+        "description": "Totales de una tarea, un modelo o un proyecto (``key``: la tarea, el modelo o el id del proyecto).",
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nombre del proyecto (en «por proyecto»)",
+            "title": "Label"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "tokens_estimated": {
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "runs",
+          "calls",
+          "cached",
+          "failed",
+          "prompt_tokens",
+          "completion_tokens",
+          "tokens_estimated",
+          "key"
+        ],
+        "title": "AiUsageGroupOut",
+        "type": "object"
+      },
       "AiUsageItemOut": {
         "properties": {
           "cost_usd": {
@@ -427,8 +612,107 @@
         "title": "AiUsageItemOut",
         "type": "object"
       },
+      "AiUsageLocalOut": {
+        "description": "Consumo registrado por la web en el periodo (``ai_usage``), agrupado por día en ``timezone``.",
+        "properties": {
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageDayOut"
+            },
+            "title": "By Day",
+            "type": "array"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageGroupOut"
+            },
+            "title": "By Model",
+            "type": "array"
+          },
+          "by_project": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageGroupOut"
+            },
+            "title": "By Project",
+            "type": "array"
+          },
+          "by_task": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageGroupOut"
+            },
+            "title": "By Task",
+            "type": "array"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "period": {
+            "enum": [
+              "7d",
+              "30d",
+              "month",
+              "all"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "top_runs": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageRunOut"
+            },
+            "title": "Top Runs",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AiUsageTotalsOut"
+          }
+        },
+        "required": [
+          "period",
+          "timezone",
+          "start",
+          "end",
+          "totals",
+          "by_task",
+          "by_model",
+          "by_project",
+          "by_day",
+          "top_runs"
+        ],
+        "title": "AiUsageLocalOut",
+        "type": "object"
+      },
       "AiUsageOut": {
         "properties": {
+          "local": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiUsageLocalOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consumo por ejecución registrado por la web (2.1)"
+          },
           "sources": {
             "items": {
               "$ref": "#/components/schemas/AiUsageSourceOut"
@@ -443,9 +727,169 @@
         "title": "AiUsageOut",
         "type": "object"
       },
+      "AiUsageRowOut": {
+        "description": "Consumo de IA de una ejecución en una tarea (web 2.1). Sin coste: el proxy no lo da por llamada.",
+        "properties": {
+          "cached": {
+            "description": "Resueltos con la caché de resultados de IA, sin llamar al modelo",
+            "title": "Cached",
+            "type": "integer"
+          },
+          "calls": {
+            "description": "Documentos enviados (pasos, en los agentes; textos embebidos, en embed)",
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "tokens_estimated": {
+            "description": "Tokens estimados (agentes, si el proxy no los informa)",
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task",
+          "model",
+          "calls",
+          "cached",
+          "failed",
+          "prompt_tokens",
+          "completion_tokens",
+          "tokens_estimated"
+        ],
+        "title": "AiUsageRowOut",
+        "type": "object"
+      },
+      "AiUsageRunOut": {
+        "description": "Una de las ejecuciones que más tokens gastaron.",
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Name"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "tokens_estimated": {
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "runs",
+          "calls",
+          "cached",
+          "failed",
+          "prompt_tokens",
+          "completion_tokens",
+          "tokens_estimated",
+          "run_id",
+          "created_at",
+          "operation",
+          "project_id",
+          "project_name"
+        ],
+        "title": "AiUsageRunOut",
+        "type": "object"
+      },
       "AiUsageSourceOut": {
         "description": "Uso de una fuente en el periodo actual, o por qué no hay (sin configurar o ``error``).",
         "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiKeyBudgetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cached": {
             "title": "Cached",
             "type": "boolean"
@@ -512,10 +956,7 @@
             "title": "Period Start"
           },
           "source": {
-            "enum": [
-              "litellm",
-              "github_copilot"
-            ],
+            "const": "litellm",
             "title": "Source",
             "type": "string"
           },
@@ -543,6 +984,50 @@
           "error"
         ],
         "title": "AiUsageSourceOut",
+        "type": "object"
+      },
+      "AiUsageTotalsOut": {
+        "description": "Totales de consumo de IA (registro propio de la web, 2.1).",
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "tokens_estimated": {
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "runs",
+          "calls",
+          "cached",
+          "failed",
+          "prompt_tokens",
+          "completion_tokens",
+          "tokens_estimated"
+        ],
+        "title": "AiUsageTotalsOut",
         "type": "object"
       },
       "ArtifactOut": {
@@ -5826,6 +6311,14 @@
       "RunOut": {
         "description": "Ejecución con su estado, progreso, resultado y artefactos.",
         "properties": {
+          "ai_usage": {
+            "description": "Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)",
+            "items": {
+              "$ref": "#/components/schemas/AiUsageRowOut"
+            },
+            "title": "Ai Usage",
+            "type": "array"
+          },
           "artifacts": {
             "items": {
               "$ref": "#/components/schemas/ArtifactOut"
@@ -7940,7 +8433,7 @@
     },
     "/api/v1/admin/ai-settings": {
       "get": {
-        "description": "Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de\nentorno de doc_organize 1.x que siguen definidas y ya no se leen.",
+        "description": "Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de entorno\nque siguen definidas y ya no se leen (de doc_organize 1.x y de GitHub Copilot).",
         "operationId": "get_ai_settings_api_v1_admin_ai_settings_get",
         "responses": {
           "200": {
@@ -8026,7 +8519,7 @@
     },
     "/api/v1/admin/ai-settings/{family}/test": {
       "post": {
-        "description": "Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.\n\nCon LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una\nclasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.",
+        "description": "Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.\n\nCon LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una\nclasificación mínima al modelo. Se audita sin valores.",
         "operationId": "probe_ai_family_api_v1_admin_ai_settings__family__test_post",
         "parameters": [
           {
@@ -8084,7 +8577,7 @@
     },
     "/api/v1/admin/ai-usage": {
       "get": {
-        "description": "Uso del periodo actual de LiteLLM y de GitHub Copilot (caché de 5 minutos por fuente).",
+        "description": "Gasto acumulado y presupuesto de la clave de LiteLLM (caché de 5 minutos) y el consumo por ejecución que\nregistra la web (tokens, documentos y caché por tarea, modelo, proyecto y día local).",
         "operationId": "get_ai_usage_api_v1_admin_ai_usage_get",
         "parameters": [
           {
@@ -8097,6 +8590,43 @@
               "description": "Saltar la caché (como mucho una vez cada 30 s)",
               "title": "Refresh",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "Periodo del consumo registrado: 7 o 30 días, este mes o todo",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "30d",
+              "description": "Periodo del consumo registrado: 7 o 30 días, este mes o todo",
+              "enum": [
+                "7d",
+                "30d",
+                "month",
+                "all"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Zona IANA para agrupar por día (la del navegador); UTC si no vale",
+            "in": "query",
+            "name": "tz",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Zona IANA para agrupar por día (la del navegador); UTC si no vale",
+              "title": "Tz"
             }
           }
         ],
@@ -13192,7 +13722,7 @@
     },
     "/api/v1/runs/{run_id}": {
       "get": {
-        "description": "Estado, progreso, resultado y artefactos.",
+        "description": "Estado, progreso, resultado y artefactos, y el consumo de IA por tarea (2.1).",
         "operationId": "get_run_api_v1_runs__run_id__get",
         "parameters": [
           {

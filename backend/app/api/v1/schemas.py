@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, SecretStr
@@ -612,6 +612,19 @@ class RunProgress(BaseModel):
     current: str | None = None
 
 
+class AiUsageRowOut(BaseModel):
+    """Consumo de IA de una ejecución en una tarea (web 2.1). Sin coste: el proxy no lo da por llamada."""
+
+    task: str
+    model: str | None
+    calls: int = Field(description="Documentos enviados (pasos, en los agentes; textos embebidos, en embed)")
+    cached: int = Field(description="Resueltos con la caché de resultados de IA, sin llamar al modelo")
+    failed: int
+    prompt_tokens: int
+    completion_tokens: int
+    tokens_estimated: bool = Field(description="Tokens estimados (agentes, si el proxy no los informa)")
+
+
 class RunOut(BaseModel):
     """Ejecución con su estado, progreso, resultado y artefactos."""
 
@@ -635,6 +648,9 @@ class RunOut(BaseModel):
     workspace_purged: bool
     artifacts: list[ArtifactOut]
     can_cancel: bool
+    ai_usage: list[AiUsageRowOut] = Field(
+        default_factory=list, description="Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)"
+    )
 
 
 class RunPage(BaseModel):
@@ -1193,7 +1209,7 @@ class SiteSessionOut(BaseModel):
 # --- ai (Fase 8) -------------------------------------------------------------------------------------------------
 
 #: doc_organize 2.0 (W2): una familia ``litellm`` para todas las tareas de IA (migración ``0016``) y las dos de uso.
-AiFamilyKey = Literal["litellm", "litellm_usage", "github_copilot_usage"]
+AiFamilyKey = Literal["litellm", "litellm_usage"]
 AiTaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
 
 
@@ -1214,10 +1230,11 @@ class AiFieldOut(BaseModel):
 
 
 class AiLegacyVariableOut(BaseModel):
-    """Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye."""
+    """Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de
+    GitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla)."""
 
     name: str
-    replacement: str
+    replacement: str | None
 
 
 class AiFamilyOut(BaseModel):
@@ -1233,7 +1250,7 @@ class AiSettingsOut(BaseModel):
     families: list[AiFamilyOut]
     legacy_variables: list[AiLegacyVariableOut] = Field(
         default_factory=list,
-        description="Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)",
+        description="Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)",
     )
 
 
@@ -1300,10 +1317,19 @@ class AiUsageItemOut(BaseModel):
     cost_usd: float | None
 
 
+class AiKeyBudgetOut(BaseModel):
+    """Gasto y presupuesto de la clave según ``/key/info`` del proxy (lo que diga; ``None`` si no lo dice)."""
+
+    spend: float | None
+    max_budget: float | None
+    remaining: float | None
+    budget_reset_at: str | None
+
+
 class AiUsageSourceOut(BaseModel):
     """Uso de una fuente en el periodo actual, o por qué no hay (sin configurar o ``error``)."""
 
-    source: Literal["litellm", "github_copilot"]
+    source: Literal["litellm"]
     configured: bool
     fetched_at: datetime | None
     cached: bool
@@ -1311,11 +1337,64 @@ class AiUsageSourceOut(BaseModel):
     period_end: str | None
     total_cost_usd: float | None
     items: list[AiUsageItemOut]
+    budget: AiKeyBudgetOut | None = None
     error: Literal["ai_auth", "ai_connection", "ai_error"] | None
+
+
+class AiUsageTotalsOut(BaseModel):
+    """Totales de consumo de IA (registro propio de la web, 2.1)."""
+
+    runs: int
+    calls: int
+    cached: int
+    failed: int
+    prompt_tokens: int
+    completion_tokens: int
+    tokens_estimated: bool
+
+
+class AiUsageGroupOut(AiUsageTotalsOut):
+    """Totales de una tarea, un modelo o un proyecto (``key``: la tarea, el modelo o el id del proyecto)."""
+
+    key: str
+    label: str | None = Field(default=None, description="Nombre del proyecto (en «por proyecto»)")
+    project_id: int | None = None
+
+
+class AiUsageDayOut(AiUsageTotalsOut):
+    """Totales de un día en la zona horaria pedida."""
+
+    day: date
+
+
+class AiUsageRunOut(AiUsageTotalsOut):
+    """Una de las ejecuciones que más tokens gastaron."""
+
+    run_id: str | None
+    created_at: datetime
+    operation: str
+    project_id: int | None
+    project_name: str | None
+
+
+class AiUsageLocalOut(BaseModel):
+    """Consumo registrado por la web en el periodo (``ai_usage``), agrupado por día en ``timezone``."""
+
+    period: Literal["7d", "30d", "month", "all"]
+    timezone: str
+    start: datetime | None
+    end: datetime
+    totals: AiUsageTotalsOut
+    by_task: list[AiUsageGroupOut]
+    by_model: list[AiUsageGroupOut]
+    by_project: list[AiUsageGroupOut]
+    by_day: list[AiUsageDayOut]
+    top_runs: list[AiUsageRunOut]
 
 
 class AiUsageOut(BaseModel):
     sources: list[AiUsageSourceOut]
+    local: AiUsageLocalOut | None = Field(default=None, description="Consumo por ejecución registrado por la web (2.1)")
 
 
 # --- tenants y roles (Fase 9) ----------------------------------------------------------------------------------

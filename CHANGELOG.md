@@ -26,6 +26,25 @@ ROADMAP (`0.<fase+1>.0`).
 
 - Aviso al salir de la página del contexto con cambios sin guardar en el manifiesto o el perfil. Cambiar de paso no
   pierde nada.
+- **Consumo de IA por ejecución** (tabla `ai_usage`, migración `0026`): al terminar cada ejecución con IA (construir
+  el contexto, borrador de manifiesto, agentes, prueba de clasificación) se guarda, por tarea, el modelo, los
+  documentos enviados, los resueltos con la caché y los tokens de entrada y salida. Sin texto de documentos ni prompts.
+  Al actualizar se rellena con las ejecuciones anteriores (sin modelo).
+- **IA › Uso rediseñado**: periodo (7 días, 30 días, este mes, todo), indicadores, gasto y **presupuesto de la clave**
+  de LiteLLM (cuánto queda y cuándo se reinicia), **tokens por día** en la hora local del navegador (y como tabla), y
+  tablas por tarea, modelo, proyecto y ejecuciones que más gastaron. `GET /admin/ai-usage` acepta `period` y `tz` y
+  devuelve `local` y `budget`.
+- Tarjeta **Consumo de IA** en el detalle de cada ejecución (`GET /runs/{id}` devuelve `ai_usage`).
+- El borrador de manifiesto guarda sus tokens y su modelo; construir el contexto, los agentes y la semántica guardan
+  el modelo de cada tarea.
+
+### Removed
+
+- **GitHub Copilot**: fuera la familia `github_copilot_usage` de IA › Configuración, `/admin/ai-settings` y
+  `/ai/status`, y la fuente `github_copilot` de IA › Uso. La migración `0025` **borra** su configuración guardada (el
+  PAT cifrado incluido) y bajar de versión no la recupera. Si `DOC_ORGANIZE_GITHUB_USERNAME`/`DOC_ORGANIZE_GITHUB_PAT`
+  siguen definidas, la configuración avisa de que ya no se leen (`legacy_variables` con `replacement: null`).
+- Columna «Cantidad» del uso de LiteLLM, que repetía el gasto.
 
 ## [2.0.1] - 2026-11-22
 

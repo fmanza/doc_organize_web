@@ -50,8 +50,10 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
     .getByRole('navigation', { name: 'Navegación principal' })
     .getByRole('link', { name: 'Uso' })
     .click();
-  const usage = page.getByRole('region', { name: 'LiteLLM' });
-  await expect(usage.getByText(/Total:/)).toContainText('0,42');
+  // 2.1: el gasto de la clave (sin GitHub Copilot).
+  const usage = page.getByRole('region', { name: 'Clave de LiteLLM' });
+  await expect(usage.getByText('Gasto acumulado').locator('xpath=..')).toContainText('0,42');
+  await expect(page.getByText(/Copilot/)).toHaveCount(0);
 
   const id = await createProject(page, project, ['2024']);
   await page.goto(`/projects/${id}/scan`);
@@ -68,6 +70,13 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
   await expect(page.getByText('Terminada')).toBeVisible({ timeout: 180_000 });
   await expect(resultValue(page, 'Con IA')).toHaveText('Sí');
   await expect(resultValue(page, 'Errores de la IA')).toHaveText('0');
+  // 2.1: el consumo de la ejecución se registra y se ve en su detalle y en IA › Uso.
+  const consumption = page.getByRole('region', { name: 'Consumo de IA' });
+  await expect(consumption.getByText('Clasificar')).toBeVisible();
+  await page.goto('/admin/ai/usage');
+  await expect(
+    page.getByRole('region', { name: 'Por tarea' }).getByRole('row', { name: /Clasificar/ }),
+  ).toBeVisible();
 
   // Borrador: está con el manifiesto (solo con su catálogo); se carga en el editor sin guardarse y se guarda a mano.
   await page.goto(`/projects/${id}/context?paso=taxonomia`);

@@ -24,6 +24,7 @@ import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatBytes, formatCount, formatDateTime, formatDuration } from '../../components/format';
 import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
+import { AiUsageCard } from './AiUsageCard';
 import { RunResult } from './RunResult';
 import { RunStatusBadge } from './RunStatusBadge';
 import {
@@ -213,6 +214,7 @@ export function RunDetailPage() {
           )}
         </Card>
       )}
+      {(run.ai_usage ?? []).length > 0 && <AiUsageCard rows={run.ai_usage ?? []} />}
       {live.log.length > 0 && <RunLog log={live.log} />}
       <Card withBorder>
         <Title order={3} size="h4" mb="sm">

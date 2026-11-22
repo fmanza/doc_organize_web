@@ -821,6 +821,16 @@
         "export_site": "El contenido de terceros de las páginas está neutralizado, pero el sitio lleva el texto de los documentos: puede ser confidencial. Entrégalo solo a quien deba verlo.",
         "export_ai_bundle": "El paquete lleva el texto de los documentos y sale de la aplicación: puede ser confidencial. Súbelo solo a servicios de IA autorizados."
       }
+    },
+    "aiUsage": {
+      "title": "Consumo de IA",
+      "task": "Tarea",
+      "model": "Modelo",
+      "calls": "Enviados",
+      "cached": "Caché",
+      "prompt": "Tokens de entrada",
+      "completion": "Tokens de salida",
+      "estimated": "≈: tokens estimados (el proxy no los informó)"
     }
   },
   "scan": {
@@ -1571,8 +1581,9 @@
         "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
       },
       "budgetPlaceholder": "El general de Parámetros",
-      "legacyTitle": "Variables de entorno de la 1.x",
-      "legacy": "Estas variables siguen definidas en el servidor y doc_organize 2.0 ya no las lee. Cámbialas por su equivalente:"
+      "legacyTitle": "Variables de entorno que ya no se leen",
+      "legacy": "Estas variables siguen definidas en el servidor y la aplicación ya no las lee. Cámbialas por su equivalente o bórralas:",
+      "legacyRemoved": "ya no se usa (GitHub Copilot se quitó en la 2.1): bórrala"
     },
     "families": {
       "litellm": {
@@ -1582,10 +1593,6 @@
       "litellm_usage": {
         "title": "Uso de LiteLLM",
         "intro": "Clave del LiteLLM Proxy cuyo gasto se muestra en el panel de uso."
-      },
-      "github_copilot_usage": {
-        "title": "Uso de GitHub Copilot",
-        "intro": "Usuario y token (PAT) de GitHub para ver las peticiones premium de Copilot del mes."
       }
     },
     "fields": {
@@ -1603,33 +1610,64 @@
       "virtual_key_agent": "Clave propia de los agentes",
       "virtual_key_embed": "Clave propia de embeddings",
       "budget_classify": "Máximo de documentos a clasificar por ejecución",
-      "budget_enrich": "Máximo de documentos a describir por ejecución",
-      "username": "Usuario de GitHub",
-      "pat": "Token personal (PAT)"
+      "budget_enrich": "Máximo de documentos a describir por ejecución"
     },
     "usage": {
       "title": "Uso de IA",
-      "intro": "Consumo y coste del periodo actual. Los datos se guardan 5 minutos; «Actualizar» pide datos nuevos.",
+      "intro": "Lo que gasta la IA: el gasto y el presupuesto de la clave de LiteLLM, y lo que registra cada ejecución (documentos enviados, caché y tokens). El proxy no da el coste de cada llamada, así que el coste es el de la clave. El gasto de la clave se guarda 5 minutos; «Actualizar» pide datos nuevos.",
       "refresh": "Actualizar",
-      "sources": {
-        "litellm": "LiteLLM",
-        "github_copilot": "GitHub Copilot"
-      },
       "fetchedAt": "Consultado el {{date}}",
       "cachedAt": "Datos del {{date}} (guardados)",
       "notConfigured": "Sin configurar.",
       "configure": "Configurar",
       "errorTitle": "No se pudo consultar el uso",
-      "period": "Periodo: {{start}} – {{end}}",
-      "total": "Total: {{cost}}",
-      "empty": "Sin consumo en el periodo.",
-      "date": "Fecha",
-      "product": "Producto",
-      "quantity": "Cantidad",
-      "cost": "Coste",
-      "search": "Buscar en el uso de {{source}}",
       "limits": "Para limitar cuántos documentos procesa la IA en cada ejecución:",
-      "parameters": "IA › Parámetros"
+      "parameters": "IA › Parámetros",
+      "key": {
+        "title": "Clave de LiteLLM",
+        "spend": "Gasto acumulado",
+        "budget": "Presupuesto",
+        "remaining": "Queda",
+        "reset": "Se reinicia",
+        "used": "{{percent}} % del presupuesto gastado",
+        "help": "Según el proxy (/key/info). El presupuesto se fija en LiteLLM, no aquí.",
+        "noBudget": "Según el proxy (/key/info). La clave no tiene presupuesto en LiteLLM."
+      },
+      "local": {
+        "period": "Periodo",
+        "periods": {
+          "7d": "7 días",
+          "30d": "30 días",
+          "month": "Este mes",
+          "all": "Todo"
+        },
+        "kpi": {
+          "runs": "Ejecuciones con IA",
+          "calls": "Documentos enviados",
+          "cached": "Desde la caché",
+          "prompt": "Tokens de entrada",
+          "completion": "Tokens de salida"
+        },
+        "savedShare": "{{percent}} % sin llamar al modelo",
+        "byDay": "Tokens por día",
+        "timezone": "Días en hora local ({{timezone}})",
+        "chartLabel_one": "Tokens de entrada y de salida de {{count}} día",
+        "chartLabel_other": "Tokens de entrada y de salida por día, {{count}} días",
+        "prompt": "Entrada",
+        "completion": "Salida",
+        "day": "Día",
+        "asTable": "Ver como tabla",
+        "byTask": "Por tarea",
+        "byModel": "Por modelo",
+        "byProject": "Por proyecto",
+        "topRuns": "Ejecuciones que más tokens gastaron",
+        "name": "Nombre",
+        "run": "Ejecución",
+        "project": "Proyecto",
+        "unknownModel": "Sin modelo (ejecuciones anteriores a la 2.1)",
+        "deletedProject": "Proyecto borrado",
+        "empty": "Todavía no hay consumo de IA registrado en este periodo."
+      }
     },
     "errors": {
       "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",

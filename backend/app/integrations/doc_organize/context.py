@@ -1127,6 +1127,8 @@ def build_context(
                 "cached": int(phase.cached),
                 "assigned": int(phase.assigned),
                 "failed": int(phase.failed),
+                "prompt_tokens": int(phase.prompt_tokens),
+                "model": context.model_for_task("embed"),
             }
             # rc2: tamaño del índice de embeddings (``.doc_organize/embeddings/`` del destino), todos los modelos.
             from doc_organize import embedding_index_info

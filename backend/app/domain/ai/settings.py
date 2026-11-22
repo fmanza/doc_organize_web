@@ -2,7 +2,8 @@
 
 Desde 2.0 una sola familia, ``litellm``, configura todas las tareas de IA (clasificar, describir, diseñar la taxonomía,
 agentes y embeddings): URL y clave general obligatorias y, por tarea, modelo, clave propia y presupuesto opcionales. La
-migración ``0016`` pasó a ella las cuatro familias de 1.x. ``litellm_usage`` y ``github_copilot_usage`` no cambian.
+migración ``0016`` pasó a ella las cuatro familias de 1.x. ``litellm_usage`` no cambia; ``github_copilot_usage`` se
+quitó en la 2.1 (migración ``0025``).
 
 Precedencia: valor guardado por un admin en ``ai_settings`` > variable ``DOC_ORGANIZE_*`` del entorno (los mismos
 nombres que la librería: ``DOC_ORGANIZE_LITELLM_BASE_URL``, ``_VIRTUAL_KEY``, ``_MODEL_<TAREA>``,
@@ -37,6 +38,7 @@ from app.domain.ai.errors import (
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.integrations.doc_organize.ai import (
+    COPILOT_ENV_VARS,
     FAMILIES,
     FAMILIES_BY_KEY,
     TASKS,
@@ -56,7 +58,6 @@ HINT_SUFFIX: Final = 4
 MAX_URL_LENGTH: Final = 2048
 MAX_SECRET_LENGTH: Final = 4096
 _MODEL_RE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$")
-_GITHUB_USER_RE: Final = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 _CONTROL_RE: Final = re.compile(r"[\x00-\x20\x7f]")
 #: Presupuesto de documentos por tarea (mismos límites que ``ai_max_documents_per_run``).
 MAX_BUDGET: Final = 100_000
@@ -158,9 +159,12 @@ def configured_families(db: Session, settings: Settings) -> dict[str, bool]:
     return {view.key: view.configured for view in list_families(db, settings)}
 
 
-def legacy_variables() -> dict[str, str]:
-    """Variables de entorno de 1.x que siguen definidas, con su equivalente de 2.0 (solo nombres, nunca valores)."""
-    return legacy_env()
+def legacy_variables() -> dict[str, str | None]:
+    """Variables de entorno que ya no se leen y siguen definidas (solo nombres, nunca valores): las de 1.x con su
+    equivalente de 2.0, y las de GitHub Copilot (quitado en la 2.1), sin equivalente."""
+    found: dict[str, str | None] = dict(legacy_env())
+    found.update({name: None for name in COPILOT_ENV_VARS if os.environ.get(name)})
+    return found
 
 
 def configured_tasks(db: Session, settings: Settings) -> dict[str, bool]:
@@ -272,8 +276,6 @@ def _validate(spec: FieldSpec, value: str) -> str:
         if not value.isdigit() or not 1 <= int(value) <= MAX_BUDGET:
             raise InvalidAiSettingError(f"{spec.name}: número de documentos entre 1 y {MAX_BUDGET}")
         return str(int(value))
-    if spec.name == "username" and not _GITHUB_USER_RE.fullmatch(value):
-        raise InvalidAiSettingError("username: usuario de GitHub no válido")
     return value
 
 

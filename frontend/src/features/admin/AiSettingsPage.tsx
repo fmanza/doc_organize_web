@@ -61,7 +61,7 @@ export function AiSettingsPage() {
           <Stack gap={2} mt={4}>
             {(settings.data.legacy_variables ?? []).map((item) => (
               <Text key={item.name} size="sm" ff="monospace">
-                {item.name} → {item.replacement}
+                {item.name} → {item.replacement ?? t('ai.settings.legacyRemoved')}
               </Text>
             ))}
           </Stack>

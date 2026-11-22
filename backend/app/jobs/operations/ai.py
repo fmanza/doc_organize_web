@@ -67,6 +67,11 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
         "total_documents": draft.total_documents,
         "domains": [{"slug": slug, "name": name} for slug, name in draft.domains],
         "material_types": [{"slug": slug, "name": name} for slug, name in draft.material_types],
+        # Consumo (2.1, IA › Uso): una llamada al modelo de `taxonomy_design`.
+        "model": draft.model,
+        "prompt_tokens": draft.prompt_tokens,
+        "completion_tokens": draft.completion_tokens,
+        "cached": draft.cached,
     }
     with ctx.session_factory() as db:
         audit.record(

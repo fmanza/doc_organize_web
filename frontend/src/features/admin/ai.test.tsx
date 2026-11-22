@@ -52,7 +52,6 @@ const SETTINGS = {
       true,
     ),
     family('litellm_usage', ['base_url', 'virtual_key']),
-    family('github_copilot_usage', ['username', 'pat']),
   ],
 };
 
@@ -288,10 +287,12 @@ describe('AiSettingsPage', () => {
     renderRoute('/admin/ai/settings');
 
     expect(await screen.findByText('Cifrado no configurado')).toBeInTheDocument();
-    const copilot = screen.getByRole('region', { name: 'Uso de GitHub Copilot' });
-    await user.type(within(copilot).getByLabelText(/Token personal/, { selector: 'input' }), 'ghp_x');
-    expect(within(copilot).getByRole('button', { name: 'Guardar Uso de GitHub Copilot' })).toBeDisabled();
-    expect(within(copilot).getByText(/hace falta el cifrado/)).toBeInTheDocument();
+    const usage = screen.getByRole('region', { name: 'Uso de LiteLLM' });
+    await user.type(within(usage).getByLabelText(/Clave virtual/, { selector: 'input' }), 'sk-x');
+    expect(within(usage).getByRole('button', { name: 'Guardar Uso de LiteLLM' })).toBeDisabled();
+    expect(within(usage).getByText(/hace falta el cifrado/)).toBeInTheDocument();
+    // 2.1: sin GitHub Copilot.
+    expect(screen.queryByRole('region', { name: 'Uso de GitHub Copilot' })).not.toBeInTheDocument();
   });
 
   it('muestra el error de la API', async () => {
@@ -314,58 +315,104 @@ describe('AiSettingsPage', () => {
   });
 });
 
+const TOTALS = {
+  runs: 2,
+  calls: 6,
+  cached: 2,
+  failed: 0,
+  prompt_tokens: 12000,
+  completion_tokens: 800,
+  tokens_estimated: false,
+};
+const LOCAL = {
+  period: '30d',
+  timezone: 'Europe/Madrid',
+  start: '2026-10-24T22:00:00Z',
+  end: '2026-11-22T12:00:00Z',
+  totals: TOTALS,
+  by_task: [{ key: 'classify', label: null, project_id: null, ...TOTALS }],
+  by_model: [{ key: 'modelo-sintetico', label: null, project_id: null, ...TOTALS }],
+  by_project: [{ key: '7', label: 'Proyecto A', project_id: 7, ...TOTALS }],
+  by_day: [
+    { day: '2026-11-21', ...TOTALS, prompt_tokens: 5000, completion_tokens: 300 },
+    { day: '2026-11-22', ...TOTALS, prompt_tokens: 7000, completion_tokens: 500 },
+  ],
+  top_runs: [
+    {
+      run_id: '55555555-5555-4555-8555-555555555555',
+      created_at: '2026-11-22T09:00:00Z',
+      operation: 'context_build',
+      project_id: 7,
+      project_name: 'Proyecto A',
+      ...TOTALS,
+    },
+  ],
+};
+const KEY_SOURCE = {
+  source: 'litellm',
+  configured: true,
+  fetched_at: '2026-11-02T08:00:00Z',
+  cached: true,
+  period_start: '2026-11-02',
+  period_end: '2026-11-02',
+  total_cost_usd: 1.25,
+  items: [],
+  budget: { spend: 1.25, max_budget: 10, remaining: 8.75, budget_reset_at: null },
+  error: null,
+};
+
 describe('AiUsagePage', () => {
-  it('muestra el coste, los errores y lo que falta configurar', async () => {
+  it('muestra indicadores, el presupuesto de la clave, los tokens por día y las tablas', async () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
-      'GET /api/v1/admin/ai-usage': (request) => ({
-        body: {
-          sources: [
-            {
-              source: 'litellm',
-              configured: true,
-              fetched_at: '2026-11-02T08:00:00Z',
-              cached: new URL(request.url).searchParams.get('refresh') !== 'true',
-              period_start: '2026-11-02',
-              period_end: '2026-11-02',
-              total_cost_usd: 1.25,
-              items: [
-                {
-                  date: '2026-11-02',
-                  product: 'anthropic',
-                  sku: 'equipo',
-                  quantity: 1.25,
-                  unit_type: 'usd',
-                  cost_usd: 1.25,
-                },
-              ],
-              error: null,
-            },
-            {
-              source: 'github_copilot',
-              configured: true,
-              fetched_at: '2026-11-02T08:00:00Z',
-              cached: false,
-              period_start: null,
-              period_end: null,
-              total_cost_usd: null,
-              items: [],
-              error: 'ai_auth',
-            },
-          ],
-        },
-      }),
+      'GET /api/v1/admin/ai-usage': (request) => {
+        const period = new URL(request.url).searchParams.get('period');
+        return {
+          body: {
+            sources: [{ ...KEY_SOURCE, cached: new URL(request.url).searchParams.get('refresh') !== 'true' }],
+            local: { ...LOCAL, period },
+          },
+        };
+      },
     });
     const user = userEvent.setup();
 
     renderRoute('/admin/ai/usage');
 
-    const litellm = await screen.findByRole('region', { name: 'LiteLLM' });
-    expect(within(litellm).getByText(/Total:/)).toHaveTextContent('1,25');
-    expect(within(litellm).getByText('equipo')).toBeInTheDocument();
-    const copilot = screen.getByRole('region', { name: 'GitHub Copilot' });
-    expect(within(copilot).getByRole('alert')).toHaveTextContent(/rechazó la clave/);
+    const key = await screen.findByRole('region', { name: 'Clave de LiteLLM' });
+    expect(within(key).getByText('Gasto acumulado').nextSibling).toHaveTextContent('1,25');
+    expect(within(key).getByText('Queda').nextSibling).toHaveTextContent('8,75');
+    expect(
+      within(key).getByRole('progressbar', { name: '13 % del presupuesto gastado' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tokens de entrada', { selector: 'dt' }).nextSibling).toHaveTextContent('12.000');
+    expect(screen.getByText('25 % sin llamar al modelo')).toBeInTheDocument();
+    expect(screen.getByText('Días en hora local (Europe/Madrid)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Tokens de entrada y de salida por día, 2 días/ }),
+    ).toBeInTheDocument();
+    const byTask = screen.getByRole('region', { name: 'Por tarea' });
+    expect(within(byTask).getByText('Clasificar')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Por proyecto' })).getByRole('link', { name: 'Proyecto A' }),
+    ).toHaveAttribute('href', '/projects/7');
+    const top = screen.getByRole('region', { name: 'Ejecuciones que más tokens gastaron' });
+    expect(within(top).getByRole('link')).toHaveAttribute(
+      'href',
+      '/runs/55555555-5555-4555-8555-555555555555',
+    );
+    expect(screen.queryByText(/Copilot/)).not.toBeInTheDocument();
 
+    // El periodo y la zona del navegador van a la API.
+    await user.click(screen.getByRole('radio', { name: '7 días' }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/admin/ai-usage').some((request) => {
+          const query = new URL(request.url).searchParams;
+          return query.get('period') === '7d' && query.has('tz');
+        }),
+      ).toBe(true),
+    );
     await user.click(screen.getByRole('button', { name: 'Actualizar' }));
     await waitFor(() =>
       expect(
@@ -376,35 +423,62 @@ describe('AiUsagePage', () => {
     );
   });
 
+  it('sin consumo lo dice; con error de la clave lo avisa sin ocultar el resto', async () => {
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-usage': {
+        body: {
+          sources: [{ ...KEY_SOURCE, budget: null, total_cost_usd: null, error: 'ai_auth' }],
+          local: {
+            ...LOCAL,
+            totals: { ...TOTALS, runs: 0, calls: 0, cached: 0, prompt_tokens: 0, completion_tokens: 0 },
+            by_task: [],
+            by_model: [],
+            by_project: [],
+            by_day: [],
+            top_runs: [],
+          },
+        },
+      },
+    });
+
+    renderRoute('/admin/ai/usage');
+
+    const key = await screen.findByRole('region', { name: 'Clave de LiteLLM' });
+    expect(within(key).getByRole('alert')).toHaveTextContent(/rechazó la clave/);
+    expect(screen.getByText('Todavía no hay consumo de IA registrado en este periodo.')).toBeInTheDocument();
+  });
+
   it('sin configurar enlaza a la configuración', async () => {
-    const empty = {
-      configured: false,
-      fetched_at: null,
-      cached: false,
-      period_start: null,
-      period_end: null,
-      total_cost_usd: null,
-      items: [],
-      error: null,
-    };
     stubApi({
       ...session(ADMIN),
       'GET /api/v1/admin/ai-usage': {
         body: {
           sources: [
-            { source: 'litellm', ...empty },
-            { source: 'github_copilot', ...empty },
+            {
+              source: 'litellm',
+              configured: false,
+              fetched_at: null,
+              cached: false,
+              period_start: null,
+              period_end: null,
+              total_cost_usd: null,
+              items: [],
+              budget: null,
+              error: null,
+            },
           ],
+          local: null,
         },
       },
     });
 
     renderRoute('/admin/ai-usage'); // URL de 1.5: redirige a /admin/ai/usage (W1)
 
-    expect(await screen.findAllByRole('link', { name: 'Configurar' })).toHaveLength(2);
-    for (const link of screen.getAllByRole('link', { name: 'Configurar' })) {
-      expect(link).toHaveAttribute('href', '/admin/ai/settings');
-    }
+    expect(await screen.findByRole('link', { name: 'Configurar' })).toHaveAttribute(
+      'href',
+      '/admin/ai/settings',
+    );
     expect(screen.getByRole('link', { name: 'IA › Parámetros' })).toHaveAttribute(
       'href',
       '/admin/ai/parameters',
