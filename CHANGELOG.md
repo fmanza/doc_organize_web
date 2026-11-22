@@ -5,6 +5,28 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **Contexto en pasos de trabajo**: una cabecera común (también en Revisar, Calidad y el sitio) con el estado del
+  contexto, el aviso de desactualizado y los pasos **1 Taxonomía → 2 Construir → 3 Resultado → 4 Revisar →
+  5 Calidad → 6 Entregar**, más Historial. Antes se pedía construir por encima de la taxonomía con la que se construía.
+  Sin contexto se abre en Taxonomía y los pasos 3 a 6 se ven desactivados; con contexto, en Resultado. Cada paso tiene
+  su dirección (`?paso=`).
+- **Catálogo en el paso Taxonomía**, agrupado en «Sin taxonomía» (**Por carpetas**, antes «Descubrir dominios»;
+  **Lista de dominios**, antes «Catálogo propio») y «Con taxonomía» (Plantilla, Manifiesto del proyecto). La API no
+  cambia (`discover`, `domains`, `template`, `manifest`). «Construir» dice con qué taxonomía se construye, con
+  «Cambiar», y por qué no se puede construir todavía.
+- **Manifiesto en orden de trabajo**: estado → «Crear o mejorar con IA» (borrador y agente; plegado si ya hay
+  manifiesto) → editor → comprobar y guardar → versiones → borrar.
+- **Perfil del proyecto según el catálogo**: siempre con Plantilla; con Por carpetas o Lista de dominios, si hay IA
+  configurada o ya existe; con el Manifiesto, solo un aviso si existe un perfil aparte, con «Copiar al cuerpo del
+  manifiesto». doc_organize usa `profile.md` con cualquier catálogo, así que nunca se oculta uno que exista.
+
+### Added
+
+- Aviso al salir de la página del contexto con cambios sin guardar en el manifiesto o el perfil. Cambiar de paso no
+  pierde nada.
+
 ## [2.0.1] - 2026-11-22
 
 Correcciones del diagnóstico, encontradas al desplegar la 2.0.0. Sin migraciones.

@@ -66,6 +66,7 @@ test('contexto 2.0: ejes con IA, semántica y versiones; revisión, calidad y ag
   await expect(preview).toContainText('Eje impuestos: Impuestos');
 
   // Construir con la plantilla de ejes y la IA para lo que las reglas no clasifican.
+  await page.getByRole('link', { name: 'Siguiente: Construir' }).click();
   await page.getByRole('switch', { name: 'Construir el sitio' }).uncheck(); // el sitio lo prueba w9-entrega
   await page.getByRole('switch', { name: /Clasificar con IA/ }).check();
   await page.getByRole('button', { name: 'Construir' }).click();
@@ -163,8 +164,14 @@ test('contexto 2.0: ejes con IA, semántica y versiones; revisión, calidad y ag
   });
 
   // Diseñador de la taxonomía (agente) desde la plantilla: propone «Recetas»; se carga en el editor sin guardarse.
-  await page.goto(`/projects/${id}/context`);
+  await page.goto(`/projects/${id}/context?paso=taxonomia`);
   await page.getByText('Manifiesto del proyecto', { exact: true }).click();
+  // Con un manifiesto guardado, «Crear o mejorar con IA» empieza plegado.
+  await expect(page.getByRole('textbox', { name: /^Markdown \(front matter/ })).toBeVisible();
+  const create = page.getByRole('button', { name: 'Crear o mejorar con IA' });
+  if (await create.isVisible()) {
+    await create.click();
+  }
   const designer = page.getByRole('region', { name: 'Diseñar taxonomía con IA (agente)' });
   await designer.getByText('Una plantilla', { exact: true }).click();
   await designer.getByRole('combobox', { name: 'Plantilla' }).click();

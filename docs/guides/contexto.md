@@ -10,23 +10,47 @@ Necesita que el proyecto esté [escaneado](escaneo.md): solo entran los document
 sigue en el origen. Los que se movieron a `duplicados` o se borraron desde el último escaneo no entran, y el resultado
 los cuenta en «Originales que ya no están».
 
+## Los pasos (2.1)
+
+Desde la 2.1, la pantalla sigue el orden de trabajo. Una cabecera común, también en Revisar, Calidad y el sitio, lleva
+el estado del contexto, el aviso si está desactualizado y los pasos:
+
+| Paso | Qué se hace |
+|---|---|
+| **1. Taxonomía** | Cómo se clasifican los documentos: catálogo, plantilla o [manifiesto](#manifiesto-del-proyecto), y el [perfil del proyecto](#perfil-del-proyecto-y-vista-previa-del-prompt-20) |
+| **2. Construir** | Carpeta, umbral, sitio e IA; «Construir» o «Reconstruir» |
+| **3. Resultado** | Resumen, dominios y documentos, versiones de un documento y «Borrar contexto» |
+| **4. Revisar** | [Revisar clasificación](#revisar-clasificación-20) |
+| **5. Calidad** | [Calidad](#calidad-20) |
+| **6. Entregar** | [Sitio](#sitio) y [entregas](#entregar-el-contexto-20) |
+| **Historial** | [Historial](#historial) de las construcciones |
+
+- Sin contexto, la página se abre en «Taxonomía» y los pasos 3 a 6 están desactivados. Con contexto, se abre en
+  «Resultado».
+- «Construir» solo lo ven los editores y propietarios con el destino de lectura y escritura. Los demás ven la
+  taxonomía en solo lectura.
+- Cada paso tiene su dirección (`…/context?paso=construir`, por ejemplo).
+- Cambiar de paso no pierde nada de lo que no esté guardado. Salir de la página con cambios sin guardar en el
+  manifiesto o en el perfil pide confirmación.
+
 ## Construir
 
-Los editores y propietarios eligen el **catálogo de dominios**:
+En el paso **Taxonomía**, los editores y propietarios eligen el **catálogo**, en dos grupos:
 
-| Catálogo | Qué hace |
-|---|---|
-| **Descubrir dominios** | Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido |
-| **Catálogo propio** | Solo los dominios que escribas (un eje: dominio) |
-| **Plantilla** | Los ejes de una [plantilla de taxonomía](#plantillas-de-taxonomía): dominio, tipo de material y los que solo etiquetan |
-| **Manifiesto del proyecto** | Los ejes del [manifiesto](#manifiesto-del-proyecto) del proyecto |
+| Grupo | Catálogo | Qué hace |
+|---|---|---|
+| Sin taxonomía | **Por carpetas** (antes «Descubrir dominios») | Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido |
+| Sin taxonomía | **Lista de dominios** (antes «Catálogo propio») | Solo los dominios que escribas (un eje: dominio) |
+| Con taxonomía | **Plantilla** | Los ejes de una [plantilla de taxonomía](#plantillas-de-taxonomía): dominio, tipo de material y los que solo etiquetan |
+| Con taxonomía | **Manifiesto del proyecto** | Los ejes del [manifiesto](#manifiesto-del-proyecto) del proyecto |
 
-También eligen:
+«Siguiente: Construir» lleva al paso **Construir**, que dice con qué taxonomía se va a construir («Cambiar» vuelve al
+paso 1). Allí eligen también:
 
 - **Carpeta reorganizada** (`organizado` por defecto), solo la primera vez. Para cambiarla, borra antes el contexto.
   No puede ser una carpeta que ya use el proyecto (`Conversión`, `duplicados`, `site`…).
-- **Umbral de clasificación**: con uno más alto quedan más documentos sin clasificar. No afecta a «Descubrir
-  dominios»: ahí todo documento con carpeta puntúa 1,0.
+- **Umbral de clasificación**: con uno más alto quedan más documentos sin clasificar. No afecta a «Por carpetas»:
+  ahí todo documento con carpeta puntúa 1,0.
 - **Construir el sitio**: si lo desmarcas, se borra el sitio anterior.
 
 **Construir** es una [ejecución](ejecuciones.md) con varias fases: reunir documentos, clasificar (decisiones de
@@ -37,9 +61,9 @@ medias. Reconstruir sustituye el contexto anterior.
 Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
 clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
 
-### ¿Descubrir dominios o manifiesto?
+### ¿Por carpetas o manifiesto?
 
-| | Descubrir dominios | Manifiesto del proyecto |
+| | Por carpetas | Manifiesto del proyecto |
 |---|---|---|
 | Dominios | Uno por carpeta (nombre de la carpeta inmediata) | Lista cerrada del manifiesto |
 | Ejes | Dominio | Dominio, tipo de material y los ejes que solo etiquetan |
@@ -48,12 +72,12 @@ clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
 | Estado | Borrador | Confirmado |
 | Cuándo | Carpetas ya temáticas; primer contexto rápido | Vocabulario propio, independiente de las carpetas |
 
-Con «Descubrir dominios» solo quedan sin clasificar los documentos que no están bien convertidos o cuya carpeta no
+Con «Por carpetas» solo quedan sin clasificar los documentos que no están bien convertidos o cuya carpeta no
 tiene letras ni números.
 
 ## Ver el contexto
 
-La página muestra los dominios con sus documentos (con los valores de cada eje como insignias) y los **sin
+El paso **Resultado** muestra los dominios con sus documentos (con los valores de cada eje como insignias) y los **sin
 clasificar**, paginados. Cada documento enlaza a su
 conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 
@@ -160,7 +184,7 @@ contextos construidos antes de la 1.6 la página pide reconstruir para verlos.
 
 ## Sitio
 
-**Ver el sitio** lo abre dentro de la aplicación. El sitio se genera a partir del contenido de los documentos, que
+**Ver el sitio** (paso «Entregar») lo abre dentro de la aplicación. El sitio se genera a partir del contenido de los documentos, que
 puede traer HTML o scripts, así que se muestra **aislado** ([ADR-010](../adr/ADR-010-sitio-de-contexto-aislado.md)):
 
 - Sus scripts no pueden usar tu sesión ni leer datos de la aplicación.
@@ -217,7 +241,7 @@ Notas libres.
 ```
 
 **Solo se usa al construir con el catálogo «Manifiesto del proyecto»**, y por eso el bloque del manifiesto solo
-aparece al elegir ese catálogo (el borrador sin guardar se conserva si cambias de catálogo y vuelves). Quien no
+aparece, en el paso «Taxonomía», al elegir ese catálogo (el borrador sin guardar se conserva si cambias de catálogo y vuelves). Quien no
 construye (lectores, o destino de solo lectura) lo ve si el contexto se construyó con él y, si no, con el enlace «Ver el
 manifiesto del proyecto».
 
@@ -234,6 +258,10 @@ catálogo, «Construir» se desactiva hasta que guardes. Hay tres formas de part
   editor sin guardarlo ([borrador de manifiesto](ia.md#borrador-de-manifiesto)).
 
 Si el editor ya tiene otro texto, cualquiera de las tres pide confirmación antes de sustituirlo.
+
+El bloque sigue el orden de trabajo: estado del manifiesto → **Crear o mejorar con IA** (el borrador y el
+[agente](#diseñar-con-ia-y-comprobar-por-reglas-20); abierto si aún no hay manifiesto y plegado si lo hay) → editor →
+«Comprobar manifiesto» y «Guardar manifiesto» → versiones → «Borrar manifiesto».
 
 ### Diseñar con IA y comprobar por reglas (2.0)
 
@@ -275,7 +303,7 @@ una copia trae las versiones de ese momento, que pueden no coincidir con el mani
 
 ## Revisar clasificación (2.0)
 
-«Revisar clasificación» (botón del resumen del contexto) lista lo que conviene mirar tras la última construcción, de lo
+«Revisar clasificación» (paso «4. Revisar» de la cabecera) lista lo que conviene mirar tras la última construcción, de lo
 más urgente a lo menos: decisiones desfasadas, documentos sin clasificar, reglas e IA que no coinciden en el dominio,
 citas de la IA no encontradas en el texto, valores con confianza baja y versiones cuya vigente no se ha confirmado.
 
@@ -308,7 +336,7 @@ escritura; todo queda en la auditoría.
 
 ## Calidad (2.0)
 
-«Calidad» (botón del resumen del contexto) mide cuánto acierta la clasificación contra una **referencia**:
+«Calidad» (paso «5. Calidad» de la cabecera) mide cuánto acierta la clasificación contra una **referencia**:
 
 - **Excel etiquetado a mano** (hasta 5 MB): una fila por documento, con su clave en la columna `documento` (carpeta y
   ruta, como en «Revisar clasificación») y, por eje, el valor correcto en su columna (por defecto `dominio_ok` para el
@@ -350,14 +378,23 @@ Documentación de calidad y seguridad de una empresa de servicios.
 
 - El de la **plantilla** o el **manifiesto** va en su cuerpo, tras el front matter; el de una plantilla lo editan quienes
   gestionan plantillas.
-- El del **proyecto** («Perfil del proyecto» en la página Contexto) se guarda en `.doc_organize/profile.md` de la
-  carpeta del proyecto y se **añade** detrás del de la plantilla o el manifiesto. Lo pueden cambiar el propietario y
+- El del **proyecto** («Perfil del proyecto» en el paso «Taxonomía») se guarda en `.doc_organize/profile.md` de la
+  carpeta del proyecto y se **añade** detrás del de la plantilla o el manifiesto. doc_organize lo usa con **cualquier**
+  catálogo, al clasificar y al describir con IA. Lo pueden cambiar el propietario y
   los editores, con el destino de lectura y escritura; queda en la auditoría sin el texto.
 - **Vista previa del prompt** muestra lo que recibiría el modelo (instrucciones, perfil compuesto y catálogo con sus
   descripciones) con la plantilla elegida o el manifiesto, y con el perfil que hay en el editor aunque no esté guardado.
   **No llama al modelo** ni gasta nada. En el editor de plantillas hay la misma vista previa, con el perfil de la
   plantilla solo.
 - Doc_organize envía como mucho 8000 caracteres y 20 ejemplos del perfil compuesto.
+
+Desde la 2.1, el perfil del proyecto se muestra según el catálogo elegido:
+
+| Catálogo | Perfil del proyecto |
+|---|---|
+| Plantilla | Siempre: es la forma de añadir lo propio del proyecto a una plantilla, que no se edita desde el proyecto |
+| Por carpetas, Lista de dominios | Si hay IA configurada (clasificar o describir) o si ya existe; no hay perfil de taxonomía, así que es todo lo que recibe la IA |
+| Manifiesto del proyecto | No se muestra: el perfil va en el cuerpo del manifiesto. Si ya existe un perfil aparte, sale un aviso con «Ver el perfil» y «Copiar al cuerpo del manifiesto», que lo añade al final del borrador sin guardar nada. Después de guardar el manifiesto, borra el perfil aparte para tenerlo en un solo sitio |
 
 ## Plantillas de taxonomía
 
@@ -390,7 +427,7 @@ historial y el manifiesto (este se puede restaurar desde [Versiones](#versiones-
 Desde la 1.5.0, cada construcción del contexto deja una línea en `historial_contexto/CONTEXT_HISTORY.jsonl`, en la
 carpeta del proyecto. Lo escribe doc_organize y la web solo lo lee.
 
-El bloque **Historial** de la página del contexto muestra las últimas 10 construcciones, la más reciente primero. Cada
+El paso **Historial** de la página del contexto muestra las últimas 10 construcciones, la más reciente primero. Cada
 una indica la fecha, los documentos clasificados y sin clasificar, el número de cambios, la versión de doc_organize y
 los modelos de IA. Al desplegar una construcción se ven sus cambios:
 

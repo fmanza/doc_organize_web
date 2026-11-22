@@ -1,12 +1,13 @@
 import { Alert, Badge, Button, Card, Code, Group, Stack, Text, Textarea, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 import { ErrorAlert } from '../../components/ErrorAlert';
-import type { Selection } from './useContext';
+import { useAiStatus } from '../admin/useAi';
+import { profileMode, type Selection } from './useContext';
 
 type Profile = components['schemas']['ProjectProfileOut'];
 type Preview = components['schemas']['PromptPreviewOut'];
@@ -69,33 +70,78 @@ function usePromptPreview(projectId: number) {
 
 /**
  * Perfil propio del proyecto (`.doc_organize/profile.md`, D11): se añade al de la plantilla o el manifiesto y va en el
- * prompt de clasificación. Con «Vista previa del prompt» se ve lo que recibiría el modelo, sin llamarlo.
+ * prompt de clasificar y describir con IA. Con «Vista previa del prompt» se ve lo que recibiría el modelo, sin llamarlo.
+ *
+ * Se muestra según el catálogo (`profileMode`, D1 de 2026-11-22): completo con plantilla; con carpetas o lista de
+ * dominios, si hay IA configurada o ya existe; con el manifiesto, solo un aviso si existe, con «Copiar al cuerpo del
+ * manifiesto». Con cambios sin guardar se sigue mostrando completo aunque cambie el catálogo.
  */
 export function ProfileCard({
   projectId,
   editable,
   selection,
+  onDirtyChange,
+  onCopyToManifest,
 }: {
   projectId: number;
   editable: boolean;
   selection: Selection;
+  /** Avisa a la página de si hay cambios sin guardar (aviso al salir). */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Copia el perfil al final del borrador del manifiesto (sin guardar); `undefined` si no se puede editar. */
+  onCopyToManifest?: ((markdown: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const profile = useProfile(projectId);
   const change = useProfileChange(projectId);
   const preview = usePromptPreview(projectId);
+  const status = useAiStatus();
   const [draft, setDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<'saved' | 'deleted' | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const saved: Profile | undefined = profile.data;
+  const text = draft ?? saved?.markdown ?? '';
+  const dirty = draft !== null && draft !== (saved?.markdown ?? '');
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   if (profile.isError) {
     return <ErrorAlert error={profile.error} />;
   }
-  const saved: Profile | undefined = profile.data;
-  const text = draft ?? saved?.markdown ?? '';
-  const dirty = draft !== null && draft !== (saved?.markdown ?? '');
+  if (profile.isPending && selection.catalog !== 'template') {
+    return null;
+  }
+  const aiConfigured = status.data?.classify === true || status.data?.enrich === true;
+  const mode = dirty ? 'full' : profileMode(selection.catalog, aiConfigured, Boolean(saved?.markdown));
+  if (mode === 'hidden') {
+    return null;
+  }
+  if (mode === 'manifestNotice' && !expanded) {
+    return (
+      <section aria-label={t('context.profile.title')}>
+        <Alert color="blue" title={t('context.profile.manifestNotice.title')}>
+          <Text size="sm">{t('context.profile.manifestNotice.body')}</Text>
+          <Group mt="xs" gap="xs">
+            <Button size="xs" variant="default" onClick={() => setExpanded(true)}>
+              {t('context.profile.manifestNotice.view')}
+            </Button>
+            {editable && onCopyToManifest && saved?.markdown && (
+              <Button size="xs" variant="light" onClick={() => onCopyToManifest(saved.markdown ?? '')}>
+                {t('context.profile.manifestNotice.copy')}
+              </Button>
+            )}
+          </Group>
+        </Alert>
+      </section>
+    );
+  }
   const tooLarge = new TextEncoder().encode(text).length > MAX_PROFILE_BYTES;
   const previewable =
     selection.catalog === 'manifest' || (selection.catalog === 'template' && !!selection.template);
+  const aiOnly = selection.catalog === 'discover' || selection.catalog === 'domains';
 
   return (
     <Card withBorder component="section" aria-label={t('context.profile.title')}>
@@ -105,6 +151,21 @@ export function ProfileCard({
       <Text size="sm" c="dimmed" mb="xs">
         {t('context.profile.intro')}
       </Text>
+      {aiOnly && (
+        <Text size="xs" c="dimmed" mb="xs">
+          {t('context.profile.aiOnly')}
+        </Text>
+      )}
+      {mode === 'manifestNotice' && (
+        <Alert color="blue" mb="xs">
+          <Text size="sm">{t('context.profile.manifestNotice.body')}</Text>
+          {editable && onCopyToManifest && saved?.markdown && (
+            <Button mt="xs" size="xs" variant="light" onClick={() => onCopyToManifest(saved.markdown ?? '')}>
+              {t('context.profile.manifestNotice.copy')}
+            </Button>
+          )}
+        </Alert>
+      )}
       {saved?.markdown && !saved.sections && (
         <Alert color="orange" mb="xs">
           {t('context.profile.noSections')}

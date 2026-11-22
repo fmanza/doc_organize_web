@@ -85,13 +85,13 @@ describe('Manifiesto del proyecto', () => {
 
     renderRoute('/projects/7/context');
 
-    await screen.findByRole('radio', { name: 'Descubrir dominios' });
+    await screen.findByRole('radio', { name: 'Por carpetas' });
     expect(screen.queryByRole('region', { name: 'Manifiesto de taxonomía' })).not.toBeInTheDocument();
     expect(screen.getByText(/Un dominio por cada carpeta/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('radio', { name: 'Manifiesto del proyecto' }));
     await user.type(await editor(), 'hola');
-    await user.click(screen.getByRole('radio', { name: 'Descubrir dominios' }));
+    await user.click(screen.getByRole('radio', { name: 'Por carpetas' }));
     expect(screen.queryByRole('region', { name: 'Manifiesto de taxonomía' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Manifiesto del proyecto' }));
     expect(await editor()).toHaveValue('hola');
@@ -105,10 +105,17 @@ describe('Manifiesto del proyecto', () => {
 
     await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
     await user.type(await editor(), 'x');
-    expect(screen.getByRole('button', { name: 'Construir' })).toBeDisabled();
-    expect(screen.getByText(/cambios sin guardar en el manifiesto/)).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Descubrir dominios' }));
-    expect(screen.getByRole('button', { name: 'Construir' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Siguiente: Construir' })).toBeDisabled();
+    expect(
+      screen.getByText(/cambios sin guardar en el manifiesto/, { ignore: '[hidden] *' }),
+    ).toBeInTheDocument();
+    // Entrando directamente en «Construir», tampoco.
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    expect(await screen.findByRole('button', { name: 'Construir' })).toBeDisabled();
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Por carpetas' }));
+    await user.click(screen.getByRole('link', { name: 'Siguiente: Construir' }));
+    expect(await screen.findByRole('button', { name: 'Construir' })).toBeEnabled();
   });
 
   it('«Personalizar para este proyecto» copia la plantilla sin guardar y se puede deshacer', async () => {
@@ -245,9 +252,11 @@ describe('Manifiesto del proyecto', () => {
     );
     const user = userEvent.setup();
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=taxonomia');
 
     expect(await editor()).toHaveAttribute('readonly');
+    // Un lector no ve el paso «Construir».
+    expect(screen.queryByRole('link', { name: '2. Construir' })).not.toBeInTheDocument();
     // Construido a las 9:00 con el manifiesto, cambiado a las 10:00: hay que reconstruir.
     expect(screen.getByText(/se construyó con el manifiesto anterior a este cambio/)).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Versiones (1)' }));

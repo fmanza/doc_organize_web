@@ -54,7 +54,11 @@ describe('Frescura del contexto', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('Cambiado: 2024/a.pdf')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ir a reconstruir' })).toBeInTheDocument();
+    // El aviso va en la cabecera común y lleva al paso «Construir».
+    expect(screen.getByRole('link', { name: 'Ir a reconstruir' })).toHaveAttribute(
+      'href',
+      '/projects/7/context?paso=construir',
+    );
   });
 
   it('al día, sin aviso', async () => {

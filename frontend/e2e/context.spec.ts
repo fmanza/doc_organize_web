@@ -28,6 +28,8 @@ test('contexto: construir con plantilla, ver el sitio aislado y borrar', async (
   await page.getByText('Plantilla', { exact: true }).first().click();
   await page.getByRole('combobox', { name: 'Plantilla' }).click();
   await page.getByRole('option', { name: /\(calidad\)$/ }).click();
+  // Paso 1 Taxonomía → paso 2 Construir.
+  await page.getByRole('link', { name: 'Siguiente: Construir' }).click();
   await page.getByRole('button', { name: 'Construir' }).click();
   await expect(page.getByRole('heading', { name: 'Construir contexto' })).toBeVisible();
   await expect(page.getByText('Terminada')).toBeVisible({ timeout: 180_000 });
@@ -35,7 +37,8 @@ test('contexto: construir con plantilla, ver el sitio aislado y borrar', async (
   await page.getByRole('link', { name: 'Ver el contexto' }).click();
   await expect(page.getByText(/Contexto construido el/)).toBeVisible();
 
-  // El sitio se carga en un iframe aislado: navega, pero no ve las cookies de la app.
+  // El sitio se carga en un iframe aislado (paso «Entregar»): navega, pero no ve las cookies de la app.
+  await page.getByRole('link', { name: '6. Entregar' }).click();
   await page.getByRole('link', { name: 'Ver el sitio' }).click();
   const iframe = page.locator('iframe[title="Sitio del contexto"]');
   await expect(iframe).toHaveAttribute('sandbox', /allow-scripts/);

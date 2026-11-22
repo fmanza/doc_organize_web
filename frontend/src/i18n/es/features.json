@@ -1094,8 +1094,8 @@
     "empty": "El proyecto aún no tiene contexto.",
     "readOnly": "La ubicación de destino es de solo lectura: el contexto no se puede construir ni cambiar.",
     "catalog": {
-      "discover": "Descubrir dominios",
-      "domains": "Catálogo propio",
+      "discover": "Por carpetas",
+      "domains": "Lista de dominios",
       "template": "Plantilla",
       "manifest": "Manifiesto del proyecto"
     },
@@ -1124,11 +1124,10 @@
         "discover": "Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido.",
         "domains": "Solo se usan los dominios que escribas (un eje).",
         "template": "Los ejes de una plantilla: dominio, tipo de material y los que solo etiquetan.",
-        "manifest": "Los ejes del manifiesto del proyecto (abajo): dominio, tipo de material y los que solo etiquetan."
+        "manifest": "Los ejes del manifiesto del proyecto: dominio, tipo de material y los que solo etiquetan."
       },
       "useTemplateAsManifest": "Personalizar para este proyecto",
       "useTemplateAsManifestHint": "Copia la plantilla al manifiesto del proyecto para retocarla. La plantilla no cambia.",
-      "unsavedManifest": "Hay cambios sin guardar en el manifiesto: guárdalos antes de construir.",
       "domains": "Dominios",
       "domainsHelp": "Escribe un dominio y pulsa Intro.",
       "template": "Plantilla",
@@ -1139,7 +1138,14 @@
       "threshold": "Umbral de clasificación",
       "site": "Construir el sitio",
       "run": "Construir",
-      "rebuild": "Reconstruir"
+      "rebuild": "Reconstruir",
+      "uses": "Taxonomía: {{catalog}}",
+      "change": "Cambiar",
+      "notReady": {
+        "domains": "Escribe al menos un dominio en el paso Taxonomía.",
+        "template": "Elige una plantilla en el paso Taxonomía.",
+        "unsavedManifest": "Hay cambios sin guardar en el manifiesto: guárdalos antes de construir."
+      }
     },
     "domains": {
       "title": "Dominios",
@@ -1260,12 +1266,14 @@
       "markdown": "Markdown (front matter YAML con domains y material_types)",
       "save": "Guardar manifiesto",
       "saved": "Manifiesto guardado.",
-      "tooLarge": "Pasa de 256 KiB."
+      "tooLarge": "Pasa de 256 KiB.",
+      "createShow": "Crear o mejorar con IA",
+      "createHide": "Ocultar «Crear o mejorar con IA»",
+      "createHelp": "Dos formas de proponer un manifiesto: un borrador a partir de una muestra de documentos, o el agente, que lo mejora con cambios comprobados contra todos los documentos. Ninguna guarda: la propuesta va al editor."
     },
     "site": {
       "open": "Ver el sitio",
       "title": "Sitio del contexto",
-      "back": "Volver al contexto de «{{name}}»",
       "isolated": "El sitio se muestra aislado: sus scripts no pueden usar tu sesión ni leer datos de la aplicación.",
       "expires": "El acceso caduca el {{date}}",
       "renew": "Renovar acceso",
@@ -1326,7 +1334,7 @@
     },
     "profile": {
       "title": "Perfil del proyecto",
-      "intro": "Lo que el modelo debe saber de este proyecto al clasificar: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo se usa al clasificar con IA.",
+      "intro": "Lo que el modelo debe saber de este proyecto: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo lo usa la IA, al clasificar y al describir.",
       "markdown": "Perfil (Markdown con las secciones «## Contexto del proyecto», «## Reglas de desempate», «## Glosario» y «## Ejemplos»)",
       "noSections": "El perfil guardado no tiene ninguna de las secciones que lee doc_organize: no se envía nada al modelo.",
       "tooLarge": "El perfil pasa de 32 KiB.",
@@ -1347,6 +1355,13 @@
       "roles": {
         "system": "Mensaje de sistema (instrucciones, perfil y catálogo)",
         "user": "Mensaje del documento"
+      },
+      "aiOnly": "Con este catálogo no hay perfil de taxonomía: este es todo lo que recibe la IA del proyecto.",
+      "manifestNotice": {
+        "title": "Este proyecto tiene además un perfil aparte",
+        "body": "Con el manifiesto, el perfil va en su cuerpo. El perfil aparte (profile.md) se sigue añadiendo detrás al usar la IA: cópialo al manifiesto y, cuando lo hayas guardado, bórralo para tenerlo en un solo sitio.",
+        "view": "Ver el perfil",
+        "copy": "Copiar al cuerpo del manifiesto"
       }
     },
     "freshness": {
@@ -1452,6 +1467,33 @@
       "checkHelp": "Por reglas, sin IA y sin guardar: cobertura y conflictos de cada eje con el texto del editor.",
       "documents_one": "{{count}} documento comprobado.",
       "documents_other": "{{count}} documentos comprobados."
+    },
+    "taxonomy": {
+      "title": "¿Cómo se clasifican los documentos?",
+      "groups": {
+        "none": "Sin taxonomía",
+        "taxonomy": "Con taxonomía"
+      },
+      "next": "Siguiente: Construir"
+    },
+    "steps": {
+      "label": "Pasos del contexto",
+      "taxonomia": "1. Taxonomía",
+      "construir": "2. Construir",
+      "resultado": "3. Resultado",
+      "revisar": "4. Revisar",
+      "calidad": "5. Calidad",
+      "entregar": "6. Entregar",
+      "historial": "Historial",
+      "needsContext": "Construye primero el contexto.",
+      "status_one": "Construido el {{date}} · {{formatted}} documento clasificado",
+      "status_other": "Construido el {{date}} · {{formatted}} documentos clasificados"
+    },
+    "unsaved": {
+      "title": "Cambios sin guardar",
+      "body": "Hay cambios sin guardar en el manifiesto o en el perfil del proyecto. Si sales de la página, se pierden.",
+      "stay": "Seguir editando",
+      "leave": "Salir sin guardar"
     }
   },
   "templates": {
@@ -1619,7 +1661,6 @@
   },
   "review": {
     "open": "Revisar clasificación",
-    "back": "Volver al contexto",
     "title": "Revisar clasificación",
     "intro": "Lo que conviene mirar según la última construcción, de lo más urgente a lo menos. Tus decisiones se guardan en el proyecto y se aplican en la siguiente construcción, antes de la IA; ni las reglas ni la IA las cambian.",
     "reason": "Motivo",
