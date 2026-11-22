@@ -33,7 +33,7 @@ test('entregar el contexto: Excel, sitio sin conexión y paquete para IA, con su
   });
 
   const deliver = async (button: RegExp, configure?: () => Promise<void>) => {
-    await page.goto(`/projects/${id}/context`);
+    await page.goto(`/projects/${id}/context?paso=entregar`); // 2.1: las entregas están en el paso «Entregar»
     const card = page.getByRole('region', { name: 'Entregar el contexto' });
     await configure?.();
     await card.getByRole('button', { name: button }).click();

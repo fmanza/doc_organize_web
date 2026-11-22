@@ -168,8 +168,9 @@ test('contexto 2.0: ejes con IA, semántica y versiones; revisión, calidad y ag
   await page.getByText('Manifiesto del proyecto', { exact: true }).click();
   // Con un manifiesto guardado, «Crear o mejorar con IA» empieza plegado.
   await expect(page.getByRole('textbox', { name: /^Markdown \(front matter/ })).toBeVisible();
-  const create = page.getByRole('button', { name: 'Crear o mejorar con IA' });
-  if (await create.isVisible()) {
+  // `aria-expanded` espera al botón (sea «Crear…» u «Ocultar…»); `isVisible()` no espera y dependía del momento.
+  const create = page.getByRole('button', { name: /Crear o mejorar con IA/ });
+  if ((await create.getAttribute('aria-expanded')) === 'false') {
     await create.click();
   }
   const designer = page.getByRole('region', { name: 'Diseñar taxonomía con IA (agente)' });
