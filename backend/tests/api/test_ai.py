@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable, Iterator
+from typing import Any
 
 import httpx
 import pytest
@@ -588,3 +589,23 @@ def test_task_keys_never_go_to_another_url(admin_api: TestClient, fernet: str, m
 
     assert body["ok"] is True
     assert {r.key for r in proxy.requests} == {"sk-otra-0000"}
+
+
+@pytest.mark.parametrize(("model_check", "timeout"), [(False, 10.0), (True, 60.0)])
+def test_model_check_waits_for_a_model_that_is_loading(
+    admin_api: TestClient, monkeypatch: pytest.MonkeyPatch, model_check: bool, timeout: float
+) -> None:
+    """Un modelo local descargado de memoria tarda más de 10 s en responder: «Probar el modelo» espera hasta 60 s."""
+    seen: list[float] = []
+    original = connection_test.check_connection
+
+    def _check(connection: Any, **kwargs: Any) -> Any:
+        seen.append(connection.timeout_s)
+        return original(connection, **kwargs)
+
+    _probe(monkeypatch, httpx.Response(200, json={"info": {}}), httpx.Response(200, json=CHAT_OK))
+    monkeypatch.setattr(connection_test, "check_connection", _check)
+
+    admin_api.post(TEST, json={"fields": LITELLM, "model_check": model_check})
+
+    assert seen == [timeout]

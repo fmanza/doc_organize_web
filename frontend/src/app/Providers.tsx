@@ -1,4 +1,4 @@
-import { MantineProvider, createTheme } from '@mantine/core';
+import { Badge, MantineProvider, createTheme } from '@mantine/core';
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
@@ -7,6 +7,11 @@ import { createQueryClient } from './queryClient';
 const theme = createTheme({
   primaryColor: 'blue',
   defaultRadius: 'md',
+  components: {
+    // La etiqueta de Badge recorta su texto (overflow oculto), así que su ancho mínimo es casi cero: en una celda de
+    // tabla junto a un texto largo, el navegador la encogía hasta cortarla o dejarla en blanco. Nunca menos que su texto.
+    Badge: Badge.extend({ styles: { root: { minWidth: 'max-content' } } }),
+  },
 });
 
 interface ProvidersProps {

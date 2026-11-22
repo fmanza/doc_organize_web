@@ -5,8 +5,23 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-22
+
+Correcciones del diagnóstico, encontradas al desplegar la 2.0.0. Sin migraciones.
+
+### Changed
+
+- **doc_organize 2.0.1** (antes 2.0.0): la versión de PyTorch solo CPU ya no cuenta como «soporte de GPU instalado».
+
 ### Fixed
 
+- **«Probar el modelo» en Configuración IA** daba «No se pudo conectar con el servicio (o no respondió a tiempo)» con
+  modelos locales: la prueba tenía 10 s, y Ollama tarda más en volver a cargar un modelo de 14B que llevaba un rato
+  sin usarse. Ahora la prueba de un modelo tiene hasta 60 s (o el plazo de IA, si es menor); la de conexión sigue con
+  10 s.
+- **Insignias cortadas en las tablas**: la etiqueta de las insignias recorta su texto, así que en una celda junto a un
+  texto largo el navegador la encogía hasta cortarla (el estado del diagnóstico) o dejarla sin ancho (la de «Cita no
+  encontrada en el texto», que hacía fallar un E2E). Ninguna insignia baja ya del ancho de su texto.
 - **Diagnóstico, comprobación `gpu`**: se ejecuta en el proceso web, que usa la imagen de CPU, así que siempre decía
   que no había GPU, aunque el worker de la cola `gpu` sí la tenga. Ahora la dicen los workers vivos de la cola `gpu`,
   con su `gpu_active`: «GPU CUDA activa en N de M worker(s)», o un aviso si ninguno la ve. Sin workers de GPU queda la
