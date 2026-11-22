@@ -77,9 +77,11 @@ const COUNTS = new Set([
   'embedded',
   'assigned',
   'index_vectors',
+  'prompt_tokens',
+  'completion_tokens',
 ]);
 /** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
-const TRANSLATED = new Set(['mode', 'ai.stopped', 'ai_enrichment.stopped']);
+const TRANSLATED = new Set(['mode', 'ai.stopped', 'ai_enrichment.stopped', 'ai.scope']);
 const SECONDS = new Set(['duration_seconds', 'discovery_duration_seconds', 'total_conversion_seconds']);
 /** Datos técnicos que no aportan al usuario (o que se muestran en otra pantalla, como el borrador del manifiesto). */
 const HIDDEN = new Set(['event_schema_version', 'manifest_markdown', 'segments']);

@@ -38,6 +38,7 @@ import {
   buildParams,
   CONTEXT_HISTORY_XLSX,
   type ContextBuild,
+  type ContextBuildParams,
   type ContextDocument,
   type ContextOut,
   type ContextStep,
@@ -430,6 +431,8 @@ function Traceability({ context }: { context: ContextOut }) {
   );
 }
 
+type AiScope = NonNullable<ContextBuildParams['ai_scope']>;
+
 /**
  * Paso 2 · Construir: con qué taxonomía se construye (y «Cambiar», que vuelve al paso 1), carpeta, umbral, sitio e IA.
  * La taxonomía se elige en el paso 1; aquí solo se dice por qué no se puede construir todavía.
@@ -457,6 +460,11 @@ function BuildCard({
   const status = useAiStatus();
   const [withAi, setWithAi] = useState(false);
   const [withEnrichment, setWithEnrichment] = useState(false);
+  // 2.1: qué se envía a la IA. «También los ejes vacíos» solo tiene sentido con ejes de etiqueta (plantilla o
+  // manifiesto); por defecto, lo de siempre (D2: no disparar el coste sin querer).
+  const [scope, setScope] = useState<AiScope>('unclassified');
+  const scopable = catalog === 'template' || catalog === 'manifest';
+  const aiScope: AiScope = scopable ? scope : 'unclassified';
   const aiAvailable = status.data?.[aiTask(catalog)] === true;
   const enrichmentAvailable = status.data?.enrich === true;
 
@@ -470,6 +478,7 @@ function BuildCard({
         threshold,
         build_site: buildSite,
         ai_classification: withAi && aiAvailable,
+        ai_scope: withAi && aiAvailable ? aiScope : 'unclassified',
         ai_enrichment: withEnrichment && enrichmentAvailable,
       }),
       { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
@@ -533,6 +542,26 @@ function BuildCard({
           disabled={!aiAvailable}
           onChange={(event) => setWithAi(event.currentTarget.checked)}
         />
+        {withAi && aiAvailable && scopable && (
+          <Stack gap={4}>
+            <Text size="sm" fw={500} id="alcance-ia">
+              {t('context.ai.scope')}
+            </Text>
+            <SegmentedControl
+              w="fit-content"
+              value={aiScope}
+              onChange={(value) => setScope(value as AiScope)}
+              aria-labelledby="alcance-ia"
+              data={(['unclassified', 'missing_axes'] as const).map((value) => ({
+                value,
+                label: t(`context.ai.scopes.${value}`),
+              }))}
+            />
+            <Text size="xs" c="dimmed">
+              {t(`context.ai.scopeHelp.${aiScope}`)}
+            </Text>
+          </Stack>
+        )}
         {withAi && aiAvailable && (
           <Alert color="grape" title={t('context.ai.egressTitle')}>
             {t('context.ai.egress')}

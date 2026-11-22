@@ -702,6 +702,10 @@
             "auth": "clave rechazada",
             "connection": "sin conexión",
             "budget": "máximo por ejecución"
+          },
+          "scope": {
+            "unclassified": "Lo que las reglas no clasifican",
+            "missing_axes": "También los ejes de etiqueta vacíos"
           }
         },
         "ai_enrichment": {
@@ -723,14 +727,25 @@
         "calls": "Documentos enviados a la IA",
         "classified": "Clasificados por la IA",
         "failed": "Errores de la IA",
-        "stopped": "La IA paró por"
+        "stopped": "La IA paró por",
+        "scope": "Qué se envió a la IA",
+        "model": "Modelo de la IA",
+        "cached": "Resueltos con la caché de IA",
+        "prompt_tokens": "Tokens de entrada",
+        "completion_tokens": "Tokens de salida",
+        "response_format": "Formato de respuesta"
       },
       "ai_enrichment": {
         "enabled": "Descripciones con IA",
         "calls": "Documentos enviados para describir",
         "applied": "Completados por la IA",
         "failed": "Errores al describir",
-        "stopped": "Las descripciones pararon por"
+        "stopped": "Las descripciones pararon por",
+        "model": "Modelo de las descripciones",
+        "cached": "Descripciones desde la caché de IA",
+        "prompt_tokens": "Tokens de entrada (descripciones)",
+        "completion_tokens": "Tokens de salida (descripciones)",
+        "response_format": "Formato de respuesta (descripciones)"
       },
       "reasoning": "Criterio de la IA",
       "sample_documents": "Documentos de muestra",
@@ -764,8 +779,15 @@
         "assigned": "Asignados por similitud",
         "failed": "Fallidos (semántica)",
         "index_vectors": "Vectores en el índice",
-        "index_bytes": "Tamaño del índice"
-      }
+        "index_bytes": "Tamaño del índice",
+        "model": "Modelo de embeddings",
+        "prompt_tokens": "Tokens de embeddings"
+      },
+      "model": "Modelo de la IA",
+      "prompt_tokens": "Tokens de entrada",
+      "completion_tokens": "Tokens de salida",
+      "tokens_estimated": "Tokens estimados",
+      "ai_cached": "Respuesta desde la caché de IA"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -1312,7 +1334,16 @@
       "openRun": "Ver la ejecución",
       "draftLoaded": "Borrador cargado en el editor",
       "draftLoadedBody": "Revísalo y guárdalo si te sirve.",
-      "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos."
+      "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos.",
+      "scope": "Qué se envía a la IA",
+      "scopes": {
+        "unclassified": "Lo que las reglas no clasifican",
+        "missing_axes": "También los ejes vacíos"
+      },
+      "scopeHelp": {
+        "unclassified": "Solo los documentos que las reglas no colocan en carpeta (dominio o tipo de material).",
+        "missing_axes": "Además, los documentos con algún eje de etiqueta vacío. Los ejes sin reglas (rules: false) siempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el máximo de documentos de clasificar por ejecución. La IA solo rellena lo vacío: nunca cambia lo que decidieron las reglas o una persona."
+      }
     },
     "unclassified": {
       "reason": "Motivo",

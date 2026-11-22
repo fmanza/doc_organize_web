@@ -92,7 +92,7 @@ def rows_from_result(operation: str, result: Any) -> list[UsageRow]:
         if (semantic := _enabled(result.get("semantic"))) is not None:
             found.append(_row("embed", semantic, calls=_int(semantic.get("embedded"))))
     elif operation == "taxonomy_draft" and isinstance(result.get("manifest_markdown"), str):
-        cached = bool(result.get("cached"))
+        cached = bool(result.get("ai_cached"))
         row = _row("taxonomy_design", result, calls=0 if cached else 1)
         found.append(UsageRow(**{**vars(row), "cached": 1 if cached else 0}))
     elif operation in ("taxonomy_agent", "context_review_agent"):

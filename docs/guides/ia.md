@@ -115,6 +115,18 @@ En la página **Contexto**, marca «Clasificar con IA lo que las reglas dejen si
 Solo está disponible si «Modelos de IA» está configurado. Con dominios descubiertos o con un catálogo propio la IA
 asigna el dominio; con plantilla o manifiesto, los ejes que las reglas (y la semántica) dejaron vacíos.
 
+Con plantilla o manifiesto, **«Qué se envía a la IA»** (2.1) elige qué documentos van al modelo:
+
+| Opción | Qué documentos |
+|---|---|
+| Lo que las reglas no clasifican (por defecto) | Los que las reglas no colocan en carpeta (dominio o tipo de material) |
+| También los ejes vacíos | Además, los que tienen vacío algún eje que solo etiqueta |
+
+Un eje sin reglas (`rules: false` en el manifiesto, por ejemplo una «acción» que solo puede decidir la IA o una persona)
+está siempre vacío tras las reglas: con «También los ejes vacíos» van **todos** los documentos, hasta el máximo de
+documentos de clasificar por ejecución. En los dos casos la IA solo rellena lo vacío. El resultado de la ejecución dice
+qué opción se usó.
+
 - El modelo responde con salida `json_schema` estricta: solo puede elegir valores del catálogo, nunca inventa otros.
 - Con cada valor da una **cita** literal del documento. Si la cita no aparece en el texto enviado, el valor queda con
   la confianza por debajo del umbral y el documento va a [Revisar clasificación](contexto.md#revisar-clasificación-20)

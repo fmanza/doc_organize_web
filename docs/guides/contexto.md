@@ -59,7 +59,8 @@ y construir el sitio. Se puede cancelar antes de que empiece a copiar; la copia 
 medias. Reconstruir sustituye el contexto anterior.
 
 Si un administrador ha configurado la IA, también puedes **clasificar con IA** lo que las reglas dejen sin
-clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia).
+clasificar: ver [Inteligencia artificial](ia.md#clasificar-con-ia). Con plantilla o manifiesto puedes pedir además que
+rellene los ejes de etiqueta vacíos («Qué se envía a la IA», 2.1).
 
 ### ¿Por carpetas o manifiesto?
 

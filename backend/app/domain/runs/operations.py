@@ -200,6 +200,10 @@ class ContextBuildParams(_Params):
     descarta) y no se devuelve en el run.
     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
     ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+    ``ai_scope`` (2.1) dice qué se envía a la IA al clasificar (solo con ``ai_classification``): ``unclassified`` (por
+    defecto) lo que las reglas no colocan en carpeta; ``missing_axes`` además los documentos con algún eje de etiqueta
+    vacío (solo con plantilla o manifiesto: los otros catálogos no tienen ejes de etiqueta). Los ejes ``rules: false``
+    siempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el tope de la tarea.
     ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
     clasificados que no las declaran; tiene su propio presupuesto de documentos.
     """
@@ -212,6 +216,7 @@ class ContextBuildParams(_Params):
     threshold: float = Field(default=0.5, ge=0, le=1)
     build_site: bool = True
     ai_classification: bool = False
+    ai_scope: Literal["unclassified", "missing_axes"] = "unclassified"
     ai_enrichment: bool = False
     template_markdown: str | None = Field(default=None, max_length=MAX_TEMPLATE_BYTES)
 
@@ -223,6 +228,11 @@ class ContextBuildParams(_Params):
             raise ValueError("«domains» solo se usa con el catálogo propio")
         if (self.catalog == "template") != (self.template_name is not None):
             raise ValueError("«template_name» se indica solo, y siempre, con el catálogo «template»")
+        if self.ai_classification and self.ai_scope == "missing_axes" and self.catalog not in ("template", "manifest"):
+            raise ValueError(
+                "«missing_axes» solo se usa con una plantilla o el manifiesto: los demás catálogos no tienen ejes de "
+                "etiqueta"
+            )
         return self
 
 

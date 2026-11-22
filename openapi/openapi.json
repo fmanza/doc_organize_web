@@ -1592,7 +1592,7 @@
       },
       "ContextBuildParams": {
         "additionalProperties": false,
-        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia\n``litellm`` desde doc_organize 2.0, ``ai_scope=\"unclassified\"``).\n``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos\nclasificados que no las declaran; tiene su propio presupuesto de documentos.",
+        "description": "Construir el contexto del proyecto: clasificar, copiar a la carpeta reorganizada y generar el sitio (L-8).\n\n``catalog``: ``discover`` (dominios descubiertos), ``domains`` (catálogo propio en ``domains``, un eje),\n``template`` (plantilla ``template_name``, dos ejes) o ``manifest`` (``taxonomy_manifest.md`` del proyecto).\n``output_folder_name`` solo se elige en la primera construcción; después es el del contexto existente.\n``template_markdown`` lo rellena la API al encolar con la versión vigente de la plantilla (el valor del cliente se\ndescarta) y no se devuelve en el run.\n``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia\n``litellm`` desde doc_organize 2.0, ``ai_scope=\"unclassified\"``).\n``ai_scope`` (2.1) dice qué se envía a la IA al clasificar (solo con ``ai_classification``): ``unclassified`` (por\ndefecto) lo que las reglas no colocan en carpeta; ``missing_axes`` además los documentos con algún eje de etiqueta\nvacío (solo con plantilla o manifiesto: los otros catálogos no tienen ejes de etiqueta). Los ejes ``rules: false``\nsiempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el tope de la tarea.\n``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos\nclasificados que no las declaran; tiene su propio presupuesto de documentos.",
         "properties": {
           "ai_classification": {
             "default": false,
@@ -1603,6 +1603,15 @@
             "default": false,
             "title": "Ai Enrichment",
             "type": "boolean"
+          },
+          "ai_scope": {
+            "default": "unclassified",
+            "enum": [
+              "unclassified",
+              "missing_axes"
+            ],
+            "title": "Ai Scope",
+            "type": "string"
           },
           "build_site": {
             "default": true,

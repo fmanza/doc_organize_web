@@ -104,6 +104,44 @@ describe('ContextPage con IA', () => {
     });
   });
 
+  it('con plantilla o manifiesto elige qué se envía a la IA; por carpetas, siempre lo no clasificado (2.1)', async () => {
+    const fetchMock = stubApi({
+      ...BASE,
+      ...status({ classify: true }),
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: RUN_ID, operation: 'context_build' }),
+      },
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ id: RUN_ID, operation: 'context_build' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context?paso=construir');
+
+    const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+    // Por carpetas: no hay ejes de etiqueta, no hay selector.
+    expect(screen.queryByRole('radio', { name: 'También los ejes vacíos' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    // Por defecto, lo de siempre (D2).
+    expect(await screen.findByRole('radio', { name: 'Lo que las reglas no clasifican' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'También los ejes vacíos' }));
+    expect(screen.getByText(/siempre están vacíos tras las reglas/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Construir' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toMatchObject({
+      catalog: 'manifest',
+      ai_classification: true,
+      ai_scope: 'missing_axes',
+    });
+  });
+
   it('completar descripciones con IA va aparte de clasificar (1.5.0)', async () => {
     const fetchMock = stubApi({
       ...BASE,

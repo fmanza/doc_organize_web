@@ -34,6 +34,10 @@ ROADMAP (`0.<fase+1>.0`).
   de LiteLLM (cuánto queda y cuándo se reinicia), **tokens por día** en la hora local del navegador (y como tabla), y
   tablas por tarea, modelo, proyecto y ejecuciones que más gastaron. `GET /admin/ai-usage` acepta `period` y `tz` y
   devuelve `local` y `budget`.
+- **«Qué se envía a la IA» al construir** (paso Construir, con plantilla o manifiesto): «Lo que las reglas no
+  clasifican» (por defecto, como antes) o «También los ejes vacíos» (`ai_scope="missing_axes"` de doc_organize), que
+  rellena los ejes de etiqueta vacíos, también los `rules: false`, en documentos que las reglas ya colocaron. Campo
+  `ai_scope` de `context_build` (opcional; 422 con catálogos sin ejes de etiqueta). Sale en el resultado del run.
 - Tarjeta **Consumo de IA** en el detalle de cada ejecución (`GET /runs/{id}` devuelve `ai_usage`).
 - El borrador de manifiesto guarda sus tokens y su modelo; construir el contexto, los agentes y la semántica guardan
   el modelo de cada tarea.

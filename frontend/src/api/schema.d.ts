@@ -2331,6 +2331,10 @@ export interface components {
          *     descarta) y no se devuelve en el run.
          *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
          *     ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+         *     ``ai_scope`` (2.1) dice qué se envía a la IA al clasificar (solo con ``ai_classification``): ``unclassified`` (por
+         *     defecto) lo que las reglas no colocan en carpeta; ``missing_axes`` además los documentos con algún eje de etiqueta
+         *     vacío (solo con plantilla o manifiesto: los otros catálogos no tienen ejes de etiqueta). Los ejes ``rules: false``
+         *     siempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el tope de la tarea.
          *     ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
          *     clasificados que no las declaran; tiene su propio presupuesto de documentos.
          */
@@ -2345,6 +2349,12 @@ export interface components {
              * @default false
              */
             ai_enrichment: boolean;
+            /**
+             * Ai Scope
+             * @default unclassified
+             * @enum {string}
+             */
+            ai_scope: "unclassified" | "missing_axes";
             /**
              * Build Site
              * @default true

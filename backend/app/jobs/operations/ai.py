@@ -71,7 +71,7 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
         "model": draft.model,
         "prompt_tokens": draft.prompt_tokens,
         "completion_tokens": draft.completion_tokens,
-        "cached": draft.cached,
+        "ai_cached": draft.cached,
     }
     with ctx.session_factory() as db:
         audit.record(

@@ -45,6 +45,7 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
     threshold: 0.5,
     build_site: true,
     ai_classification: false,
+    ai_scope: 'unclassified',
     ai_enrichment: false,
     template_markdown: null,
     ...change,
