@@ -35,4 +35,4 @@ creado?» → «Hacemos el hueco, el lanzamiento será con el nuevo contexto».
 ## Veredicto final
 Veredicto: GO
 Pendientes al cierre:
-- CI del PR #101.
+- Ninguno: CI del PR #101 en verde; publicado en la 2.1.0.

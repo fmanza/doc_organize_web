@@ -51,5 +51,5 @@ sigue
 ## Veredicto final
 Veredicto: GO_CONDICIONAL
 Pendientes al cierre:
-- Revisión visual de IA › Uso (claro, oscuro, móvil) y e2e de `feature/2.1`.
-- Commits, PR a `develop` y cierre de versión (web 2.1.0; doc_organize 2.1.0 por separado).
+- Revisión visual de IA › Uso (claro, oscuro, móvil): no hecha. E2E en verde en CI; publicado en la web 2.1.0 y
+  doc_organize 2.1.0 (ver `2026-11-22-version-2.1.0`).

@@ -33,4 +33,4 @@ normalización de un SGI a un manifiesto con un eje `rules: false` («Acción de
 ## Veredicto final
 Veredicto: GO
 Pendientes al cierre:
-- CI del PR #101 y revisión en el navegador.
+- Revisión en el navegador (no hecha). CI del PR #101 en verde; publicado en la 2.1.0.
