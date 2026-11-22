@@ -27,6 +27,7 @@ from app.api.v1.schemas import (
     ContextDomainOut,
     ContextFreshnessOut,
     ContextHistoryOut,
+    ContextLeftoverOut,
     ContextOut,
     DecisionIn,
     DecisionIssueOut,
@@ -422,6 +423,21 @@ _MANIFEST_WRITE_ERRORS: dict[int | str, dict[str, Any]] = {
     428: {"description": "Falta If-Match (etag_required)"},
     503: {"description": "Ubicación no disponible"},
 }
+
+
+@router.get(
+    "/projects/{project_id}/context/leftover",
+    response_model=ContextLeftoverOut,
+    summary="Contexto a medio guardar",
+    responses=_ERRORS,
+)
+def get_context_leftover(
+    project_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep
+) -> ContextLeftoverOut:
+    """Si en el destino hay un contexto que la web no llegó a guardar (construcción interrumpida): su carpeta, para
+    ofrecer completarlo («Construir») o borrarlo. ``null`` si hay contexto guardado o no hay restos."""
+    access = projects.get_access(db, project_id, user)
+    return ContextLeftoverOut(output_folder_name=context.leftover_folder(db, settings, access.project))
 
 
 @router.get(

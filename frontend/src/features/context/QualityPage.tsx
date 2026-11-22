@@ -24,12 +24,12 @@ import { useParams } from 'react-router';
 
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
-import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
 import { useRun } from '../runs/useRuns';
 import { useTemplates } from './useContext';
+import { ContextNav } from './ContextNav';
 
 type Quality = components['schemas']['QualityOut'];
 type GoldSource = 'xlsx' | 'decisions';
@@ -116,8 +116,8 @@ export function QualityPage() {
 
   return (
     <Stack>
-      <BackLink to={`/projects/${projectId}/context`}>{t('review.back')}</BackLink>
-      <Title order={2}>{t('quality.title')}</Title>
+      <ContextNav projectId={projectId} active="calidad" />
+      <Title order={3}>{t('quality.title')}</Title>
       <Text c="dimmed">{t('quality.intro')}</Text>
       <GoldCard projectId={projectId} quality={data} editable={editable} />
       <Card withBorder>

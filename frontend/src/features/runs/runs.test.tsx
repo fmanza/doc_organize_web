@@ -160,6 +160,39 @@ describe('RunDetailPage', () => {
       await screen.findByText('Superó el tiempo máximo; se guardó lo hecho hasta parar.'),
     ).toBeInTheDocument();
   });
+  it('muestra el consumo de IA por tarea, con los tokens estimados marcados (2.1)', async () => {
+    stubApi({
+      ...session(USER),
+      [`GET /api/v1/runs/${RUN_ID}`]: {
+        body: runOut({
+          operation: 'taxonomy_agent',
+          status: 'succeeded',
+          can_cancel: false,
+          result: {},
+          ai_usage: [
+            {
+              task: 'agent',
+              model: 'modelo-agente',
+              calls: 4,
+              cached: 0,
+              failed: 0,
+              prompt_tokens: 9000,
+              completion_tokens: 1200,
+              tokens_estimated: true,
+            },
+          ],
+        }),
+      },
+    });
+
+    renderRoute(`/runs/${RUN_ID}`);
+
+    const card = await screen.findByRole('region', { name: 'Consumo de IA' });
+    expect(within(card).getByText('Agentes')).toBeInTheDocument();
+    expect(within(card).getByText('modelo-agente')).toBeInTheDocument();
+    expect(within(card).getByText('≈ 9000')).toBeInTheDocument();
+    expect(within(card).getByText(/tokens estimados/)).toBeInTheDocument();
+  });
 });
 
 describe('Fase 10', () => {

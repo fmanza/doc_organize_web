@@ -280,10 +280,16 @@ ENRICHMENT_STOPPED: Final[dict[str, str]] = {
 def _log_ai(ctx: JobContext, outcome: ContextOutcome) -> None:
     """Recuento de la clasificación y de las descripciones con IA, y por qué paró cada una."""
     if outcome.ai is not None:
-        # La IA solo recibe lo que las reglas no clasificaron: sin el total, «24 enviados» de 213 parecía un fallo.
+        # La IA solo recibe lo que las reglas no clasificaron (y, con `missing_axes`, lo que tiene algún eje de etiqueta
+        # vacío): sin el total, «24 enviados» de 213 parecía un fallo.
+        which = (
+            "los que las reglas no clasificaron o tenían vacío algún eje de etiqueta"
+            if outcome.ai.get("scope") == "missing_axes"
+            else "los que las reglas no clasificaron"
+        )
         ctx.log(
-            f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados (los que las reglas no "
-            f"clasificaron); {outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
+            f"IA: {outcome.ai['calls']} de {len(outcome.documents)} documentos enviados ({which}); "
+            f"{outcome.ai['classified']} clasificados, {outcome.ai['failed']} con error."
         )
         if outcome.ai.get("cached"):  # doc_organize 2.0: caché de resultados de IA, sin llamar al modelo
             ctx.log(f"IA: {outcome.ai['cached']} documentos resueltos con la caché de IA, sin llamar al modelo.")
@@ -338,7 +344,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         build_site=params.build_site,
         site_timeout=float(ctx.settings.context_site_timeout_seconds),
         ai=ai,
-        ai_scope="unclassified" if params.ai_classification else "off",
+        ai_scope=params.ai_scope if params.ai_classification else "off",
         enrich=params.ai_enrichment,
         versions=project.context_versions,
         redact_credentials=project.ai_redact_credentials,

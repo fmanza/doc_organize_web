@@ -10,23 +10,20 @@ import {
   Modal,
   NumberInput,
   SegmentedControl,
-  Select,
   SimpleGrid,
   Stack,
   Switch,
   Table,
-  TagsInput,
   Text,
   TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
-import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
@@ -37,16 +34,22 @@ import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
 import {
   aiTask,
+  appendProfile,
   buildParams,
-  type Catalog,
   CONTEXT_HISTORY_XLSX,
   type ContextBuild,
+  type ContextBuildParams,
   type ContextDocument,
   type ContextOut,
+  type ContextStep,
   type DocumentFilter,
   initialSelection,
+  type NotReady,
+  resolveStep,
   sameText,
   type Selection,
+  selectionNotReady,
+  stepHref,
   type ContextDocumentSort,
   type Manifest,
   manifestKey,
@@ -54,19 +57,22 @@ import {
   templateQuery,
   useContextDocuments,
   useContextHistory,
+  useContextLeftover,
   useProjectContext,
-  useTemplates,
 } from './useContext';
 import { AxisBadges, AxisEvidence, AxisFilters } from './Axes';
+import { ContextNav } from './ContextNav';
 import { DeliveryCard } from './DeliveryCard';
 import { ManifestCard } from './ManifestCard';
-import { ProfileCard } from './ProfileCard';
+import { TaxonomyStep } from './TaxonomyStep';
+import { UnsavedDraftGuard } from './UnsavedDraft';
 import { VersionsCard } from './Versions';
 
 /**
- * Contexto del proyecto (sustituye a `context.html.j2`): construir (dominios descubiertos, catálogo propio, plantilla o
- * manifiesto), ver dominios y documentos, editar el manifiesto de taxonomía, abrir el sitio aislado y borrar. Con la
- * Fase 8, también clasificar con IA lo que las reglas dejan sin clasificar y pedir un borrador del manifiesto.
+ * Contexto del proyecto (sustituye a `context.html.j2`), en pasos de trabajo (2026-11-22) con `?paso=`:
+ * 1 Taxonomía (catálogo, plantilla o manifiesto y perfil) → 2 Construir → 3 Resultado (resumen, dominios, documentos y
+ * versiones) → 4 Revisar y 5 Calidad (rutas propias) → 6 Entregar → Historial. Los pasos siguen montados al cambiar de
+ * uno a otro (`hidden`), así que el borrador del manifiesto, la selección y las ejecuciones seguidas no se pierden.
  */
 const CONTEXT_DOCUMENT_SORT: readonly ContextDocumentSort[] = [
   'title',
@@ -84,8 +90,10 @@ interface Copied {
 export function ContextPage() {
   const { t } = useTranslation();
   const projectId = Number(useParams().projectId);
+  const [searchParams] = useSearchParams();
   const project = useProject(projectId);
   const context = useProjectContext(projectId);
+  const leftover = useContextLeftover(projectId, context.isSuccess && context.data === null);
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   // Selección derivada de `built_at` sin efectos (A4): al terminar una construcción vuelve a la del contexto nuevo.
@@ -93,12 +101,18 @@ export function ContextPage() {
     builtAt: null,
     ...initialSelection(null),
   });
+  const [domains, setDomains] = useState<string[]>([]);
   const [draft, setDraft] = useState<string | null>(null);
   const [copied, setCopied] = useState<Copied | null>(null);
   const [confirm, setConfirm] = useState<{ body: string; apply: () => void } | null>(null);
   const [focusToken, setFocusToken] = useState(0);
   const [showManifest, setShowManifest] = useState(false);
   const [copyError, setCopyError] = useState<unknown>(null);
+  const [profileDirty, setProfileDirty] = useState(false);
+  const onProfileDirty = useCallback((dirty: boolean) => setProfileDirty(dirty), []);
+
+  const savedManifest = queryClient.getQueryData<Manifest>(manifestKey(projectId))?.markdown ?? null;
+  const manifestDirty = draft !== null && !sameText(draft, savedManifest);
 
   if (project.isPending || context.isPending) {
     return (
@@ -119,8 +133,8 @@ export function ContextPage() {
   const select = (next: Selection) => setChosen({ builtAt, ...next });
   const writable = project.data.destination_location.access === 'rw';
   const canBuild = canDo(project.data, 'editor') && writable;
-  const savedManifest = queryClient.getQueryData<Manifest>(manifestKey(projectId))?.markdown ?? null;
-  const manifestDirty = draft !== null && !sameText(draft, savedManifest);
+  const step = resolveStep(searchParams.get('paso'), built !== null, canBuild);
+  const notReady = selectionNotReady(selection, domains, manifestDirty);
 
   /** Sustituye el borrador; si hay otro texto (borrador o guardado), pide confirmación antes (A6, B6). */
   const replaceDraft = (markdown: string, body: string, apply: () => void) => {
@@ -149,6 +163,18 @@ export function ContextPage() {
       )
       .catch(setCopyError);
   };
+
+  /**
+   * «Copiar al cuerpo del manifiesto» (D1): añade el perfil al final del borrador, sin guardar ni borrar nada. El texto
+   * guardado se lee al pulsar: `getQueryData` no vuelve a pintar la página cuando llega el manifiesto.
+   */
+  const copyProfileToManifest = canBuild
+    ? (profile: string) => {
+        const current = draft ?? queryClient.getQueryData<Manifest>(manifestKey(projectId))?.markdown ?? '';
+        setDraft(current.trim() ? appendProfile(current, profile) : `${profile.trim()}\n`);
+        setFocusToken((token) => token + 1);
+      }
+    : undefined;
 
   const manifestCard = (editable: boolean) => (
     <ManifestCard
@@ -179,61 +205,99 @@ export function ContextPage() {
       focusToken={focusToken}
     />
   );
+  const readOnlyManifest =
+    built?.catalog_kind === 'manifest' || showManifest ? (
+      manifestCard(false)
+    ) : (
+      <Anchor component="button" onClick={() => setShowManifest(true)} w="fit-content">
+        {t('context.manifest.show')}
+      </Anchor>
+    );
+  const panel = (name: ContextStep) => ({ hidden: step !== name, 'data-step': name });
+  const leftoverFolder = built ? null : (leftover.data ?? null);
 
   return (
     <Stack>
-      <BackLink to={`/projects/${projectId}`}>{t('context.back', { name: project.data.name })}</BackLink>
-      <Title order={2}>{t('context.title')}</Title>
+      <ContextNav projectId={projectId} active={step} />
       <Text c="dimmed">{t('context.intro')}</Text>
-
-      {built ? (
-        <Summary
-          context={built}
-          projectId={projectId}
-          canDelete={canDo(project.data, 'owner') && writable}
-          onDelete={() => setDeleting(true)}
-        />
-      ) : (
-        <Text c="dimmed" role="status">
-          {t('context.empty')}
-        </Text>
+      {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
+      {leftoverFolder && (
+        <Alert color="orange" title={t('context.leftover.title')} role="status">
+          <Text size="sm">{t('context.leftover.body', { folder: leftoverFolder })}</Text>
+          <Group mt="xs" gap="xs">
+            {canBuild && (
+              <Button component={Link} to={stepHref(projectId, 'construir')} size="xs" variant="light">
+                {t('context.leftover.build')}
+              </Button>
+            )}
+            {canDo(project.data, 'owner') && writable && (
+              <Button size="xs" color="red" variant="light" onClick={() => setDeleting(true)}>
+                {t('projects.danger.context_delete.button')}
+              </Button>
+            )}
+          </Group>
+        </Alert>
       )}
 
-      {built?.freshness && <FreshnessBanner freshness={built.freshness} canBuild={canBuild} />}
-
-      {canDo(project.data, 'editor') && !writable && <Alert color="gray">{t('context.readOnly')}</Alert>}
-      {canBuild && (
-        <BuildCard
-          key={builtAt ?? 'nuevo'}
-          project={project.data}
-          context={built}
+      <div {...panel('taxonomia')}>
+        <TaxonomyStep
+          projectId={projectId}
+          editable={canBuild}
           selection={selection}
           onSelectionChange={select}
-          manifestDirty={manifestDirty}
+          domains={domains}
+          onDomainsChange={setDomains}
           onUseTemplate={copyTemplateToManifest}
           copyError={copyError}
+          manifest={canBuild ? manifestCard(true) : readOnlyManifest}
+          notReady={notReady}
+          onProfileDirty={onProfileDirty}
+          onCopyProfile={copyProfileToManifest}
         />
+      </div>
+
+      {canBuild && (
+        <div {...panel('construir')}>
+          <BuildCard
+            key={builtAt ?? 'nuevo'}
+            project={project.data}
+            context={built}
+            selection={selection}
+            domains={domains}
+            notReady={notReady}
+            leftoverFolder={leftoverFolder}
+          />
+        </div>
       )}
-      {canBuild && selection.catalog === 'manifest' && manifestCard(true)}
-      {!canBuild &&
-        (built?.catalog_kind === 'manifest' || showManifest ? (
-          manifestCard(false)
-        ) : (
-          <Anchor component="button" onClick={() => setShowManifest(true)} w="fit-content">
-            {t('context.manifest.show')}
-          </Anchor>
-        ))}
 
-      <ProfileCard projectId={projectId} editable={canBuild} selection={selection} />
+      {built && (
+        <div {...panel('resultado')}>
+          <Stack>
+            <Summary
+              context={built}
+              canDelete={canDo(project.data, 'owner') && writable}
+              onDelete={() => setDeleting(true)}
+            />
+            <Domains key={built.built_at} context={built} projectId={projectId} />
+            <VersionsCard context={built} projectId={projectId} editable={canBuild} />
+          </Stack>
+        </div>
+      )}
 
-      {built && <VersionsCard context={built} projectId={projectId} editable={canBuild} />}
+      {built && (
+        <div {...panel('entregar')}>
+          <Stack>
+            <SiteCard context={built} projectId={projectId} />
+            <DeliveryCard projectId={projectId} />
+          </Stack>
+        </div>
+      )}
 
-      {built && <Domains key={built.built_at} context={built} projectId={projectId} />}
+      <div {...panel('historial')}>
+        <HistoryCard projectId={projectId} />
+      </div>
 
-      {built && <DeliveryCard projectId={projectId} />}
-
-      <HistoryCard projectId={projectId} />
-
+      <UnsavedDraftGuard dirty={manifestDirty || profileDirty} />
       {deleting && (
         <DangerousOperationModal
           project={project.data}
@@ -269,12 +333,10 @@ export function ContextPage() {
 
 function Summary({
   context,
-  projectId,
   canDelete,
   onDelete,
 }: {
   context: ContextOut;
-  projectId: number;
   canDelete: boolean;
   onDelete: () => void;
 }) {
@@ -300,8 +362,7 @@ function Summary({
       </Group>
       <Text size="sm" mb="xs">
         {t('context.summary.folder', { folder: context.output_folder_name })} ·{' '}
-        {t(`context.catalog.${context.catalog_kind}`, { defaultValue: context.catalog_kind })}
-        {context.taxonomy_template_name ? ` «${context.taxonomy_template_name}»` : ''}
+        <CatalogName context={context} />
         {context.ai_classification && (
           <Badge ml="xs" size="sm" variant="light" color="grape">
             {t('context.ai.badge')}
@@ -331,29 +392,43 @@ function Summary({
           {t('context.warnings.collisions', { count: context.collisions_count })}
         </Alert>
       )}
-      {!context.site_built && (
-        <Alert color="gray" mt="sm">
-          {t('context.warnings.noSite')}
-        </Alert>
-      )}
-      <Group mt="sm">
-        <Button component={Link} to={`/projects/${projectId}/context/review`} variant="light">
-          {t('review.open')}
-        </Button>
-        <Button component={Link} to={`/projects/${projectId}/context/quality`} variant="light">
-          {t('quality.open')}
-        </Button>
-        {context.site_built && (
-          <Button component={Link} to={`/projects/${projectId}/context/site`}>
-            {t('context.site.open')}
-          </Button>
-        )}
-        {canDelete && (
+      {canDelete && (
+        <Group mt="sm" justify="flex-end">
           <Button color="red" variant="light" onClick={onDelete}>
             {t('projects.danger.context_delete.button')}
           </Button>
-        )}
-      </Group>
+        </Group>
+      )}
+    </Card>
+  );
+}
+
+/** Catálogo con el que se construyó el contexto, y su plantilla si la hay. */
+function CatalogName({ context }: { context: ContextOut }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {t(`context.catalog.${context.catalog_kind}`, { defaultValue: context.catalog_kind })}
+      {context.taxonomy_template_name ? ` «${context.taxonomy_template_name}»` : ''}
+    </>
+  );
+}
+
+/** Paso «Entregar»: el sitio navegable (o por qué no lo hay); el Excel, el ZIP y el paquete van en `DeliveryCard`. */
+function SiteCard({ context, projectId }: { context: ContextOut; projectId: number }) {
+  const { t } = useTranslation();
+  return (
+    <Card withBorder component="section" aria-label={t('context.site.title')}>
+      <Title order={3} size="h4" mb="xs">
+        {t('context.site.title')}
+      </Title>
+      {context.site_built ? (
+        <Button component={Link} to={`/projects/${projectId}/context/site`} w="fit-content">
+          {t('context.site.open')}
+        </Button>
+      ) : (
+        <Alert color="gray">{t('context.warnings.noSite')}</Alert>
+      )}
     </Card>
   );
 }
@@ -377,104 +452,46 @@ function Traceability({ context }: { context: ContextOut }) {
   );
 }
 
-/** Ancla de la tarjeta de construcción (el aviso de frescura lleva a ella). */
-const BUILD_CARD_ID = 'construir-contexto';
-type Freshness = NonNullable<ContextOut['freshness']>;
+type AiScope = NonNullable<ContextBuildParams['ai_scope']>;
 
 /**
- * Aviso de frescura (W4, `check_context_freshness`): el contexto ya no refleja la caché del último escaneo. Con los
- * recuentos, unos ejemplos y, si puede construir, el enlace para reconstruir.
+ * Paso 2 · Construir: con qué taxonomía se construye (y «Cambiar», que vuelve al paso 1), carpeta, umbral, sitio e IA.
+ * La taxonomía se elige en el paso 1; aquí solo se dice por qué no se puede construir todavía.
  */
-function FreshnessBanner({ freshness, canBuild }: { freshness: Freshness; canBuild: boolean }) {
-  const { t } = useTranslation();
-  if (freshness.up_to_date) {
-    return freshness.unknown > 0 ? (
-      <Alert color="gray" title={t('context.freshness.unknownTitle')}>
-        {t('context.freshness.unknown', { count: freshness.unknown })}
-      </Alert>
-    ) : null;
-  }
-  const parts = (['changed', 'added', 'removed'] as const)
-    .filter((key) => freshness[key] > 0)
-    .map((key) => t(`context.freshness.${key}`, { count: freshness[key] }));
-  if (freshness.stale_site) {
-    parts.push(t('context.freshness.staleSite'));
-  }
-  const examples = (['changed', 'added', 'removed'] as const).flatMap((key) =>
-    freshness.examples[key].map((path) => ({ key, path })),
-  );
-  return (
-    <Alert color="orange" title={t('context.freshness.title')} role="status">
-      <Text size="sm">{parts.join(' · ')}</Text>
-      {examples.length > 0 && (
-        <Text component="details" size="xs" mt={4}>
-          <summary style={{ cursor: 'pointer' }}>{t('context.freshness.examples')}</summary>
-          <Stack gap={0} mt={2}>
-            {examples.map(({ key, path }) => (
-              <Text key={`${key}:${path}`} size="xs" ff="monospace">
-                {t(`context.freshness.kinds.${key}`)}: {path}
-              </Text>
-            ))}
-          </Stack>
-        </Text>
-      )}
-      <Text size="xs" c="dimmed" mt={4}>
-        {t('context.freshness.checkedAt', { date: formatDateTime(freshness.checked_at) })}
-      </Text>
-      {canBuild && (
-        <Button
-          mt="xs"
-          size="xs"
-          variant="light"
-          onClick={() => document.getElementById(BUILD_CARD_ID)?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          {t('context.freshness.rebuild')}
-        </Button>
-      )}
-    </Alert>
-  );
-}
-
 function BuildCard({
   project,
   context,
   selection,
-  onSelectionChange,
-  manifestDirty,
-  onUseTemplate,
-  copyError,
+  domains,
+  notReady,
+  leftoverFolder,
 }: {
   project: ProjectOut;
   context: ContextOut | null;
   selection: Selection;
-  onSelectionChange: (selection: Selection) => void;
-  /** Hay un borrador del manifiesto distinto del guardado: con su catálogo no se construye (A3). */
-  manifestDirty: boolean;
-  onUseTemplate: (name: string) => void;
-  copyError: unknown;
+  domains: string[];
+  notReady: NotReady | null;
+  /** Carpeta de un contexto a medio guardar: la construcción la reutiliza (el job lo hace igual). */
+  leftoverFolder: string | null;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const enqueue = useEnqueueRun(project.id);
-  const templates = useTemplates();
   const { catalog, template } = selection;
-  const setCatalog = (value: Catalog) => onSelectionChange({ catalog: value, template });
-  const setTemplate = (value: string | null) => onSelectionChange({ catalog, template: value });
-  const [domains, setDomains] = useState<string[]>([]);
   const [folder, setFolder] = useState('organizado');
   const [threshold, setThreshold] = useState(0.5);
   const [buildSite, setBuildSite] = useState(true);
   const status = useAiStatus();
   const [withAi, setWithAi] = useState(false);
   const [withEnrichment, setWithEnrichment] = useState(false);
+  // 2.1: qué se envía a la IA. «También los ejes vacíos» solo tiene sentido con ejes de etiqueta (plantilla o
+  // manifiesto); por defecto, lo de siempre (D2: no disparar el coste sin querer).
+  const [scope, setScope] = useState<AiScope>('unclassified');
+  const scopable = catalog === 'template' || catalog === 'manifest';
+  const aiScope: AiScope = scopable ? scope : 'unclassified';
   const aiAvailable = status.data?.[aiTask(catalog)] === true;
   const enrichmentAvailable = status.data?.enrich === true;
 
-  const blockedByDraft = catalog === 'manifest' && manifestDirty;
-  const ready =
-    (catalog !== 'domains' || domains.length > 0) &&
-    (catalog !== 'template' || template !== null) &&
-    !blockedByDraft;
   const launch = () =>
     enqueue.mutate(
       buildParams({
@@ -485,67 +502,37 @@ function BuildCard({
         threshold,
         build_site: buildSite,
         ai_classification: withAi && aiAvailable,
+        ai_scope: withAi && aiAvailable ? aiScope : 'unclassified',
         ai_enrichment: withEnrichment && enrichmentAvailable,
       }),
       { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
     );
 
   return (
-    <Card withBorder id={BUILD_CARD_ID}>
+    <Card
+      withBorder
+      component="section"
+      aria-label={t(context ? 'context.build.rebuildTitle' : 'context.build.title')}
+    >
       <Title order={3} size="h4" mb="xs">
         {t(context ? 'context.build.rebuildTitle' : 'context.build.title')}
       </Title>
       <Stack>
-        <SegmentedControl
-          value={catalog}
-          onChange={(value) => setCatalog(value as Catalog)}
-          aria-label={t('context.build.catalog')}
-          data={(['discover', 'domains', 'template', 'manifest'] as const).map((value) => ({
-            value,
-            label: t(`context.catalog.${value}`),
-          }))}
-        />
-        <Text size="sm" c="dimmed">
-          {t(`context.build.help.${catalog}`)}
-        </Text>
-        {catalog === 'domains' && (
-          <TagsInput
-            label={t('context.build.domains')}
-            description={t('context.build.domainsHelp')}
-            value={domains}
-            onChange={setDomains}
-            maxTags={100}
-            clearable
-          />
-        )}
-        {catalog === 'template' && (
-          <Select
-            label={t('context.build.template')}
-            data={(templates.data ?? []).map((item) => ({
-              value: item.name,
-              label: item.title ? `${item.title} (${item.name})` : item.name,
-            }))}
-            value={template}
-            onChange={setTemplate}
-            searchable
-            nothingFoundMessage={t('context.build.noTemplates')}
-          />
-        )}
-        {catalog === 'template' && template !== null && (
-          <Group gap="xs">
-            <Button variant="default" size="xs" onClick={() => onUseTemplate(template)}>
-              {t('context.build.useTemplateAsManifest')}
-            </Button>
-            <Text size="xs" c="dimmed">
-              {t('context.build.useTemplateAsManifestHint')}
-            </Text>
-          </Group>
-        )}
-        {copyError !== null && <ErrorAlert error={copyError} />}
-        {templates.isError && catalog === 'template' && <ErrorAlert error={templates.error} />}
+        <Group gap="xs">
+          <Text size="sm">
+            {t('context.build.uses', { catalog: t(`context.catalog.${catalog}`) })}
+            {catalog === 'template' && template ? ` «${template}»` : ''}
+            {catalog === 'domains' && domains.length > 0 ? ` (${domains.join(', ')})` : ''}
+          </Text>
+          <Anchor component={Link} to={stepHref(project.id, 'taxonomia')} size="sm">
+            {t('context.build.change')}
+          </Anchor>
+        </Group>
         <Group align="flex-end">
           {context ? (
             <Text size="sm">{t('context.build.folderFixed', { folder: context.output_folder_name })}</Text>
+          ) : leftoverFolder ? (
+            <Text size="sm">{t('context.build.folderLeftover', { folder: leftoverFolder })}</Text>
           ) : (
             <TextInput
               label={t('context.build.folder')}
@@ -581,6 +568,26 @@ function BuildCard({
           disabled={!aiAvailable}
           onChange={(event) => setWithAi(event.currentTarget.checked)}
         />
+        {withAi && aiAvailable && scopable && (
+          <Stack gap={4}>
+            <Text size="sm" fw={500} id="alcance-ia">
+              {t('context.ai.scope')}
+            </Text>
+            <SegmentedControl
+              w="fit-content"
+              value={aiScope}
+              onChange={(value) => setScope(value as AiScope)}
+              aria-labelledby="alcance-ia"
+              data={(['unclassified', 'missing_axes'] as const).map((value) => ({
+                value,
+                label: t(`context.ai.scopes.${value}`),
+              }))}
+            />
+            <Text size="xs" c="dimmed">
+              {t(`context.ai.scopeHelp.${aiScope}`)}
+            </Text>
+          </Stack>
+        )}
         {withAi && aiAvailable && (
           <Alert color="grape" title={t('context.ai.egressTitle')}>
             {t('context.ai.egress')}
@@ -598,14 +605,17 @@ function BuildCard({
             {t('context.ai.enrichEgress')}
           </Alert>
         )}
-        {blockedByDraft && (
+        {notReady && (
           <Alert color="orange" role="status">
-            {t('context.build.unsavedManifest')}
+            {t(`context.build.notReady.${notReady}`)}{' '}
+            <Anchor component={Link} to={stepHref(project.id, 'taxonomia')} size="sm">
+              {t('context.build.change')}
+            </Anchor>
           </Alert>
         )}
         {enqueue.isError && <ErrorAlert error={enqueue.error} />}
         <Group justify="flex-end">
-          <Button onClick={launch} loading={enqueue.isPending} disabled={!ready}>
+          <Button onClick={launch} loading={enqueue.isPending} disabled={notReady !== null}>
             {t(context ? 'context.build.rebuild' : 'context.build.run')}
           </Button>
         </Group>

@@ -81,12 +81,19 @@ describe('ContextPage', () => {
     renderRoute('/projects/7/context');
 
     expect(await screen.findByText('El proyecto aún no tiene contexto.')).toBeInTheDocument();
+    // Sin contexto se empieza por la taxonomía; los pasos que necesitan contexto están deshabilitados.
+    expect(screen.getByRole('link', { name: '1. Taxonomía' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: '3. Resultado' })).toBeDisabled();
     await user.click(screen.getByRole('radio', { name: 'Plantilla' }));
-    const build = screen.getByRole('button', { name: 'Construir' });
-    expect(build).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Siguiente: Construir' })).toBeDisabled();
+    expect(
+      screen.getByText('Elige una plantilla en el paso Taxonomía.', { ignore: '[hidden] *' }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: 'Plantilla' }));
     await user.click(await screen.findByRole('option', { name: 'Calidad (calidad)', hidden: true }));
-    await user.click(build);
+    await user.click(screen.getByRole('link', { name: 'Siguiente: Construir' }));
+    expect(await screen.findByText('Taxonomía: Plantilla «calidad»')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Construir' }));
 
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
     const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
@@ -108,18 +115,29 @@ describe('ContextPage', () => {
       'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
     });
 
+    const user = userEvent.setup();
     renderRoute('/projects/7/context');
 
+    // Con contexto se abre en «Resultado» (D2).
     expect(await screen.findByText(/1 documento no se pudo copiar/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '3. Resultado' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '4. Revisar' })).toHaveAttribute(
+      'href',
+      '/projects/7/context/review',
+    );
     expect(screen.getByText(/2 documentos comparten nombre/)).toBeInTheDocument();
     expect(await screen.findByText('2024/enero/factura.pdf')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver el sitio' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: '6. Entregar' }));
+    expect(await screen.findByRole('link', { name: 'Ver el sitio' })).toHaveAttribute(
       'href',
       '/projects/7/context/site',
     );
-    expect(screen.getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
     // Reconstruir no deja cambiar la carpeta.
-    expect(screen.getByText(/Se reconstruye en la carpeta «organizado»/)).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    expect(await screen.findByText(/Se reconstruye en la carpeta «organizado»/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reconstruir' })).toBeEnabled();
   });
 
   it('muestra los metadatos, la trazabilidad y filtra por idioma, palabra clave y propuesta de la IA (1.5.0)', async () => {
@@ -290,7 +308,7 @@ describe('ContextPage', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=historial');
 
     const history = await screen.findByRole('region', { name: 'Historial' });
     expect(await within(history).findByText('250 cambios')).toBeInTheDocument();
@@ -317,10 +335,32 @@ describe('ContextPage', () => {
       },
     });
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=historial');
 
     expect(await screen.findByText(/demasiado grande para mostrarlo aquí/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Descargar Excel' })).toBeInTheDocument();
+  });
+
+  it('avisa de un contexto a medio guardar y deja completarlo o borrarlo (2.1)', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': NOT_BUILT,
+      'GET /api/v1/projects/7/context/leftover': { body: { output_folder_name: 'organizado' } },
+      'GET /api/v1/taxonomy-templates': { body: TEMPLATES },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context');
+
+    const alert = await screen.findByText('Hay un contexto a medio guardar');
+    const box = alert.closest('[role="status"]') as HTMLElement;
+    expect(within(box).getByText(/carpeta «organizado»/)).toBeInTheDocument();
+    expect(within(box).getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
+    await user.click(within(box).getByRole('link', { name: 'Ir a Construir' }));
+    expect(
+      await screen.findByText(/Se construye en la carpeta «organizado», que quedó a medias/),
+    ).toBeInTheDocument();
   });
 
   it('un lector no construye ni edita el manifiesto', async () => {

@@ -34,7 +34,7 @@ function status(tasks: Record<string, boolean>) {
   return {
     'GET /api/v1/ai/status': {
       body: {
-        families: { litellm: configured, litellm_usage: false, github_copilot_usage: false },
+        families: { litellm: configured, litellm_usage: false },
         tasks: {
           classify: false,
           enrich: false,
@@ -51,15 +51,17 @@ function status(tasks: Record<string, boolean>) {
 describe('ContextPage con IA', () => {
   it('sin configurar, la IA está desactivada y explica por qué', async () => {
     stubApi({ ...BASE, ...status({}) });
+    const user = userEvent.setup();
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=construir');
 
     const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
     expect(toggle).toBeDisabled();
     expect(screen.getAllByText(/configurar los «Modelos de IA»/).length).toBeGreaterThan(0);
-    // «Pedir borrador» está con el manifiesto, que solo se ve con su catálogo (A5).
+    // «Pedir borrador» está con el manifiesto, en el paso Taxonomía y solo con su catálogo (A5).
     expect(screen.queryByRole('button', { name: 'Pedir borrador' })).not.toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole('radio', { name: 'Manifiesto del proyecto' }));
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
     expect(await screen.findByRole('button', { name: 'Pedir borrador' })).toBeDisabled();
   });
 
@@ -75,17 +77,23 @@ describe('ContextPage con IA', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=construir');
 
     const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
     await waitFor(() => expect(toggle).toBeEnabled());
     await user.click(toggle);
     expect(screen.getByText('El contenido sale de la aplicación')).toBeInTheDocument();
-    // doc_organize 2.0: con plantilla clasifica la misma tarea (`classify`): sigue disponible.
-    await user.click(screen.getByRole('radio', { name: 'Plantilla' }));
-    expect(screen.getByRole('switch', { name: /Clasificar con IA/ })).toBeEnabled();
-    await user.click(screen.getByRole('radio', { name: 'Descubrir dominios' }));
-    await user.click(screen.getByRole('button', { name: 'Construir' }));
+    // doc_organize 2.0: con plantilla clasifica la misma tarea (`classify`): sigue disponible. Cambiar de paso no
+    // pierde lo elegido en «Construir».
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Plantilla' }));
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    expect(await screen.findByRole('switch', { name: /Clasificar con IA/ })).toBeEnabled();
+    expect(screen.getByRole('switch', { name: /Clasificar con IA/ })).toBeChecked();
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Por carpetas' }));
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    await user.click(await screen.findByRole('button', { name: 'Construir' }));
 
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
     const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
@@ -93,6 +101,44 @@ describe('ContextPage con IA', () => {
       operation: 'context_build',
       catalog: 'discover',
       ai_classification: true,
+    });
+  });
+
+  it('con plantilla o manifiesto elige qué se envía a la IA; por carpetas, siempre lo no clasificado (2.1)', async () => {
+    const fetchMock = stubApi({
+      ...BASE,
+      ...status({ classify: true }),
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: RUN_ID, operation: 'context_build' }),
+      },
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ id: RUN_ID, operation: 'context_build' }) },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context?paso=construir');
+
+    const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+    // Por carpetas: no hay ejes de etiqueta, no hay selector.
+    expect(screen.queryByRole('radio', { name: 'También los ejes vacíos' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
+    await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
+    await user.click(screen.getByRole('link', { name: '2. Construir' }));
+    // Por defecto, lo de siempre (D2).
+    expect(await screen.findByRole('radio', { name: 'Lo que las reglas no clasifican' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'También los ejes vacíos' }));
+    expect(screen.getByText(/siempre están vacíos tras las reglas/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Construir' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toMatchObject({
+      catalog: 'manifest',
+      ai_classification: true,
+      ai_scope: 'missing_axes',
     });
   });
 
@@ -108,7 +154,7 @@ describe('ContextPage con IA', () => {
     });
     const user = userEvent.setup();
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=construir');
 
     const enrich = await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ });
     await waitFor(() => expect(enrich).toBeEnabled());
@@ -129,7 +175,7 @@ describe('ContextPage con IA', () => {
   it('sin configurar, completar descripciones explica por qué', async () => {
     stubApi({ ...BASE, ...status({}) });
 
-    renderRoute('/projects/7/context');
+    renderRoute('/projects/7/context?paso=construir');
 
     expect(
       await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ }),

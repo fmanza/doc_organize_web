@@ -79,6 +79,8 @@ describe('Diseñar taxonomía con IA', () => {
 
     renderRoute('/projects/7/context');
     await user.click(await screen.findByRole('radio', { name: 'Manifiesto del proyecto' }));
+    // Con manifiesto guardado, «Crear o mejorar con IA» empieza plegado.
+    await user.click(await screen.findByRole('button', { name: 'Crear o mejorar con IA' }));
     const panel = await screen.findByRole('region', { name: 'Diseñar taxonomía con IA (agente)' });
     await user.type(within(panel).getByRole('textbox', { name: /Indicaciones/ }), 'Separa obras');
     await user.click(within(panel).getByRole('button', { name: 'Diseñar con IA' }));

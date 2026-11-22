@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
@@ -84,20 +84,46 @@ export function useAiStatus() {
   });
 }
 
-/** Uso de LiteLLM y Copilot; el servidor lo guarda 5 minutos. */
-export function useAiUsage() {
+export type AiUsage = components['schemas']['AiUsageOut'];
+export type AiUsagePeriod = NonNullable<components['schemas']['AiUsageLocalOut']['period']>;
+
+/** Zona horaria del navegador (IANA) para agrupar el consumo por día local (D2); el servidor usa UTC si no vale. */
+export function browserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const usageKey = (period: AiUsagePeriod) => ['admin', 'ai-usage', period] as const;
+
+async function fetchUsage(period: AiUsagePeriod, refresh: boolean): Promise<AiUsage> {
+  const tz = browserTimeZone();
+  return unwrap(
+    await api.GET('/api/v1/admin/ai-usage', {
+      params: { query: { period, refresh, ...(tz ? { tz } : {}) } },
+    }),
+  );
+}
+
+/**
+ * Uso de IA (2.1): el gasto y el presupuesto de la clave de LiteLLM (el servidor los guarda 5 minutos) y el consumo
+ * por ejecución que registra la web, en el periodo elegido y por día en la hora local del navegador.
+ */
+export function useAiUsage(period: AiUsagePeriod) {
   return useQuery({
-    queryKey: ['admin', 'ai-usage'],
-    queryFn: async () => unwrap(await api.GET('/api/v1/admin/ai-usage')).sources,
+    queryKey: usageKey(period),
+    queryFn: () => fetchUsage(period, false),
+    placeholderData: keepPreviousData,
   });
 }
 
 /** Pide datos nuevos saltando la caché del servidor (como mucho una vez cada 30 s). */
-export function useRefreshAiUsage() {
+export function useRefreshAiUsage(period: AiUsagePeriod) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
-      unwrap(await api.GET('/api/v1/admin/ai-usage', { params: { query: { refresh: true } } })).sources,
-    onSuccess: (sources) => queryClient.setQueryData(['admin', 'ai-usage'], sources),
+    mutationFn: () => fetchUsage(period, true),
+    onSuccess: (usage) => queryClient.setQueryData(usageKey(period), usage),
   });
 }

@@ -9,11 +9,12 @@ from __future__ import annotations
 import logging
 import logging.handlers
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
@@ -21,6 +22,7 @@ from app.core.redact import PathRedactor, RedactingJsonFormatter, RunLogFilter
 from app.core.request_context import bind_tenant
 from app.db.models import Project, Run
 from app.db.session import get_engine
+from app.domain.ai import usage_log
 from app.domain.runs.operations import RUN_PARAMS
 from app.domain.settings.service import effective_settings
 from app.jobs import queue
@@ -60,6 +62,20 @@ def _summary(run: Run, status: str, result: dict[str, Any] | None, error: str | 
         "started_at": run.started_at,
         "written_at": datetime.now().astimezone(),
     }
+
+
+def _record_ai_usage(
+    factory: Callable[[], Session], run: Run, project: Project | None, result: dict[str, Any] | None
+) -> None:
+    """Guarda el consumo de IA del run (IA › Uso, web 2.1). Un fallo aquí se registra y no cambia el run (A10)."""
+    try:
+        with factory() as db:
+            if usage_log.record(db, run, project, result):
+                db.commit()
+    except Exception as exc:  # noqa: BLE001 - el consumo es informativo: nunca tumba un run ya cerrado
+        logger.warning(
+            "No se pudo registrar el consumo de IA", extra={"run_id": run.id, "exc_type": type(exc).__name__}
+        )
 
 
 def main(run_id: str) -> None:
@@ -137,6 +153,8 @@ def main(run_id: str) -> None:
     workspace.write_run_json(settings, run_id, _summary(run, status, result, code))
     if (workdir / workspace.LOG_REL).is_file():
         ctx.add_artifact(workspace.LOG_REL, name="run.log", kind="log")
+    # Antes de cerrar el run: quien recarga su detalle al terminar ya ve el consumo.
+    _record_ai_usage(factory, run, project, result)
     with factory() as db:
         if result is not None:
             db.execute(update(Run).where(Run.id == run_id).values(result=result))

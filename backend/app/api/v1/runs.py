@@ -25,6 +25,7 @@ from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
 from app.api.v1.listing import OrderQuery, RunSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
+    AiUsageRowOut,
     ArtifactOut,
     Operation,
     RunBrief,
@@ -38,6 +39,7 @@ from app.api.v1.schemas import (
 from app.core.errors import AppError
 from app.db.models import ACTIVE_RUN_STATUSES, MemberRole, ProjectMember, Run, User
 from app.db.session import get_engine
+from app.domain.ai import usage_log
 from app.domain.identity.sessions import acting_user, resolve_session
 from app.domain.runs import events, service
 from app.domain.runs.errors import ArtifactGoneError, ArtifactNotFoundError, RunNotFoundError
@@ -160,9 +162,11 @@ def _roles(db: Session, user: User, project_ids: set[int]) -> dict[int, MemberRo
 
 @router.get("/{run_id}", response_model=RunOut, summary="Ver ejecución", responses=_ERRORS)
 def get_run(run_id: str, user: CurrentUser, db: DbSession) -> RunOut:
-    """Estado, progreso, resultado y artefactos."""
+    """Estado, progreso, resultado y artefactos, y el consumo de IA por tarea (2.1)."""
     run, role = service.get_run(db, run_id, user)
-    return run_out(db, run, user, role)
+    out = run_out(db, run, user, role)
+    out.ai_usage = [AiUsageRowOut.model_validate(item, from_attributes=True) for item in usage_log.for_run(db, run.id)]
+    return out
 
 
 @router.get("/{run_id}/scan-errors", response_model=ScanErrorPage, summary="Errores de un escaneo", responses=_ERRORS)

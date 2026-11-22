@@ -25,7 +25,6 @@ import { Link, useParams } from 'react-router';
 
 import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
-import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { type PageState, usePageState } from '../../components/usePageState';
@@ -34,6 +33,7 @@ import { canDo, useProject } from '../projects/useProjects';
 import { AxisBadges } from './Axes';
 import { type ContextOut, useProjectContext } from './useContext';
 import { useFollowedRun } from './useFollowedRun';
+import { ContextNav } from './ContextNav';
 
 type ReviewItem = components['schemas']['ReviewItemOut'];
 type ReviewReason = components['schemas']['ReviewItemOut']['reason'];
@@ -187,8 +187,8 @@ export function ReviewPage() {
 
   return (
     <Stack>
-      <BackLink to={`/projects/${projectId}/context`}>{t('review.back')}</BackLink>
-      <Title order={2}>{t('review.title')}</Title>
+      <ContextNav projectId={projectId} active="revisar" />
+      <Title order={3}>{t('review.title')}</Title>
       <Text c="dimmed">{t('review.intro')}</Text>
       {!built ? (
         <Text c="dimmed" role="status">

@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
-import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { useProject } from '../projects/useProjects';
 import { useOpenSite } from './useContext';
+import { ContextNav } from './ContextNav';
 
 /** Permisos del iframe: scripts del sitio en un origen opaco (sin `allow-same-origin`), como su CSP (ADR-010). */
 export const SITE_SANDBOX = 'allow-scripts allow-popups';
@@ -39,11 +39,9 @@ export function SiteViewerPage() {
   }
   return (
     <Stack h="calc(100dvh - 120px)">
-      <BackLink to={`/projects/${projectId}/context`}>
-        {t('context.site.back', { name: project.data.name })}
-      </BackLink>
+      <ContextNav projectId={projectId} active="entregar" />
       <Group justify="space-between">
-        <Title order={2}>{t('context.site.title')}</Title>
+        <Title order={3}>{t('context.site.title')}</Title>
         {open.data && (
           <Group>
             <Text size="xs" c="dimmed">

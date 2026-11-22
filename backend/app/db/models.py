@@ -255,8 +255,8 @@ class AiSetting(Base):
     """Campo de una familia de IA guardado por un admin (Fase 8, ADR-004); sin fila, vale ``DOC_ORGANIZE_*``.
 
     Desde doc_organize 2.0 (migración ``0016``) las familias son ``litellm`` (todas las tareas: URL y clave generales y,
-    por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``), ``litellm_usage`` y
-    ``github_copilot_usage``. Bajar a la 1.x rehace las cuatro familias ``litellm_*`` desde la familia ``litellm``
+    por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``) y ``litellm_usage``
+    (``github_copilot_usage`` se borró en la ``0025``, web 2.1). Bajar a la 1.x rehace las cuatro familias ``litellm_*`` desde la familia ``litellm``
     (la copia de 1.x, ``ai_settings_v1``, se borra en la ``0024``).
 
     De instancia (como en la web integrada): los tenants llegan en la Fase 9. Un campo secreto solo se guarda cifrado
@@ -768,3 +768,40 @@ class ContextReviewProposal(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     decision_id: Mapped[str | None] = mapped_column(String(64), default=None)
+
+
+class AiUsageRecord(Base):
+    """Consumo de IA de una ejecución en una tarea (web 2.1, migración ``0026``): lo que muestra IA › Uso.
+
+    Una fila por ejecución y tarea (``classify``, ``enrich``, ``embed``, ``taxonomy_design``, ``agent``). Solo recuentos
+    y el modelo: nunca texto de los documentos ni prompts. Sobrevive a la ejecución y al proyecto (``SET NULL``, con
+    el nombre del proyecto copiado). El proxy no da el coste por llamada: el coste es el gasto de la clave de LiteLLM.
+
+    Attributes:
+        calls: Documentos enviados al modelo (pasos, en los agentes; textos embebidos, en ``embed``).
+        cached: Resueltos con la caché de resultados de IA, sin llamar al modelo.
+        tokens_estimated: Los agentes estiman los tokens de las llamadas de las que el proxy no los informa.
+    """
+
+    __tablename__ = "ai_usage"
+    __table_args__ = (
+        UniqueConstraint("run_id", "task", name="uq_ai_usage_run_task"),
+        Index("ix_ai_usage_created_at", "created_at"),
+        Index("ix_ai_usage_project_created", "project_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="SET NULL"), default=None)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), default=None)
+    project_name: Mapped[str | None] = mapped_column(String(128), default=None)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), default=None)
+    operation: Mapped[str] = mapped_column(String(32))
+    task: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str | None] = mapped_column(String(128), default=None)
+    calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    cached: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    failed: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tokens_estimated: Mapped[bool] = mapped_column(default=False, server_default=false())

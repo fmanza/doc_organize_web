@@ -1,6 +1,8 @@
-"""Panel de uso y coste de IA (WB-8.3, ADR-014): LiteLLM y GitHub Copilot, con caché corta en el proceso.
+"""Panel de uso y coste de IA (WB-8.3, ADR-014): el gasto de la clave de LiteLLM, con caché corta en el proceso.
 
-No es un job (regla 4): son dos lecturas HTTP cortas (``ai_timeout_seconds``, como mucho 10 s aquí) que se guardan
+GitHub Copilot se quitó en la 2.1. El consumo por ejecución (tokens) está en ``usage_log``.
+
+No es un job (regla 4): es una lectura HTTP corta (``ai_timeout_seconds``, como mucho 10 s aquí) que se guardan
 ``CACHE_SECONDS`` por fuente. ``refresh`` salta la caché, pero no más de una vez cada ``MIN_REFRESH_SECONDS``. Si cambia
 la configuración de una fuente, su entrada deja de valer: la clave de la caché incluye una huella de los valores, que
 solo vive en memoria. Una fuente sin configurar o que falla no impide ver la otra.
@@ -35,10 +37,7 @@ from app.integrations.doc_organize.ai import (
 CACHE_SECONDS: Final = 300
 MIN_REFRESH_SECONDS: Final = 30
 MAX_TIMEOUT_SECONDS: Final = 10.0
-SOURCES: Final[tuple[tuple[UsageSourceKey, FamilyKey], ...]] = (
-    ("litellm", "litellm_usage"),
-    ("github_copilot", "github_copilot_usage"),
-)
+SOURCES: Final[tuple[tuple[UsageSourceKey, FamilyKey], ...]] = (("litellm", "litellm_usage"),)
 
 
 @dataclass(frozen=True)
@@ -91,7 +90,7 @@ async def _gather(pending: list[tuple[UsageSourceKey, AiConnection]]) -> list[Us
 def usage(
     db: Session, settings: Settings, *, refresh: bool = False, clock: Callable[[], float] = time.monotonic
 ) -> list[UsageEntry]:
-    """Uso de las dos fuentes, de la caché si es reciente y no cambió su configuración."""
+    """Uso de cada fuente, de la caché si es reciente y no cambió su configuración."""
     now = clock()
     entries: dict[UsageSourceKey, UsageEntry] = {}
     pending: list[tuple[UsageSourceKey, AiConnection]] = []

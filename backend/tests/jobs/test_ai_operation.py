@@ -423,3 +423,69 @@ def test_evidence_without_manifest(run: Any, project: Project, litellm: FakeLite
     (value,) = receta["axes"]["domains"]
     assert value["classified_by"] == "ai" and value["evidence"] == "harina huevos azúcar"
     assert value["evidence_verified"] is True
+
+
+ACTION_TEMPLATE = AXES_TEMPLATE.replace(
+    "---\nPlantilla sintética.",
+    """  - key: accion
+    name: Acción
+    rules: false
+    entries:
+      - slug: migrar
+        name: Migrar
+      - slug: archivar
+        name: Archivar
+---
+Plantilla sintética.""",
+)
+
+
+@pytest.mark.parametrize(("scope", "filled"), [("unclassified", False), ("missing_axes", True)])
+def test_ai_scope_fills_empty_tag_axes_only_when_asked(
+    run: Any,
+    project: Project,
+    litellm: FakeLiteLLM,
+    user_client: TestClient,
+    admin: Any,
+    scope: str,
+    filled: bool,
+) -> None:
+    """2.1: con ``missing_axes`` la IA rellena los ejes de etiqueta vacíos (aquí uno ``rules: false``) también en los
+    documentos que las reglas ya colocaron en carpeta; con ``unclassified``, no. Nunca cambia lo de las reglas."""
+    admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
+    assert (
+        admin_client.put("/api/v1/taxonomy-templates/acciones", json={"markdown": ACTION_TEMPLATE}).status_code == 201
+    )
+    litellm.answers["classify"] = classify_answer(
+        {"domains": ["informes"], "material_types": ["original"], "accion": ["migrar"]}
+    )
+    ctx, params = run(
+        {
+            "operation": "context_build",
+            "catalog": "template",
+            "template_name": "acciones",
+            "build_site": False,
+            "ai_classification": True,
+            "ai_scope": scope,
+        }
+    )
+
+    result = operation.run_build(ctx, params, project)
+
+    assert result["ai"]["scope"] == scope
+    page = user_client.get(f"/api/v1/projects/{project.id}/context/documents", params={"domain": "facturas"}).json()
+    assert page["items"], "las reglas colocan las facturas en su carpeta"
+    for doc in page["items"]:
+        assert doc["axes"]["domains"][0]["classified_by"] == "rules"  # la IA no cambia lo de las reglas
+        assert bool(doc["axes"].get("accion")) is filled
+
+
+def test_missing_axes_needs_a_catalog_with_tag_axes(user_client: TestClient, project: Project) -> None:
+    body = {"operation": "context_build", "catalog": "discover", "ai_classification": True, "ai_scope": "missing_axes"}
+    response = user_client.post(f"/api/v1/projects/{project.id}/runs", json=body)
+    assert response.status_code == 422
+    # Sin clasificar con IA, el alcance no cuenta (los parámetros guardados de antes siguen valiendo).
+    assert (
+        user_client.post(f"/api/v1/projects/{project.id}/runs", json={**body, "ai_classification": False}).status_code
+        == 202
+    )

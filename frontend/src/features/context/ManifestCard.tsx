@@ -57,7 +57,13 @@ export interface ManifestCardProps {
   focusToken: number;
 }
 
-/** Manifiesto de taxonomía del proyecto: editor, borrador con IA, versiones, restaurar y borrar. */
+/** Zona plegable «Crear o mejorar con IA». */
+const CREATE_ID = 'manifiesto-crear';
+
+/**
+ * Manifiesto de taxonomía del proyecto, en orden de trabajo (2026-11-22): estado → crear o mejorar con IA (borrador o
+ * agente) → editor → comprobar y guardar → versiones → borrar.
+ */
 export function ManifestCard({
   projectId,
   editable,
@@ -76,6 +82,8 @@ export function ManifestCard({
   const editor = useRef<HTMLTextAreaElement>(null);
   const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState<'saved' | 'deleted' | 'restored' | null>(null);
+  /** «Crear o mejorar con IA»: abierto sin manifiesto, cerrado con él, salvo que la persona lo cambie. */
+  const [createOpen, setCreateOpen] = useState<boolean | null>(null);
 
   useFocus(editor, focusToken, manifest.isSuccess);
 
@@ -93,6 +101,7 @@ export function ManifestCard({
   const text = draft ?? saved.markdown ?? '';
   const dirty = draft !== null && !sameText(draft, saved.markdown);
   const tooLarge = new TextEncoder().encode(text).length > MAX_TEMPLATE_BYTES;
+  const showCreate = createOpen ?? saved.markdown === null;
 
   const edit = (markdown: string | null) => {
     setNotice(null);
@@ -137,17 +146,34 @@ export function ManifestCard({
         </Alert>
       )}
       {editable && (
-        <DraftPanel
-          projectId={projectId}
-          onDraft={(markdown) => onReplace(markdown, t('context.manifest.replaceBodyDraft'))}
-        />
-      )}
-      {editable && (
-        <AgentPanel
-          projectId={projectId}
-          hasManifest={saved.markdown !== null && !saved.error}
-          onLoad={(markdown) => onReplace(markdown, t('context.agent.replaceBody'))}
-        />
+        // Siempre montado (`hidden`): un borrador o el agente en marcha siguen su ejecución aunque se pliegue.
+        <Stack gap={0} mb="xs">
+          <Anchor
+            component="button"
+            type="button"
+            size="sm"
+            w="fit-content"
+            aria-expanded={showCreate}
+            aria-controls={CREATE_ID}
+            onClick={() => setCreateOpen(!showCreate)}
+          >
+            {t(showCreate ? 'context.manifest.createHide' : 'context.manifest.createShow')}
+          </Anchor>
+          <div id={CREATE_ID} hidden={!showCreate}>
+            <Text size="xs" c="dimmed" my="xs">
+              {t('context.manifest.createHelp')}
+            </Text>
+            <DraftPanel
+              projectId={projectId}
+              onDraft={(markdown) => onReplace(markdown, t('context.manifest.replaceBodyDraft'))}
+            />
+            <AgentPanel
+              projectId={projectId}
+              hasManifest={saved.markdown !== null && !saved.error}
+              onLoad={(markdown) => onReplace(markdown, t('context.agent.replaceBody'))}
+            />
+          </div>
+        </Stack>
       )}
       <Textarea
         ref={editor}
@@ -169,14 +195,7 @@ export function ManifestCard({
         </Text>
       )}
       {editable && (
-        <Group justify="space-between" mt="xs">
-          <Group>
-            {saved.markdown !== null && (
-              <Button color="red" variant="light" onClick={() => setDeleting(true)}>
-                {t('context.manifest.delete')}
-              </Button>
-            )}
-          </Group>
+        <Group justify="flex-end" mt="xs">
           <Button
             onClick={() =>
               save.mutate(
@@ -207,6 +226,13 @@ export function ManifestCard({
         }}
         onLoad={(markdown, date) => onReplace(markdown, t('context.manifest.replaceBodyVersion', { date }))}
       />
+      {editable && saved.markdown !== null && (
+        <Group mt="sm">
+          <Button color="red" variant="light" onClick={() => setDeleting(true)}>
+            {t('context.manifest.delete')}
+          </Button>
+        </Group>
+      )}
       <Modal opened={deleting} onClose={() => setDeleting(false)} title={t('context.manifest.deleteTitle')}>
         <Stack>
           <Text>{t('context.manifest.deleteConfirm')}</Text>

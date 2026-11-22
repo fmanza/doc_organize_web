@@ -114,6 +114,7 @@ def _run_stats(run: Any) -> dict[str, Any]:
         "tool_calls": len(run.tool_calls),
         "prompt_tokens": int(run.prompt_tokens),
         "completion_tokens": int(run.completion_tokens),
+        "tokens_estimated": any(bool(getattr(step, "estimated_tokens", False)) for step in run.steps),
         "duration_s": round(float(run.duration_s), 1),
     }
 
@@ -193,6 +194,7 @@ def design_taxonomy(
 
     return {
         **_run_stats(proposal.run),
+        "model": request.connection.model_for("agent"),
         "base": request.base_markdown is not None,
         "instructions": bool(request.instructions),
         "max_steps": request.max_steps,
@@ -281,6 +283,7 @@ def review(
         stop.set()
     return {
         **_run_stats(result.run),
+        "model": request.connection.model_for("agent"),
         "max_steps": request.max_steps,
         "max_items": request.max_items,
         "reviewed": len({item.document_key for item in result.items}),

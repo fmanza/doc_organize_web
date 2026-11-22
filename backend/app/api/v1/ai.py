@@ -14,24 +14,31 @@ from app.api.v1.schemas import (
     AiFamilyOut,
     AiFamilyUpdate,
     AiFieldOut,
+    AiKeyBudgetOut,
     AiLegacyVariableOut,
     AiSettingsOut,
     AiStatusOut,
     AiTestIn,
     AiTestOut,
+    AiUsageDayOut,
+    AiUsageGroupOut,
     AiUsageItemOut,
+    AiUsageLocalOut,
     AiUsageOut,
+    AiUsageRunOut,
     AiUsageSourceOut,
+    AiUsageTotalsOut,
     DiagnosticCheckOut,
     DiagnosticsIn,
     DiagnosticsOut,
 )
 from app.core import crypto
-from app.domain.ai import connection_test
+from app.domain.ai import connection_test, usage_log
 from app.domain.ai import diagnostics as ai_diagnostics
 from app.domain.ai import settings as ai_settings
 from app.domain.ai import usage as ai_usage
 from app.domain.ai.settings import FamilyView
+from app.integrations.doc_organize.ai import KeyBudget
 
 router = APIRouter(tags=["ai"])
 
@@ -64,8 +71,8 @@ def _family_out(view: FamilyView) -> AiFamilyOut:
 
 @router.get("/admin/ai-settings", response_model=AiSettingsOut, summary="Ver la configuración de IA", responses=_ERRORS)
 def get_ai_settings(_: InstanceAdmin, db: DbSession, settings: SettingsDep) -> AiSettingsOut:
-    """Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de
-    entorno de doc_organize 1.x que siguen definidas y ya no se leen."""
+    """Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de entorno
+    que siguen definidas y ya no se leen (de doc_organize 1.x y de GitHub Copilot)."""
     return AiSettingsOut(
         encryption_configured=crypto.is_configured(settings),
         families=[_family_out(view) for view in ai_settings.list_families(db, settings)],
@@ -118,7 +125,7 @@ def probe_ai_family(
     """Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.
 
     Con LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una
-    clasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.
+    clasificación mínima al modelo. Se audita sin valores.
     """
     outcome = connection_test.probe_family(
         db, family, body.fields, model_check=body.model_check, task=body.task, settings=settings, actor=admin, ctx=ctx
@@ -146,14 +153,77 @@ def get_ai_status(_: CurrentUser, db: DbSession, settings: SettingsDep) -> AiSta
     )
 
 
+def _budget_out(budget: KeyBudget) -> AiKeyBudgetOut:
+    return AiKeyBudgetOut(
+        spend=budget.spend,
+        max_budget=budget.max_budget,
+        remaining=budget.remaining,
+        budget_reset_at=budget.budget_reset_at,
+    )
+
+
+def _totals(totals: usage_log.Totals) -> dict[str, Any]:
+    return {
+        "runs": totals.runs,
+        "calls": totals.calls,
+        "cached": totals.cached,
+        "failed": totals.failed,
+        "prompt_tokens": totals.prompt_tokens,
+        "completion_tokens": totals.completion_tokens,
+        "tokens_estimated": totals.tokens_estimated,
+    }
+
+
+def _by_tokens(groups: list[AiUsageGroupOut]) -> list[AiUsageGroupOut]:
+    return sorted(groups, key=lambda group: group.prompt_tokens + group.completion_tokens, reverse=True)
+
+
+def _local_out(summary: usage_log.Summary) -> AiUsageLocalOut:
+    return AiUsageLocalOut(
+        period=summary.period,
+        timezone=summary.timezone,
+        start=summary.start,
+        end=summary.end,
+        totals=AiUsageTotalsOut(**_totals(summary.totals)),
+        by_task=_by_tokens([AiUsageGroupOut(key=key, **_totals(t)) for key, t in summary.by_task.items()]),
+        by_model=_by_tokens([AiUsageGroupOut(key=key, **_totals(t)) for key, t in summary.by_model.items()]),
+        by_project=_by_tokens(
+            [
+                AiUsageGroupOut(key=str(pid) if pid is not None else "", label=name, project_id=pid, **_totals(t))
+                for (pid, name), t in summary.by_project.items()
+            ]
+        ),
+        by_day=[AiUsageDayOut(day=day, **_totals(t)) for day, t in summary.by_day.items()],
+        top_runs=[
+            AiUsageRunOut(
+                run_id=run.run_id,
+                created_at=run.created_at,
+                operation=run.operation,
+                project_id=run.project_id,
+                project_name=run.project_name,
+                **_totals(run.totals),
+            )
+            for run in summary.top_runs
+        ],
+    )
+
+
 @router.get("/admin/ai-usage", response_model=AiUsageOut, summary="Uso y coste de IA", responses=_ERRORS)
 def get_ai_usage(
     _: InstanceAdmin,
     db: DbSession,
     settings: SettingsDep,
     refresh: Annotated[bool, Query(description="Saltar la caché (como mucho una vez cada 30 s)")] = False,
+    period: Annotated[
+        usage_log.Period, Query(description="Periodo del consumo registrado: 7 o 30 días, este mes o todo")
+    ] = "30d",
+    tz: Annotated[
+        str | None,
+        Query(max_length=64, description="Zona IANA para agrupar por día (la del navegador); UTC si no vale"),
+    ] = None,
 ) -> AiUsageOut:
-    """Uso del periodo actual de LiteLLM y de GitHub Copilot (caché de 5 minutos por fuente)."""
+    """Gasto acumulado y presupuesto de la clave de LiteLLM (caché de 5 minutos) y el consumo por ejecución que
+    registra la web (tokens, documentos y caché por tarea, modelo, proyecto y día local)."""
     sources: list[AiUsageSourceOut] = []
     for entry in ai_usage.usage(db, settings, refresh=refresh):
         report = entry.report
@@ -169,10 +239,11 @@ def get_ai_usage(
                 period_end=report.period_end if report else None,
                 total_cost_usd=round(sum(costs), 6) if costs else None,
                 items=items,
+                budget=_budget_out(report.budget) if report and report.budget else None,
                 error=entry.error,
             )
         )
-    return AiUsageOut(sources=sources)
+    return AiUsageOut(sources=sources, local=_local_out(usage_log.summary(db, period=period, tz_name=tz)))
 
 
 @router.post(

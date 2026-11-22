@@ -19,7 +19,7 @@ Firmas verificadas en el tag ``v2.0.0rc2``::
     ContextBuilder().build(project, documents, *, llm=None, ai_scope="off", enrich=False, ...,
         ai_max_failures=None, ai_max_documents=None) -> Context
     Context.ai_stats.classification / .enrichment: AiPhaseStats(sent, assigned, failed, stopped, cached, ...)
-    LiteLLMUsageClient / GitHubCopilotUsageClient             # sin cambios desde 1.x
+    LiteLLMUsageClient                                        # sin cambios desde 1.x (Copilot fuera en la web 2.1)
     AiError > AiAuthError, AiConnectionError, AiResponseError  # doc_organize.core.exceptions
 
 Los mensajes de error de doc_organize llevan la ``base_url``. Aquí se sustituyen por un código fijo (``AiErrorCode``),
@@ -33,7 +33,7 @@ import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, Literal
 
@@ -42,7 +42,7 @@ from app.integrations.doc_organize.context import SourceFolder, converted_docume
 if TYPE_CHECKING:
     import httpx
 
-FamilyKey = Literal["litellm", "litellm_usage", "github_copilot_usage"]
+FamilyKey = Literal["litellm", "litellm_usage"]
 #: Tareas de IA de doc_organize 2.0 (``AI_TASKS``): clasificar, describir, diseñar la taxonomía, agentes y embeddings.
 TaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
 TASKS: Final[tuple[TaskKey, ...]] = ("classify", "enrich", "taxonomy_design", "agent", "embed")
@@ -55,7 +55,7 @@ TestErrorCode = Literal["ai_auth", "ai_connection", "ai_error", "ai_model"]
 ModelAccess = Literal["ok", "denied", "unknown"]
 #: Familias que llaman a un modelo (las que admiten «Probar el modelo»).
 MODEL_FAMILIES: Final[frozenset[str]] = frozenset({"litellm"})
-UsageSourceKey = Literal["litellm", "github_copilot"]
+UsageSourceKey = Literal["litellm"]
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class FieldSpec:
 
 @dataclass(frozen=True)
 class FamilySpec:
-    """Una de las 3 familias de configuración de IA."""
+    """Una de las 2 familias de configuración de IA (GitHub Copilot se quitó en la 2.1)."""
 
     key: FamilyKey
     fields: tuple[FieldSpec, ...]
@@ -108,7 +108,7 @@ def _litellm_fields() -> tuple[FieldSpec, ...]:
     return tuple(fields)
 
 
-#: Orden fijo: la de los modelos (todas las tareas) y después las 2 de uso.
+#: Orden fijo: la de los modelos (todas las tareas) y después la de uso.
 FAMILIES: Final[tuple[FamilySpec, ...]] = (
     FamilySpec("litellm", _litellm_fields()),
     FamilySpec(
@@ -118,14 +118,9 @@ FAMILIES: Final[tuple[FamilySpec, ...]] = (
             FieldSpec("virtual_key", f"{ENV_PREFIX}VIRTUAL_KEY", secret=True, required=True),
         ),
     ),
-    FamilySpec(
-        "github_copilot_usage",
-        (
-            FieldSpec("username", "DOC_ORGANIZE_GITHUB_USERNAME", secret=False, required=True),
-            FieldSpec("pat", "DOC_ORGANIZE_GITHUB_PAT", secret=True, required=True),
-        ),
-    ),
 )
+#: Variables de GitHub Copilot que la web ya no lee (2.1): si siguen definidas, se avisa como con las de 1.x.
+COPILOT_ENV_VARS: Final[tuple[str, ...]] = ("DOC_ORGANIZE_GITHUB_USERNAME", "DOC_ORGANIZE_GITHUB_PAT")
 FAMILIES_BY_KEY: Final[dict[str, FamilySpec]] = {family.key: family for family in FAMILIES}
 
 
@@ -287,13 +282,18 @@ def phase_stats(phase: Any) -> dict[str, Any]:
 def classification_stats(context: Any) -> dict[str, Any]:
     """Lo que hizo la clasificación con IA en una construcción (``Context.ai_stats.classification``)."""
     phase = context.ai_stats.classification
-    return {**phase_stats(phase), "classified": int(phase.assigned), "scope": str(context.ai_stats.scope)}
+    return {
+        **phase_stats(phase),
+        "classified": int(phase.assigned),
+        "scope": str(context.ai_stats.scope),
+        "model": context.model_for_task("classify"),
+    }
 
 
 def enrichment_stats(context: Any) -> dict[str, Any]:
     """Lo que hizo el enriquecimiento con IA en una construcción (``Context.ai_stats.enrichment``)."""
     phase = context.ai_stats.enrichment
-    return {**phase_stats(phase), "applied": int(phase.assigned)}
+    return {**phase_stats(phase), "applied": int(phase.assigned), "model": context.model_for_task("enrich")}
 
 
 # --- borrador de manifiesto (subproceso del job) ---------------------------------------------------------------------
@@ -309,6 +309,10 @@ class DraftOutcome:
     total_documents: int
     domains: list[tuple[str, str]]
     material_types: list[tuple[str, str]]
+    model: str | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cached: bool = False
 
 
 def _ai_error(exc: Exception) -> AiServiceError:
@@ -358,10 +362,10 @@ def draft_manifest(
     async def _propose() -> Any:
         async with LlmClient(ai_settings_for(connection), transport=_transport(connection)) as llm:
             prompts = PromptRegistry(str(project_root)) if project_root is not None else PromptRegistry()
-            return (await draft_taxonomy(llm, prompts, sample)).value
+            return await draft_taxonomy(llm, prompts, sample)
 
     try:
-        result = asyncio.run(_propose())
+        llm_result = asyncio.run(_propose())
     except AiError as exc:
         import httpx
 
@@ -383,6 +387,7 @@ def draft_manifest(
             },
         )
         raise error from None
+    result = llm_result.value
     markdown = render_taxonomy_manifest_markdown(
         result.to_manifest(),
         reasoning=result.reasoning,
@@ -396,6 +401,10 @@ def draft_manifest(
         total_documents=len(documents),
         domains=[(entry.slug, entry.name) for entry in result.domains],
         material_types=[(entry.slug, entry.name) for entry in result.material_types],
+        model=str(llm_result.model),
+        prompt_tokens=int(llm_result.usage.prompt_tokens or 0),
+        completion_tokens=int(llm_result.usage.completion_tokens or 0),
+        cached=bool(llm_result.cached),
     )
 
 
@@ -413,26 +422,61 @@ class UsageItem:
 
 
 @dataclass(frozen=True)
+class KeyBudget:
+    """Gasto y presupuesto de la clave según ``/key/info`` (lo que el proxy diga; sin la clave ni otros datos)."""
+
+    spend: float | None
+    max_budget: float | None
+    budget_reset_at: str | None
+
+    @property
+    def remaining(self) -> float | None:
+        """Lo que queda del presupuesto, o ``None`` si la clave no tiene."""
+        if self.max_budget is None or self.spend is None:
+            return None
+        return max(self.max_budget - self.spend, 0.0)
+
+
+@dataclass(frozen=True)
 class UsageReport:
-    """``UsageSnapshot`` sin ``raw`` (el payload original de la fuente nunca sale de aquí)."""
+    """``UsageSnapshot`` sin ``raw`` (el payload original de la fuente nunca sale de aquí, salvo ``budget``)."""
 
     period_start: str
     period_end: str
     items: list[UsageItem]
+    budget: KeyBudget | None = None
+
+
+def _number(value: Any) -> float | None:
+    """``value`` como número no negativo, o ``None``."""
+    if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+        return None
+    return float(value)
+
+
+def key_budget(raw: Any) -> KeyBudget | None:
+    """Gasto, presupuesto y reinicio de ``/key/info`` (``info.spend``, ``info.max_budget``, ``info.budget_reset_at``).
+
+    >>> key_budget({"info": {"spend": 1.5, "max_budget": 10, "budget_reset_at": "2026-12-01T00:00:00Z"}}).remaining
+    8.5
+    >>> key_budget({"info": {}}) is None
+    True
+    """
+    info = raw.get("info", raw) if isinstance(raw, dict) else None
+    if not isinstance(info, dict):
+        return None
+    spend, max_budget = _number(info.get("spend")), _number(info.get("max_budget"))
+    reset = info.get("budget_reset_at")
+    if spend is None and max_budget is None:
+        return None
+    return KeyBudget(spend=spend, max_budget=max_budget, budget_reset_at=str(reset) if reset else None)
 
 
 def _usage_config(connection: AiConnection) -> Any:
-    """``LiteLLMUsageConfig`` (con la clave general) o ``GitHubCopilotUsageConfig`` de ``connection``."""
-    from doc_organize.core.models import GitHubCopilotUsageConfig, LiteLLMUsageConfig
+    """``LiteLLMUsageConfig`` de ``connection`` (con la clave general)."""
+    from doc_organize.core.models import LiteLLMUsageConfig
 
     values = connection.values
-    if connection.family == "github_copilot_usage":
-        return GitHubCopilotUsageConfig(
-            username=values["username"],
-            personal_access_token=values["pat"],
-            timeout_s=connection.timeout_s,
-            retries=connection.retries,
-        )
     return LiteLLMUsageConfig(
         base_url=values["base_url"],
         virtual_key=values["virtual_key"],
@@ -442,22 +486,18 @@ def _usage_config(connection: AiConnection) -> Any:
 
 
 async def fetch_usage(source: UsageSourceKey, connection: AiConnection) -> UsageReport:
-    """Uso del periodo actual de ``source`` (LiteLLM: la propia clave; Copilot: el mes en curso).
+    """Uso del periodo actual de ``source`` (LiteLLM: el gasto acumulado de la propia clave y su presupuesto).
 
     Raises:
         AiServiceError: Falló la consulta (código sin detalle).
     """
-    from doc_organize.ai import GitHubCopilotUsageClient, LiteLLMUsageClient
+    from doc_organize.ai import LiteLLMUsageClient
     from doc_organize.core.exceptions import UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
 
+    del source  # solo LiteLLM desde la 2.1
     try:
-        if source == "litellm":
-            async with LiteLLMUsageClient(_usage_config(connection), transport=_transport(connection)) as client:
-                snapshot = await client.get_usage()
-        else:
-            today = date.today()
-            async with GitHubCopilotUsageClient(_usage_config(connection), transport=_transport(connection)) as client:
-                snapshot = await client.get_usage(year=today.year, month=today.month)
+        async with LiteLLMUsageClient(_usage_config(connection), transport=_transport(connection)) as client:
+            snapshot = await client.get_usage()
     except UsageSourceError as exc:
         raise _usage_error(exc, UsageSourceAuthError, UsageSourceConnectionError) from None
     except (ValueError, TypeError, AttributeError):  # respuesta que no es el JSON esperado (o no cumple el modelo)
@@ -476,6 +516,7 @@ async def fetch_usage(source: UsageSourceKey, connection: AiConnection) -> Usage
             )
             for item in snapshot.items
         ],
+        budget=key_budget(snapshot.raw),
     )
 
 
@@ -535,17 +576,11 @@ def _model_access(raw: dict[str, Any], model: str | None) -> ModelAccess:
 
 
 async def _check_key(connection: AiConnection, task: TaskKey | None) -> tuple[TestErrorCode | None, ModelAccess]:
-    """``GET /key/info`` (LiteLLM, con la clave general) o el uso del mes (GitHub Copilot): servidor alcanzable y
-    credencial válida."""
-    from doc_organize.ai import GitHubCopilotUsageClient, LiteLLMUsageClient
+    """``GET /key/info`` de LiteLLM con la clave general: servidor alcanzable y credencial válida."""
+    from doc_organize.ai import LiteLLMUsageClient
     from doc_organize.core.exceptions import UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
 
     try:
-        if connection.family == "github_copilot_usage":
-            today = date.today()
-            async with GitHubCopilotUsageClient(_usage_config(connection), transport=_transport(connection)) as client:
-                await client.get_usage(year=today.year, month=today.month)
-            return None, "unknown"
         model = connection.model_for(task) if connection.family in MODEL_FAMILIES and task else None
         async with LiteLLMUsageClient(_usage_config(connection), transport=_transport(connection)) as client:
             snapshot = await client.get_usage()

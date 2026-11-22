@@ -47,3 +47,12 @@ En la web multiusuario hay tres riesgos:
 - Desde doc_organize 0.14.0 (L-3a…L-3e) los cortes, el presupuesto, los reintentos y el recuento los hace la
   librería: la web solo le pasa `ai_max_failures`, `ai_max_documents` y `*Config.retries`. El silencio de los loggers
   `httpx`/`httpcore` se mantiene como defensa.
+
+## Nota (2026-11-22, web 2.1)
+
+GitHub Copilot se quitó: ya no hay familia `github_copilot_usage` ni llamadas a la API de facturación de GitHub. La
+migración `0025` borra su configuración guardada (el PAT cifrado incluido) y bajar de versión no la recupera. Si
+`DOC_ORGANIZE_GITHUB_USERNAME`/`DOC_ORGANIZE_GITHUB_PAT` siguen definidas, la configuración avisa de que ya no se leen.
+El panel de uso muestra el gasto y el presupuesto de la clave de LiteLLM y, además, el consumo por ejecución que
+registra la web (`ai_usage`, migración `0026`). En doc_organize 2.1.0, Copilot queda obsoleto y se retira en 3.0. El
+texto de arriba se conserva tal como se decidió.

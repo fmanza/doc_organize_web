@@ -333,7 +333,7 @@ describe('W6: semántica del proyecto', () => {
       ...detailRoutes({ ...PROJECT, context_semantic: true }),
       'GET /api/v1/ai/status': {
         body: {
-          families: { litellm: false, litellm_usage: false, github_copilot_usage: false },
+          families: { litellm: false, litellm_usage: false },
           tasks: { classify: false, enrich: false, taxonomy_design: false, agent: false, embed: false },
         },
       },

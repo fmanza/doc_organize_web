@@ -92,6 +92,27 @@ def get_context(db: Session, project: Project) -> ProjectContext:
     return context
 
 
+def leftover_folder(db: Session, settings: Settings, project: Project) -> str | None:
+    """Carpeta de un contexto que quedó en disco sin guardarse en la web (2.1), o ``None``.
+
+    Pasa si una construcción se interrumpe (worker reiniciado, sin memoria…) después de que doc_organize escriba
+    ``context.json`` y la carpeta reorganizada y antes de que la web guarde el contexto: la página decía «sin contexto»
+    y no dejaba borrarlo. «Construir» lo completa (reutiliza esa carpeta) y «Borrar contexto» lo borra: los dos leen la
+    carpeta de ``context.json``. Con un contexto guardado no hay restos (``None``). Si el destino no responde o la carpeta
+    del proyecto no existe, tampoco: no se puede saber, y no bloquea la página.
+    """
+    if db.get(ProjectContext, project.id) is not None:
+        return None
+    try:
+        output = _output_root(settings, project)
+        return run_with_timeout(
+            lambda: library.existing_folder_name(output, name=project.name, created_at=project.created_at),
+            settings.location_probe_timeout_seconds,
+        )
+    except (ContextNotFoundError, LocationUnavailableError):
+        return None
+
+
 def _keywords_contain(keyword: str) -> ColumnElement[bool]:
     """Alguna palabra clave contiene ``keyword``, sobre el texto JSON de la lista.
 

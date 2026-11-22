@@ -9,10 +9,11 @@ La IA es opcional. La aplicación funciona sin ella. Cuando se configura, sirve 
 - La **clasificación semántica** (embeddings), antes de la IA, para los ejes que las reglas dejan vacíos.
 - Pedir un **borrador del manifiesto** de taxonomía y los **agentes**: diseñar la taxonomía y el revisor de la
   clasificación.
-- Ver el **uso y coste** de LiteLLM y de GitHub Copilot.
+- Ver el **uso**: el gasto y el presupuesto de la clave de LiteLLM, y los tokens, documentos y caché de cada
+  ejecución.
 
-Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) de tu organización
-(salvo el uso de Copilot, que se consulta en la API de GitHub).
+Todo pasa por un [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) de tu organización. Desde la 2.1 ya no hay
+uso de GitHub Copilot.
 
 !!! warning "El contenido de los documentos sale de la aplicación"
 
@@ -37,8 +38,7 @@ Los servicios se usan a través de un [LiteLLM Proxy](https://docs.litellm.ai/do
 | Servicio | Para qué | Campos |
 |---|---|---|
 | Modelos de IA | Todas las tareas: clasificar, completar descripciones, borrador de manifiesto, agentes y embeddings | URL y clave virtual generales; por tarea, modelo, clave propia y (clasificar y describir) máximo de documentos por ejecución, todos opcionales |
-| Uso de LiteLLM | Panel de uso | URL, clave virtual |
-| Uso de GitHub Copilot | Panel de uso | Usuario de GitHub, token personal (PAT) |
+| Uso de LiteLLM | Gasto y presupuesto de la clave en el panel de uso | URL, clave virtual |
 
 - La tarjeta «Modelos de IA» tiene arriba la URL y la clave general y, debajo, un bloque por tarea (clasificar,
   describir, diseñar la taxonomía, agentes y embeddings) con su modelo (vacío: el alias recomendado, que se ve en el
@@ -79,7 +79,6 @@ se toma de lo guardado o de la variable del servidor. Así puedes comprobar un c
 - **Probar conexión** comprueba que el servidor responde y que la clave es válida, sin gastar tokens:
   - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
     configurado, lo avisa.
-  - GitHub Copilot: consulta el uso del mes, como el panel de uso. El token necesita permiso de facturación.
 - **Probar el modelo** (en cada tarea de «Modelos de IA») envía además una petición mínima al modelo de esa tarea, con
   su clave, y con salida `json_schema` estricta (en embeddings, pide un vector), que gasta unos pocos tokens. Es la
   prueba que detecta un nombre de modelo mal escrito, y dice si el modelo admite `json_schema` (si no, doc_organize usa
@@ -115,6 +114,18 @@ Más contexto ocupa más memoria de la GPU.
 En la página **Contexto**, marca «Clasificar con IA lo que las reglas dejen sin clasificar» antes de construir.
 Solo está disponible si «Modelos de IA» está configurado. Con dominios descubiertos o con un catálogo propio la IA
 asigna el dominio; con plantilla o manifiesto, los ejes que las reglas (y la semántica) dejaron vacíos.
+
+Con plantilla o manifiesto, **«Qué se envía a la IA»** (2.1) elige qué documentos van al modelo:
+
+| Opción | Qué documentos |
+|---|---|
+| Lo que las reglas no clasifican (por defecto) | Los que las reglas no colocan en carpeta (dominio o tipo de material) |
+| También los ejes vacíos | Además, los que tienen vacío algún eje que solo etiqueta |
+
+Un eje sin reglas (`rules: false` en el manifiesto, por ejemplo una «acción» que solo puede decidir la IA o una persona)
+está siempre vacío tras las reglas: con «También los ejes vacíos» van **todos** los documentos, hasta el máximo de
+documentos de clasificar por ejecución. En los dos casos la IA solo rellena lo vacío. El resultado de la ejecución dice
+qué opción se usó.
 
 - El modelo responde con salida `json_schema` estricta: solo puede elegir valores del catálogo, nunca inventa otros.
 - Con cada valor da una **cita** literal del documento. Si la cita no aparece en el texto enviado, el valor queda con
@@ -184,13 +195,28 @@ modelo con llamadas a herramientas y contexto amplio (ver [Modelos locales](#mod
 
 ## Uso de IA (administradores)
 
-**Administración → IA → Uso** muestra el periodo actual de cada fuente:
+**Administración → IA → Uso** (2.1) reúne dos cosas:
 
-- **LiteLLM**: el gasto acumulado de la clave configurada (en USD).
-- **GitHub Copilot**: las peticiones premium del mes en curso, con su coste si GitHub lo indica.
+- **Clave de LiteLLM**: el gasto acumulado de la clave de «Uso de LiteLLM» (USD) y, si la clave tiene presupuesto en
+  LiteLLM, cuánto queda y cuándo se reinicia. Lo dice el proxy (`/key/info`); se guarda 5 minutos y «Actualizar» pide
+  datos nuevos, como mucho una vez cada 30 segundos.
+- **Consumo por ejecución**, que registra la propia aplicación al terminar cada ejecución con IA (construir el
+  contexto, borrador de manifiesto, agentes y la prueba de clasificación de Calidad), en el periodo elegido (7 días,
+  30 días, este mes o todo):
+  - indicadores: ejecuciones con IA, documentos enviados, resueltos con la caché (y qué parte del total), tokens de
+    entrada y de salida;
+  - **tokens por día**, en la hora local del navegador (la zona se indica en el gráfico), también como tabla;
+  - tablas **por tarea**, **por modelo**, **por proyecto** y las **ejecuciones que más tokens gastaron**, con enlace.
 
-Los datos se guardan 5 minutos. «Actualizar» pide datos nuevos, como mucho una vez cada 30 segundos. Si una fuente
-falla o no está configurada, la otra se sigue mostrando.
+El proxy no da el coste de cada llamada, así que no hay coste por ejecución ni por tarea: el coste es el de la clave.
+Los tokens de los agentes son estimados (marcados con «≈») cuando el proxy no los informa.
+
+Cada ejecución con IA muestra también, en su detalle, la tarjeta **Consumo de IA** (tarea, modelo, enviados, caché y
+tokens), que ven los miembros del proyecto.
+
+- El consumo se conserva aunque se borre la ejecución o el proyecto (queda el nombre del proyecto).
+- No guarda texto de los documentos ni prompts: solo recuentos y el modelo.
+- Al actualizar a la 2.1 se rellena con las ejecuciones anteriores, sin modelo (la 2.0 no lo guardaba).
 
 ## Rotar la clave de cifrado
 

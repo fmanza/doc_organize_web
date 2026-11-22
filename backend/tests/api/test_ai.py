@@ -121,7 +121,7 @@ def test_clearing_falls_back_to_the_environment(
         ("litellm_usage", {"model": "x"}, 422, "ai_setting_invalid"),
         ("litellm_usage", {"base_url": "file:///etc/passwd"}, 422, "ai_setting_invalid"),
         ("litellm_usage", {"base_url": "https://u:p@litellm.example.internal"}, 422, "ai_setting_invalid"),
-        ("github_copilot_usage", {"username": "no válido"}, 422, "ai_setting_invalid"),
+        ("github_copilot_usage", {"username": "octo-cat"}, 404, "ai_family_not_found"),  # quitada en la 2.1
         ("litellm_usage", {"virtual_key": "con espacio"}, 422, "ai_setting_invalid"),
         ("litellm_classification", {}, 404, "ai_family_not_found"),  # familias de 1.x: retiradas en 2.0
         ("litellm", {"model": "x"}, 422, "ai_setting_invalid"),  # el modelo va por tarea
@@ -168,7 +168,7 @@ def test_status_is_visible_to_every_user(admin_api: TestClient, user_client: Tes
     status = user_client.get("/api/v1/ai/status")
 
     assert status.status_code == 200 and KEY not in status.text
-    assert status.json()["families"] == {"litellm": True, "litellm_usage": False, "github_copilot_usage": False}
+    assert status.json()["families"] == {"litellm": True, "litellm_usage": False}
     assert status.json()["tasks"] == dict.fromkeys(("classify", "enrich", "taxonomy_design", "agent", "embed"), True)
 
 
@@ -229,36 +229,37 @@ def _usage_transport(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.R
     return seen
 
 
-def test_usage_panel_caches_and_isolates_sources(
+def test_usage_panel_caches_and_reports_the_key_budget(
     admin_api: TestClient, fernet: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def _handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "api.github.com":
-            return httpx.Response(401)
-        return httpx.Response(200, json={"info": {"spend": 1.25, "key_alias": "equipo"}})
+        info = {"spend": 1.25, "key_alias": "equipo", "max_budget": 10, "budget_reset_at": "2026-12-01T00:00:00Z"}
+        return httpx.Response(200, json={"info": info})
 
     seen = _usage_transport(monkeypatch, _handler)
     admin_api.put(f"{URL}/litellm_usage", json={"fields": LITELLM})
-    admin_api.put(
-        f"{URL}/github_copilot_usage", json={"fields": {"username": "octo-cat", "pat": "ghp_fake_token_0001"}}
-    )
 
     first = admin_api.get("/api/v1/admin/ai-usage")
     second = admin_api.get("/api/v1/admin/ai-usage?refresh=true")  # dentro del mínimo de 30 s: sigue la caché
 
-    assert first.status_code == 200 and KEY not in first.text and "ghp_fake" not in first.text
-    sources = {s["source"]: s for s in first.json()["sources"]}
-    assert sources["litellm"]["total_cost_usd"] == 1.25 and sources["litellm"]["error"] is None
-    assert sources["github_copilot"]["error"] == "ai_auth" and sources["github_copilot"]["items"] == []
-    assert "raw" not in first.text
-    assert len(seen) == 2
+    assert first.status_code == 200 and KEY not in first.text
+    [source] = first.json()["sources"]  # 2.1: solo LiteLLM (sin GitHub Copilot)
+    assert source["source"] == "litellm" and source["total_cost_usd"] == 1.25 and source["error"] is None
+    assert source["budget"] == {
+        "spend": 1.25,
+        "max_budget": 10.0,
+        "remaining": 8.75,
+        "budget_reset_at": "2026-12-01T00:00:00Z",
+    }
+    assert "raw" not in first.text and "equipo" in first.text
+    assert len(seen) == 1
     assert all(s["cached"] for s in second.json()["sources"])
 
 
 def test_usage_panel_without_configuration(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _usage_transport(monkeypatch, lambda _: httpx.Response(500))
     body = admin_api.get("/api/v1/admin/ai-usage").json()
-    assert [s["configured"] for s in body["sources"]] == [False, False] and seen == []
+    assert [s["configured"] for s in body["sources"]] == [False] and seen == []
 
 
 def test_usage_cache_expires(db: Session, fernet: str, admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -511,15 +512,22 @@ def test_probe_validation_and_permissions(
     assert paths == []
 
 
-def test_github_probe_uses_the_usage_endpoint(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_github_copilot_is_gone_and_its_variables_are_reported(
+    admin_api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """2.1: sin familia de GitHub Copilot; si sus variables siguen definidas, se avisa sin valores y sin sustituta."""
     hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(401))
+    monkeypatch.setenv("DOC_ORGANIZE_GITHUB_PAT", "ghp_fake_token_0001")
 
-    body = admin_api.post(
+    probe = admin_api.post(
         f"{URL}/github_copilot_usage/test", json={"fields": {"username": "octo-cat", "pat": "ghp_fake_token_0001"}}
-    ).json()
+    )
+    settings = admin_api.get(URL).json()
 
-    assert (body["ok"], body["error"]) == (False, "ai_auth")
-    assert hosts == ["api.github.com"]
+    assert probe.status_code == 404 and hosts == []
+    assert "github_copilot_usage" not in [family["key"] for family in settings["families"]]
+    assert {"name": "DOC_ORGANIZE_GITHUB_PAT", "replacement": None} in settings["legacy_variables"]
+    assert "ghp_fake" not in admin_api.get(URL).text
 
 
 def test_probe_never_leaks_the_key(

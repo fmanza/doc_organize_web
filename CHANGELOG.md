@@ -5,6 +5,54 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **Contexto en pasos de trabajo**: una cabecera común (también en Revisar, Calidad y el sitio) con el estado del
+  contexto, el aviso de desactualizado y los pasos **1 Taxonomía → 2 Construir → 3 Resultado → 4 Revisar →
+  5 Calidad → 6 Entregar**, más Historial. Antes se pedía construir por encima de la taxonomía con la que se construía.
+  Sin contexto se abre en Taxonomía y los pasos 3 a 6 se ven desactivados; con contexto, en Resultado. Cada paso tiene
+  su dirección (`?paso=`).
+- **Catálogo en el paso Taxonomía**, agrupado en «Sin taxonomía» (**Por carpetas**, antes «Descubrir dominios»;
+  **Lista de dominios**, antes «Catálogo propio») y «Con taxonomía» (Plantilla, Manifiesto del proyecto). La API no
+  cambia (`discover`, `domains`, `template`, `manifest`). «Construir» dice con qué taxonomía se construye, con
+  «Cambiar», y por qué no se puede construir todavía.
+- **Manifiesto en orden de trabajo**: estado → «Crear o mejorar con IA» (borrador y agente; plegado si ya hay
+  manifiesto) → editor → comprobar y guardar → versiones → borrar.
+- **Perfil del proyecto según el catálogo**: siempre con Plantilla; con Por carpetas o Lista de dominios, si hay IA
+  configurada o ya existe; con el Manifiesto, solo un aviso si existe un perfil aparte, con «Copiar al cuerpo del
+  manifiesto». doc_organize usa `profile.md` con cualquier catálogo, así que nunca se oculta uno que exista.
+
+### Added
+
+- Aviso al salir de la página del contexto con cambios sin guardar en el manifiesto o el perfil. Cambiar de paso no
+  pierde nada.
+- **Consumo de IA por ejecución** (tabla `ai_usage`, migración `0026`): al terminar cada ejecución con IA (construir
+  el contexto, borrador de manifiesto, agentes, prueba de clasificación) se guarda, por tarea, el modelo, los
+  documentos enviados, los resueltos con la caché y los tokens de entrada y salida. Sin texto de documentos ni prompts.
+  Al actualizar se rellena con las ejecuciones anteriores (sin modelo).
+- **IA › Uso rediseñado**: periodo (7 días, 30 días, este mes, todo), indicadores, gasto y **presupuesto de la clave**
+  de LiteLLM (cuánto queda y cuándo se reinicia), **tokens por día** en la hora local del navegador (y como tabla), y
+  tablas por tarea, modelo, proyecto y ejecuciones que más gastaron. `GET /admin/ai-usage` acepta `period` y `tz` y
+  devuelve `local` y `budget`.
+- **«Qué se envía a la IA» al construir** (paso Construir, con plantilla o manifiesto): «Lo que las reglas no
+  clasifican» (por defecto, como antes) o «También los ejes vacíos» (`ai_scope="missing_axes"` de doc_organize), que
+  rellena los ejes de etiqueta vacíos, también los `rules: false`, en documentos que las reglas ya colocaron. Campo
+  `ai_scope` de `context_build` (opcional; 422 con catálogos sin ejes de etiqueta). Sale en el resultado del run.
+- **Contexto a medio guardar**: si una construcción se interrumpe después de escribir `context.json` y la carpeta
+  reorganizada pero antes de guardar el contexto, la página ya no dice solo «sin contexto»: avisa y ofrece «Ir a
+  Construir» (reutiliza esa carpeta) y «Borrar contexto». `GET /projects/{id}/context/leftover`.
+- Tarjeta **Consumo de IA** en el detalle de cada ejecución (`GET /runs/{id}` devuelve `ai_usage`).
+- El borrador de manifiesto guarda sus tokens y su modelo; construir el contexto, los agentes y la semántica guardan
+  el modelo de cada tarea.
+
+### Removed
+
+- **GitHub Copilot**: fuera la familia `github_copilot_usage` de IA › Configuración, `/admin/ai-settings` y
+  `/ai/status`, y la fuente `github_copilot` de IA › Uso. La migración `0025` **borra** su configuración guardada (el
+  PAT cifrado incluido) y bajar de versión no la recupera. Si `DOC_ORGANIZE_GITHUB_USERNAME`/`DOC_ORGANIZE_GITHUB_PAT`
+  siguen definidas, la configuración avisa de que ya no se leen (`legacy_variables` con `replacement: null`).
+- Columna «Cantidad» del uso de LiteLLM, que repetía el gasto.
+
 ## [2.0.1] - 2026-11-22
 
 Correcciones del diagnóstico, encontradas al desplegar la 2.0.0. Sin migraciones.

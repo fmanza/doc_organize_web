@@ -339,9 +339,10 @@ def test_0024_drops_the_1x_copy_and_the_roundtrip_rebuilds_1x_from_2_0(settings:
         ("litellm_taxonomy_manifest_draft", "model", "modelo-borrador", None),
         ("litellm_usage", "base_url", "https://proxy.example", None),  # las de uso no cambian
         ("litellm_usage", "virtual_key", None, "gAAAA-uso"),
-        ("github_copilot_usage", "username", "octo-cat", None),
     }
     assert expected <= rows
+    # La 0025 (web 2.1) borró GitHub Copilot y bajar no lo recupera.
+    assert not any(family == "github_copilot_usage" for family, *_ in rows)
     assert ("litellm_classification", "model", "modelo-un-eje", None) not in rows  # lo que 2.0 no guardaba
 
 
@@ -353,6 +354,29 @@ def test_0024_roundtrip_without_ai_settings(settings: Settings) -> None:
     with get_engine().connect() as conn:
         assert _ai_rows(conn) == set()
     assert "ai_settings_v1" not in inspect(get_engine()).get_table_names()
+
+
+# --- 0025: sin GitHub Copilot (web 2.1) --------------------------------------------------------------------------------
+
+
+def test_0025_drops_only_the_copilot_settings(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0024")
+    _insert_ai_rows(
+        [
+            ("github_copilot_usage", "username", "octo-cat", None),
+            ("github_copilot_usage", "pat", None, "gAAAA-pat"),
+            ("litellm_usage", "base_url", "https://proxy.example", None),
+        ]
+    )
+
+    command.upgrade(config, "0025")
+    with get_engine().connect() as conn:
+        assert _ai_rows(conn) == {("litellm_usage", "base_url", "https://proxy.example", None)}
+
+    command.downgrade(config, "0024")  # no recupera el secreto borrado
+    with get_engine().connect() as conn:
+        assert _ai_rows(conn) == {("litellm_usage", "base_url", "https://proxy.example", None)}
 
 
 def test_roundtrip_script_accepts_the_rebuilt_ai_settings(settings: Settings, tmp_path: Path) -> None:

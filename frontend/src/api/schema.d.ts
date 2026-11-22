@@ -33,8 +33,8 @@ export interface paths {
         };
         /**
          * Ver la configuración de IA
-         * @description Las 3 familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de
-         *     entorno de doc_organize 1.x que siguen definidas y ya no se leen.
+         * @description Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de entorno
+         *     que siguen definidas y ya no se leen (de doc_organize 1.x y de GitHub Copilot).
          */
         get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
         put?: never;
@@ -79,7 +79,7 @@ export interface paths {
          * @description Prueba la familia con los valores del formulario encima de los guardados, sin guardar nada.
          *
          *     Con LiteLLM consulta ``/key/info`` (servidor y clave, sin coste) y, con ``model_check``, envía además una
-         *     clasificación mínima al modelo. Con GitHub Copilot consulta el uso del mes. Se audita sin valores.
+         *     clasificación mínima al modelo. Se audita sin valores.
          */
         post: operations["probe_ai_family_api_v1_admin_ai_settings__family__test_post"];
         delete?: never;
@@ -97,7 +97,8 @@ export interface paths {
         };
         /**
          * Uso y coste de IA
-         * @description Uso del periodo actual de LiteLLM y de GitHub Copilot (caché de 5 minutos por fuente).
+         * @description Gasto acumulado y presupuesto de la clave de LiteLLM (caché de 5 minutos) y el consumo por ejecución que
+         *     registra la web (tokens, documentos y caché por tarea, modelo, proyecto y día local).
          */
         get: operations["get_ai_usage_api_v1_admin_ai_usage_get"];
         put?: never;
@@ -710,6 +711,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/context/leftover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto a medio guardar
+         * @description Si en el destino hay un contexto que la web no llegó a guardar (construcción interrumpida): su carpeta, para
+         *     ofrecer completarlo («Construir») o borrarlo. ``null`` si hay contexto guardado o no hay restos.
+         */
+        get: operations["get_context_leftover_api_v1_projects__project_id__context_leftover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/context/profile": {
         parameters: {
             query?: never;
@@ -1307,7 +1329,7 @@ export interface paths {
         };
         /**
          * Ver ejecución
-         * @description Estado, progreso, resultado y artefactos.
+         * @description Estado, progreso, resultado y artefactos, y el consumo de IA por tarea (2.1).
          */
         get: operations["get_run_api_v1_runs__run_id__get"];
         put?: never;
@@ -1689,7 +1711,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "litellm" | "litellm_usage" | "github_copilot_usage";
+            key: "litellm" | "litellm_usage";
         };
         /**
          * AiFamilyUpdate
@@ -1738,14 +1760,29 @@ export interface components {
             value: string | null;
         };
         /**
+         * AiKeyBudgetOut
+         * @description Gasto y presupuesto de la clave según ``/key/info`` del proxy (lo que diga; ``None`` si no lo dice).
+         */
+        AiKeyBudgetOut: {
+            /** Budget Reset At */
+            budget_reset_at: string | null;
+            /** Max Budget */
+            max_budget: number | null;
+            /** Remaining */
+            remaining: number | null;
+            /** Spend */
+            spend: number | null;
+        };
+        /**
          * AiLegacyVariableOut
-         * @description Variable de entorno de doc_organize 1.x que sigue definida y ya no se lee (D15), con la que la sustituye.
+         * @description Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de
+         *     GitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla).
          */
         AiLegacyVariableOut: {
             /** Name */
             name: string;
             /** Replacement */
-            replacement: string;
+            replacement: string | null;
         };
         /**
          * AiSettingsOut
@@ -1758,7 +1795,7 @@ export interface components {
             families: components["schemas"]["AiFamilyOut"][];
             /**
              * Legacy Variables
-             * @description Variables de entorno de doc_organize 1.x definidas que ya no se leen (solo nombres, D15/U17)
+             * @description Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)
              */
             legacy_variables?: components["schemas"]["AiLegacyVariableOut"][];
         };
@@ -1844,6 +1881,60 @@ export interface components {
              */
             tested_at: string;
         };
+        /**
+         * AiUsageDayOut
+         * @description Totales de un día en la zona horaria pedida.
+         */
+        AiUsageDayOut: {
+            /** Cached */
+            cached: number;
+            /** Calls */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Failed */
+            failed: number;
+            /** Prompt Tokens */
+            prompt_tokens: number;
+            /** Runs */
+            runs: number;
+            /** Tokens Estimated */
+            tokens_estimated: boolean;
+        };
+        /**
+         * AiUsageGroupOut
+         * @description Totales de una tarea, un modelo o un proyecto (``key``: la tarea, el modelo o el id del proyecto).
+         */
+        AiUsageGroupOut: {
+            /** Cached */
+            cached: number;
+            /** Calls */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /** Failed */
+            failed: number;
+            /** Key */
+            key: string;
+            /**
+             * Label
+             * @description Nombre del proyecto (en «por proyecto»)
+             */
+            label?: string | null;
+            /** Project Id */
+            project_id?: number | null;
+            /** Prompt Tokens */
+            prompt_tokens: number;
+            /** Runs */
+            runs: number;
+            /** Tokens Estimated */
+            tokens_estimated: boolean;
+        };
         /** AiUsageItemOut */
         AiUsageItemOut: {
             /** Cost Usd */
@@ -1859,16 +1950,114 @@ export interface components {
             /** Unit Type */
             unit_type: string;
         };
+        /**
+         * AiUsageLocalOut
+         * @description Consumo registrado por la web en el periodo (``ai_usage``), agrupado por día en ``timezone``.
+         */
+        AiUsageLocalOut: {
+            /** By Day */
+            by_day: components["schemas"]["AiUsageDayOut"][];
+            /** By Model */
+            by_model: components["schemas"]["AiUsageGroupOut"][];
+            /** By Project */
+            by_project: components["schemas"]["AiUsageGroupOut"][];
+            /** By Task */
+            by_task: components["schemas"]["AiUsageGroupOut"][];
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "7d" | "30d" | "month" | "all";
+            /** Start */
+            start: string | null;
+            /** Timezone */
+            timezone: string;
+            /** Top Runs */
+            top_runs: components["schemas"]["AiUsageRunOut"][];
+            totals: components["schemas"]["AiUsageTotalsOut"];
+        };
         /** AiUsageOut */
         AiUsageOut: {
+            /** @description Consumo por ejecución registrado por la web (2.1) */
+            local?: components["schemas"]["AiUsageLocalOut"] | null;
             /** Sources */
             sources: components["schemas"]["AiUsageSourceOut"][];
+        };
+        /**
+         * AiUsageRowOut
+         * @description Consumo de IA de una ejecución en una tarea (web 2.1). Sin coste: el proxy no lo da por llamada.
+         */
+        AiUsageRowOut: {
+            /**
+             * Cached
+             * @description Resueltos con la caché de resultados de IA, sin llamar al modelo
+             */
+            cached: number;
+            /**
+             * Calls
+             * @description Documentos enviados (pasos, en los agentes; textos embebidos, en embed)
+             */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /** Failed */
+            failed: number;
+            /** Model */
+            model: string | null;
+            /** Prompt Tokens */
+            prompt_tokens: number;
+            /** Task */
+            task: string;
+            /**
+             * Tokens Estimated
+             * @description Tokens estimados (agentes, si el proxy no los informa)
+             */
+            tokens_estimated: boolean;
+        };
+        /**
+         * AiUsageRunOut
+         * @description Una de las ejecuciones que más tokens gastaron.
+         */
+        AiUsageRunOut: {
+            /** Cached */
+            cached: number;
+            /** Calls */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Failed */
+            failed: number;
+            /** Operation */
+            operation: string;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /** Prompt Tokens */
+            prompt_tokens: number;
+            /** Run Id */
+            run_id: string | null;
+            /** Runs */
+            runs: number;
+            /** Tokens Estimated */
+            tokens_estimated: boolean;
         };
         /**
          * AiUsageSourceOut
          * @description Uso de una fuente en el periodo actual, o por qué no hay (sin configurar o ``error``).
          */
         AiUsageSourceOut: {
+            budget?: components["schemas"]["AiKeyBudgetOut"] | null;
             /** Cached */
             cached: boolean;
             /** Configured */
@@ -1885,11 +2074,31 @@ export interface components {
             period_start: string | null;
             /**
              * Source
-             * @enum {string}
+             * @constant
              */
-            source: "litellm" | "github_copilot";
+            source: "litellm";
             /** Total Cost Usd */
             total_cost_usd: number | null;
+        };
+        /**
+         * AiUsageTotalsOut
+         * @description Totales de consumo de IA (registro propio de la web, 2.1).
+         */
+        AiUsageTotalsOut: {
+            /** Cached */
+            cached: number;
+            /** Calls */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /** Failed */
+            failed: number;
+            /** Prompt Tokens */
+            prompt_tokens: number;
+            /** Runs */
+            runs: number;
+            /** Tokens Estimated */
+            tokens_estimated: boolean;
         };
         /**
          * ArtifactOut
@@ -2143,6 +2352,10 @@ export interface components {
          *     descarta) y no se devuelve en el run.
          *     ``ai_classification`` envía a la IA lo que las reglas dejan sin clasificar (Fase 8; tarea ``classify`` de la familia
          *     ``litellm`` desde doc_organize 2.0, ``ai_scope="unclassified"``).
+         *     ``ai_scope`` (2.1) dice qué se envía a la IA al clasificar (solo con ``ai_classification``): ``unclassified`` (por
+         *     defecto) lo que las reglas no colocan en carpeta; ``missing_axes`` además los documentos con algún eje de etiqueta
+         *     vacío (solo con plantilla o manifiesto: los otros catálogos no tienen ejes de etiqueta). Los ejes ``rules: false``
+         *     siempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el tope de la tarea.
          *     ``ai_enrichment`` (1.5.0) pide a la IA (tarea ``enrich``) descripción y palabras clave de los documentos
          *     clasificados que no las declaran; tiene su propio presupuesto de documentos.
          */
@@ -2157,6 +2370,12 @@ export interface components {
              * @default false
              */
             ai_enrichment: boolean;
+            /**
+             * Ai Scope
+             * @default unclassified
+             * @enum {string}
+             */
+            ai_scope: "unclassified" | "missing_axes";
             /**
              * Build Site
              * @default true
@@ -2445,6 +2664,17 @@ export interface components {
             items: components["schemas"]["ContextBuildOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * ContextLeftoverOut
+         * @description Contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o ninguno.
+         */
+        ContextLeftoverOut: {
+            /**
+             * Output Folder Name
+             * @description Carpeta reorganizada del context.json que hay en el destino; null si no hay restos
+             */
+            output_folder_name: string | null;
         };
         /**
          * ContextOut
@@ -4120,6 +4350,11 @@ export interface components {
          * @description Ejecución con su estado, progreso, resultado y artefactos.
          */
         RunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
             /** Artifacts */
             artifacts: components["schemas"]["ArtifactOut"][];
             /** Can Cancel */
@@ -5202,6 +5437,10 @@ export interface operations {
             query?: {
                 /** @description Saltar la caché (como mucho una vez cada 30 s) */
                 refresh?: boolean;
+                /** @description Periodo del consumo registrado: 7 o 30 días, este mes o todo */
+                period?: "7d" | "30d" | "month" | "all";
+                /** @description Zona IANA para agrupar por día (la del navegador); UTC si no vale */
+                tz?: string | null;
             };
             header?: never;
             path?: never;
@@ -7013,6 +7252,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_context_leftover_api_v1_projects__project_id__context_leftover_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextLeftoverOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

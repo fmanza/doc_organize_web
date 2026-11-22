@@ -702,6 +702,10 @@
             "auth": "clave rechazada",
             "connection": "sin conexión",
             "budget": "máximo por ejecución"
+          },
+          "scope": {
+            "unclassified": "Lo que las reglas no clasifican",
+            "missing_axes": "También los ejes de etiqueta vacíos"
           }
         },
         "ai_enrichment": {
@@ -723,14 +727,25 @@
         "calls": "Documentos enviados a la IA",
         "classified": "Clasificados por la IA",
         "failed": "Errores de la IA",
-        "stopped": "La IA paró por"
+        "stopped": "La IA paró por",
+        "scope": "Qué se envió a la IA",
+        "model": "Modelo de la IA",
+        "cached": "Resueltos con la caché de IA",
+        "prompt_tokens": "Tokens de entrada",
+        "completion_tokens": "Tokens de salida",
+        "response_format": "Formato de respuesta"
       },
       "ai_enrichment": {
         "enabled": "Descripciones con IA",
         "calls": "Documentos enviados para describir",
         "applied": "Completados por la IA",
         "failed": "Errores al describir",
-        "stopped": "Las descripciones pararon por"
+        "stopped": "Las descripciones pararon por",
+        "model": "Modelo de las descripciones",
+        "cached": "Descripciones desde la caché de IA",
+        "prompt_tokens": "Tokens de entrada (descripciones)",
+        "completion_tokens": "Tokens de salida (descripciones)",
+        "response_format": "Formato de respuesta (descripciones)"
       },
       "reasoning": "Criterio de la IA",
       "sample_documents": "Documentos de muestra",
@@ -764,8 +779,15 @@
         "assigned": "Asignados por similitud",
         "failed": "Fallidos (semántica)",
         "index_vectors": "Vectores en el índice",
-        "index_bytes": "Tamaño del índice"
-      }
+        "index_bytes": "Tamaño del índice",
+        "model": "Modelo de embeddings",
+        "prompt_tokens": "Tokens de embeddings"
+      },
+      "model": "Modelo de la IA",
+      "prompt_tokens": "Tokens de entrada",
+      "completion_tokens": "Tokens de salida",
+      "tokens_estimated": "Tokens estimados",
+      "ai_cached": "Respuesta desde la caché de IA"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -821,6 +843,16 @@
         "export_site": "El contenido de terceros de las páginas está neutralizado, pero el sitio lleva el texto de los documentos: puede ser confidencial. Entrégalo solo a quien deba verlo.",
         "export_ai_bundle": "El paquete lleva el texto de los documentos y sale de la aplicación: puede ser confidencial. Súbelo solo a servicios de IA autorizados."
       }
+    },
+    "aiUsage": {
+      "title": "Consumo de IA",
+      "task": "Tarea",
+      "model": "Modelo",
+      "calls": "Enviados",
+      "cached": "Caché",
+      "prompt": "Tokens de entrada",
+      "completion": "Tokens de salida",
+      "estimated": "≈: tokens estimados (el proxy no los informó)"
     }
   },
   "scan": {
@@ -1094,8 +1126,8 @@
     "empty": "El proyecto aún no tiene contexto.",
     "readOnly": "La ubicación de destino es de solo lectura: el contexto no se puede construir ni cambiar.",
     "catalog": {
-      "discover": "Descubrir dominios",
-      "domains": "Catálogo propio",
+      "discover": "Por carpetas",
+      "domains": "Lista de dominios",
       "template": "Plantilla",
       "manifest": "Manifiesto del proyecto"
     },
@@ -1124,11 +1156,10 @@
         "discover": "Un dominio por cada carpeta: cada documento va al de la carpeta que lo contiene (los de la raíz, al de la carpeta escaneada). No lee el contenido.",
         "domains": "Solo se usan los dominios que escribas (un eje).",
         "template": "Los ejes de una plantilla: dominio, tipo de material y los que solo etiquetan.",
-        "manifest": "Los ejes del manifiesto del proyecto (abajo): dominio, tipo de material y los que solo etiquetan."
+        "manifest": "Los ejes del manifiesto del proyecto: dominio, tipo de material y los que solo etiquetan."
       },
       "useTemplateAsManifest": "Personalizar para este proyecto",
       "useTemplateAsManifestHint": "Copia la plantilla al manifiesto del proyecto para retocarla. La plantilla no cambia.",
-      "unsavedManifest": "Hay cambios sin guardar en el manifiesto: guárdalos antes de construir.",
       "domains": "Dominios",
       "domainsHelp": "Escribe un dominio y pulsa Intro.",
       "template": "Plantilla",
@@ -1139,7 +1170,15 @@
       "threshold": "Umbral de clasificación",
       "site": "Construir el sitio",
       "run": "Construir",
-      "rebuild": "Reconstruir"
+      "rebuild": "Reconstruir",
+      "uses": "Taxonomía: {{catalog}}",
+      "change": "Cambiar",
+      "notReady": {
+        "domains": "Escribe al menos un dominio en el paso Taxonomía.",
+        "template": "Elige una plantilla en el paso Taxonomía.",
+        "unsavedManifest": "Hay cambios sin guardar en el manifiesto: guárdalos antes de construir."
+      },
+      "folderLeftover": "Se construye en la carpeta «{{folder}}», que quedó a medias: se sustituye lo que hay."
     },
     "domains": {
       "title": "Dominios",
@@ -1260,12 +1299,14 @@
       "markdown": "Markdown (front matter YAML con domains y material_types)",
       "save": "Guardar manifiesto",
       "saved": "Manifiesto guardado.",
-      "tooLarge": "Pasa de 256 KiB."
+      "tooLarge": "Pasa de 256 KiB.",
+      "createShow": "Crear o mejorar con IA",
+      "createHide": "Ocultar «Crear o mejorar con IA»",
+      "createHelp": "Dos formas de proponer un manifiesto: un borrador a partir de una muestra de documentos, o el agente, que lo mejora con cambios comprobados contra todos los documentos. Ninguna guarda: la propuesta va al editor."
     },
     "site": {
       "open": "Ver el sitio",
       "title": "Sitio del contexto",
-      "back": "Volver al contexto de «{{name}}»",
       "isolated": "El sitio se muestra aislado: sus scripts no pueden usar tu sesión ni leer datos de la aplicación.",
       "expires": "El acceso caduca el {{date}}",
       "renew": "Renovar acceso",
@@ -1294,7 +1335,16 @@
       "openRun": "Ver la ejecución",
       "draftLoaded": "Borrador cargado en el editor",
       "draftLoadedBody": "Revísalo y guárdalo si te sirve.",
-      "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos."
+      "draftSample": "Muestra de {{sample}} de {{total}} documentos convertidos.",
+      "scope": "Qué se envía a la IA",
+      "scopes": {
+        "unclassified": "Lo que las reglas no clasifican",
+        "missing_axes": "También los ejes vacíos"
+      },
+      "scopeHelp": {
+        "unclassified": "Solo los documentos que las reglas no colocan en carpeta (dominio o tipo de material).",
+        "missing_axes": "Además, los documentos con algún eje de etiqueta vacío. Los ejes sin reglas (rules: false) siempre están vacíos tras las reglas: con ellos van todos los documentos, hasta el máximo de documentos de clasificar por ejecución. La IA solo rellena lo vacío: nunca cambia lo que decidieron las reglas o una persona."
+      }
     },
     "unclassified": {
       "reason": "Motivo",
@@ -1326,7 +1376,7 @@
     },
     "profile": {
       "title": "Perfil del proyecto",
-      "intro": "Lo que el modelo debe saber de este proyecto al clasificar: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo se usa al clasificar con IA.",
+      "intro": "Lo que el modelo debe saber de este proyecto: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo lo usa la IA, al clasificar y al describir.",
       "markdown": "Perfil (Markdown con las secciones «## Contexto del proyecto», «## Reglas de desempate», «## Glosario» y «## Ejemplos»)",
       "noSections": "El perfil guardado no tiene ninguna de las secciones que lee doc_organize: no se envía nada al modelo.",
       "tooLarge": "El perfil pasa de 32 KiB.",
@@ -1347,6 +1397,13 @@
       "roles": {
         "system": "Mensaje de sistema (instrucciones, perfil y catálogo)",
         "user": "Mensaje del documento"
+      },
+      "aiOnly": "Con este catálogo no hay perfil de taxonomía: este es todo lo que recibe la IA del proyecto.",
+      "manifestNotice": {
+        "title": "Este proyecto tiene además un perfil aparte",
+        "body": "Con el manifiesto, el perfil va en su cuerpo. El perfil aparte (profile.md) se sigue añadiendo detrás al usar la IA: cópialo al manifiesto y, cuando lo hayas guardado, bórralo para tenerlo en un solo sitio.",
+        "view": "Ver el perfil",
+        "copy": "Copiar al cuerpo del manifiesto"
       }
     },
     "freshness": {
@@ -1452,6 +1509,38 @@
       "checkHelp": "Por reglas, sin IA y sin guardar: cobertura y conflictos de cada eje con el texto del editor.",
       "documents_one": "{{count}} documento comprobado.",
       "documents_other": "{{count}} documentos comprobados."
+    },
+    "taxonomy": {
+      "title": "¿Cómo se clasifican los documentos?",
+      "groups": {
+        "none": "Sin taxonomía",
+        "taxonomy": "Con taxonomía"
+      },
+      "next": "Siguiente: Construir"
+    },
+    "steps": {
+      "label": "Pasos del contexto",
+      "taxonomia": "1. Taxonomía",
+      "construir": "2. Construir",
+      "resultado": "3. Resultado",
+      "revisar": "4. Revisar",
+      "calidad": "5. Calidad",
+      "entregar": "6. Entregar",
+      "historial": "Historial",
+      "needsContext": "Construye primero el contexto.",
+      "status_one": "Construido el {{date}} · {{formatted}} documento clasificado",
+      "status_other": "Construido el {{date}} · {{formatted}} documentos clasificados"
+    },
+    "unsaved": {
+      "title": "Cambios sin guardar",
+      "body": "Hay cambios sin guardar en el manifiesto o en el perfil del proyecto. Si sales de la página, se pierden.",
+      "stay": "Seguir editando",
+      "leave": "Salir sin guardar"
+    },
+    "leftover": {
+      "title": "Hay un contexto a medio guardar",
+      "body": "En la carpeta del proyecto quedó un contexto que no terminó de guardarse (carpeta «{{folder}}»), por ejemplo porque se interrumpió la construcción. Constrúyelo para completarlo (reutiliza esa carpeta y sustituye lo que hay) o bórralo.",
+      "build": "Ir a Construir"
     }
   },
   "templates": {
@@ -1529,8 +1618,9 @@
         "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
       },
       "budgetPlaceholder": "El general de Parámetros",
-      "legacyTitle": "Variables de entorno de la 1.x",
-      "legacy": "Estas variables siguen definidas en el servidor y doc_organize 2.0 ya no las lee. Cámbialas por su equivalente:"
+      "legacyTitle": "Variables de entorno que ya no se leen",
+      "legacy": "Estas variables siguen definidas en el servidor y la aplicación ya no las lee. Cámbialas por su equivalente o bórralas:",
+      "legacyRemoved": "ya no se usa (GitHub Copilot se quitó en la 2.1): bórrala"
     },
     "families": {
       "litellm": {
@@ -1540,10 +1630,6 @@
       "litellm_usage": {
         "title": "Uso de LiteLLM",
         "intro": "Clave del LiteLLM Proxy cuyo gasto se muestra en el panel de uso."
-      },
-      "github_copilot_usage": {
-        "title": "Uso de GitHub Copilot",
-        "intro": "Usuario y token (PAT) de GitHub para ver las peticiones premium de Copilot del mes."
       }
     },
     "fields": {
@@ -1561,33 +1647,64 @@
       "virtual_key_agent": "Clave propia de los agentes",
       "virtual_key_embed": "Clave propia de embeddings",
       "budget_classify": "Máximo de documentos a clasificar por ejecución",
-      "budget_enrich": "Máximo de documentos a describir por ejecución",
-      "username": "Usuario de GitHub",
-      "pat": "Token personal (PAT)"
+      "budget_enrich": "Máximo de documentos a describir por ejecución"
     },
     "usage": {
       "title": "Uso de IA",
-      "intro": "Consumo y coste del periodo actual. Los datos se guardan 5 minutos; «Actualizar» pide datos nuevos.",
+      "intro": "Lo que gasta la IA: el gasto y el presupuesto de la clave de LiteLLM, y lo que registra cada ejecución (documentos enviados, caché y tokens). El proxy no da el coste de cada llamada, así que el coste es el de la clave. El gasto de la clave se guarda 5 minutos; «Actualizar» pide datos nuevos.",
       "refresh": "Actualizar",
-      "sources": {
-        "litellm": "LiteLLM",
-        "github_copilot": "GitHub Copilot"
-      },
       "fetchedAt": "Consultado el {{date}}",
       "cachedAt": "Datos del {{date}} (guardados)",
       "notConfigured": "Sin configurar.",
       "configure": "Configurar",
       "errorTitle": "No se pudo consultar el uso",
-      "period": "Periodo: {{start}} – {{end}}",
-      "total": "Total: {{cost}}",
-      "empty": "Sin consumo en el periodo.",
-      "date": "Fecha",
-      "product": "Producto",
-      "quantity": "Cantidad",
-      "cost": "Coste",
-      "search": "Buscar en el uso de {{source}}",
       "limits": "Para limitar cuántos documentos procesa la IA en cada ejecución:",
-      "parameters": "IA › Parámetros"
+      "parameters": "IA › Parámetros",
+      "key": {
+        "title": "Clave de LiteLLM",
+        "spend": "Gasto acumulado",
+        "budget": "Presupuesto",
+        "remaining": "Queda",
+        "reset": "Se reinicia",
+        "used": "{{percent}} % del presupuesto gastado",
+        "help": "Según el proxy (/key/info). El presupuesto se fija en LiteLLM, no aquí.",
+        "noBudget": "Según el proxy (/key/info). La clave no tiene presupuesto en LiteLLM."
+      },
+      "local": {
+        "period": "Periodo",
+        "periods": {
+          "7d": "7 días",
+          "30d": "30 días",
+          "month": "Este mes",
+          "all": "Todo"
+        },
+        "kpi": {
+          "runs": "Ejecuciones con IA",
+          "calls": "Documentos enviados",
+          "cached": "Desde la caché",
+          "prompt": "Tokens de entrada",
+          "completion": "Tokens de salida"
+        },
+        "savedShare": "{{percent}} % sin llamar al modelo",
+        "byDay": "Tokens por día",
+        "timezone": "Días en hora local ({{timezone}})",
+        "chartLabel_one": "Tokens de entrada y de salida de {{count}} día",
+        "chartLabel_other": "Tokens de entrada y de salida por día, {{count}} días",
+        "prompt": "Entrada",
+        "completion": "Salida",
+        "day": "Día",
+        "asTable": "Ver como tabla",
+        "byTask": "Por tarea",
+        "byModel": "Por modelo",
+        "byProject": "Por proyecto",
+        "topRuns": "Ejecuciones que más tokens gastaron",
+        "name": "Nombre",
+        "run": "Ejecución",
+        "project": "Proyecto",
+        "unknownModel": "Sin modelo (ejecuciones anteriores a la 2.1)",
+        "deletedProject": "Proyecto borrado",
+        "empty": "Todavía no hay consumo de IA registrado en este periodo."
+      }
     },
     "errors": {
       "ai_auth": "El servicio rechazó la clave o el token. Revisa la configuración de IA.",
@@ -1619,7 +1736,6 @@
   },
   "review": {
     "open": "Revisar clasificación",
-    "back": "Volver al contexto",
     "title": "Revisar clasificación",
     "intro": "Lo que conviene mirar según la última construcción, de lo más urgente a lo menos. Tus decisiones se guardan en el proyecto y se aplican en la siguiente construcción, antes de la IA; ni las reglas ni la IA las cambian.",
     "reason": "Motivo",

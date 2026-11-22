@@ -45,6 +45,7 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
     threshold: 0.5,
     build_site: true,
     ai_classification: false,
+    ai_scope: 'unclassified',
     ai_enrichment: false,
     template_markdown: null,
     ...change,
@@ -125,6 +126,24 @@ export function useProjectContext(projectId: number) {
         throw error;
       }
     },
+  });
+}
+
+/**
+ * Carpeta de un contexto que quedó en disco sin guardarse (construcción interrumpida, 2.1), o `null`. Solo se pregunta
+ * sin contexto guardado. La clave cuelga de `['projects', id]`: al terminar cualquier run del proyecto se vuelve a leer.
+ */
+export function useContextLeftover(projectId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'context', 'leftover'],
+    enabled,
+    staleTime: 0,
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/context/leftover', {
+          params: { path: { project_id: projectId } },
+        }),
+      ).output_folder_name ?? null,
   });
 }
 
@@ -383,10 +402,95 @@ export interface Selection {
   template: string | null;
 }
 
-/** Selección inicial: la del contexto construido, o «Descubrir dominios». */
+/** Selección inicial: la del contexto construido, o «Por carpetas» (`discover`). */
 export function initialSelection(context: ContextOut | null): Selection {
   return {
     catalog: (context?.catalog_kind as Catalog | undefined) ?? 'discover',
     template: context?.taxonomy_template_name ?? null,
   };
+}
+
+/**
+ * Por qué todavía no se puede construir con la taxonomía elegida, o `null` si se puede: lista de dominios vacía,
+ * plantilla sin elegir o borrador del manifiesto sin guardar (A3 de 2026-11-17).
+ */
+export type NotReady = 'domains' | 'template' | 'unsavedManifest';
+export function selectionNotReady(
+  selection: Selection,
+  domains: readonly string[],
+  manifestDirty: boolean,
+): NotReady | null {
+  if (selection.catalog === 'domains' && domains.length === 0) {
+    return 'domains';
+  }
+  if (selection.catalog === 'template' && selection.template === null) {
+    return 'template';
+  }
+  if (selection.catalog === 'manifest' && manifestDirty) {
+    return 'unsavedManifest';
+  }
+  return null;
+}
+
+/** Pasos de la página del contexto (`?paso=`), en orden de trabajo. Revisar y Calidad son rutas propias. */
+export const CONTEXT_STEPS = ['taxonomia', 'construir', 'resultado', 'entregar', 'historial'] as const;
+export type ContextStep = (typeof CONTEXT_STEPS)[number];
+/** Paso activo de la navegación común: los de la página y las tres subpáginas. */
+export type ContextNavStep = ContextStep | 'revisar' | 'calidad';
+
+/** Pasos que necesitan un contexto construido. */
+export const NEEDS_CONTEXT: ReadonlySet<ContextNavStep> = new Set([
+  'resultado',
+  'revisar',
+  'calidad',
+  'entregar',
+]);
+
+/** Dirección de cada paso. */
+export function stepHref(projectId: number, step: ContextNavStep): string {
+  const base = `/projects/${projectId}/context`;
+  if (step === 'revisar') {
+    return `${base}/review`;
+  }
+  if (step === 'calidad') {
+    return `${base}/quality`;
+  }
+  return `${base}?paso=${step}`;
+}
+
+/**
+ * El paso que se muestra: el de `?paso=` si existe y se puede ver; si no, «Resultado» con contexto y «Taxonomía» sin
+ * él (D2). «Construir» sin permiso cae también al paso por defecto.
+ */
+export function resolveStep(value: string | null, hasContext: boolean, canBuild: boolean): ContextStep {
+  const fallback: ContextStep = hasContext ? 'resultado' : 'taxonomia';
+  const step = CONTEXT_STEPS.find((item) => item === value);
+  if (!step || (NEEDS_CONTEXT.has(step) && !hasContext) || (step === 'construir' && !canBuild)) {
+    return fallback;
+  }
+  return step;
+}
+
+/**
+ * Cómo se muestra el perfil del proyecto (D1, 2026-11-22). `profile.md` lo usa la librería con cualquier catálogo al
+ * clasificar y describir con IA, así que nunca se esconde si existe:
+ * - `full`: con plantilla (la forma de añadir lo propio a una plantilla que no se edita), o con carpetas o lista de
+ *   dominios si hay IA configurada o ya existe;
+ * - `manifestNotice`: con el manifiesto, solo un aviso si existe (el perfil va en el cuerpo del manifiesto);
+ * - `hidden`: en el resto.
+ */
+export type ProfileMode = 'full' | 'manifestNotice' | 'hidden';
+export function profileMode(catalog: Catalog, aiConfigured: boolean, hasProfile: boolean): ProfileMode {
+  if (catalog === 'template') {
+    return 'full';
+  }
+  if (catalog === 'manifest') {
+    return hasProfile ? 'manifestNotice' : 'hidden';
+  }
+  return aiConfigured || hasProfile ? 'full' : 'hidden';
+}
+
+/** Añade el perfil al final del cuerpo del manifiesto (el cuerpo es el perfil de la taxonomía). */
+export function appendProfile(manifest: string, profile: string): string {
+  return `${manifest.replace(/\s+$/, '')}\n\n${profile.trim()}\n`;
 }
