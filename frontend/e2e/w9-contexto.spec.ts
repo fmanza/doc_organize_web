@@ -104,9 +104,18 @@ test('contexto 2.0: ejes con IA, semántica y versiones; revisión, calidad y ag
 
   // En la página: evidencia de la IA con su procedencia, y la tarjeta de versiones.
   await page.goto(`/projects/${id}/context`);
+  // La lista conserva los documentos del dominio anterior mientras carga (`keepPreviousData`): sin esperar a la
+  // respuesta, «Cómo se clasificó» abría un documento de otro dominio y la prueba fallaba a veces.
+  const manuals = page.waitForResponse(
+    (response) =>
+      response.url().includes('/context/documents') && /[?&]domain=manuales(&|$)/.test(response.url()),
+  );
   await page.getByRole('button', { name: 'Manuales', exact: true }).click();
+  await manuals;
   await expect(page.getByRole('heading', { name: 'Manuales', level: 4 })).toBeVisible();
-  await page.getByText('Cómo se clasificó').first().click();
+  for (const summary of await page.getByText('Cómo se clasificó').all()) {
+    await summary.click();
+  }
   await expect(page.getByText('Cita no encontrada en el texto').first()).toBeVisible();
   await expect(page.getByText(/Clasificado con el prompt .* y el modelo/).first()).toBeVisible();
   const versions = page.getByRole('region', { name: 'Versiones de un documento' });
