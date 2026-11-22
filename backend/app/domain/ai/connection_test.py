@@ -34,8 +34,10 @@ from app.domain.identity.audit import AuditAction, RequestContext
 from app.integrations.doc_organize.ai import MODEL_FAMILIES, AiConnection, ConnectionCheck, TaskKey, check_connection
 
 MIN_TEST_INTERVAL_SECONDS: Final = 10.0
-#: Segundos máximos de cada petición de la prueba (como el panel de uso), sin reintentos.
+#: Segundos máximos de cada petición de la prueba de conexión (como el panel de uso), sin reintentos.
 MAX_TIMEOUT_SECONDS: Final = 10.0
+#: Los de «Probar el modelo»: un modelo local (Ollama) tarda más de 10 s en cargarse si estaba descargado de memoria.
+MAX_MODEL_TIMEOUT_SECONDS: Final = 60.0
 
 _last_test: dict[str, float] = {}
 _lock = threading.Lock()
@@ -134,7 +136,9 @@ def probe_family(
     connection = AiConnection(
         family=spec.key,
         values=values,
-        timeout_s=min(float(settings.ai_timeout_seconds), MAX_TIMEOUT_SECONDS),
+        timeout_s=min(
+            float(settings.ai_timeout_seconds), MAX_MODEL_TIMEOUT_SECONDS if model_check else MAX_TIMEOUT_SECONDS
+        ),
         retries=0,
         budget=settings.ai_max_documents_per_run,
     )
