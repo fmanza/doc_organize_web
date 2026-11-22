@@ -45,5 +45,5 @@ Mejorar las pantallas de CONTEXTO para que siga un orden lógico, luego AUDIT_PL
 ## Veredicto final
 Veredicto: GO_CONDICIONAL
 Pendientes al cierre:
-- e2e con la imagen de `feature/2.1`; revisión visual en móvil.
-- F1 (retirar Copilot) y F2 (uso con tokens) en la misma versión 2.1.0.
+- Revisión visual en móvil (no hecha). E2E en verde en CI (PR #101) y F1/F2 publicados en la 2.1.0
+  (ver `2026-11-22-version-2.1.0`).
