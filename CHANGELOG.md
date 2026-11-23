@@ -5,7 +5,10 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
-Con doc_organize 2.2.0.
+## [2.2.0] - 2026-11-23
+
+IA por funcionalidad con avisos flotantes y duplicados por contenido; incluye las correcciones previstas para la 2.1.1
+(ubicación en uso, volver a «6. Entregar» desde el sitio y menú del proyecto abierto). Con doc_organize 2.2.0.
 Migración `0027` (aditiva).
 
 ### Added
