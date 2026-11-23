@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-11-23
+
+Los proyectos borrados sueltan sus ubicaciones. Sigue con doc_organize 2.2.0.
+Migración `0029` (no se puede deshacer si ya hay proyectos borrados: hacer copia de seguridad antes).
+
 ### Fixed
 
 - **Ubicación retenida por proyectos borrados** (opción (a) de C1): al borrar un proyecto, sus ubicaciones de origen y
