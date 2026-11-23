@@ -15,12 +15,12 @@ abre G42 y G43, menores. La medición en red del 2026-11-16 (`MEDICION_CONTEXTO_
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
-| G45 | doc_organize 2.2.0 (duplicados por contenido, tarea `dedup`, `served_model`) aún sin publicar | La web 2.2 en desarrollo depende de la rama `feat/2.2.0-dedup-contenido` (doc_organize#101) por git, con el commit en `uv.lock`. La imagen Docker instala sin `git`: el job `image` del CI falla mientras dure | Ninguno en el código: antes de publicar la web, volver al wheel de la release v2.2.0 en `backend/pyproject.toml` (`[tool.uv.sources]`) y `uv lock` | doc_organize#101 | Publicar doc_organize 2.2.0 |
 
 ## Resueltos
 
 | # | Resuelto en | Cómo | Rodeo retirado |
 |---|---|---|---|
+| G45 | doc_organize 2.2.0; web 2.2.0 (2026-11-23) | Publicada la release v2.2.0 (duplicados por contenido, tarea `dedup`, `served_model`) | La web deja la rama `feat/2.2.0-dedup-contenido` por git y vuelve al wheel de la release (`doc_organize==2.2.0`); la imagen Docker ya no necesita `git` |
 | G44 | doc_organize 1.6.0; web 1.6.0 (2026-11-16) | `ContextBuilder(properties_concurrency=4)` lee las propiedades de 4 originales a la vez; PDFium, bajo el cerrojo de Docling. ≈ 28 ms por documento en el NAS, frente a 88 | Ninguno (no lo había): basta con el pin. Si el NAS de producción se satura, se podría exponer `properties_concurrency` como ajuste |
 | G43 | doc_organize 1.6.0; web 1.6.0 (2026-11-16) | `CacheOrderBy` con `mime_type`, `created_time` y `owner_name` (sin distinguir mayúsculas); filtro `mime_type` en `count_entries`/`load_cache_page`; `list_mime_types` | Documentos se filtra por tipo (`?mime_type=`, repetible; `GET /documents/mime-types` para el desplegable) y se ordena por tipo, creación y, solo los owners, propietario (403 al resto) |
 | G42 | doc_organize 1.6.0; web 1.6.0 (2026-11-16) | `Context.unclassified_details`: un `UnclassifiedDocument` por sin clasificar con motivo, propuesta de las reglas y propiedades, en `unclassified.json` | Los sin clasificar guardan su motivo (migración `0014`) y sus propiedades; columna «Motivo» en la página del contexto. Los contextos anteriores siguen con la ruta sola hasta reconstruir |

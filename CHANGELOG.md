@@ -5,7 +5,7 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
-Con doc_organize 2.2.0 (de momento, su rama `feat/2.2.0-dedup-contenido`: ver G45 en `DOC_ORGANIZE_GAPS.md`).
+Con doc_organize 2.2.0.
 Migración `0027` (aditiva).
 
 ### Added
