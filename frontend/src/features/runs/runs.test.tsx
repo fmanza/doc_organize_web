@@ -125,6 +125,26 @@ describe('RunDetailPage', () => {
     );
   });
 
+  it('2.1.1: tras borrar el proyecto, «volver» lleva a la lista y no al proyecto borrado', async () => {
+    stubApi({
+      ...session(USER),
+      [`GET /api/v1/runs/${RUN_ID}`]: {
+        body: runOut({
+          operation: 'project_delete',
+          status: 'succeeded',
+          finished_at: '2026-11-01T08:05:00Z',
+        }),
+      },
+    });
+
+    renderRoute(`/runs/${RUN_ID}`);
+
+    const main = await screen.findByRole('main');
+    const back = await within(main).findByRole('link', { name: 'Proyectos' });
+    expect(back).toHaveAttribute('href', '/projects');
+    expect(within(main).queryByRole('link', { name: 'Proyecto A' })).not.toBeInTheDocument();
+  });
+
   it('cancela tras confirmar', async () => {
     vi.stubGlobal('EventSource', FakeEventSource);
     const fetchMock = stubApi({

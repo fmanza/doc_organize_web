@@ -1,8 +1,10 @@
 import {
+  Alert,
   Anchor,
   Button,
   Center,
   Group,
+  List,
   Loader,
   Modal,
   Stack,
@@ -30,13 +32,47 @@ import {
   type LocationOut,
   useDeleteLocation,
   useLocations,
+  useLocationUsage,
   useProbeLocation,
   type LocationSort,
+  type LocationUsageOut,
 } from './useLocations';
 
 const LOCATION_SORT: readonly LocationSort[] = ['name', 'usage', 'access', 'status', 'probed_at'];
 
 type Editing = { location: LocationOut | null } | null;
+
+/** Quién usa la ubicación (2.1.1): los proyectos activos, con enlace, o cuántos borrados la retienen. */
+function LocationUsageNotice({ usage }: { usage: LocationUsageOut | undefined }) {
+  const { t } = useTranslation();
+  if (!usage || usage.can_delete) return null;
+  if (usage.active_projects.length > 0) {
+    return (
+      <Alert color="yellow" title={t('locations.inUse.title')}>
+        <Text size="sm">{t('locations.inUse.active', { count: usage.active_projects.length })}</Text>
+        <List size="sm" mt="xs">
+          {usage.active_projects.map((project) => (
+            <List.Item key={project.id}>
+              <Anchor component={Link} to={`/projects/${project.id}`}>
+                {project.name}
+              </Anchor>
+            </List.Item>
+          ))}
+        </List>
+        {usage.deleted_projects > 0 && (
+          <Text size="sm" mt="xs">
+            {t('locations.inUse.alsoDeleted', { count: usage.deleted_projects })}
+          </Text>
+        )}
+      </Alert>
+    );
+  }
+  return (
+    <Alert color="yellow" title={t('locations.inUse.title')}>
+      <Text size="sm">{t('locations.inUse.onlyDeleted', { count: usage.deleted_projects })}</Text>
+    </Alert>
+  );
+}
 
 /** Ubicaciones registradas: cualquier usuario las ve y explora; un admin las registra, edita, comprueba y borra. */
 export function LocationsPage() {
@@ -51,6 +87,7 @@ export function LocationsPage() {
   const [editing, setEditing] = useState<Editing>(null);
   const [deleting, setDeleting] = useState<AnyLocation | null>(null);
   const [confirmName, setConfirmName] = useState('');
+  const usage = useLocationUsage(deleting?.id ?? null);
 
   const closeDelete = () => {
     setDeleting(null);
@@ -173,12 +210,17 @@ export function LocationsPage() {
         {deleting && (
           <Stack>
             <Text>{t('locations.deleteBody', { name: deleting.name })}</Text>
-            <TextInput
-              label={t('locations.deleteConfirm', { name: deleting.name })}
-              value={confirmName}
-              onChange={(event) => setConfirmName(event.currentTarget.value)}
-              autoComplete="off"
-            />
+            <LocationUsageNotice usage={usage.data} />
+            {usage.isPending && <Loader size="sm" aria-label={t('locations.inUse.checking')} />}
+            {usage.isError && <ErrorAlert error={usage.error} />}
+            {usage.data?.can_delete && (
+              <TextInput
+                label={t('locations.deleteConfirm', { name: deleting.name })}
+                value={confirmName}
+                onChange={(event) => setConfirmName(event.currentTarget.value)}
+                autoComplete="off"
+              />
+            )}
             {remove.isError && <ErrorAlert error={remove.error} />}
             <Group justify="flex-end">
               <Button variant="default" onClick={closeDelete}>
@@ -186,7 +228,7 @@ export function LocationsPage() {
               </Button>
               <Button
                 color="red"
-                disabled={confirmName !== deleting.name}
+                disabled={!usage.data?.can_delete || confirmName !== deleting.name}
                 loading={remove.isPending}
                 onClick={() => remove.mutate(deleting.id, { onSuccess: closeDelete })}
               >

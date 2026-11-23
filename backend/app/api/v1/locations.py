@@ -16,8 +16,10 @@ from app.api.v1.schemas import (
     LocationCreate,
     LocationOut,
     LocationPage,
+    LocationProjectRef,
     LocationPublic,
     LocationUpdate,
+    LocationUsageOut,
 )
 from app.db.models import Location, User
 from app.domain.locations import service
@@ -125,11 +127,29 @@ def update_location(
     )
 
 
+@router.get(
+    "/{location_id}/usage",
+    response_model=LocationUsageOut,
+    summary="Proyectos que usan la ubicación",
+    responses={**_ERRORS, **_404},
+)
+def location_usage(location_id: int, admin: InstanceAdmin, db: DbSession) -> LocationUsageOut:
+    """Proyectos activos (con nombre) y borrados (solo cuántos) que usan la ubicación, para avisar antes de borrarla.
+    Solo los del tenant del administrador: un proyecto solo usa ubicaciones de su tenant."""
+    location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
+    usage = service.location_projects(db, location)
+    return LocationUsageOut(
+        active_projects=[LocationProjectRef(id=project_id, name=name) for project_id, name in usage.active],
+        deleted_projects=usage.deleted,
+        can_delete=not usage.in_use,
+    )
+
+
 @router.delete(
     "/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Borrar ubicación",
-    responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto la usa"}},
+    responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto, activo o borrado, la usa (location_in_use)"}},
 )
 def delete_location(location_id: int, admin: InstanceAdmin, db: DbSession, ctx: Context) -> None:
     """Quita la ubicación del registro; la carpeta y su contenido no se tocan."""

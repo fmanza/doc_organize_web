@@ -3,10 +3,11 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
+import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { useProject } from '../projects/useProjects';
-import { useOpenSite } from './useContext';
+import { stepHref, useOpenSite } from './useContext';
 import { ContextNav } from './ContextNav';
 
 /** Permisos del iframe: scripts del sitio en un origen opaco (sin `allow-same-origin`), como su CSP (ADR-010). */
@@ -39,7 +40,11 @@ export function SiteViewerPage() {
   }
   return (
     <Stack h="calc(100dvh - 120px)">
-      <ContextNav projectId={projectId} active="entregar" />
+      <ContextNav projectId={projectId} active="entregar" subpage />
+      {/* 2.1.1: URL fija, no `history.back()`: la navegación dentro del iframe también entra en el historial. */}
+      <BackLink to={stepHref(projectId, 'entregar')}>
+        {t('context.site.back', { step: t('context.steps.entregar') })}
+      </BackLink>
       <Group justify="space-between">
         <Title order={3}>{t('context.site.title')}</Title>
         {open.data && (

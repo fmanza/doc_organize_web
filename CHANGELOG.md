@@ -43,6 +43,21 @@ Migración `0027` (aditiva).
 - **IA › Parámetros** dice, en cada ajuste, qué funcionalidades lo usan. Los de borrador y agentes pasan a llamarse
   «tareas largas».
 
+### Fixed
+
+- **Borrar una ubicación en uso**: salía «La ubicación ya existe» con «Hay proyectos que usan esta ubicación» y no decía
+  cuáles. Ahora el error es «La ubicación está en uso» (`409`, `code: location_in_use`) y nombra los proyectos activos.
+  Si solo la usan proyectos borrados, explica que conservan su historial y por eso no se puede borrar todavía. Nuevo
+  `GET /api/v1/locations/{id}/usage` (solo admin): el modal de borrado avisa antes de confirmar y no deja borrar.
+  Cambiar de tenant una ubicación en uso da el mismo error.
+- **«6. Entregar» → «Ver el sitio»**: no se podía volver al paso. El visor tiene «Volver a 6. Entregar» (dirección
+  fija, sin depender del historial, en el que también entra la navegación dentro del sitio) y el paso se ve como enlace,
+  no como la página actual.
+- **Menú «Proyectos»**: con un proyecto abierto ya no navegaba a la lista (solo quedaban sus secciones), y tras borrar
+  el proyecto sus secciones seguían en el menú. Ahora «Proyectos» siempre lleva a la lista y debajo va un bloque
+  «Proyecto abierto» con su nombre y secciones, que desaparece si el proyecto no existe o está borrado. La ejecución de
+  un borrado terminado vuelve a «Proyectos», no al proyecto borrado.
+
 ## [2.1.0] - 2026-11-22
 
 Contexto en pasos de trabajo, consumo de IA por ejecución y sin GitHub Copilot. Sigue con doc_organize 2.0.1.

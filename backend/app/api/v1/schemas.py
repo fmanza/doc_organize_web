@@ -237,6 +237,21 @@ class LocationOut(LocationPublic):
     updated_at: datetime
 
 
+class LocationProjectRef(BaseModel):
+    """Proyecto activo que usa una ubicación."""
+
+    id: int
+    name: str
+
+
+class LocationUsageOut(BaseModel):
+    """Proyectos que usan una ubicación (2.1.1): mientras haya alguno, no se puede borrar."""
+
+    active_projects: list[LocationProjectRef] = Field(description="Proyectos activos que la usan, por nombre")
+    deleted_projects: int = Field(description="Proyectos borrados que la usan (conservan su historial)")
+    can_delete: bool = Field(description="Ningún proyecto, activo o borrado, la usa")
+
+
 # Límites amplios aquí (422); los del dominio (30 patrones de hasta 64 caracteres, sin separadores) dan 400.
 IgnorePatterns = Annotated[
     list[Annotated[str, Field(max_length=1024)]] | None,

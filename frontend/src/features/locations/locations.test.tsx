@@ -195,6 +195,9 @@ describe('LocationsPage', () => {
     const fetchMock = stubApi({
       ...session(ADMIN),
       'GET /api/v1/locations': { body: { items: [ADMIN_VIEW], total: 1 } },
+      'GET /api/v1/locations/1/usage': {
+        body: { active_projects: [], deleted_projects: 0, can_delete: true },
+      },
       'DELETE /api/v1/locations/1': { status: 204 },
     });
     const user = userEvent.setup();
@@ -204,10 +207,51 @@ describe('LocationsPage', () => {
     const dialog = await screen.findByRole('dialog');
     const confirm = within(dialog).getByRole('button', { name: 'Borrar' });
     expect(confirm).toBeDisabled();
-    await user.type(within(dialog).getByRole('textbox'), 'Expedientes');
+    await user.type(await within(dialog).findByRole('textbox'), 'Expedientes');
     await user.click(confirm);
 
     await waitFor(() => expect(callsTo(fetchMock, 'DELETE', '/api/v1/locations/1')).toHaveLength(1));
+  });
+
+  it('2.1.1: avisa de los proyectos activos que usan la ubicación y no deja borrarla', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [ADMIN_VIEW], total: 1 } },
+      'GET /api/v1/locations/1/usage': {
+        body: { active_projects: [{ id: 7, name: 'Proyecto A' }], deleted_projects: 2, can_delete: false },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Borrar Expedientes' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText('La ubicación está en uso')).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Proyecto A' })).toHaveAttribute('href', '/projects/7');
+    expect(within(dialog).getByText(/También la usan 2 proyectos borrados/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/ya existe/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Borrar' })).toBeDisabled();
+    expect(callsTo(fetchMock, 'DELETE', '/api/v1/locations/1')).toHaveLength(0);
+  });
+
+  it('2.1.1: si solo la usan proyectos borrados, explica por qué no se puede borrar', async () => {
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/locations': { body: { items: [ADMIN_VIEW], total: 1 } },
+      'GET /api/v1/locations/1/usage': {
+        body: { active_projects: [], deleted_projects: 1, can_delete: false },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/locations');
+    await user.click(await screen.findByRole('button', { name: 'Borrar Expedientes' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText(/Solo la usa un proyecto borrado/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Borrar' })).toBeDisabled();
   });
 });
 

@@ -44,9 +44,9 @@ describe('iconos', () => {
       .filter((entry) => !entry.querySelector('svg[aria-hidden="true"]'))
       .map((entry) => entry.textContent);
 
-    // Inicio, Proyectos y sus 4 secciones, Ejecuciones, Ubicaciones y las 14 de administración (2 grupos y sus 7; W4:
-    // Diagnóstico).
-    expect(entries).toHaveLength(22);
+    // Inicio, Proyectos, el proyecto abierto y sus 4 secciones (2.1.1), Ejecuciones, Ubicaciones y las 14 de
+    // administración (2 grupos y sus 7; W4: Diagnóstico).
+    expect(entries).toHaveLength(23);
     expect(withoutIcon).toEqual([]);
   });
 });
