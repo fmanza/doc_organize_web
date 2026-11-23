@@ -31,3 +31,4 @@ Una carpeta por sesión (`AAAA-MM-DD-<slug>/`) creada a partir de [`TEMPLATE/`](
 | [2026-11-23-tema-usuario](2026-11-23-tema-usuario/TRACEABILITY.md) | new_feature | Web 2.3.0: tema claro, oscuro o «Como el sistema» por usuario (migración 0028, `PUT /api/v1/auth/me/preferences`, sin destello con `color-scheme.js`) |
 | [2026-11-23-version-2.3.0](2026-11-23-version-2.3.0/TRACEABILITY.md) | version_closure | Web 2.3.0 publicada (con doc_organize 2.2.0): tema por usuario |
 | [2026-11-23-ubicacion-libre](2026-11-23-ubicacion-libre/TRACEABILITY.md) | new_feature | Web 2.3.1: al borrar un proyecto sus ubicaciones quedan libres (opción (a) de C1, migración 0029, CHECK `ck_projects_locations`) |
+| [2026-11-23-version-2.3.1](2026-11-23-version-2.3.1/TRACEABILITY.md) | version_closure | Web 2.3.1 publicada (con doc_organize 2.2.0): los proyectos borrados sueltan sus ubicaciones (migración 0029) |

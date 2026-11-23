@@ -69,4 +69,4 @@
 - **[backend/tests]**: sin `pytest-xdist`, no hay `-n auto`.
 
 ## Veredicto final
-Veredicto: PENDING (falta commit, PR y CI).
+Veredicto: CLOSED (PR #111, publicada en la 2.3.1)
