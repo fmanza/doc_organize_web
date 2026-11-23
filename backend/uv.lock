@@ -512,7 +512,7 @@ wheels = [
 [[package]]
 name = "doc-organize"
 version = "2.1.0"
-source = { git = "https://github.com/fmanza/doc_organize.git?branch=feat%2F2.2.0-dedup-contenido#4d11915741ae4b48ff389b7b0b069ac5ca32a91a" }
+source = { git = "https://github.com/fmanza/doc_organize.git?branch=feat%2F2.2.0-dedup-contenido#fb4c6a4391ab3dfe536f001d36583609d2199cda" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
