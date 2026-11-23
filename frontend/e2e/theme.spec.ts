@@ -45,7 +45,7 @@ test('el tema elegido se guarda en el usuario y se aplica al volver', async ({ p
   await own.reload();
   expect(await scheme(own)).toBe('dark');
   // …y sin copia local (otro navegador) lo trae el servidor con /me.
-  await own.evaluate(() => window.localStorage.clear());
+  await own.evaluate('window.localStorage.clear()');
   await own.reload();
   await expect.poll(() => scheme(own)).toBe('dark');
 
