@@ -117,7 +117,8 @@
                   "enrich",
                   "taxonomy_design",
                   "agent",
-                  "embed"
+                  "embed",
+                  "dedup"
                 ],
                 "type": "string"
               },
@@ -333,7 +334,8 @@
               "enrich",
               "taxonomy_design",
               "agent",
-              "embed"
+              "embed",
+              "dedup"
             ],
             "title": "Task",
             "type": "string"
@@ -345,6 +347,18 @@
       "AiTestOut": {
         "description": "Resultado de «Probar conexión»: solo un código, nunca el cuerpo de lo que respondió el servidor.",
         "properties": {
+          "dimension": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dimensión de los vectores en las tareas de embeddings (2.2)",
+            "title": "Dimension"
+          },
           "elapsed_ms": {
             "title": "Elapsed Ms",
             "type": "integer"
@@ -366,6 +380,18 @@
             ],
             "description": "Credencial rechazada, sin conexión o timeout, otro error, o el modelo no respondió",
             "title": "Error"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Modelo (alias del proxy) que se probó (2.2)",
+            "title": "Model"
           },
           "model_access": {
             "description": "Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)",
@@ -402,6 +428,18 @@
             "description": "Formato con el que respondió el modelo: json_schema si admite la salida estricta",
             "title": "Response Format"
           },
+          "served_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Modelo que dice la respuesta que contestó, detrás del alias (2.2), si lo dice",
+            "title": "Served Model"
+          },
           "task": {
             "anyOf": [
               {
@@ -410,7 +448,8 @@
                   "enrich",
                   "taxonomy_design",
                   "agent",
-                  "embed"
+                  "embed",
+                  "dedup"
                 ],
                 "type": "string"
               },
@@ -3012,8 +3051,13 @@
       },
       "DedupPreviewParams": {
         "additionalProperties": false,
-        "description": "Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).\n\n``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea\nduplicado exacto ni conflicto de versión.",
+        "description": "Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).\n\n``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea\nduplicado exacto ni conflicto de versión.\n\nPor contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el\nmismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la\ntarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).",
         "properties": {
+          "content": {
+            "default": false,
+            "title": "Content",
+            "type": "boolean"
+          },
           "fuzzy_threshold": {
             "anyOf": [
               {
@@ -3032,6 +3076,19 @@
             "default": "dedup_preview",
             "title": "Operation",
             "type": "string"
+          },
+          "semantic_threshold": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.5,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Threshold"
           }
         },
         "title": "DedupPreviewParams",
@@ -3267,9 +3324,27 @@
       "DuplicateGroupOut": {
         "description": "Grupo de duplicados de una vista previa.",
         "properties": {
+          "contained": {
+            "default": false,
+            "description": "Por contenido (2.2): un miembro está contenido en otro",
+            "title": "Contained",
+            "type": "boolean"
+          },
           "group_id": {
             "title": "Group Id",
             "type": "string"
+          },
+          "lexical_similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por contenido (2.2): similitud de texto (0-1); baja con la semántica alta = reescrito",
+            "title": "Lexical Similarity"
           },
           "members": {
             "items": {
@@ -3282,10 +3357,24 @@
             "enum": [
               "exact_duplicate",
               "version_conflict",
-              "fuzzy_name_match"
+              "fuzzy_name_match",
+              "same_content",
+              "semantic_content_match"
             ],
             "title": "Reason",
             "type": "string"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por contenido (2.2): similitud semántica, la menor entre los miembros (0-1)",
+            "title": "Similarity"
           }
         },
         "required": [
@@ -14084,7 +14173,9 @@
                   "enum": [
                     "exact_duplicate",
                     "version_conflict",
-                    "fuzzy_name_match"
+                    "fuzzy_name_match",
+                    "same_content",
+                    "semantic_content_match"
                   ],
                   "type": "string"
                 },

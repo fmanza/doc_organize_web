@@ -34,10 +34,19 @@ from app.integrations.doc_organize.dedup import DedupDocument, DedupGroup
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations._files import project_paths, require_rw, resolve_in, source_folders
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
+from app.jobs.operations.context import ai_connection, context_folders
 
 #: Documentos sin agrupar como máximo para el modo «nombre parecido» (matriz n×n en memoria; decisión C4).
 MAX_FUZZY_DOCUMENTS: Final = 5_000
-REASON_ORDER: Final = {"exact_duplicate": 0, "version_conflict": 1, "fuzzy_name_match": 2}
+REASON_ORDER: Final = {
+    "exact_duplicate": 0,
+    "version_conflict": 1,
+    "fuzzy_name_match": 2,
+    "same_content": 3,
+    "semantic_content_match": 4,
+}
+#: Motivos de la búsqueda por contenido (web 2.2): más parecidos primero dentro de cada uno.
+CONTENT_REASONS: Final = frozenset({"same_content", "semantic_content_match"})
 #: Rutas fallidas que se guardan en el resultado del run (el total va en ``failed``).
 MAX_FAILED_SHOWN: Final = 100
 EXPORT_DIR: Final = "export"
@@ -140,7 +149,16 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
                 "busca solo duplicados exactos y versiones.",
             )
         groups = library.dedup.find_groups(docs, fuzzy_threshold=params.fuzzy_threshold)
-    groups.sort(key=lambda g: (REASON_ORDER.get(g.reason, 9), -max(m.size_bytes for m in g.members)))
+    content = _content_groups(ctx, project, params, docs, groups) if params.content else None
+    if content is not None:
+        groups.extend(content.groups)
+    groups.sort(
+        key=lambda g: (
+            REASON_ORDER.get(g.reason, 9),
+            -(g.similarity or 0.0) if g.reason in CONTENT_REASONS else 0.0,
+            -max(m.size_bytes for m in g.members),
+        )
+    )
     rows = [
         DuplicateGroupRow(
             run_id=ctx.run_id,
@@ -149,6 +167,9 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
             position=position,
             member_count=len(group.members),
             members=[_member(namer, doc, group.canonical) for doc in group.members],
+            similarity=group.similarity,
+            lexical_similarity=group.lexical_similarity,
+            contained=group.contained,
         )
         for position, group in enumerate(groups)
     ]
@@ -164,7 +185,7 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
         _write_excel(ctx, project, rows)
     ctx.progress("done", 1, 1)
     by_reason = {reason: sum(1 for g in groups if g.reason == reason) for reason in REASON_ORDER}
-    return {
+    result: dict[str, Any] = {
         "documents": len(docs),
         "groups": len(groups),
         "exact_groups": by_reason["exact_duplicate"],
@@ -177,6 +198,56 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
         "stale_cache": stale,
         "fuzzy_threshold": params.fuzzy_threshold,
     }
+    if content is not None:  # web 2.2: solo si se pidió la búsqueda por contenido
+        result |= {
+            "content_groups": by_reason["same_content"],
+            "content_compared": content.compared,
+            "content_not_compared": len(content.not_compared),
+        }
+        if params.semantic_threshold is not None:
+            result |= {
+                "semantic_groups": by_reason["semantic_content_match"],
+                "semantic_threshold": params.semantic_threshold,
+                "embedded": content.embedded,
+                "reused": content.reused,
+            }
+    return result
+
+
+def _content_groups(
+    ctx: JobContext,
+    project: Project,
+    params: DedupPreviewParams,
+    docs: list[DedupDocument],
+    groups: list[DedupGroup],
+) -> library.dedup.ContentOutcome:
+    """Grupos por contenido (doc_organize 2.2) entre los documentos que siguen sin agrupar y ya están convertidos.
+
+    Raises:
+        JobFailed: ``dedup_ai_failed`` si la IA de la tarea ``dedup`` falló (clave, red o modelo).
+    """
+    ctx.check_cancelled()
+    ctx.progress("dedup_content", 0, None)
+    output, folders, _ = context_folders(ctx, project)
+    grouped = {doc.path for group in groups for doc in group.members}
+    remaining = [doc for doc in docs if doc.path not in grouped]
+    conversions, _ = library.context.converted_documents(folders)
+    connection = ai_connection(ctx, "litellm") if params.semantic_threshold is not None else None
+    try:
+        outcome = library.dedup.find_content_groups(
+            remaining,
+            conversions,
+            project_root=output,
+            semantic_threshold=params.semantic_threshold,
+            connection=connection,
+        )
+    except library.ai.AiServiceError as exc:
+        raise JobFailed(
+            "dedup_ai_failed",
+            f"La búsqueda de contenido parecido no pudo usar el modelo de IA de duplicados ({exc.code}).",
+        ) from None
+    ctx.progress("dedup_content", 1, 1)
+    return outcome
 
 
 # --- aplicar ---------------------------------------------------------------------------------------------------------
@@ -304,6 +375,14 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
         }
 
     duplicates_dir, report_dir = library.dedup.dedup_dirs(paths.output.absolute, paths.state)
+    # Web 2.2: al mover, la conversión de cada descartado va con él (deja de entrar en el contexto; reversible).
+    conversions: dict[str, Any] = {}
+    conversion_root: Path | None = None
+    if params.mode == "move":
+        output, folders, _ = context_folders(ctx, project)
+        conversion_root = library.conversion_dir(output, paths.state, "")
+        found, _ = library.context.converted_documents(folders)
+        conversions = {item.source_path: item for item in found}
     if params.mode != "report_only":
         _duplicates_dir(paths.output.absolute, duplicates_dir)
     action = AuditAction.DUPLICATE_MOVE if params.mode == "move" else AuditAction.DUPLICATE_COPY
@@ -341,6 +420,8 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
                 mode=params.mode,
                 on_group=on_group,
                 is_cancelled=lambda: ctx.cancelled,
+                conversions=conversions,
+                conversion_dir=conversion_root,
             )
     except library.DocOrganizeOperationError:
         raise JobFailed(

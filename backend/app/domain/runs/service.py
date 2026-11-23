@@ -57,6 +57,7 @@ from app.domain.runs.operations import (
     ContextEvaluateParams,
     ContextReviewAgentParams,
     DedupApplyParams,
+    DedupPreviewParams,
     ExportAiBundleParams,
     ExportSiteParams,
     ExportXlsxParams,
@@ -236,6 +237,8 @@ def enqueue(
         raise RedactionRequiredError("Solo un administrador puede sacar el paquete para IA sin redactar credenciales.")
     if isinstance(params, TaxonomyDraftParams):
         ai_settings.require_configured(db, settings, "litellm")  # tarea ``taxonomy_design``
+    if isinstance(params, DedupPreviewParams) and params.semantic_threshold is not None:
+        ai_settings.require_task(db, settings, "dedup")  # web 2.2: con su propio modelo
     if isinstance(params, ContextEvaluateParams):
         quality.validate_evaluate(db, settings, project, params)
     if isinstance(params, ContextDryRunParams):

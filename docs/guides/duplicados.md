@@ -17,6 +17,25 @@ Los editores y propietarios pulsan **Buscar**. Es una [ejecución](ejecuciones.m
 | **Exactos** | Documentos con el mismo contenido (mismo SHA-256), aunque tengan otro nombre o estén en otra carpeta |
 | **Versiones** | Mismo nombre base y extensión con contenido distinto: `informe_v1.pdf`, `informe_v2.pdf`, `informe final.pdf` |
 | **Nombre parecido** | Con «Incluir nombres parecidos», nombres similares a partir del porcentaje que elijas (`presupuesto obra` y `presupuesto obras`). Solo si quedan como mucho 5 000 documentos sin agrupar |
+| **Mismo contenido** (2.2) | Con «Mismo contenido», el mismo texto en ficheros distintos, por ejemplo un `.docx` y el `.pdf` que se exportó de él. Sin IA |
+| **Contenido parecido (IA)** (2.2) | Con «Contenido parecido (IA)», versiones reescritas, borradores o plantillas con otros datos, a partir de la similitud que elijas (0,90 por defecto). Usa el modelo de **Duplicados por contenido** de [IA](ia.md) |
+
+### Por contenido (2.2)
+
+Las dos búsquedas por contenido comparan el **texto de la conversión**, así que sirven **después de escanear y
+convertir**: es la misma pantalla, en una segunda vuelta. Solo comparan los documentos que no quedaron agrupados como
+exactos, versiones o nombre parecido; los que no tienen conversión, o casi no tienen texto, se cuentan como «Sin
+comparar por contenido».
+
+- «Contenido parecido (IA)» solo se puede activar si un administrador ha configurado el modelo propio de
+  «Duplicados por contenido». Envía el texto completo de cada documento comparado a ese modelo (con las credenciales
+  redactadas), por eso conviene que sea local. Los vectores se guardan en el proyecto: repetir la búsqueda no los vuelve
+  a pedir.
+- Cada grupo parecido muestra el **significado** (similitud según el modelo) y el **texto** (palabra a palabra): un
+  texto bajo con un significado alto es un documento reescrito o la misma plantilla con otros datos. «Contenido en
+  otro» marca un documento que está dentro de otro (un anexo dentro del informe completo).
+- **Ver diferencias** abre los textos de dos documentos del grupo lado a lado, sin formato, con las líneas que no están
+  en el otro resaltadas.
 
 El resultado dice cuántos grupos hay de cada tipo, cuántos ficheros sobran y cuánto ocupan los duplicados exactos.
 «En la caché pero ya no en el origen» cuenta los documentos que se borraron o movieron desde el último escaneo. La
@@ -32,8 +51,8 @@ que se conserva; «Ver N documentos más» abre el resto. Cada grupo muestra sus
 
 - **Conservar por defecto** decide qué documento se queda en cada grupo: el más antiguo (como doc_organize), el más
   reciente o el de ruta más corta. En cada grupo puedes elegir otro.
-- **Aplicar este grupo** viene marcado en los exactos y las versiones, y desmarcado en los de nombre parecido:
-  revísalos y márcalos uno a uno.
+- **Aplicar este grupo** viene marcado en los exactos y las versiones, y desmarcado en los de nombre parecido y en
+  los de contenido: revísalos y márcalos uno a uno.
 - Tus decisiones se mantienen al pasar de página mientras no salgas de la pantalla.
 
 Si alguien aplicó duplicados después de esta búsqueda, un aviso te pide que vuelvas a buscar.
@@ -45,7 +64,7 @@ Si alguien aplicó duplicados después de esta búsqueda, un aviso te pide que v
 | Modo | Qué hace | Quién |
 |---|---|---|
 | **Copiar** | Los copia a la carpeta `duplicados` de las salidas; el origen no cambia | Editores y propietarios |
-| **Mover** | Los saca del origen a `duplicados` | Solo propietarios, y con el origen de lectura y escritura |
+| **Mover** | Los saca del origen a `duplicados`; su conversión, si la tienen, va con ellos a `duplicados/Conversión` (2.2) y deja de entrar en el contexto: reconstrúyelo después | Solo propietarios, y con el origen de lectura y escritura |
 | **Solo informe** | No toca ningún fichero; solo deja el informe | Editores y propietarios |
 
 Después sigue los mismos pasos que mover o borrar un proyecto:

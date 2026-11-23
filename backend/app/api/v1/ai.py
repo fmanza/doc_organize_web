@@ -138,6 +138,9 @@ def probe_ai_family(
         model_checked=check.model_checked,
         task=check.task,
         response_format=check.response_format,
+        model=check.model,
+        served_model=check.served_model,
+        dimension=check.dimension,
         elapsed_ms=check.elapsed_ms,
         tested_at=outcome.tested_at,
     )

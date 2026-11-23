@@ -43,9 +43,14 @@ if TYPE_CHECKING:
     import httpx
 
 FamilyKey = Literal["litellm", "litellm_usage"]
-#: Tareas de IA de doc_organize 2.0 (``AI_TASKS``): clasificar, describir, diseñar la taxonomía, agentes y embeddings.
-TaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
-TASKS: Final[tuple[TaskKey, ...]] = ("classify", "enrich", "taxonomy_design", "agent", "embed")
+#: Tareas de IA de doc_organize (``AI_TASKS``): clasificar, describir, diseñar la taxonomía, agentes, embeddings del
+#: contexto y (2.2) embeddings de los duplicados por contenido.
+TaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed", "dedup"]
+TASKS: Final[tuple[TaskKey, ...]] = ("classify", "enrich", "taxonomy_design", "agent", "embed", "dedup")
+#: Tareas de embeddings (``EMBEDDING_TASKS``): se prueban con ``/embeddings``, no con una respuesta JSON.
+EMBEDDING_TASKS: Final[frozenset[TaskKey]] = frozenset({"embed", "dedup"})
+#: Tareas que solo se usan con un modelo propio (2.2): sin él, la funcionalidad queda desactivada.
+OWN_MODEL_TASKS: Final[frozenset[TaskKey]] = frozenset({"dedup"})
 #: Tareas con presupuesto de documentos por construcción (``ai_max_documents``): las que recorren el corpus.
 BUDGET_TASKS: Final[tuple[TaskKey, ...]] = ("classify", "enrich")
 AiErrorCode = Literal["ai_auth", "ai_connection", "ai_error"]
@@ -544,6 +549,9 @@ class ConnectionCheck:
         task: Tarea cuyo modelo se probó (familia ``litellm``), o ``None``.
         response_format: Con qué formato respondió el modelo (``json_schema`` si admite la salida estricta, o
             ``json_object``); ``None`` si no se probó o no aplica (embeddings).
+        model: Modelo (alias) que se probó (2.2), o ``None``.
+        served_model: Modelo que dice la respuesta que contestó, detrás del alias (2.2), si lo dice.
+        dimension: Dimensión de los vectores en las tareas de embeddings (2.2).
     """
 
     error: TestErrorCode | None
@@ -552,6 +560,9 @@ class ConnectionCheck:
     elapsed_ms: int
     task: TaskKey | None = None
     response_format: str | None = None
+    model: str | None = None
+    served_model: str | None = None
+    dimension: int | None = None
 
 
 #: Texto de la petición mínima al modelo: no es un documento real y no pide nada que se guarde.
@@ -591,17 +602,27 @@ async def _check_key(connection: AiConnection, task: TaskKey | None) -> tuple[Te
     return None, _model_access(snapshot.raw, model)
 
 
-async def _check_model(connection: AiConnection, task: TaskKey) -> tuple[TestErrorCode | None, str | None]:
+@dataclass(frozen=True)
+class _ModelProbe:
+    """Lo que dijo el modelo al probarlo."""
+
+    error: TestErrorCode | None
+    response_format: str | None = None
+    served_model: str | None = None
+    dimension: int | None = None
+
+
+async def _check_model(connection: AiConnection, task: TaskKey) -> _ModelProbe:
     """Una petición mínima a ``task`` con su modelo y su clave (gasta unos pocos tokens): JSON con esquema estricto o,
-    en ``embed``, un embedding. Devuelve el error y el formato con que respondió."""
+    en las de embeddings, un vector. Devuelve el error, el formato, el modelo que contestó y la dimensión."""
     from doc_organize.ai import LlmClient
     from doc_organize.core.exceptions import AiError
 
     try:
         async with LlmClient(ai_settings_for(connection), transport=_transport(connection)) as llm:
-            if task == "embed":
-                await llm.embed([_PROBE_TEXT])
-                return None, None
+            if task in EMBEDDING_TASKS:
+                embedded = await llm.embed_detailed([_PROBE_TEXT], task=task)
+                return _ModelProbe(error=None, served_model=embedded.served_model, dimension=embedded.dimension)
             result = await llm.complete_json(
                 task,
                 [{"role": "user", "content": _PROBE_TEXT}],
@@ -612,8 +633,8 @@ async def _check_model(connection: AiConnection, task: TaskKey) -> tuple[TestErr
     except AiError as exc:
         code = _ai_error(exc).code
         # El resto (HTTP 400/404 de un alias que no existe, o una respuesta que no es JSON) es cosa del modelo.
-        return ("ai_model" if code == "ai_error" else code), None
-    return None, str(result.response_format)
+        return _ModelProbe(error="ai_model" if code == "ai_error" else code)
+    return _ModelProbe(error=None, response_format=str(result.response_format), served_model=result.served_model)
 
 
 def check_connection(
@@ -629,17 +650,17 @@ def check_connection(
     started = time.monotonic()
     tested_task: TaskKey | None = task if connection.family in MODEL_FAMILIES else None
 
-    async def _run() -> tuple[TestErrorCode | None, ModelAccess, bool, str | None]:
+    async def _run() -> tuple[TestErrorCode | None, ModelAccess, bool, _ModelProbe | None]:
         error, access = await _check_key(connection, tested_task)
         if error is not None and not (model_check and error == "ai_auth"):
             return error, access, False, None
         if not model_check:
             return error, access, False, None
         # Un 401/403 en ``/key/info`` puede ser política del proxy: la prueba del modelo es la que decide.
-        model_error, response_format = await _check_model(connection, task)
-        return model_error, access, True, response_format
+        probe = await _check_model(connection, task)
+        return probe.error, access, True, probe
 
-    error, access, checked, response_format = asyncio.run(_run())
+    error, access, checked, probe = asyncio.run(_run())
     elapsed = int((time.monotonic() - started) * 1000)
     logger.info(
         "Prueba de conexión de IA",
@@ -651,5 +672,8 @@ def check_connection(
         model_checked=checked,
         elapsed_ms=elapsed,
         task=tested_task,
-        response_format=response_format,
+        response_format=probe.response_format if probe else None,
+        model=connection.model_for(tested_task) if tested_task else None,
+        served_model=probe.served_model if probe else None,
+        dimension=probe.dimension if probe else None,
     )

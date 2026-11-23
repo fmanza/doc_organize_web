@@ -1771,7 +1771,7 @@ export interface components {
              * Task
              * @description Tarea del campo en la familia litellm (modelo, clave o presupuesto); null = de todas
              */
-            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed" | "dedup") | null;
             /**
              * Undecryptable
              * @description Hay un valor guardado que no se descifra con las claves actuales
@@ -1859,13 +1859,18 @@ export interface components {
              * @default classify
              * @enum {string}
              */
-            task: "classify" | "enrich" | "taxonomy_design" | "agent" | "embed";
+            task: "classify" | "enrich" | "taxonomy_design" | "agent" | "embed" | "dedup";
         };
         /**
          * AiTestOut
          * @description Resultado de «Probar conexión»: solo un código, nunca el cuerpo de lo que respondió el servidor.
          */
         AiTestOut: {
+            /**
+             * Dimension
+             * @description Dimensión de los vectores en las tareas de embeddings (2.2)
+             */
+            dimension?: number | null;
             /** Elapsed Ms */
             elapsed_ms: number;
             /**
@@ -1873,6 +1878,11 @@ export interface components {
              * @description Credencial rechazada, sin conexión o timeout, otro error, o el modelo no respondió
              */
             error: ("ai_auth" | "ai_connection" | "ai_error" | "ai_model") | null;
+            /**
+             * Model
+             * @description Modelo (alias del proxy) que se probó (2.2)
+             */
+            model?: string | null;
             /**
              * Model Access
              * @description Si la clave de LiteLLM tiene acceso al modelo según /key/info (unknown si no lo dice)
@@ -1892,10 +1902,15 @@ export interface components {
              */
             response_format?: ("json_schema" | "json_object") | null;
             /**
+             * Served Model
+             * @description Modelo que dice la respuesta que contestó, detrás del alias (2.2), si lo dice
+             */
+            served_model?: string | null;
+            /**
              * Task
              * @description Tarea cuyo modelo se probó (familia litellm)
              */
-            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed") | null;
+            task?: ("classify" | "enrich" | "taxonomy_design" | "agent" | "embed" | "dedup") | null;
             /**
              * Tested At
              * Format: date-time
@@ -2956,8 +2971,17 @@ export interface components {
          *
          *     ``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea
          *     duplicado exacto ni conflicto de versión.
+         *
+         *     Por contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el
+         *     mismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la
+         *     tarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).
          */
         DedupPreviewParams: {
+            /**
+             * Content
+             * @default false
+             */
+            content: boolean;
             /** Fuzzy Threshold */
             fuzzy_threshold?: number | null;
             /**
@@ -2966,6 +2990,8 @@ export interface components {
              * @constant
              */
             operation: "dedup_preview";
+            /** Semantic Threshold */
+            semantic_threshold?: number | null;
         };
         /**
          * DiagnosticCheckOut
@@ -3082,15 +3108,31 @@ export interface components {
          * @description Grupo de duplicados de una vista previa.
          */
         DuplicateGroupOut: {
+            /**
+             * Contained
+             * @description Por contenido (2.2): un miembro está contenido en otro
+             * @default false
+             */
+            contained: boolean;
             /** Group Id */
             group_id: string;
+            /**
+             * Lexical Similarity
+             * @description Por contenido (2.2): similitud de texto (0-1); baja con la semántica alta = reescrito
+             */
+            lexical_similarity?: number | null;
             /** Members */
             members: components["schemas"]["DuplicateMemberOut"][];
             /**
              * Reason
              * @enum {string}
              */
-            reason: "exact_duplicate" | "version_conflict" | "fuzzy_name_match";
+            reason: "exact_duplicate" | "version_conflict" | "fuzzy_name_match" | "same_content" | "semantic_content_match";
+            /**
+             * Similarity
+             * @description Por contenido (2.2): similitud semántica, la menor entre los miembros (0-1)
+             */
+            similarity?: number | null;
         };
         /**
          * DuplicateGroupPage
@@ -9825,7 +9867,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Solo este motivo */
-                reason?: ("exact_duplicate" | "version_conflict" | "fuzzy_name_match") | null;
+                reason?: ("exact_duplicate" | "version_conflict" | "fuzzy_name_match" | "same_content" | "semantic_content_match") | null;
                 limit?: number;
                 offset?: number;
                 /** @description Texto a buscar: contiene, sin distinguir mayúsculas */

@@ -835,8 +835,16 @@ class DuplicateGroupOut(BaseModel):
     """Grupo de duplicados de una vista previa."""
 
     group_id: str
-    reason: Literal["exact_duplicate", "version_conflict", "fuzzy_name_match"]
+    reason: Literal["exact_duplicate", "version_conflict", "fuzzy_name_match", "same_content", "semantic_content_match"]
     members: list[DuplicateMemberOut]
+    similarity: float | None = Field(
+        default=None, description="Por contenido (2.2): similitud semántica, la menor entre los miembros (0-1)"
+    )
+    lexical_similarity: float | None = Field(
+        default=None,
+        description="Por contenido (2.2): similitud de texto (0-1); baja con la semántica alta = reescrito",
+    )
+    contained: bool = Field(default=False, description="Por contenido (2.2): un miembro está contenido en otro")
 
 
 class DuplicateGroupPage(BaseModel):
@@ -1233,7 +1241,7 @@ class SiteSessionOut(BaseModel):
 
 #: doc_organize 2.0 (W2): una familia ``litellm`` para todas las tareas de IA (migración ``0016``) y las dos de uso.
 AiFamilyKey = Literal["litellm", "litellm_usage"]
-AiTaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed"]
+AiTaskKey = Literal["classify", "enrich", "taxonomy_design", "agent", "embed", "dedup"]
 
 
 class AiFieldOut(BaseModel):
@@ -1317,6 +1325,13 @@ class AiTestOut(BaseModel):
     task: AiTaskKey | None = Field(default=None, description="Tarea cuyo modelo se probó (familia litellm)")
     response_format: Literal["json_schema", "json_object"] | None = Field(
         default=None, description="Formato con el que respondió el modelo: json_schema si admite la salida estricta"
+    )
+    model: str | None = Field(default=None, description="Modelo (alias del proxy) que se probó (2.2)")
+    served_model: str | None = Field(
+        default=None, description="Modelo que dice la respuesta que contestó, detrás del alias (2.2), si lo dice"
+    )
+    dimension: int | None = Field(
+        default=None, description="Dimensión de los vectores en las tareas de embeddings (2.2)"
     )
     elapsed_ms: int
     tested_at: AwareDatetime

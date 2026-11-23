@@ -132,7 +132,8 @@ def probe_family(
     if model_check and spec.key not in MODEL_FAMILIES:
         raise InvalidAiSettingError(f"{spec.key} no llama a un modelo: no hay modelo que probar")
     values = _values(db, settings, spec.key, changes)
-    _claim(spec.key, clock())
+    # 2.2: el límite es por modelo probado, para poder probar todas las tareas seguidas («Probar todo»).
+    _claim(f"{spec.key}:{task}" if model_check else spec.key, clock())
     connection = AiConnection(
         family=spec.key,
         values=values,

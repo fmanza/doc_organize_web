@@ -301,18 +301,18 @@
       },
       "ai_timeout_seconds": {
         "label": "Tiempo máximo por petición de IA (s)",
-        "hint": "Cada petición de clasificar, describir y embeddings (120 s por defecto; con un modelo local de 14B, algunas clasificaciones pasan de 30 s). El panel de uso espera como mucho 10 s (5–300)."
+        "hint": "Cada petición de clasificar, describir y embeddings (contexto y duplicados) (120 s por defecto; con un modelo local de 14B, algunas clasificaciones pasan de 30 s). El panel de uso espera como mucho 10 s (5–300)."
       },
       "ai_retries": {
         "label": "Reintentos de conexión con la IA",
         "hint": "Solo ante fallos de conexión (0–5)."
       },
       "ai_draft_timeout_seconds": {
-        "label": "Tiempo máximo del borrador y los agentes de IA (s)",
+        "label": "Tiempo máximo de las tareas largas (s)",
         "hint": "Tareas largas: la petición del borrador de manifiesto y cada llamada de los agentes; un modelo local puede tardar minutos (5–900)."
       },
       "ai_draft_retries": {
-        "label": "Reintentos del borrador y los agentes de IA",
+        "label": "Reintentos de las tareas largas",
         "hint": "Ante un fallo de conexión o de tiempo (0–5). Con 0, una petición que no responde falla sin repetirse."
       },
       "ai_max_documents_per_run": {
@@ -326,7 +326,9 @@
       "security": "Sesión e inicio de sesión",
       "locations": "Ubicaciones",
       "storage": "Retención y cuotas"
-    }
+    },
+    "usedIn": "Se usa en:",
+    "usedInLabel": "Funcionalidades que usan {{label}}"
   },
   "capabilities": {
     "title": "Capacidades de la instancia",
@@ -798,7 +800,14 @@
       "prompt_tokens": "Tokens de entrada",
       "completion_tokens": "Tokens de salida",
       "tokens_estimated": "Tokens estimados",
-      "ai_cached": "Respuesta desde la caché de IA"
+      "ai_cached": "Respuesta desde la caché de IA",
+      "content_groups": "Grupos con el mismo contenido",
+      "semantic_groups": "Grupos por contenido parecido (IA)",
+      "content_compared": "Documentos comparados por contenido",
+      "content_not_compared": "Sin comparar por contenido (sin conversión o casi vacíos)",
+      "semantic_threshold": "Umbral de contenido parecido",
+      "reused": "Bloques sacados del índice (sin llamar al modelo)",
+      "embedded": "Bloques enviados al modelo"
     },
     "errors": {
       "internal": "Error interno al ejecutar la operación.",
@@ -1056,7 +1065,16 @@
       "fuzzy": "Incluir nombres parecidos",
       "fuzzyHelp": "Además de los duplicados exactos y las versiones, agrupa documentos con nombres similares (revísalos uno a uno).",
       "threshold": "Parecido mínimo (%)",
-      "run": "Buscar"
+      "run": "Buscar",
+      "contentTitle": "Por contenido (documentos ya convertidos)",
+      "contentIntro": "Compara el texto de la conversión de los documentos que no quedaron agrupados arriba. Úsalo después de escanear y convertir; los que no tienen conversión no se comparan.",
+      "content": "Mismo contenido",
+      "contentHelp": "El mismo texto en ficheros distintos (por ejemplo un .docx y su .pdf). Sin IA.",
+      "semantic": "Contenido parecido (IA)",
+      "semanticHelp": "Versiones reescritas, borradores o plantillas con otros datos, con el modelo de duplicados.",
+      "semanticUnavailable": "Necesita el modelo propio de «Duplicados por contenido» en IA › Configuración (lo configura un administrador).",
+      "semanticThreshold": "Similitud mínima (0,5–1)",
+      "semanticPrivacy": "Se envía el texto completo de cada documento comparado al modelo de duplicados (con las credenciales redactadas). Los grupos por contenido nunca se aplican solos: revisa cada uno."
     },
     "noPreview": "Aún no se han buscado duplicados en este proyecto.",
     "previewNotReady": "La búsqueda de duplicados aún no ha terminado o falló.",
@@ -1068,7 +1086,9 @@
       "all": "Todos",
       "exact_duplicate": "Exactos",
       "version_conflict": "Versiones",
-      "fuzzy_name_match": "Nombre parecido"
+      "fuzzy_name_match": "Nombre parecido",
+      "same_content": "Mismo contenido",
+      "semantic_content_match": "Contenido parecido (IA)"
     },
     "policy": {
       "label": "Conservar por defecto",
@@ -1113,7 +1133,8 @@
       "recalculate": "Volver a calcular",
       "changed_one": "{{count}} grupo ha cambiado desde la búsqueda y no se aplicará.",
       "changed_other": "{{count}} grupos han cambiado desde la búsqueda y no se aplicarán.",
-      "tooMany": "Hay más de {{max}} grupos: no se pueden aplicar de una vez. Filtra por carpeta, aplica por partes o vuelve a buscar sin nombres parecidos."
+      "tooMany": "Hay más de {{max}} grupos: no se pueden aplicar de una vez. Filtra por carpeta, aplica por partes o vuelve a buscar sin nombres parecidos.",
+      "moveConversions": "La conversión de cada documento movido va con él a «duplicados/Conversión»: deja de entrar en el contexto. Reconstruye el contexto después."
     },
     "includeGroup": "Aplicar el grupo {{number}} ({{name}})",
     "keepGroup": "Documento que se conserva en el grupo {{number}} ({{name}})",
@@ -1128,7 +1149,23 @@
       "reason": "Motivo",
       "member_count": "Número de documentos"
     },
-    "groupSearch": "Buscar en los grupos"
+    "groupSearch": "Buscar en los grupos",
+    "similarity": {
+      "semantic": "Significado {{value}}",
+      "semanticHint": "Parecido del significado según el modelo (la menor similitud entre los documentos del grupo).",
+      "lexical": "Texto {{value}}",
+      "lexicalHint": "Parecido del texto palabra a palabra. Alto: casi el mismo texto. Bajo con el significado alto: reescrito o la misma plantilla con otros datos.",
+      "contained": "Contenido en otro",
+      "containedHint": "Un documento del grupo está contenido en otro (por ejemplo, un anexo dentro del informe completo)."
+    },
+    "compare": {
+      "open": "Ver diferencias",
+      "title": "Comparar documentos",
+      "intro": "Texto de la conversión de cada uno, sin formato. Se resaltan las líneas que no están en el otro.",
+      "left": "Izquierda",
+      "right": "Derecha",
+      "notConverted": "Hacen falta al menos dos documentos convertidos del grupo para compararlos."
+    }
   },
   "context": {
     "back": "Volver a «{{name}}»",
@@ -1632,7 +1669,44 @@
       "budgetPlaceholder": "El general de Parámetros",
       "legacyTitle": "Variables de entorno que ya no se leen",
       "legacy": "Estas variables siguen definidas en el servidor y la aplicación ya no las lee. Cámbialas por su equivalente o bórralas:",
-      "legacyRemoved": "ya no se usa (GitHub Copilot se quitó en la 2.1): bórrala"
+      "legacyRemoved": "ya no se usa (GitHub Copilot se quitó en la 2.1): bórrala",
+      "ownModelPlaceholder": "Sin modelo: desactivada",
+      "ownModelTitle": "Necesita su propio modelo",
+      "ownModel": {
+        "dedup": "La búsqueda de duplicados por contenido parecido solo funciona con un modelo propio, independiente del de embeddings del contexto, porque envía el texto completo de cada documento. Usa un modelo local (por ejemplo bge-m3 en Ollama, alias doc-organize-dedup)."
+      },
+      "connection": {
+        "title": "Conexión con LiteLLM"
+      },
+      "table": {
+        "title": "Modelos por funcionalidad",
+        "intro": "Cada funcionalidad usa su modelo (o el alias recomendado del proxy) y, si quieres, su propia clave y presupuesto. Pulsa «Editar» para cambiarlos; las pruebas se hacen con los valores escritos, sin guardar.",
+        "feature": "Funcionalidad",
+        "model": "Modelo",
+        "ownKey": "Clave propia",
+        "budget": "Presupuesto",
+        "lastTest": "Última prueba",
+        "usedIn": "Se usa en: {{features}}",
+        "alias": "(alias recomendado)",
+        "disabled": "Desactivada: sin modelo",
+        "generalBudget": "El general",
+        "testOk": "Correcta · {{ms}} ms",
+        "testFailed": "Falló",
+        "test": "Probar",
+        "testAll": "Probar todos los modelos",
+        "editLabel": "Editar {{task}}",
+        "needsOwnModel": "Configura antes su modelo propio"
+      },
+      "toast": {
+        "okModel": "{{label}}: el modelo responde",
+        "okKey": "{{label}}: conexión correcta",
+        "failed": "{{label}}: la prueba falló",
+        "model": "Modelo: {{model}}",
+        "modelServed": "Modelo: {{model}} → {{served}}",
+        "dimension_one": "{{count}} dimensión",
+        "dimension_other": "{{count}} dimensiones",
+        "elapsed": "{{ms}} ms"
+      }
     },
     "families": {
       "litellm": {
@@ -1659,7 +1733,9 @@
       "virtual_key_agent": "Clave propia de los agentes",
       "virtual_key_embed": "Clave propia de embeddings",
       "budget_classify": "Máximo de documentos a clasificar por ejecución",
-      "budget_enrich": "Máximo de documentos a describir por ejecución"
+      "budget_enrich": "Máximo de documentos a describir por ejecución",
+      "model_dedup": "Modelo de embeddings de duplicados",
+      "virtual_key_dedup": "Clave propia de duplicados"
     },
     "usage": {
       "title": "Uso de IA",
@@ -1734,7 +1810,24 @@
       "enrich": "Describir (descripción y palabras clave)",
       "taxonomy_design": "Diseñar la taxonomía (borrador de manifiesto)",
       "agent": "Agentes",
-      "embed": "Embeddings (semántica)"
+      "embed": "Embeddings (semántica)",
+      "dedup": "Duplicados por contenido"
+    },
+    "tasksShort": {
+      "classify": "Clasificar",
+      "enrich": "Describir",
+      "taxonomy_design": "Diseño de taxonomía",
+      "agent": "Agentes",
+      "embed": "Contexto semántico",
+      "dedup": "Duplicados por contenido"
+    },
+    "taskUse": {
+      "classify": "construir el contexto (clasificar cada documento en los ejes)",
+      "enrich": "construir el contexto (descripción y palabras clave)",
+      "taxonomy_design": "Taxonomía › Crear o mejorar con IA (borrador de manifiesto)",
+      "agent": "agentes de taxonomía y de revisión",
+      "embed": "sub-fase semántica del contexto (proyectos con «semántica» activada)",
+      "dedup": "Duplicados › Contenido parecido (IA)"
     }
   },
   "info": {

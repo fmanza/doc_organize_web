@@ -12,22 +12,26 @@ test('IA por tarea: guardar un ajuste de una tarea y probar su modelo', async ({
   await configureAi(page);
 
   await page.goto('/admin/ai/settings');
-  const card = page.getByRole('region', { name: 'Modelos de IA' });
-  const embed = card.getByRole('group', { name: 'Embeddings (semántica)' });
-  await expect(embed.getByRole('textbox', { name: 'Modelo de embeddings' })).toHaveValue(
+  // 2.2: una fila por funcionalidad; cada una se edita en un panel lateral.
+  const table = page.getByRole('region', { name: 'Modelos por funcionalidad' });
+  await expect(table.getByRole('row', { name: /Embeddings \(semántica\)/ })).toContainText(
     'doc-organize-embed',
   );
-  const classify = card.getByRole('group', { name: 'Clasificar' });
-  const budget = classify.getByRole('textbox', { name: 'Máximo de documentos a clasificar por ejecución' });
+  await table.getByRole('button', { name: 'Editar Clasificar' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Clasificar' });
+  const budget = drawer.getByRole('textbox', { name: 'Máximo de documentos a clasificar por ejecución' });
   await budget.fill((await budget.inputValue()) === '40' ? '41' : '40'); // un cambio (los E2E se pueden repetir)
-  await card.getByRole('button', { name: 'Guardar Modelos de IA' }).click();
-  await expect(card.getByText('Guardado.')).toBeVisible();
+  await drawer.getByRole('button', { name: 'Guardar Clasificar' }).click();
+  await expect(drawer.getByText('Guardado.')).toBeVisible();
+  await page.keyboard.press('Escape');
   const saved = (await (await api(page, 'GET', '/api/v1/admin/ai-settings')).text()).toString();
   expect(saved).not.toContain('sk-e2e-fake');
 
-  // «Probar el modelo» de la tarea de embeddings pide un vector al proxy (con los valores guardados).
-  await card.getByRole('button', { name: 'Probar el modelo de la tarea Embeddings (semántica)' }).click();
-  await expect(card.getByText('Tarea probada: Embeddings (semántica).')).toBeVisible({ timeout: 30_000 });
+  // «Probar» de la tarea de embeddings pide un vector al proxy (con los valores guardados); el resultado sale en un
+  // aviso flotante que dice qué modelo se probó.
+  await table.getByRole('button', { name: 'Probar el modelo de la tarea Embeddings (semántica)' }).click();
+  await expect(page.getByText('Embeddings (semántica): el modelo responde')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Modelo: doc-organize-embed/)).toBeVisible();
 });
 
 test('diagnóstico: los modelos de cada tarea responden, también el de embeddings', async ({ page }) => {

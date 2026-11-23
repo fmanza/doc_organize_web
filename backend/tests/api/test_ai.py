@@ -169,7 +169,11 @@ def test_status_is_visible_to_every_user(admin_api: TestClient, user_client: Tes
 
     assert status.status_code == 200 and KEY not in status.text
     assert status.json()["families"] == {"litellm": True, "litellm_usage": False}
-    assert status.json()["tasks"] == dict.fromkeys(("classify", "enrich", "taxonomy_design", "agent", "embed"), True)
+    # 2.2: «dedup» (duplicados por contenido) solo con su propio modelo.
+    assert status.json()["tasks"] == {
+        **dict.fromkeys(("classify", "enrich", "taxonomy_design", "agent", "embed"), True),
+        "dedup": False,
+    }
 
 
 def test_one_family_with_a_model_key_and_budget_per_task(admin_api: TestClient, db: Session, fernet: str) -> None:
@@ -366,12 +370,13 @@ CHAT_OK = {"choices": [{"message": {"content": json.dumps({"ok": True})}}]}
 
 
 def _probe(monkeypatch: pytest.MonkeyPatch, key_info: httpx.Response, chat: httpx.Response | None = None) -> list[str]:
-    """Transporte que responde a ``/key/info`` y ``/chat/completions``; devuelve las rutas pedidas."""
+    """Transporte que responde a ``/key/info`` y, con ``chat``, a ``/chat/completions`` o ``/embeddings``; devuelve las
+    rutas pedidas."""
     paths: list[str] = []
 
     def _handle(request: httpx.Request) -> httpx.Response:
         paths.append(request.url.path)
-        if request.url.path.endswith("/chat/completions"):
+        if request.url.path.endswith(("/chat/completions", "/embeddings")):
             return chat or httpx.Response(500)
         return key_info
 
@@ -444,6 +449,27 @@ def test_model_check_sends_one_minimal_request(admin_api: TestClient, monkeypatc
 
     assert body["ok"] is True and body["model_checked"] is True
     assert paths == ["/key/info", "/chat/completions"]
+
+
+def test_model_check_says_which_model_answered(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """2.2: la prueba dice el modelo probado, el que contestó detrás del alias y, en embeddings, la dimensión."""
+    chat = httpx.Response(200, json={**CHAT_OK, "model": "qwen2.5-14b"})
+    _probe(monkeypatch, httpx.Response(200, json={"info": {}}), chat)
+    classify = admin_api.post(TEST, json={"fields": LITELLM, "model_check": True}).json()
+    vectors = {"model": "ollama/bge-m3", "data": [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4]}]}
+    paths = _probe(monkeypatch, httpx.Response(200, json={"info": {}}), httpx.Response(200, json=vectors))
+    dedup = admin_api.post(
+        TEST, json={"fields": {**LITELLM, "model_dedup": "doc-organize-dedup"}, "model_check": True, "task": "dedup"}
+    ).json()
+
+    assert (classify["model"], classify["served_model"], classify["dimension"]) == (
+        "doc-organize-classify",
+        "qwen2.5-14b",
+        None,
+    )
+    assert (dedup["ok"], dedup["task"], dedup["model"]) == (True, "dedup", "doc-organize-dedup")
+    assert (dedup["served_model"], dedup["dimension"], dedup["response_format"]) == ("ollama/bge-m3", 4, None)
+    assert paths == ["/key/info", "/embeddings"]
 
 
 def test_a_missing_model_is_reported_as_such(admin_api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

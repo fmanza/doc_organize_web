@@ -21,7 +21,7 @@ from app.domain.runs.operations import DedupApplyParams
 
 #: Vigencia de una vista previa de duplicados para aplicarla (después, otra escritura pudo cambiar el origen).
 PREVIEW_TTL: Final = timedelta(minutes=60)
-REASONS: Final = ("exact_duplicate", "version_conflict", "fuzzy_name_match")
+REASONS: Final = ("exact_duplicate", "version_conflict", "fuzzy_name_match", "same_content", "semantic_content_match")
 
 
 def member_key(member: dict[str, Any]) -> str:

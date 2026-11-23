@@ -13,8 +13,9 @@ function resultValue(page: Page, label: string) {
   return page.locator('dt', { hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd[1]');
 }
 
-async function configure(page: Page, family: string) {
-  const card = page.getByRole('region', { name: family });
+/** Rellena y guarda la URL y la clave de un bloque (`region`); `family` es el nombre de su botón «Guardar». */
+async function configure(page: Page, region: string, family: string) {
+  const card = page.getByRole('region', { name: region });
   await card
     .locator('input')
     .and(card.getByLabel(/URL del servicio/))
@@ -39,9 +40,9 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
 
   await page.goto('/admin/ai/settings');
   await expect(page.getByRole('heading', { name: 'Configuración IA' })).toBeVisible();
-  for (const family of ['Modelos de IA', 'Uso de LiteLLM']) {
-    await configure(page, family);
-  }
+  // 2.2: la URL y la clave de los modelos están en «Conexión con LiteLLM» (encima de la tabla por funcionalidad).
+  await configure(page, 'Conexión con LiteLLM', 'Modelos de IA');
+  await configure(page, 'Uso de LiteLLM', 'Uso de LiteLLM');
   const settings = await page.request.get('/api/v1/admin/ai-settings');
   expect(await settings.text()).not.toContain(FAKE_KEY);
 

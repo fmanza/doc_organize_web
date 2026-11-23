@@ -5,6 +5,44 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+Con doc_organize 2.2.0.
+Migración `0027` (aditiva).
+
+### Added
+
+- **Duplicados por contenido**: dos búsquedas nuevas en Duplicados, sobre el texto de la conversión de lo que no quedó
+  agrupado como exacto, versión o nombre parecido:
+    - **Mismo contenido**, sin IA: el mismo texto en ficheros distintos.
+    - **Contenido parecido (IA)**, con un umbral (0,90 por defecto) y el modelo propio de la tarea `dedup`. Avisa de
+      que se envía el texto completo.
+- **Grupos por contenido**:
+    - Cada grupo muestra la similitud de significado y de texto, y si un documento está contenido en otro
+      (columnas nuevas en `duplicate_groups`).
+    - **Ver diferencias** compara dos documentos lado a lado como texto plano, sin interpretar HTML.
+    - `dedup_preview` acepta `content` y `semantic_threshold`. Si se pide «contenido parecido» sin modelo propio de
+      `dedup`, responde 422 `ai_not_configured`.
+- **Aplicar en modo mover** lleva también la conversión del documento descartado a `duplicados/Conversión`. Así deja
+  de entrar en el contexto y se puede devolver sin volver a convertir.
+- **Tarea de IA `dedup`** (Duplicados por contenido), independiente de los embeddings del contexto. Se configura con
+  `DOC_ORGANIZE_LITELLM_MODEL_DEDUP` o desde la pantalla. `GET /ai/status` la da por disponible solo con modelo propio.
+
+### Changed
+
+- **IA › Configuración rediseñada**:
+    - Arriba, la conexión con LiteLLM.
+    - Debajo, una tabla con una fila por funcionalidad. Cada fila dice dónde se usa, su modelo (o el alias
+      recomendado), si tiene clave propia, su presupuesto y su última prueba.
+    - Cada funcionalidad se edita en un panel lateral.
+    - «Probar todos los modelos» los prueba uno tras otro.
+- **Resultado de las pruebas en avisos flotantes**:
+    - Dicen qué modelo se probó y cuál contestó detrás del alias, la dimensión de los vectores en las de embeddings y
+      el tiempo.
+    - Los de error se quedan hasta cerrarlos.
+    - `AiTestOut` añade `model`, `served_model` y `dimension`.
+    - El límite de una prueba cada 10 s pasa a ser por modelo.
+- **IA › Parámetros** dice, en cada ajuste, qué funcionalidades lo usan. Los de borrador y agentes pasan a llamarse
+  «tareas largas».
+
 ### Fixed
 
 - **Borrar una ubicación en uso**: salía «La ubicación ya existe» con «Hay proyectos que usan esta ubicación» y no decía

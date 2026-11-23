@@ -25,11 +25,14 @@ from app.db.session import get_engine
 from app.domain.projects.service import state_dir
 from app.domain.runs.operations import DedupApplyParams, DedupChoice, DedupPreviewParams
 from app.domain.scan.state import folder_cache
+from app.integrations import doc_organize as library
 from app.jobs import queue
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations import dedup
+from tests import fake_litellm
 from tests.api.test_documents import write_cache
 from tests.conftest import project_payload
+from tests.fake_litellm import FakeLiteLLM
 
 #: Documentos sintéticos: (carpeta, nombre, contenido, segundos de antigüedad).
 FILES = [
@@ -301,3 +304,102 @@ def test_a_new_preview_replaces_the_groups_of_older_ones(
     dedup.run_preview(other, DedupPreviewParams(), project)
 
     assert _groups(db, ctx.run_id) == [] and len(_groups(db, second)) == 2
+
+
+# --- por contenido (web 2.2, doc_organize 2.2) ------------------------------------------------------------------------
+
+#: Texto de las conversiones (más de 30 palabras: doc_organize no compara documentos casi vacíos).
+CONTENT = " ".join(["El presupuesto de la obra incluye materiales, mano de obra, plazos y penalizaciones."] * 4)
+
+
+def _convert(migrated: Settings, project: Project, texts: dict[tuple[str, str], str]) -> dict[tuple[str, str], Path]:
+    """Escribe el ``.md`` y el ``.json`` de conversión de los documentos de ``texts`` donde la web los busca."""
+    from doc_organize import resolve_output_paths
+
+    output = migrated.locations_root / "salidas" / "Proyecto A"
+    state = state_dir(migrated, project.id)
+    source = (migrated.locations_root / "origen").resolve()
+    written = {}
+    for (folder, name), text in texts.items():
+        markdown, json_path = resolve_output_paths(
+            str(source / folder / name), library.conversion_dir(output, state, folder), [str(source / folder)]
+        )
+        markdown.parent.mkdir(parents=True, exist_ok=True)
+        markdown.write_text(text, encoding="utf-8")
+        json_path.write_text('{"chunks": [], "title": null}', encoding="utf-8")
+        written[(folder, name)] = markdown
+    return written
+
+
+@pytest.mark.posix_paths
+def test_same_content_groups_what_the_first_pass_left_ungrouped(
+    ctx: JobContext, project: Project, db: Session, migrated: Settings
+) -> None:
+    _convert(
+        migrated,
+        project,
+        {("2024", "presupuesto obra.txt"): CONTENT, ("2025", "presupuesto obras.txt"): f"# {CONTENT.upper()}"},
+    )
+
+    result = dedup.run_preview(ctx, DedupPreviewParams(content=True), project)
+
+    assert (result["exact_groups"], result["version_groups"], result["content_groups"]) == (1, 1, 1)
+    assert "semantic_groups" not in result  # sin IA
+    assert result["content_compared"] == 2 and result["content_not_compared"] == 0
+    same = [g for g in _groups(db, ctx.run_id) if g.reason == "same_content"][0]
+    assert {m["path"] for m in same.members} == {"presupuesto obra.txt", "presupuesto obras.txt"}
+    assert (same.similarity, same.lexical_similarity, same.contained) == (1.0, 1.0, False)
+
+
+@pytest.mark.posix_paths
+def test_similar_content_uses_the_dedup_model(
+    ctx: JobContext, project: Project, db: Session, migrated: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for family in library.ai.FAMILIES:
+        for spec in family.fields:
+            if spec.env_var:
+                monkeypatch.delenv(spec.env_var, raising=False)
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_BASE_URL", "https://litellm.example.internal")
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_VIRTUAL_KEY", "sk-dedup-test")
+    monkeypatch.setenv("DOC_ORGANIZE_LITELLM_MODEL_DEDUP", "bge-m3-sintetico")
+    proxy = FakeLiteLLM(keys={"sk-dedup-test"}).install(monkeypatch)
+    monkeypatch.setattr(fake_litellm, "embedding", lambda text, dimensions=8: [1.0] + [0.0] * (dimensions - 1))
+    _convert(
+        migrated,
+        project,
+        {
+            ("2024", "presupuesto obra.txt"): CONTENT,
+            ("2025", "presupuesto obras.txt"): CONTENT.replace("penalizaciones", "garantías y revisiones"),
+        },
+    )
+
+    result = dedup.run_preview(ctx, DedupPreviewParams(semantic_threshold=0.9), project)
+
+    assert (result["content_groups"], result["semantic_groups"], result["semantic_threshold"]) == (0, 1, 0.9)
+    assert result["embedded"] == 2
+    requests = proxy.sent(path="/embeddings")
+    assert requests and {(r.task, r.body["model"]) for r in requests} == {("dedup", "bge-m3-sintetico")}
+    similar = [g for g in _groups(db, ctx.run_id) if g.reason == "semantic_content_match"][0]
+    assert similar.similarity == pytest.approx(1.0) and similar.lexical_similarity is not None
+
+
+@pytest.mark.posix_paths
+def test_moving_a_content_duplicate_moves_its_conversion_too(
+    ctx: JobContext, project: Project, db: Session, migrated: Settings
+) -> None:
+    db.execute(update(Location).where(Location.name == "Origen").values(access="rw"))
+    db.commit()
+    written = _convert(
+        migrated, project, {("2024", "presupuesto obra.txt"): CONTENT, ("2025", "presupuesto obras.txt"): CONTENT}
+    )
+    dedup.run_preview(ctx, DedupPreviewParams(content=True), project)
+
+    result = _apply(ctx, db, "move")
+
+    assert result["failed"] == 0
+    output = migrated.locations_root / "salidas" / "Proyecto A"
+    conversions = library.conversion_dir(output, state_dir(migrated, project.id), "")
+    moved = [path for path in written.values() if not path.exists()]
+    assert len(moved) == 1  # el que se conserva sigue en su sitio
+    target = output / "duplicados" / "Conversión" / moved[0].relative_to(conversions)
+    assert target.is_file() and target.with_suffix(".json").is_file()
