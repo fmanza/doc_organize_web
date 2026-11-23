@@ -44,11 +44,11 @@ from app.domain.tenancy.tenants import get_tenant
 
 @dataclass(frozen=True)
 class LocationProjects:
-    """Proyectos que usan una ubicación (2.1.1): los activos, con nombre, y cuántos borrados la siguen usando.
+    """Proyectos que usan una ubicación (2.1.1): los activos, con nombre.
 
     Attributes:
         active: ``(id, nombre)`` de cada proyecto activo, por nombre.
-        deleted: Proyectos borrados que la usan (conservan su historial de ejecuciones y la clave ajena impide borrarla).
+        deleted: Proyectos borrados que la usan. Desde 2.3.1 siempre 0: al borrarse sueltan sus ubicaciones.
     """
 
     active: list[tuple[int, str]]
@@ -56,7 +56,7 @@ class LocationProjects:
 
     @property
     def in_use(self) -> bool:
-        """Algún proyecto, activo o borrado, la usa."""
+        """Algún proyecto la usa."""
         return bool(self.active) or self.deleted > 0
 
 
@@ -73,15 +73,11 @@ def location_projects(db: Session, location: Location) -> LocationProjects:
 
 
 def _in_use_message(usage: LocationProjects, action: str) -> str:
-    """Explica quién usa la ubicación y qué hacer, sin rutas del contenedor."""
-    if usage.active:
-        names = ", ".join(f"«{name}»" for _, name in usage.active[:5])
-        more = f" y {len(usage.active) - 5} más" if len(usage.active) > 5 else ""
-        return f"La usan {len(usage.active)} proyecto(s) activo(s): {names}{more}. Bórralos antes de {action}."
-    return (
-        f"Solo la usan {usage.deleted} proyecto(s) borrado(s), que conservan su historial de ejecuciones: "
-        f"por ahora no se puede {action}."
-    )
+    """Explica quién usa la ubicación y qué hacer, sin rutas del contenedor (solo proyectos activos: los borrados
+    sueltan sus ubicaciones desde 2.3.1)."""
+    names = ", ".join(f"«{name}»" for _, name in usage.active[:5])
+    more = f" y {len(usage.active) - 5} más" if len(usage.active) > 5 else ""
+    return f"La usan {len(usage.active)} proyecto(s) activo(s): {names}{more}. Bórralos antes de {action}."
 
 
 @dataclass(frozen=True)
@@ -410,8 +406,8 @@ def delete_location(db: Session, location: Location, *, actor: User, ctx: Reques
     """Borra el registro de la ubicación (nunca la carpeta).
 
     Raises:
-        LocationInUseError: Algún proyecto la usa como origen o destino (también los borrados, que conservan su
-            historial de ejecuciones); el detalle nombra los activos.
+        LocationInUseError: Algún proyecto activo la usa como origen o destino; el detalle los nombra. Los borrados
+            no cuentan: sueltan sus ubicaciones al borrarse (2.3.1).
     """
     usage = location_projects(db, location)
     if usage.in_use:

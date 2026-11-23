@@ -186,11 +186,7 @@
       "checking": "Comprobando qué proyectos la usan",
       "title": "La ubicación está en uso",
       "active_one": "La usa este proyecto activo. Bórralo antes de borrar la ubicación:",
-      "active_other": "La usan estos {{count}} proyectos activos. Bórralos antes de borrar la ubicación:",
-      "alsoDeleted_one": "También la usa un proyecto borrado, que conserva su historial de ejecuciones.",
-      "alsoDeleted_other": "También la usan {{count}} proyectos borrados, que conservan su historial de ejecuciones.",
-      "onlyDeleted_one": "Solo la usa un proyecto borrado, que conserva su historial de ejecuciones: por ahora no se puede borrar la ubicación.",
-      "onlyDeleted_other": "Solo la usan {{count}} proyectos borrados, que conservan su historial de ejecuciones: por ahora no se puede borrar la ubicación."
+      "active_other": "La usan estos {{count}} proyectos activos. Bórralos antes de borrar la ubicación:"
     },
     "fields": {
       "name": "Nombre",

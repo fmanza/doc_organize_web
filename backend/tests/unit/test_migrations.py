@@ -6,12 +6,15 @@ import json
 import os
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text
+from sqlalchemy import CheckConstraint, Connection, inspect, text
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
+from app.db.base import Base
 from app.db.session import get_engine
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -406,3 +409,80 @@ def test_roundtrip_script_accepts_the_rebuilt_ai_settings(settings: Settings, tm
     assert result.returncode == 0, result.stdout + result.stderr
     assert "ai_settings: reconstruida desde la configuración de 2.0 (0024)" in result.stdout
     assert "gAAAA" not in result.stdout  # sin valores
+
+
+# --- 0029: los proyectos borrados sueltan sus ubicaciones (web 2.3.1) -------------------------------------------------
+
+
+def _insert_projects() -> None:
+    """Dos ubicaciones y dos proyectos sobre ellas: «vivo» (activo) y «muerto» (borrado)."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO locations (id, tenant_id, name, container_path, kind, usage, access, status, visibility,"
+                " created_at, updated_at) VALUES (:id, 1, :name, :path, 'local', 'both', 'rw', 'ok', 'global',"
+                " '2026-01-01', '2026-01-01')"
+            ),
+            [
+                {"id": 1, "name": "origen", "path": "/data/origen"},
+                {"id": 2, "name": "destino", "path": "/data/destino"},
+            ],
+        )
+        conn.execute(
+            text(
+                "INSERT INTO projects (id, tenant_id, name, source_location_id, source_subpaths,"
+                " destination_location_id, destination_subpath, status, created_at, updated_at) VALUES"
+                " (:id, 1, :name, 1, '[]', 2, :name, :status, '2026-01-01', '2026-01-01')"
+            ),
+            [{"id": 1, "name": "vivo", "status": "active"}, {"id": 2, "name": "muerto", "status": "deleted"}],
+        )
+
+
+def _project_locations(conn: Connection) -> dict[str, tuple[int | None, int | None]]:
+    rows = conn.exec_driver_sql("SELECT name, source_location_id, destination_location_id FROM projects").all()
+    return {name: (source, destination) for name, source, destination in rows}
+
+
+def test_0029_releases_the_locations_of_deleted_projects(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0028")
+    _insert_projects()
+
+    command.upgrade(config, "0029")
+    with get_engine().connect() as conn:
+        assert _project_locations(conn) == {"vivo": (1, 2), "muerto": (None, None)}
+        with pytest.raises(IntegrityError):  # CHECK: un activo no puede quedarse sin ubicaciones
+            conn.exec_driver_sql("UPDATE projects SET source_location_id = NULL WHERE name = 'vivo'")
+        conn.rollback()
+        with pytest.raises(IntegrityError):  # la FK sigue: RESTRICT mientras la use el activo
+            conn.exec_driver_sql("DELETE FROM locations WHERE id = 1")
+        conn.rollback()
+
+    with pytest.raises(RuntimeError, match="Restaura la copia de seguridad"):
+        command.downgrade(config, "0028")
+
+
+def test_0029_downgrades_without_released_projects(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0029")
+    with get_engine().begin() as conn:
+        conn.exec_driver_sql("DELETE FROM projects")
+
+    command.downgrade(config, "0028")
+    columns = {c["name"]: c["nullable"] for c in inspect(get_engine()).get_columns("projects")}
+    assert columns["source_location_id"] is False
+    assert columns["destination_location_id"] is False
+
+
+def test_projects_schema_matches_the_model(settings: Settings) -> None:
+    """Sin test de deriva general: al menos ``projects`` (nulabilidad de las ubicaciones y CHECK de 2.3.1)."""
+    command.upgrade(_config(), "head")
+    engine = get_engine()
+    columns = {c["name"]: c["nullable"] for c in inspect(engine).get_columns("projects")}
+    model = Base.metadata.tables["projects"]
+    for name in ("source_location_id", "destination_location_id"):
+        assert columns[name] is model.c[name].nullable is True
+    checks = {c["name"] for c in inspect(engine).get_check_constraints("projects")}
+    expected = {c.name for c in model.constraints if isinstance(c, CheckConstraint)}
+    assert expected <= checks
+    assert "ck_projects_locations" in checks

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -289,24 +290,41 @@ def test_delete_location_used_by_active_project_names_it(
     assert "ya existe" not in problem["title"]
 
 
-def test_delete_location_used_only_by_deleted_projects_explains_why(
-    admin_client: TestClient, project_locations: dict[str, Location], db: Session
+def test_location_used_only_by_deleted_projects_can_be_deleted_or_moved(
+    admin_client: TestClient,
+    project_locations: dict[str, Location],
+    db: Session,
+    make_tenant: Callable[..., Tenant],
 ) -> None:
+    """2.3.1 (opción (a) de C1): un proyecto borrado ya no la retiene (``project_delete`` suelta sus ubicaciones)."""
     project_id = _project_on(admin_client, project_locations, "Proyecto B")
     project = db.get(Project, project_id)
     assert project is not None
     project.status = "deleted"
+    project.source_location_id = None  # type: ignore[assignment]  # lo que deja project_delete (test_worker)
+    project.destination_location_id = None  # type: ignore[assignment]
     db.commit()
-    source_id = project_locations["source"].id
+    source_id, destination_id = project_locations["source"].id, project_locations["destination"].id
 
     usage = admin_client.get(f"/api/v1/locations/{source_id}/usage")
-    response = admin_client.delete(f"/api/v1/locations/{source_id}")
+    moved = admin_client.patch(f"/api/v1/locations/{destination_id}", json={"tenant_id": make_tenant("obras").id})
+    deleted = admin_client.delete(f"/api/v1/locations/{source_id}")
 
-    assert usage.json() == {"active_projects": [], "deleted_projects": 1, "can_delete": False}
-    assert response.status_code == 409
-    assert response.json()["code"] == "location_in_use"
-    assert "1 proyecto(s) borrado(s)" in response.json()["detail"]
-    assert "Proyecto B" not in response.json()["detail"]
+    assert usage.json() == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+    assert moved.status_code == 200, moved.text
+    assert deleted.status_code == 204
+
+
+def test_active_project_cannot_lose_its_locations(
+    admin_client: TestClient, project_locations: dict[str, Location], db: Session
+) -> None:
+    """CHECK ``ck_projects_locations``: solo un proyecto borrado puede quedarse sin ubicaciones."""
+    project = db.get(Project, _project_on(admin_client, project_locations, "Proyecto C"))
+    assert project is not None
+    project.source_location_id = None  # type: ignore[assignment]
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
 
 
 def test_location_usage_without_projects_allows_delete(admin_client: TestClient, location: dict[str, object]) -> None:

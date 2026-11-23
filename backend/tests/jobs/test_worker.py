@@ -13,13 +13,13 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.db.models import AuditEntry, Location, Project, Run, RunEvent, Worker, utcnow
+from app.db.models import AuditEntry, Location, Project, Run, RunEvent, User, Worker, utcnow
 from app.integrations.doc_organize.context import migrate_markdown_v1
 from app.jobs import queue
 from app.jobs.context import RECYCLE_EXIT
 from app.jobs.worker import JobWorker, Slot, purge_workspace
 from app.workspace import runs as workspace
-from tests.conftest import project_payload
+from tests.conftest import ADMIN_PASSWORD, login_as, project_payload
 
 
 @pytest.fixture
@@ -275,6 +275,42 @@ def test_project_delete_keeping_outputs(
     _confirm(worker, user_client, db, project_id, "project_delete")
 
     assert (output / "a.md").is_file()
+
+
+def test_project_delete_releases_its_locations(
+    worker: JobWorker,
+    user_client: TestClient,
+    admin: User,
+    project_id: int,
+    db: Session,
+    project_locations: dict[str, Location],
+) -> None:
+    """2.3.1 (opción (a) de C1): el proyecto borrado suelta sus ubicaciones y se pueden eliminar."""
+    source, destination = project_locations["source"], project_locations["destination"]
+    preview = _enqueue(user_client, project_id, operation="project_delete")
+    _run_and_wait(worker, db, preview)
+    db.expire_all()
+    kept = db.get(Project, project_id)
+    assert kept is not None
+    assert (kept.source_location_id, kept.destination_location_id) == (source.id, destination.id)  # dry_run: nada
+
+    real = _confirm(worker, user_client, db, project_id, "project_delete")
+
+    db.expire_all()
+    project = db.get(Project, project_id)
+    assert project is not None
+    assert (project.status, project.source_location_id, project.destination_location_id) == ("deleted", None, None)
+    entry = db.scalar(select(AuditEntry).where(AuditEntry.action == "project.delete"))
+    assert entry is not None and entry.details is not None
+    assert entry.details["source_location"] == {"id": source.id, "name": source.name}
+    assert entry.details["destination_location"] == {"id": destination.id, "name": destination.name}
+    # Su historial sigue a la vista (el detalle del run no lee las ubicaciones del proyecto).
+    assert user_client.get(f"/api/v1/runs/{real.id}").status_code == 200
+    admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
+    for location in (source, destination):
+        usage = admin_client.get(f"/api/v1/locations/{location.id}/usage").json()
+        assert usage == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+        assert admin_client.delete(f"/api/v1/locations/{location.id}").status_code == 204
 
 
 @pytest.mark.posix_paths

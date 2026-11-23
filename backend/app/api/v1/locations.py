@@ -134,8 +134,8 @@ def update_location(
     responses={**_ERRORS, **_404},
 )
 def location_usage(location_id: int, admin: InstanceAdmin, db: DbSession) -> LocationUsageOut:
-    """Proyectos activos (con nombre) y borrados (solo cuántos) que usan la ubicación, para avisar antes de borrarla.
-    Solo los del tenant del administrador: un proyecto solo usa ubicaciones de su tenant."""
+    """Proyectos activos (con nombre) que usan la ubicación, para avisar antes de borrarla. Solo los del tenant del
+    administrador: un proyecto solo usa ubicaciones de su tenant. Los borrados no cuentan (2.3.1)."""
     location = service.get_location(db, location_id, tenant_id=admin.scope_tenant_id)
     usage = service.location_projects(db, location)
     return LocationUsageOut(
@@ -149,7 +149,7 @@ def location_usage(location_id: int, admin: InstanceAdmin, db: DbSession) -> Loc
     "/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Borrar ubicación",
-    responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto, activo o borrado, la usa (location_in_use)"}},
+    responses={**_ERRORS, **_404, 409: {"description": "Algún proyecto activo la usa (location_in_use)"}},
 )
 def delete_location(location_id: int, admin: InstanceAdmin, db: DbSession, ctx: Context) -> None:
     """Quita la ubicación del registro; la carpeta y su contenido no se tocan."""

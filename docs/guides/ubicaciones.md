@@ -27,9 +27,10 @@ dentro de ella. Si la ubicación no está disponible, el explorador lo indica y 
   temporal.
 - **Editar** cambia nombre, ruta para mostrar, uso, acceso y tipo.
 - **Borrar** quita la ubicación de la aplicación; **la carpeta y sus documentos no se tocan**. Pide escribir el nombre
-  para confirmar. No se puede borrar una ubicación que use algún proyecto (tampoco uno borrado, que conserva su
-  historial de ejecuciones). Al abrir el borrado se ve qué proyectos activos la usan, con enlace a cada uno, y cuántos
-  borrados; mientras haya alguno, «Borrar» queda desactivado.
+  para confirmar. No se puede borrar una ubicación que use algún proyecto activo: al abrir el borrado se ven, con
+  enlace a cada uno, y mientras haya alguno «Borrar» queda desactivado. Los proyectos borrados no cuentan: al borrarse
+  sueltan sus ubicaciones (desde la 2.3.1) y conservan su historial de ejecuciones; qué ubicaciones usaban queda en la
+  auditoría.
 
 No se puede registrar la propia `/mnt`, una carpeta dentro de otra ubicación (ni al revés) ni una que contenga los
 datos de la aplicación.

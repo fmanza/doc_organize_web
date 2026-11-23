@@ -1,7 +1,8 @@
 """``project_delete``: borra el proyecto (lógico en la BD), su estado y, con ``delete_outputs``, su carpeta de salidas.
 
 La carpeta de salidas pertenece al proyecto (nueva o vacía al crearlo), así que borrarla entera no toca ficheros
-ajenos. Con ``dry_run`` solo cuenta lo que se borraría.
+ajenos. Con ``dry_run`` solo cuenta lo que se borraría. Al borrarlo suelta sus ubicaciones (2.3.1: claves a ``NULL``)
+para que se puedan eliminar; cuáles eran queda en la auditoría.
 """
 
 from __future__ import annotations
@@ -42,10 +43,19 @@ def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -
     ctx.check_cancelled()
     if paths:
         require_rw(project.destination_location)
+    # Antes de soltarlas: el proyecto ya no las referencia en la BD, la auditoría sí (sin rutas del contenedor).
+    locations = {
+        "source_location": {"id": project.source_location.id, "name": project.source_location.name},
+        "destination_location": {"id": project.destination_location.id, "name": project.destination_location.name},
+    }
     with ctx.uninterruptible():
         # Primero se marca como borrado: si el borrado de ficheros se corta, el proyecto no queda activo a medias.
         with ctx.session_factory() as db:
-            db.execute(update(Project).where(Project.id == project.id).values(status="deleted", deleted_at=utcnow()))
+            db.execute(
+                update(Project)
+                .where(Project.id == project.id)
+                .values(status="deleted", deleted_at=utcnow(), source_location_id=None, destination_location_id=None)
+            )
             db.commit()
         leftovers: list[str] = []
         if paths and outputs:
@@ -64,7 +74,7 @@ def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -
             actor_id=ctx.created_by,
             target_type="project",
             target_id=project.id,
-            details={"run_id": ctx.run_id, "name": project.name, **result},
+            details={"run_id": ctx.run_id, "name": project.name, **locations, **result},
         )
         db.commit()
     return result

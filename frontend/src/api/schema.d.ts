@@ -545,8 +545,8 @@ export interface paths {
         };
         /**
          * Proyectos que usan la ubicación
-         * @description Proyectos activos (con nombre) y borrados (solo cuántos) que usan la ubicación, para avisar antes de borrarla.
-         *     Solo los del tenant del administrador: un proyecto solo usa ubicaciones de su tenant.
+         * @description Proyectos activos (con nombre) que usan la ubicación, para avisar antes de borrarla. Solo los del tenant del
+         *     administrador: un proyecto solo usa ubicaciones de su tenant. Los borrados no cuentan (2.3.1).
          */
         get: operations["location_usage_api_v1_locations__location_id__usage_get"];
         put?: never;
@@ -3714,12 +3714,13 @@ export interface components {
             active_projects: components["schemas"]["LocationProjectRef"][];
             /**
              * Can Delete
-             * @description Ningún proyecto, activo o borrado, la usa
+             * @description Ningún proyecto activo la usa
              */
             can_delete: boolean;
             /**
              * Deleted Projects
-             * @description Proyectos borrados que la usan (conservan su historial)
+             * @deprecated
+             * @description Obsoleto desde 2.3.1, siempre 0: los proyectos borrados sueltan sus ubicaciones
              */
             deleted_projects: number;
         };
@@ -6616,7 +6617,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Algún proyecto, activo o borrado, la usa (location_in_use) */
+            /** @description Algún proyecto activo la usa (location_in_use) */
             409: {
                 headers: {
                     [name: string]: unknown;

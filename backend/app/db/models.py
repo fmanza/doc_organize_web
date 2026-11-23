@@ -286,22 +286,34 @@ class Project(Base):
 
     Las rutas se guardan **relativas** a su ubicación (``source_subpaths``, ``destination_subpath``) y se vuelven a
     resolver en cada uso. El estado de doc_organize vive en ``DOW_DATA_DIR/projects/<id>`` (ADR-005). Borrar un proyecto
-    es lógico (``status = deleted``): sus runs y la auditoría siguen apuntando a él.
+    es lógico (``status = deleted``): sus runs y la auditoría siguen apuntando a él, y suelta sus ubicaciones (2.3.1).
     """
 
     __tablename__ = "projects"
     __table_args__ = (
         CheckConstraint("status IN ('active', 'deleted')", name="status"),
         CheckConstraint("context_versions IN ('all', 'mark', 'current_only')", name="context_versions"),
+        # 2.3.1 (migración ``0029``): solo un proyecto borrado puede quedarse sin ubicaciones.
+        CheckConstraint(
+            "status = 'deleted' OR (source_location_id IS NOT NULL AND destination_location_id IS NOT NULL)",
+            name="locations",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
     name: Mapped[str] = mapped_column(String(128))
     description: Mapped[str | None] = mapped_column(String(1024), default=None)
-    source_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="RESTRICT"), index=True)
+    #: Ubicaciones de origen y destino. Al borrar el proyecto quedan a ``NULL`` (2.3.1, migración ``0029``) para que la
+    #: ubicación se pueda eliminar; el tipo sigue sin ``None`` porque solo se leen en proyectos activos (``get_access``
+    #: sin ``include_deleted``, ``require_project`` en el worker) y el CHECK ``locations`` lo garantiza en la BD.
+    source_location_id: Mapped[int] = mapped_column(
+        ForeignKey("locations.id", ondelete="RESTRICT"), index=True, nullable=True
+    )
     source_subpaths: Mapped[list[str]] = mapped_column(JSON)
-    destination_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="RESTRICT"), index=True)
+    destination_location_id: Mapped[int] = mapped_column(
+        ForeignKey("locations.id", ondelete="RESTRICT"), index=True, nullable=True
+    )
     destination_subpath: Mapped[str] = mapped_column(String(4096))
     #: Guardar la cuenta propietaria de cada fichero al escanear (1.5.0, ``ScanOptions.capture_owner``): dato personal,
     #: solo lo activa el ``owner`` y es fijo por proyecto para que un escaneo no lo borre por olvidar la opción.

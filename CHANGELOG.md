@@ -5,6 +5,18 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Ubicación retenida por proyectos borrados** (opción (a) de C1): al borrar un proyecto, sus ubicaciones de origen y
+  destino quedan libres, así que una ubicación que solo usaban proyectos borrados ya se puede borrar o pasar a otro
+  tenant. El proyecto borrado conserva su historial de ejecuciones, y qué ubicaciones usaba queda en la auditoría
+  (`project.delete`).
+    - Migración `0029`: los proyectos ya borrados sueltan sus ubicaciones; solo un proyecto borrado puede quedarse sin
+      ellas (CHECK `ck_projects_locations`). No se puede bajar de la `0029` si algún proyecto se ha quedado sin
+      ubicación: hay que restaurar la copia de seguridad.
+    - `LocationUsageOut.deleted_projects` queda obsoleto (siempre 0); el aviso de «solo la usan proyectos borrados»
+      desaparece.
+
 ## [2.3.0] - 2026-11-23
 
 Tema claro u oscuro por usuario. Sigue con doc_organize 2.2.0.
