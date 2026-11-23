@@ -13,9 +13,10 @@ test('el proyecto abierto pone Duplicados el primero', async ({ page }) => {
   await page.goto(`/projects/${id}`);
   const nav = page.getByRole('navigation', { name: 'Navegación principal' });
   await expect(nav.getByRole('link', { name: 'Duplicados' })).toBeVisible();
-  const links = await nav.getByRole('link').allTextContents();
-  const start = links.indexOf('Proyectos') + 1;
-  expect(links.slice(start, start + 4)).toEqual(['Duplicados', 'Escaneo', 'Documentos', 'Contexto']);
+  // 2.1.1: los pasos van en el bloque «Proyecto abierto», detrás del enlace con el nombre del proyecto.
+  const group = nav.getByRole('group', { name: /^Proyecto abierto/ });
+  const links = await group.getByRole('link').allTextContents();
+  expect(links.slice(1, 5)).toEqual(['Duplicados', 'Escaneo', 'Documentos', 'Contexto']);
 });
 
 test('Información enseña el estado, la memoria y el escaneo de cada worker', async ({ page }) => {

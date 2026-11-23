@@ -648,9 +648,11 @@ def remove_member(db: Session, project: Project, *, user_id: int, actor: User, c
     db.commit()
 
 
-def projects_using_location(db: Session, location_id: int) -> int:
-    """Proyectos (incluidos los borrados, que conservan su historial) que usan la ubicación."""
-    query = select(func.count()).where(
-        or_(Project.source_location_id == location_id, Project.destination_location_id == location_id)
+def projects_on_location(db: Session, location_id: int) -> list[Project]:
+    """Proyectos (activos y borrados) que usan la ubicación como origen o destino: activos primero, por nombre."""
+    query = (
+        select(Project)
+        .where(or_(Project.source_location_id == location_id, Project.destination_location_id == location_id))
+        .order_by(Project.status, func.lower(Project.name), Project.id)
     )
-    return db.scalar(query) or 0
+    return list(db.scalars(query).unique())

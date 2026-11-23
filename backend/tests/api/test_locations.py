@@ -13,8 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import AuditEntry, Location, Tenant, User, Worker
-from tests.conftest import USER_PASSWORD, do_login
+from app.db.models import AuditEntry, Location, Project, Tenant, User, Worker
+from tests.conftest import USER_PASSWORD, do_login, project_payload
 
 LOCATION = {"name": "Expedientes", "path": "expedientes", "usage": "source", "access": "ro", "kind": "network"}
 
@@ -258,6 +258,76 @@ def test_delete_location_keeps_folder(
     assert (mnt / "expedientes" / "2024").is_dir()
     actions = db.scalars(select(AuditEntry.action).where(AuditEntry.action.startswith("location."))).all()
     assert actions == ["location.create", "location.delete"]
+
+
+def _project_on(admin_client: TestClient, locations: dict[str, Location], name: str) -> int:
+    response = admin_client.post("/api/v1/projects", json=project_payload(locations, name))
+    assert response.status_code == 201, response.text
+    project_id: int = response.json()["id"]
+    return project_id
+
+
+def test_delete_location_used_by_active_project_names_it(
+    admin_client: TestClient, project_locations: dict[str, Location]
+) -> None:
+    """2.1.1: antes salía «La ubicación ya existe» (el título de ``LocationConflictError``) al borrar."""
+    _project_on(admin_client, project_locations, "Proyecto A")
+    source_id = project_locations["source"].id
+
+    usage = admin_client.get(f"/api/v1/locations/{source_id}/usage")
+    response = admin_client.delete(f"/api/v1/locations/{source_id}")
+
+    assert usage.status_code == 200
+    assert usage.json()["deleted_projects"] == 0
+    assert [p["name"] for p in usage.json()["active_projects"]] == ["Proyecto A"]
+    assert usage.json()["can_delete"] is False
+    assert response.status_code == 409
+    problem = response.json()
+    assert (problem["title"], problem["code"]) == ("La ubicación está en uso", "location_in_use")
+    assert "«Proyecto A»" in problem["detail"]
+    assert "ya existe" not in problem["title"]
+
+
+def test_delete_location_used_only_by_deleted_projects_explains_why(
+    admin_client: TestClient, project_locations: dict[str, Location], db: Session
+) -> None:
+    project_id = _project_on(admin_client, project_locations, "Proyecto B")
+    project = db.get(Project, project_id)
+    assert project is not None
+    project.status = "deleted"
+    db.commit()
+    source_id = project_locations["source"].id
+
+    usage = admin_client.get(f"/api/v1/locations/{source_id}/usage")
+    response = admin_client.delete(f"/api/v1/locations/{source_id}")
+
+    assert usage.json() == {"active_projects": [], "deleted_projects": 1, "can_delete": False}
+    assert response.status_code == 409
+    assert response.json()["code"] == "location_in_use"
+    assert "1 proyecto(s) borrado(s)" in response.json()["detail"]
+    assert "Proyecto B" not in response.json()["detail"]
+
+
+def test_location_usage_without_projects_allows_delete(admin_client: TestClient, location: dict[str, object]) -> None:
+    usage = admin_client.get(f"/api/v1/locations/{location['id']}/usage")
+
+    assert usage.json() == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+
+
+def test_location_usage_is_admin_only(admin_client: TestClient, location: dict[str, object], user: User) -> None:
+    other = _as_user(admin_client, user)
+
+    assert other.get(f"/api/v1/locations/{location['id']}/usage").status_code == 403
+
+
+def test_location_usage_of_other_tenant_is_not_found(
+    admin_client: TestClient, mnt: Path, db: Session, make_tenant: Callable[..., Tenant]
+) -> None:
+    _foreign_location(db, make_tenant("obras", "Obras"), "Ajena", mnt / "salidas")
+    foreign = db.scalar(select(Location).where(Location.name == "Ajena"))
+    assert foreign is not None
+
+    assert admin_client.get(f"/api/v1/locations/{foreign.id}/usage").status_code == 404
 
 
 def test_probe_marks_removed_folder_unavailable(

@@ -96,6 +96,23 @@ export function useUpdateLocation() {
   });
 }
 
+export type LocationUsageOut = components['schemas']['LocationUsageOut'];
+
+/** Proyectos que usan la ubicación (2.1.1, solo admin): se pide al abrir el modal de borrado para avisar antes. */
+export function useLocationUsage(id: number | null) {
+  return useQuery({
+    queryKey: ['locations', 'usage', id],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/locations/{location_id}/usage', {
+          params: { path: { location_id: id ?? 0 } },
+        }),
+      ),
+    enabled: id !== null,
+    staleTime: 0,
+  });
+}
+
 export function useDeleteLocation() {
   const invalidate = useInvalidateLocations();
   return useMutation({

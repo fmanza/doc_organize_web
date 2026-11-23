@@ -58,6 +58,7 @@ export const ICON_STROKE = 1.75;
 export const NAV_ICONS = {
   home: IconHome,
   projects: IconFolders,
+  project: IconFolder,
   duplicates: IconCopy,
   scan: IconScan,
   documents: IconFileText,

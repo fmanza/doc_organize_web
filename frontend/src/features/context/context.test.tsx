@@ -405,6 +405,24 @@ describe('SiteViewerPage', () => {
       'noopener noreferrer',
     );
   });
+
+  it('2.1.1: desde el visor se vuelve a «6. Entregar» con un enlace fijo', async () => {
+    stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'POST /api/v1/projects/7/context/site-session': {
+        body: { url: '/site/7.1.99.abc/', expires_at: '2026-11-02T09:00:00Z' },
+      },
+    });
+
+    renderRoute('/projects/7/context/site');
+
+    const back = await screen.findByRole('link', { name: 'Volver a 6. Entregar' });
+    expect(back).toHaveAttribute('href', '/projects/7/context?paso=entregar');
+    // El visor no se presenta como si fuera el propio paso «Entregar».
+    const nav = screen.getByRole('navigation', { name: 'Pasos del contexto' });
+    expect(nav.querySelector('[aria-current="page"]')).toBeNull();
+  });
 });
 
 describe('TaxonomyTemplatesPage', () => {

@@ -4209,6 +4209,25 @@
         "title": "LocationPage",
         "type": "object"
       },
+      "LocationProjectRef": {
+        "description": "Proyecto activo que usa una ubicación.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "LocationProjectRef",
+        "type": "object"
+      },
       "LocationPublic": {
         "description": "Ubicación vista por cualquier usuario: sin la ruta del contenedor.",
         "properties": {
@@ -4460,6 +4479,36 @@
           }
         },
         "title": "LocationUpdate",
+        "type": "object"
+      },
+      "LocationUsageOut": {
+        "description": "Proyectos que usan una ubicación (2.1.1): mientras haya alguno, no se puede borrar.",
+        "properties": {
+          "active_projects": {
+            "description": "Proyectos activos que la usan, por nombre",
+            "items": {
+              "$ref": "#/components/schemas/LocationProjectRef"
+            },
+            "title": "Active Projects",
+            "type": "array"
+          },
+          "can_delete": {
+            "description": "Ningún proyecto, activo o borrado, la usa",
+            "title": "Can Delete",
+            "type": "boolean"
+          },
+          "deleted_projects": {
+            "description": "Proyectos borrados que la usan (conservan su historial)",
+            "title": "Deleted Projects",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active_projects",
+          "deleted_projects",
+          "can_delete"
+        ],
+        "title": "LocationUsageOut",
         "type": "object"
       },
       "LoginRequest": {
@@ -9779,7 +9828,7 @@
             "description": "No existe"
           },
           "409": {
-            "description": "Algún proyecto la usa"
+            "description": "Algún proyecto, activo o borrado, la usa (location_in_use)"
           },
           "422": {
             "content": {
@@ -9969,6 +10018,58 @@
           }
         },
         "summary": "Comprobar ubicación",
+        "tags": [
+          "locations"
+        ]
+      }
+    },
+    "/api/v1/locations/{location_id}/usage": {
+      "get": {
+        "description": "Proyectos activos (con nombre) y borrados (solo cuántos) que usan la ubicación, para avisar antes de borrarla.\nSolo los del tenant del administrador: un proyecto solo usa ubicaciones de su tenant.",
+        "operationId": "location_usage_api_v1_locations__location_id__usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin rol de administrador o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Proyectos que usan la ubicación",
         "tags": [
           "locations"
         ]

@@ -26,6 +26,7 @@ from app.domain.locations.errors import (
     InvalidLocationPathError,
     InvalidRelativePathError,
     LocationConflictError,
+    LocationInUseError,
     LocationNotFoundError,
     LocationUnavailableError,
 )
@@ -39,6 +40,48 @@ from app.domain.locations.paths import (
 )
 from app.domain.locations.probe import probe
 from app.domain.tenancy.tenants import get_tenant
+
+
+@dataclass(frozen=True)
+class LocationProjects:
+    """Proyectos que usan una ubicación (2.1.1): los activos, con nombre, y cuántos borrados la siguen usando.
+
+    Attributes:
+        active: ``(id, nombre)`` de cada proyecto activo, por nombre.
+        deleted: Proyectos borrados que la usan (conservan su historial de ejecuciones y la clave ajena impide borrarla).
+    """
+
+    active: list[tuple[int, str]]
+    deleted: int
+
+    @property
+    def in_use(self) -> bool:
+        """Algún proyecto, activo o borrado, la usa."""
+        return bool(self.active) or self.deleted > 0
+
+
+def location_projects(db: Session, location: Location) -> LocationProjects:
+    """Los proyectos que usan ``location`` (el tenant ya lo comprobó ``get_location``: un proyecto solo usa ubicaciones
+    de su tenant)."""
+    from app.domain.projects.service import projects_on_location
+
+    projects = projects_on_location(db, location.id)
+    return LocationProjects(
+        active=[(project.id, project.name) for project in projects if project.status != "deleted"],
+        deleted=sum(1 for project in projects if project.status == "deleted"),
+    )
+
+
+def _in_use_message(usage: LocationProjects, action: str) -> str:
+    """Explica quién usa la ubicación y qué hacer, sin rutas del contenedor."""
+    if usage.active:
+        names = ", ".join(f"«{name}»" for _, name in usage.active[:5])
+        more = f" y {len(usage.active) - 5} más" if len(usage.active) > 5 else ""
+        return f"La usan {len(usage.active)} proyecto(s) activo(s): {names}{more}. Bórralos antes de {action}."
+    return (
+        f"Solo la usan {usage.deleted} proyecto(s) borrado(s), que conservan su historial de ejecuciones: "
+        f"por ahora no se puede {action}."
+    )
 
 
 @dataclass(frozen=True)
@@ -310,16 +353,16 @@ def update_location(
     proyecto la usa: un proyecto solo usa ubicaciones de su tenant).
 
     Raises:
-        LocationConflictError: El nombre nuevo ya existe, o se cambia de tenant y algún proyecto la usa.
+        LocationConflictError: El nombre nuevo ya existe (también en el tenant de destino).
+        LocationInUseError: Se cambia de tenant y algún proyecto la usa.
         TenantNotFoundError: El tenant nuevo no existe.
     """
     changed: list[str] = []
     if changes.tenant_id is not None and changes.tenant_id != location.tenant_id:
-        from app.domain.projects.service import projects_using_location
-
         get_tenant(db, changes.tenant_id)
-        if projects_using_location(db, location.id):
-            raise LocationConflictError("Algún proyecto usa la ubicación: no puede cambiar de tenant.")
+        usage = location_projects(db, location)
+        if usage.in_use:
+            raise LocationInUseError(_in_use_message(usage, "cambiarla de tenant"))
         if _name_taken(db, changes.tenant_id, location.name):
             raise LocationConflictError("El otro tenant ya tiene una ubicación con ese nombre.")
         location.tenant_id = changes.tenant_id
@@ -367,13 +410,12 @@ def delete_location(db: Session, location: Location, *, actor: User, ctx: Reques
     """Borra el registro de la ubicación (nunca la carpeta).
 
     Raises:
-        LocationConflictError: Algún proyecto la usa como origen o destino (también los borrados, que conservan su
-            historial de ejecuciones).
+        LocationInUseError: Algún proyecto la usa como origen o destino (también los borrados, que conservan su
+            historial de ejecuciones); el detalle nombra los activos.
     """
-    from app.domain.projects.service import projects_using_location
-
-    if projects_using_location(db, location.id):
-        raise LocationConflictError("Hay proyectos que usan esta ubicación.")
+    usage = location_projects(db, location)
+    if usage.in_use:
+        raise LocationInUseError(_in_use_message(usage, "eliminar la ubicación"))
     audit.record(
         db,
         action=AuditAction.LOCATION_DELETE,
