@@ -42,34 +42,22 @@ const LOCATION_SORT: readonly LocationSort[] = ['name', 'usage', 'access', 'stat
 
 type Editing = { location: LocationOut | null } | null;
 
-/** Quién usa la ubicación (2.1.1): los proyectos activos, con enlace, o cuántos borrados la retienen. */
+/** Quién usa la ubicación (2.1.1): los proyectos activos, con enlace. Los borrados no la retienen (2.3.1). */
 function LocationUsageNotice({ usage }: { usage: LocationUsageOut | undefined }) {
   const { t } = useTranslation();
   if (!usage || usage.can_delete) return null;
-  if (usage.active_projects.length > 0) {
-    return (
-      <Alert color="yellow" title={t('locations.inUse.title')}>
-        <Text size="sm">{t('locations.inUse.active', { count: usage.active_projects.length })}</Text>
-        <List size="sm" mt="xs">
-          {usage.active_projects.map((project) => (
-            <List.Item key={project.id}>
-              <Anchor component={Link} to={`/projects/${project.id}`}>
-                {project.name}
-              </Anchor>
-            </List.Item>
-          ))}
-        </List>
-        {usage.deleted_projects > 0 && (
-          <Text size="sm" mt="xs">
-            {t('locations.inUse.alsoDeleted', { count: usage.deleted_projects })}
-          </Text>
-        )}
-      </Alert>
-    );
-  }
   return (
     <Alert color="yellow" title={t('locations.inUse.title')}>
-      <Text size="sm">{t('locations.inUse.onlyDeleted', { count: usage.deleted_projects })}</Text>
+      <Text size="sm">{t('locations.inUse.active', { count: usage.active_projects.length })}</Text>
+      <List size="sm" mt="xs">
+        {usage.active_projects.map((project) => (
+          <List.Item key={project.id}>
+            <Anchor component={Link} to={`/projects/${project.id}`}>
+              {project.name}
+            </Anchor>
+          </List.Item>
+        ))}
+      </List>
     </Alert>
   );
 }
