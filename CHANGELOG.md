@@ -5,6 +5,9 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-23
+
+Tema claro u oscuro por usuario. Sigue con doc_organize 2.2.0.
 Migración `0028` (aditiva).
 
 ### Added
