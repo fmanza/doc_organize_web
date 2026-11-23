@@ -5,6 +5,18 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+Migración `0028` (aditiva).
+
+### Added
+
+- **Tema claro u oscuro por usuario**: en el menú de usuario, «Tema» con «Como el sistema» (por defecto, lo de
+  siempre), «Claro» y «Oscuro». Se guarda en el usuario (`users.color_scheme`, migración `0028`) y se aplica al
+  momento; si no se puede guardar, vuelve al anterior con un aviso.
+    - `Me` incluye `color_scheme`, y `PUT /api/v1/auth/me/preferences` lo guarda (solo el propio usuario; no se
+      audita: es una preferencia visual).
+    - Sin destello al cargar: `color-scheme.js`, fuera de línea por la CSP, aplica la copia local del navegador antes
+      de que arranque la interfaz; al llegar `/me` gana el del usuario.
+
 ## [2.2.0] - 2026-11-23
 
 IA por funcionalidad con avisos flotantes y duplicados por contenido; incluye las correcciones previstas para la 2.1.1

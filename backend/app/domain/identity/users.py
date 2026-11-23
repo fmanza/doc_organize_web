@@ -8,6 +8,7 @@ instancia o sin quien gestione los usuarios de un tenant, y dar permisos que uno
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Final
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
@@ -60,6 +61,22 @@ def get_user(db: Session, user_id: int, *, tenant_id: int | None) -> User:
     if user is None or (tenant_id is not None and user.tenant_id != tenant_id):
         raise UserNotFoundError()
     return user
+
+
+COLOR_SCHEMES: Final = frozenset({"auto", "light", "dark"})
+
+
+def set_color_scheme(db: Session, user: User, color_scheme: str) -> None:
+    """Guarda el tema de la interfaz de ``user`` (``auto``, ``light`` o ``dark``).
+
+    Raises:
+        ValueError: si ``color_scheme`` no es uno de :data:`COLOR_SCHEMES`.
+    """
+    if color_scheme not in COLOR_SCHEMES:
+        raise ValueError(f"Tema no válido: {color_scheme!r}")
+    if user.color_scheme != color_scheme:
+        user.color_scheme = color_scheme
+        db.commit()
 
 
 def get_by_username(db: Session, username: str) -> User | None:

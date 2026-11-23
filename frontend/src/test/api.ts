@@ -27,6 +27,7 @@ export const ADMIN = {
   is_instance_admin: true,
   role: { id: 1, name: 'Administrador', builtin: 'admin' },
   permissions: ALL_PERMISSIONS,
+  color_scheme: 'auto',
 } as const;
 /** Usuario con el rol base «Usuario». */
 export const USER = {
@@ -38,6 +39,7 @@ export const USER = {
   is_instance_admin: false,
   role: { id: 2, name: 'Usuario', builtin: 'user' },
   permissions: ['projects.create'],
+  color_scheme: 'auto',
 } as const;
 
 /**

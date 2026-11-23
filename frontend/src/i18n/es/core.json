@@ -93,6 +93,13 @@
     "required": "Campo obligatorio",
     "changePassword": "Cambiar contraseña",
     "mySessions": "Mis sesiones",
+    "colorScheme": {
+      "label": "Tema",
+      "auto": "Como el sistema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "saveFailed": "No se pudo guardar el tema. Se mantiene el anterior."
+    },
     "changePasswordIntro": "Al cambiarla se cierran tus sesiones abiertas en otros navegadores.",
     "currentPassword": "Contraseña actual",
     "newPassword": "Contraseña nueva",

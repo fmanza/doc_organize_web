@@ -4817,6 +4817,15 @@
           "acting_tenant": {
             "$ref": "#/components/schemas/TenantRef"
           },
+          "color_scheme": {
+            "enum": [
+              "auto",
+              "light",
+              "dark"
+            ],
+            "title": "Color Scheme",
+            "type": "string"
+          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
@@ -4863,7 +4872,8 @@
           "acting_tenant",
           "is_instance_admin",
           "role",
-          "permissions"
+          "permissions",
+          "color_scheme"
         ],
         "title": "Me",
         "type": "object"
@@ -5096,6 +5106,26 @@
           "items"
         ],
         "title": "PermissionList",
+        "type": "object"
+      },
+      "Preferences": {
+        "additionalProperties": false,
+        "description": "Preferencias del propio usuario (2.3).",
+        "properties": {
+          "color_scheme": {
+            "enum": [
+              "auto",
+              "light",
+              "dark"
+            ],
+            "title": "Color Scheme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "color_scheme"
+        ],
+        "title": "Preferences",
         "type": "object"
       },
       "ProfileSectionsOut": {
@@ -9496,6 +9526,47 @@
           }
         },
         "summary": "Usuario actual",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/preferences": {
+      "put": {
+        "description": "Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.\n\nEs una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).",
+        "operationId": "update_preferences_api_v1_auth_me_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Token CSRF ausente o no válido"
+          },
+          "422": {
+            "description": "Valor no válido"
+          }
+        },
+        "summary": "Guardar mis preferencias",
         "tags": [
           "auth"
         ]

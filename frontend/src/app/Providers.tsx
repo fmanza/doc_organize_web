@@ -2,6 +2,7 @@ import { Badge, MantineProvider, createTheme } from '@mantine/core';
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
+import { colorSchemeManager } from './colorScheme';
 import { createQueryClient } from './queryClient';
 
 const theme = createTheme({
@@ -26,8 +27,9 @@ interface ProvidersProps {
 
 export function Providers({ children, queryClient, env = 'default' }: ProvidersProps) {
   const [client] = useState(() => queryClient ?? createQueryClient());
+  const [manager] = useState(() => colorSchemeManager(env));
   return (
-    <MantineProvider theme={theme} defaultColorScheme="auto" env={env}>
+    <MantineProvider theme={theme} defaultColorScheme="auto" colorSchemeManager={manager} env={env}>
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     </MantineProvider>
   );

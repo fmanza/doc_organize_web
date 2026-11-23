@@ -19,6 +19,7 @@ import {
   IconCircleX,
   IconClock,
   IconCopy,
+  IconDeviceDesktop,
   IconDevices,
   IconFileText,
   IconFolder,
@@ -28,6 +29,7 @@ import {
   IconInfoCircle,
   IconStethoscope,
   IconListSearch,
+  IconMoon,
   IconPlayerPlay,
   IconPlayerStop,
   IconPlugConnected,
@@ -39,6 +41,7 @@ import {
   IconSortAscending,
   IconSortDescending,
   IconSparkles,
+  IconSun,
   IconTemplate,
   IconUser,
   IconUsers,
@@ -107,6 +110,14 @@ export const SORT_ICONS = {
   none: IconArrowsSort,
 } as const satisfies Record<string, AppIcon>;
 
+/** Tema de la interfaz en el menú de usuario (2.3); la opción elegida lleva además `SelectedIcon`. */
+export const COLOR_SCHEME_ICONS = {
+  auto: IconDeviceDesktop,
+  light: IconSun,
+  dark: IconMoon,
+} as const satisfies Record<string, AppIcon>;
+
+export const SelectedIcon = IconCheck;
 export const FolderIcon = IconFolder;
 export const ParentFolderIcon = IconArrowUp;
 export const BackIcon = IconArrowLeft;
