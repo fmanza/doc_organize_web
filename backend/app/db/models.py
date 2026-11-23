@@ -110,6 +110,8 @@ class User(Base):
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), index=True)
     is_instance_admin: Mapped[bool] = mapped_column(default=False)
     is_active: Mapped[bool] = mapped_column(default=True)
+    #: Tema de la interfaz elegido por el usuario (2.3): ``auto`` (el del sistema), ``light`` o ``dark``.
+    color_scheme: Mapped[str] = mapped_column(String(8), default="auto", server_default="auto")
     failed_attempts: Mapped[int] = mapped_column(default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     password_changed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

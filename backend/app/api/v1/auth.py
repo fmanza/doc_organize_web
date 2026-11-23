@@ -20,18 +20,20 @@ from app.api.deps import (
     set_csrf_cookie,
 )
 from app.api.v1.schemas import (
+    ColorScheme,
     CsrfToken,
     LoginRequest,
     Me,
     PasswordChange,
     Permission,
+    Preferences,
     RoleRef,
     TenantRef,
     TenantSwitch,
 )
 from app.core.security import new_csrf_token, session_csrf_token
 from app.db.models import User
-from app.domain.identity import audit, auth
+from app.domain.identity import audit, auth, users
 from app.domain.identity.audit import AuditAction
 from app.domain.tenancy import tenants
 
@@ -94,6 +96,7 @@ def me_out(db: Session, user: User) -> Me:
         is_instance_admin=user.is_instance_admin,
         role=RoleRef.model_validate(user.role),
         permissions=cast(list[Permission], user.permissions),
+        color_scheme=cast(ColorScheme, user.color_scheme),
     )
 
 
@@ -124,6 +127,21 @@ def switch_tenant(body: TenantSwitch, session: CurrentSession, user: InstanceAdm
         target_id=target.id,
     )
     db.commit()
+    return me_out(db, user)
+
+
+@router.put(
+    "/me/preferences",
+    response_model=Me,
+    summary="Guardar mis preferencias",
+    responses={422: {"description": "Valor no válido"}, **_401, **_403},
+)
+def update_preferences(body: Preferences, user: CurrentUser, db: DbSession) -> Me:
+    """Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.
+
+    Es una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).
+    """
+    users.set_color_scheme(db, user, body.color_scheme)
     return me_out(db, user)
 
 

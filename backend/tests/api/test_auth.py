@@ -4,11 +4,11 @@ import logging
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import AuditEntry, User, UserSession
-from tests.conftest import USER_PASSWORD, do_login
+from tests.conftest import ADMIN_PASSWORD, USER_PASSWORD, do_login, login_as
 
 
 def _csrf(client: TestClient) -> str:
@@ -210,3 +210,49 @@ def test_login_success_and_failure_are_audited(client: TestClient, user: User, d
 
 def test_health_stays_public(client: TestClient) -> None:
     assert client.get("/api/health").status_code == 200
+
+
+# --- 2.3: tema de la interfaz por usuario ---------------------------------------------------------------------------
+
+
+def test_me_color_scheme_defaults_to_system(user_client: TestClient) -> None:
+    assert user_client.get("/api/v1/auth/me").json()["color_scheme"] == "auto"
+
+
+@pytest.mark.parametrize("scheme", ["dark", "light", "auto"])
+def test_update_preferences_saves_color_scheme(user_client: TestClient, db: Session, user: User, scheme: str) -> None:
+    response = user_client.put("/api/v1/auth/me/preferences", json={"color_scheme": scheme})
+
+    assert response.status_code == 200
+    assert response.json()["color_scheme"] == scheme
+    assert user_client.get("/api/v1/auth/me").json()["color_scheme"] == scheme
+    db.refresh(user)
+    assert user.color_scheme == scheme
+
+
+def test_color_scheme_is_per_user(user_client: TestClient, admin: User) -> None:
+    user_client.put("/api/v1/auth/me/preferences", json={"color_scheme": "dark"})
+
+    other = login_as(user_client, admin.username, ADMIN_PASSWORD)
+    assert other.get("/api/v1/auth/me").json()["color_scheme"] == "auto"
+
+
+@pytest.mark.parametrize("body", [{"color_scheme": "sepia"}, {}, {"color_scheme": "dark", "user_id": 1}])
+def test_update_preferences_rejects_invalid_body(user_client: TestClient, body: dict[str, object]) -> None:
+    assert user_client.put("/api/v1/auth/me/preferences", json=body).status_code == 422
+
+
+def test_update_preferences_requires_session_and_csrf(client: TestClient, user: User) -> None:
+    assert client.put("/api/v1/auth/me/preferences", json={"color_scheme": "dark"}).status_code in (401, 403)
+
+    do_login(client, user.username, USER_PASSWORD)
+    del client.headers["X-CSRF-Token"]
+    assert client.put("/api/v1/auth/me/preferences", json={"color_scheme": "dark"}).status_code == 403
+
+
+def test_update_preferences_is_not_audited(user_client: TestClient, db: Session) -> None:
+    before = db.scalar(select(func.count()).select_from(AuditEntry))
+
+    user_client.put("/api/v1/auth/me/preferences", json={"color_scheme": "dark"})
+
+    assert db.scalar(select(func.count()).select_from(AuditEntry)) == before

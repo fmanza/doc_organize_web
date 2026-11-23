@@ -40,6 +40,15 @@ rechaza). Mejor una frase larga que una palabra rebuscada. Al cambiarla se cierr
 Menú de usuario → **Mis sesiones** muestra dónde tienes la sesión abierta (IP, navegador, inicio y última actividad).
 Puedes revocar cualquiera; si revocas la actual, vuelves al inicio de sesión.
 
+## Tema claro u oscuro
+
+Menú de usuario → **Tema**: **Como el sistema** (el valor por defecto: sigue el modo claro u oscuro del sistema
+operativo), **Claro** u **Oscuro**. Se aplica al momento y se guarda en tu usuario, así que lo verás igual en cualquier
+navegador en el que inicies sesión. El navegador guarda además una copia para pintar la pantalla de inicio de sesión con
+el último tema usado en él.
+
+El sitio entregado («6. Entregar» → «Ver el sitio») lo genera doc_organize y se ve siempre en claro.
+
 ## Administración de usuarios
 
 **Administración → Usuarios** (con el permiso «Gestionar usuarios»), con los usuarios del tenant activo:

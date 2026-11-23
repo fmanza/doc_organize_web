@@ -358,6 +358,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Guardar mis preferencias
+         * @description Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.
+         *
+         *     Es una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).
+         */
+        put: operations["update_preferences_api_v1_auth_me_preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/password": {
         parameters: {
             query?: never;
@@ -3785,6 +3807,11 @@ export interface components {
          */
         Me: {
             acting_tenant: components["schemas"]["TenantRef"];
+            /**
+             * Color Scheme
+             * @enum {string}
+             */
+            color_scheme: "auto" | "light" | "dark";
             /** Display Name */
             display_name: string;
             /** Id */
@@ -3918,6 +3945,17 @@ export interface components {
         PermissionList: {
             /** Items */
             items: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
+        };
+        /**
+         * Preferences
+         * @description Preferencias del propio usuario (2.3).
+         */
+        Preferences: {
+            /**
+             * Color Scheme
+             * @enum {string}
+             */
+            color_scheme: "auto" | "light" | "dark";
         };
         /**
          * ProfileSectionsOut
@@ -6126,6 +6164,51 @@ export interface operations {
             };
             /** @description No autenticado */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_preferences_api_v1_auth_me_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Preferences"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token CSRF ausente o no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Valor no válido */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

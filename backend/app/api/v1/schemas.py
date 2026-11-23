@@ -41,6 +41,18 @@ class LoginRequest(BaseModel):
     password: Password
 
 
+ColorScheme = Literal["auto", "light", "dark"]
+"""Tema de la interfaz: ``auto`` sigue al sistema operativo."""
+
+
+class Preferences(BaseModel):
+    """Preferencias del propio usuario (2.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    color_scheme: ColorScheme
+
+
 class PasswordChange(BaseModel):
     """Cambio de la propia contraseña."""
 
@@ -72,6 +84,7 @@ class Me(BaseModel):
     is_instance_admin: bool
     role: RoleRef
     permissions: list[Permission]
+    color_scheme: ColorScheme
 
 
 # --- users ------------------------------------------------------------------------------------------------------
