@@ -2,10 +2,10 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 2.3.1 con doc_organize 2.2.0 (los proyectos borrados sueltan sus ubicaciones), sobre la
-  2.3.0 (tema claro u oscuro por usuario), la 2.2.0 (IA por funcionalidad con avisos flotantes y duplicados por
-  contenido) y la 2.1.0 (contexto en pasos de trabajo, consumo de IA por ejecución y sin GitHub Copilot). Historial
-  completo en `CHANGELOG.md`; siguiente: lo que quede en `docs/plan/MEJORAS.md`. Plan: `docs/plan/ROADMAP.md`.
+- **Versión actual**: 2.3.2 con doc_organize 2.2.0 (textos de IA al día y documentación revisada), sobre la 2.3.1
+  (los proyectos borrados sueltan sus ubicaciones), la 2.3.0 (tema claro u oscuro por usuario), la 2.2.0 (IA por
+  funcionalidad con avisos flotantes y duplicados por contenido) y la 2.1.0 (contexto en pasos de trabajo, consumo de
+  IA por ejecución y sin GitHub Copilot). Historial completo en `CHANGELOG.md`; siguiente: lo que quede en `docs/plan/MEJORAS.md`. Plan: `docs/plan/ROADMAP.md`.
 - **Usuarios**: equipos que organizan grandes fondos documentales en una red interna, en tenants aislados; admin de
   instancia, roles del tenant con permisos y miembros de proyecto `owner`/`editor`/`viewer` (ADR-013).
 - **Despliegue**: servidor Linux (producción, con montajes SMB/NFS y GPU opcional); Docker Desktop solo para desarrollo.
