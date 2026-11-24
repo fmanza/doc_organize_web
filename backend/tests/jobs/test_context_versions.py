@@ -179,6 +179,7 @@ def test_versions_across_formats_when_the_project_asks(
         ).status_code
         == 200
     )
+    versioned.context_versions_across_extensions = True  # el worker lo lee de la BD; el de la fixture está desligado
     ctx, params = run(TEMPLATE_RUN)
 
     operation.run_build(ctx, params, versioned)
