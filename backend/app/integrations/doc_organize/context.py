@@ -299,8 +299,7 @@ def _info(manifest: Any, text: str | None = None) -> TemplateInfo:
 
 def _front_matter_report(text: str) -> Any:
     """``inspect_taxonomy_front_matter`` de ``text``, o ``None`` si no se puede leer (``parse_template`` ya da el error)."""
-    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter
-    from doc_organize.core.exceptions import DocOrganizeError
+    from doc_organize import DocOrganizeError, inspect_taxonomy_front_matter
 
     try:
         return inspect_taxonomy_front_matter(text)
@@ -314,8 +313,7 @@ def parse_template(text: str) -> TemplateInfo:
     Raises:
         TemplateInvalidError: No es válido (mensaje de doc_organize, sin rutas: el origen se nombra «plantilla»).
     """
-    from doc_organize.context.taxonomy_templates import parse_taxonomy_template
-    from doc_organize.core.exceptions import TaxonomyTemplateError
+    from doc_organize import TaxonomyTemplateError, parse_taxonomy_template
 
     try:
         return _info(parse_taxonomy_template(text, source=TEMPLATE_SOURCE), text)
@@ -326,8 +324,7 @@ def parse_template(text: str) -> TemplateInfo:
 def migrate_markdown_v1(text: str) -> str | None:
     """``text`` en el formato 2.0 (``migrate_manifest_v1``) si es un manifiesto o plantilla de 1.x; ``None`` si ya es
     2.0 o no se puede migrar (doc_organize lo seguirá intentando leer y dará su error al validarlo)."""
-    from doc_organize.context.taxonomy_front_matter import inspect_taxonomy_front_matter, migrate_manifest_v1
-    from doc_organize.core.exceptions import DocOrganizeError
+    from doc_organize import DocOrganizeError, inspect_taxonomy_front_matter, migrate_manifest_v1
 
     try:
         if not inspect_taxonomy_front_matter(text).legacy_format:
@@ -366,7 +363,7 @@ class PromptPreview:
 
 def profile_file(output_root: Path) -> Path:
     """``<raíz>/.doc_organize/profile.md``: perfil propio del proyecto (``PROJECT_PROFILE_FILE``, D11)."""
-    from doc_organize.context.project_profile import PROJECT_PROFILE_FILE
+    from doc_organize import PROJECT_PROFILE_FILE
 
     return Path(Path(output_root) / Path(str(PROJECT_PROFILE_FILE)))
 
@@ -384,7 +381,7 @@ def _sections(profile: Any) -> ProfileSections | None:
 
 def parse_profile_text(text: str) -> ProfileSections | None:
     """Secciones de perfil de ``text`` (``parse_profile``); ``None`` si no tiene ninguna reconocida."""
-    from doc_organize.context.project_profile import parse_profile
+    from doc_organize import parse_profile
 
     return _sections(parse_profile(text))
 
@@ -399,11 +396,14 @@ def prompt_preview(
     Raises:
         TemplateInvalidError: El Markdown no es una plantilla o manifiesto válido.
     """
-    from doc_organize.ai import PromptRegistry
-    from doc_organize.ai.services import render_prompt_preview
-    from doc_organize.context.project_profile import compose_profile_text, parse_profile
-    from doc_organize.context.taxonomy_templates import parse_taxonomy_template
-    from doc_organize.core.exceptions import TaxonomyTemplateError
+    from doc_organize import (
+        PromptRegistry,
+        TaxonomyTemplateError,
+        compose_profile_text,
+        parse_profile,
+        parse_taxonomy_template,
+        render_prompt_preview,
+    )
 
     try:
         manifest = parse_taxonomy_template(manifest_markdown, source=TEMPLATE_SOURCE)
@@ -428,7 +428,7 @@ class DecisionInvalidError(Exception):
 
 def decisions_file(output_root: Path) -> Path:
     """``<raíz>/.doc_organize/decisions.json``: decisiones de personas del proyecto (``DECISIONS_FILE``, F6)."""
-    from doc_organize.context.decisions import DECISIONS_FILE
+    from doc_organize import DECISIONS_FILE
 
     return Path(Path(output_root) / Path(str(DECISIONS_FILE)))
 
@@ -439,7 +439,7 @@ def _decision_dict(decision: Any) -> dict[str, Any]:
 
 def load_decisions(output_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Decisiones vigentes y el historial de revocadas (``ClassificationDecisionStore``)."""
-    from doc_organize.context.decisions import ClassificationDecisionStore
+    from doc_organize import ClassificationDecisionStore
 
     store = ClassificationDecisionStore(output_root)
     active = asyncio.run(store.load())
@@ -463,8 +463,7 @@ def add_decision(
     Raises:
         DecisionInvalidError: doc_organize no la acepta (p. ej. ``set_axis`` con más de un eje).
     """
-    from doc_organize.context.decisions import ClassificationDecisionStore
-    from doc_organize.core.models import ClassificationDecision
+    from doc_organize import ClassificationDecision, ClassificationDecisionStore
     from pydantic import ValidationError
 
     try:
@@ -483,22 +482,21 @@ def add_decision(
 
 def revoke_decision(output_root: Path, decision_id: str, *, author: str, reason: str | None) -> bool:
     """Revoca una decisión vigente (pasa al historial); ``False`` si no existe."""
-    from doc_organize.context.decisions import ClassificationDecisionStore
+    from doc_organize import ClassificationDecisionStore
 
     return bool(asyncio.run(ClassificationDecisionStore(output_root).revoke(decision_id, author=author, reason=reason)))
 
 
 def builtin_templates() -> dict[str, TemplateInfo]:
     """Plantillas incluidas en doc_organize por nombre (``list_builtin_templates`` + ``load_builtin_template``)."""
-    from doc_organize.context.taxonomy_templates import list_builtin_templates, load_builtin_template
+    from doc_organize import list_builtin_templates, load_builtin_template
 
     return {summary.name: _info(load_builtin_template(summary.name)) for summary in list_builtin_templates()}
 
 
 def builtin_template_markdown(name: str) -> str | None:
     """Markdown de la plantilla incluida ``name`` (``render_taxonomy_template``: solo el front matter), o ``None``."""
-    from doc_organize.context.taxonomy_templates import load_builtin_template, render_taxonomy_template
-    from doc_organize.core.exceptions import TaxonomyTemplateError
+    from doc_organize import TaxonomyTemplateError, load_builtin_template, render_taxonomy_template
 
     try:
         return str(render_taxonomy_template(load_builtin_template(name)))
@@ -585,7 +583,7 @@ def parse_history(text: str) -> list[ContextBuild]:
     Igual que ``load_context_history`` de doc_organize: una línea que no es un ``ContextBuildRecord`` válido se ignora.
     La API lee el fichero con sus propias comprobaciones (dentro de la carpeta, sin seguir enlaces, con tope de tamaño).
     """
-    from doc_organize.core.models import ContextBuildRecord
+    from doc_organize import ContextBuildRecord
     from pydantic import ValidationError
 
     builds: list[ContextBuild] = []
@@ -625,8 +623,7 @@ def parse_history(text: str) -> list[ContextBuild]:
 
 def check_folder_name(name: str) -> str | None:
     """Problema de ``name`` como carpeta reorganizada (``validate_output_folder_name``, L-8b), o ``None``."""
-    from doc_organize import validate_output_folder_name
-    from doc_organize.core.exceptions import InvalidPathError
+    from doc_organize import InvalidPathError, validate_output_folder_name
 
     try:
         validate_output_folder_name(name)
@@ -648,8 +645,7 @@ def save_manifest(output_root: Path, text: str, *, name: str, created_at: dateti
         TemplateInvalidError: El Markdown no es un manifiesto válido.
         DocOrganizeOperationError: No se pudo escribir.
     """
-    from doc_organize.context.taxonomy_manifest import save_taxonomy_manifest
-    from doc_organize.core.exceptions import DocOrganizeError, TaxonomyManifestError, TaxonomyTemplateError
+    from doc_organize import DocOrganizeError, TaxonomyManifestError, TaxonomyTemplateError, save_taxonomy_manifest
 
     info = parse_template(text)
     try:
@@ -679,8 +675,13 @@ def converted_documents(folders: list[SourceFolder]) -> tuple[list[Any], int]:
     conversiones cada una, G18): salidas con ``resolve_output_paths``/``resolve_images_dir``. Se descartan aquí los que
     no están completos: ``Reorganizer`` valida todos antes de copiar y uno solo incompleto pararía la construcción.
     """
-    from doc_organize import ConversionResult, ConversionStatus, resolve_images_dir, resolve_output_paths
-    from doc_organize.export import load_cache_entries
+    from doc_organize import (
+        ConversionResult,
+        ConversionStatus,
+        load_cache_entries,
+        resolve_images_dir,
+        resolve_output_paths,
+    )
 
     documents: list[Any] = []
     missing = 0
@@ -740,10 +741,13 @@ def context_freshness(
     Raises:
         DocOrganizeOperationError: No se pudieron leer las cachés.
     """
-    from doc_organize import ContextRegistry
-    from doc_organize.context.freshness import check_context_freshness
-    from doc_organize.core.exceptions import ContextError, DocOrganizeError
-    from doc_organize.export import load_cache_entries
+    from doc_organize import (
+        ContextError,
+        ContextRegistry,
+        DocOrganizeError,
+        check_context_freshness,
+        load_cache_entries,
+    )
 
     project = _project(name, output_root, created_at)
     try:
@@ -774,8 +778,7 @@ def existing_folder_name(output_root: Path, *, name: str, created_at: datetime) 
     ruta absoluta, nombre reservado) o dañado da ``ContextError`` y cuenta como sin contexto. Reconstruir lo sustituye
     con la carpeta que valida la API.
     """
-    from doc_organize import ContextRegistry
-    from doc_organize.core.exceptions import ContextError
+    from doc_organize import ContextError, ContextRegistry
 
     try:
         context = asyncio.run(ContextRegistry().load_context(_project(name, output_root, created_at)))
@@ -900,8 +903,7 @@ def _issue(issue: Any) -> dict[str, Any]:
 
 
 def _outcome(context: Any, failed: list[tuple[str, str]], missing: int, roots: list[str]) -> ContextOutcome:
-    from doc_organize.context.evaluation import document_keys
-    from doc_organize.context.review_queue import review_queue
+    from doc_organize import document_keys, review_queue
 
     failed_paths = {path for path, _ in failed}
     sources = [d.source_path for domain in context.domains for d in domain.documents]
@@ -1004,12 +1006,14 @@ def build_context(
         CancelToken,
         ContextBuilder,
         ContextRegistry,
+        DocOrganizeError,
+        OperationCancelledError,
         Reorganizer,
         SiteBuildError,
         SiteGenerator,
+        TaxonomyTemplateError,
         parse_taxonomy_template,
     )
-    from doc_organize.core.exceptions import DocOrganizeError, OperationCancelledError, TaxonomyTemplateError
 
     from app.integrations.doc_organize.ai import build_limits, classification_stats, enrichment_stats, llm_client
 
@@ -1159,8 +1163,14 @@ def delete_context(output_root: Path, *, name: str, created_at: datetime, expect
         ContextFolderInvalidError: La carpeta de ``context.json`` no es la de la vista previa.
         DocOrganizeOperationError: No se pudo borrar (p. ej. la carpeta reorganizada pasa por un enlace).
     """
-    from doc_organize import Context, ContextRegistry, Reorganizer, SiteGenerator
-    from doc_organize.core.exceptions import ContextNotFoundError, DocOrganizeError
+    from doc_organize import (
+        Context,
+        ContextNotFoundError,
+        ContextRegistry,
+        DocOrganizeError,
+        Reorganizer,
+        SiteGenerator,
+    )
 
     project = _project(name, output_root, created_at)
 

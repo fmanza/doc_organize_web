@@ -5,6 +5,20 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **doc_organize 2.4.1** (antes 2.2.0): la capa anticorrupción, los tests y los scripts importan todo desde
+  `from doc_organize import …`, porque desde la 2.4.0 la API pública de la librería incluye los 32 nombres que la web
+  tomaba de sus submódulos. `clean_text` y `clean_keywords` siguen siendo internos de la librería: el único que los
+  usaba, `scripts/bench_properties_strategies.py`, tiene ahora su propia copia. Sin migraciones.
+
+### Fixed
+
+- **Progreso del escaneo entre carpetas**: con doc_organize 2.4.1 la fase «done» de cada carpeta llega con sus unidades
+  en lugar de «0/—».
+- **Duplicados con la misma fecha**: el documento que se propone conservar ya no depende del orden del escaneo (la ruta
+  menor, como en la búsqueda por contenido).
+
 ## [2.3.2] - 2026-11-24
 
 Textos de la IA al día y documentación revisada contra el código. Sigue con doc_organize 2.2.0. Sin migraciones.

@@ -8,8 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from doc_organize import ProjectLayout
-from doc_organize.core.models import UnclassifiedDocument
+from doc_organize import ProjectLayout, UnclassifiedDocument
 
 from app.integrations.doc_organize import context
 from app.jobs.operations.context import _row

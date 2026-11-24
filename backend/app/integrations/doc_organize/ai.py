@@ -135,7 +135,7 @@ LONG_TASKS: Final[tuple[TaskKey, ...]] = ("taxonomy_design", "agent")
 
 def default_model(task: TaskKey) -> str:
     """Alias recomendado de ``task`` en el proxy cuando no se configura su modelo (``default_model_alias``, U10)."""
-    from doc_organize.core.models import default_model_alias
+    from doc_organize import default_model_alias
 
     return str(default_model_alias(task))
 
@@ -146,7 +146,7 @@ def legacy_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     doc_organize 2.0 y la web ya no las leen (D15): si siguen definidas, la configuración se queda sin ellas y hay que
     avisar (U17). Sin valores: solo nombres.
     """
-    from doc_organize.ai import legacy_variables
+    from doc_organize import legacy_variables
 
     return dict(legacy_variables(environ))
 
@@ -218,7 +218,7 @@ def ai_settings_for(connection: AiConnection) -> Any:
 
     Una tarea sin nada propio no entra en ``tasks``: usa el alias recomendado, la clave general y los plazos generales.
     """
-    from doc_organize.core.models import AiSettings, TaskSettings
+    from doc_organize import AiSettings, TaskSettings
 
     if connection.family != "litellm":
         raise ValueError(f"{connection.family} no es la familia de los modelos")
@@ -251,7 +251,7 @@ def ai_settings_for(connection: AiConnection) -> Any:
 def llm_client(connection: AiConnection) -> Any:
     """``LlmClient`` de ``connection`` para ``ContextBuilder.build(llm=...)``. Se usa con ``async with`` dentro del mismo
     bucle de eventos que la construcción; el presupuesto y los cortes van en ``build_limits``."""
-    from doc_organize.ai import LlmClient
+    from doc_organize import LlmClient
 
     return LlmClient(ai_settings_for(connection), transport=_transport(connection))
 
@@ -321,7 +321,7 @@ class DraftOutcome:
 
 
 def _ai_error(exc: Exception) -> AiServiceError:
-    from doc_organize.core.exceptions import AiAuthError, AiConnectionError
+    from doc_organize import AiAuthError, AiConnectionError
 
     if isinstance(exc, AiAuthError):
         return AiServiceError("ai_auth")
@@ -350,10 +350,14 @@ def draft_manifest(
         NoConvertedDocumentsError: No hay documentos convertidos legibles.
         AiServiceError: Falló la llamada (código sin detalle).
     """
-    from doc_organize.ai import LlmClient, PromptRegistry, draft_taxonomy
-    from doc_organize.context.taxonomy_manifest import render_taxonomy_manifest_markdown
-    from doc_organize.context.taxonomy_manifest_sampler import select_document_sample
-    from doc_organize.core.exceptions import AiError
+    from doc_organize import (
+        AiError,
+        LlmClient,
+        PromptRegistry,
+        draft_taxonomy,
+        render_taxonomy_manifest_markdown,
+        select_document_sample,
+    )
 
     del name, created_at  # el borrador no depende del proyecto de doc_organize, solo de sus documentos
     documents, _ = converted_documents(folders)
@@ -479,7 +483,7 @@ def key_budget(raw: Any) -> KeyBudget | None:
 
 def _usage_config(connection: AiConnection) -> Any:
     """``LiteLLMUsageConfig`` de ``connection`` (con la clave general)."""
-    from doc_organize.core.models import LiteLLMUsageConfig
+    from doc_organize import LiteLLMUsageConfig
 
     values = connection.values
     return LiteLLMUsageConfig(
@@ -496,8 +500,7 @@ async def fetch_usage(source: UsageSourceKey, connection: AiConnection) -> Usage
     Raises:
         AiServiceError: Falló la consulta (código sin detalle).
     """
-    from doc_organize.ai import LiteLLMUsageClient
-    from doc_organize.core.exceptions import UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
+    from doc_organize import LiteLLMUsageClient, UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
 
     del source  # solo LiteLLM desde la 2.1
     try:
@@ -588,8 +591,7 @@ def _model_access(raw: dict[str, Any], model: str | None) -> ModelAccess:
 
 async def _check_key(connection: AiConnection, task: TaskKey | None) -> tuple[TestErrorCode | None, ModelAccess]:
     """``GET /key/info`` de LiteLLM con la clave general: servidor alcanzable y credencial válida."""
-    from doc_organize.ai import LiteLLMUsageClient
-    from doc_organize.core.exceptions import UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
+    from doc_organize import LiteLLMUsageClient, UsageSourceAuthError, UsageSourceConnectionError, UsageSourceError
 
     try:
         model = connection.model_for(task) if connection.family in MODEL_FAMILIES and task else None
@@ -615,8 +617,7 @@ class _ModelProbe:
 async def _check_model(connection: AiConnection, task: TaskKey) -> _ModelProbe:
     """Una petición mínima a ``task`` con su modelo y su clave (gasta unos pocos tokens): JSON con esquema estricto o,
     en las de embeddings, un vector. Devuelve el error, el formato, el modelo que contestó y la dimensión."""
-    from doc_organize.ai import LlmClient
-    from doc_organize.core.exceptions import AiError
+    from doc_organize import AiError, LlmClient
 
     try:
         async with LlmClient(ai_settings_for(connection), transport=_transport(connection)) as llm:

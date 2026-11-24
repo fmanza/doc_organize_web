@@ -26,6 +26,7 @@ import argparse
 import json
 import platform
 import random
+import re
 import sys
 import threading
 import time
@@ -39,6 +40,35 @@ from typing import Any
 from bench_context_network import _list_supported, _percentiles
 
 _PDFIUM_LOCK = threading.Lock()
+
+
+# Copia de ``doc_organize.utils.text_clean`` (interno de la librería; no está en su API pública desde la 2.4.0): mismo
+# saneado que ``read_document_properties`` para que la opción A sea comparable.
+def _clean_text(value: object, max_length: int = 500) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = " ".join(value.split())
+    return text[:max_length] or None
+
+
+def _clean_keywords(values: object, limit: int = 20) -> list[str]:
+    if isinstance(values, str):
+        candidates: list[object] = list(re.split(r"[,;]", values))
+    elif isinstance(values, list):
+        candidates = values
+    else:
+        return []
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        keyword = _clean_text(candidate, 60)
+        if keyword is None or keyword.casefold() in seen:
+            continue
+        seen.add(keyword.casefold())
+        keywords.append(keyword)
+    return keywords[:limit]
+
+
 _active = 0
 _max_active = 0
 
@@ -55,13 +85,13 @@ def _pdfium_exit() -> None:
 
 
 def _read_plain(path: Path) -> Any:
-    from doc_organize.context.document_properties import read_document_properties
+    from doc_organize import read_document_properties
 
     return read_document_properties(path)
 
 
 def _read_pdf_locked(path: Path) -> Any:
-    from doc_organize.context.document_properties import read_document_properties
+    from doc_organize import read_document_properties
 
     if path.suffix.lower() != ".pdf":
         return read_document_properties(path)
@@ -75,8 +105,7 @@ def _read_pdf_locked(path: Path) -> Any:
 
 def _make_read_pdf_bytes(max_bytes: int) -> Callable[[Path], Any]:
     import pypdfium2 as pdfium  # type: ignore[import-untyped]
-    from doc_organize.context.document_properties import DocumentProperties, read_document_properties
-    from doc_organize.utils.text_clean import clean_keywords, clean_text
+    from doc_organize import DocumentProperties, read_document_properties
 
     def read(path: Path) -> Any:
         if path.suffix.lower() != ".pdf":
@@ -100,9 +129,9 @@ def _make_read_pdf_bytes(max_bytes: int) -> Callable[[Path], Any]:
             finally:
                 _pdfium_exit()
         return DocumentProperties(
-            author=clean_text(info.get("Author")),
-            description=clean_text(info.get("Subject")),
-            keywords=clean_keywords(info.get("Keywords")),
+            author=_clean_text(info.get("Author")),
+            description=_clean_text(info.get("Subject")),
+            keywords=_clean_keywords(info.get("Keywords")),
         )
 
     return read

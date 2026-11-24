@@ -13,8 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from doc_organize import CacheEntry, CacheManager
-from doc_organize.core.models import ConversionStatus, DocumentStatus
+from doc_organize import CacheEntry, CacheManager, ConversionStatus, DocumentStatus
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings

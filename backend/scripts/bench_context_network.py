@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # La librería importa pypdfium2 en el primer PDF; se importa aquí para no medir la importación.
     import pypdfium2  # type: ignore[import-untyped]  # noqa: F401
-    from doc_organize.context.document_properties import read_document_properties
+    from doc_organize import read_document_properties
 
     root: Path = args.source
     if not root.is_dir():

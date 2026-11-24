@@ -65,8 +65,7 @@ class GoldSummary:
 
 
 def _load_gold(spec: GoldSpec, output_root: Path) -> Any:
-    from doc_organize.context.decisions import ClassificationDecisionStore, gold_from_decisions
-    from doc_organize.context.evaluation import load_gold_xlsx
+    from doc_organize import ClassificationDecisionStore, gold_from_decisions, load_gold_xlsx
 
     if spec.source == "decisions":
         return gold_from_decisions(asyncio.run(ClassificationDecisionStore(output_root).load()))
@@ -111,9 +110,7 @@ def evaluate(
         GoldInvalidError: La referencia no se puede leer o está vacía.
         DocOrganizeOperationError: No hay contexto o no se pudo leer.
     """
-    from doc_organize import ContextRegistry
-    from doc_organize.context.evaluation import evaluate_classification
-    from doc_organize.core.exceptions import ContextError, DocOrganizeError
+    from doc_organize import ContextError, ContextRegistry, DocOrganizeError, evaluate_classification
 
     gold_standard = _load_gold(gold, output_root)
     if not gold_standard.labels:
@@ -167,15 +164,18 @@ def dry_run(
     Raises:
         GoldInvalidError, TemplateInvalidError, DocOrganizeOperationError.
     """
-    from doc_organize import CancelToken, ContextRegistry, parse_taxonomy_template
-    from doc_organize.context.dry_run import dry_run_classify
-    from doc_organize.context.evaluation import evaluate_classification
-    from doc_organize.context.project_profile import compose_profile, compose_profile_text
-    from doc_organize.core.exceptions import (
+    from doc_organize import (
+        CancelToken,
         ContextError,
+        ContextRegistry,
         DocOrganizeError,
         OperationCancelledError,
         TaxonomyTemplateError,
+        compose_profile,
+        compose_profile_text,
+        dry_run_classify,
+        evaluate_classification,
+        parse_taxonomy_template,
     )
 
     gold = _load_gold(request.gold, request.output_root)

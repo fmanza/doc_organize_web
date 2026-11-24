@@ -9,8 +9,7 @@ import time
 from typing import Any
 
 import pytest
-from doc_organize import CacheEntry
-from doc_organize.core.models import ConversionStatus, DocumentStatus
+from doc_organize import CacheEntry, ConversionStatus, DocumentStatus
 from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session

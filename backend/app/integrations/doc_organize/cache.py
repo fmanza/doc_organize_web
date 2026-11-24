@@ -94,8 +94,7 @@ def count_documents(
 ) -> int:
     """Entradas de ``cache_db`` bajo ``root`` (0 si la caché aún no existe), filtradas por ``search`` en la ruta relativa
     a ``root``, por estado de conversión y por tipo MIME (alguno de ``mime_type``, 1.6.0)."""
-    from doc_organize import CacheNotFoundError
-    from doc_organize.cache import CacheManager
+    from doc_organize import CacheManager, CacheNotFoundError
 
     async def _count() -> int:
         async with CacheManager(cache_db, read_only=True) as cache:
@@ -130,8 +129,7 @@ def documents_page(
     (por ruta si no se dice otra cosa; empates por ruta y los vacíos al final)."""
     if limit <= 0:
         return []
-    from doc_organize import CacheNotFoundError
-    from doc_organize.cache import CacheManager
+    from doc_organize import CacheManager, CacheNotFoundError
 
     async def _page() -> list[CachedDocument]:
         async with CacheManager(cache_db, read_only=True) as cache:
@@ -172,8 +170,7 @@ def mime_types(
 ) -> list[tuple[str, int]]:
     """``(tipo MIME, entradas)`` de ``cache_db`` bajo ``root`` con los mismos filtros que ``count_documents`` (salvo el
     tipo), de más a menos entradas; vacía si la caché aún no existe o es anterior a 1.5.0 (doc_organize 1.6.0, G43)."""
-    from doc_organize import CacheNotFoundError
-    from doc_organize.cache import CacheManager
+    from doc_organize import CacheManager, CacheNotFoundError
 
     async def _types() -> list[tuple[str, int]]:
         async with CacheManager(cache_db, read_only=True) as cache:

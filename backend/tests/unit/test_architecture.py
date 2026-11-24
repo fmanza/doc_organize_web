@@ -73,7 +73,7 @@ def test_listing_documents_never_loads_docling(tmp_path: Path) -> None:
             "import asyncio, sys, pathlib",
             "from app.integrations.doc_organize import cache",
             f"db = pathlib.Path({str(tmp_path / 'cache.db')!r})",
-            "from doc_organize.cache import CacheManager",
+            "from doc_organize import CacheManager",
             "async def make():",
             "    async with CacheManager(db):",
             "        pass",

@@ -12,8 +12,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from doc_organize import CacheEntry
-from doc_organize.core.models import ConversionStatus, DocumentStatus
+from doc_organize import CacheEntry, ConversionStatus, DocumentStatus
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from sqlalchemy import select, update

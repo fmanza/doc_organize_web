@@ -49,8 +49,7 @@ class NoDocumentsError(Exception):
 
 
 def _manifest(markdown: str) -> Any:
-    from doc_organize import parse_taxonomy_template
-    from doc_organize.core.exceptions import TaxonomyTemplateError
+    from doc_organize import TaxonomyTemplateError, parse_taxonomy_template
 
     try:
         return parse_taxonomy_template(markdown, source=TEMPLATE_SOURCE)
@@ -68,7 +67,7 @@ def _report(report: Any) -> dict[str, Any] | None:
 
 
 def _corpus(folders: list[SourceFolder]) -> Any:
-    from doc_organize.context.taxonomy_check import RulesCorpus
+    from doc_organize import RulesCorpus
 
     documents, _ = converted_documents(folders)
     corpus = asyncio.run(RulesCorpus.load(documents, roots=scan_roots(folders)))
@@ -85,7 +84,7 @@ def check_rules(markdown: str, folders: list[SourceFolder], *, threshold: float 
         TemplateInvalidError: El Markdown no es un manifiesto válido.
         NoDocumentsError: No hay documentos legibles.
     """
-    from doc_organize.context.taxonomy_check import check_taxonomy_rules
+    from doc_organize import check_taxonomy_rules
 
     manifest = _manifest(markdown)
     report = _report(check_taxonomy_rules(manifest, _corpus(folders), threshold=threshold))
@@ -158,9 +157,7 @@ def design_taxonomy(
         NoDocumentsError: No hay documentos legibles.
         DocOrganizeOperationError: Falló el proxy de IA (código sin detalles en el mensaje).
     """
-    from doc_organize import PromptRegistry, TaxonomyDesignAgent
-    from doc_organize.context.taxonomy_agent import DEFAULT_DESIGN_LIMITS
-    from doc_organize.core.exceptions import AiError
+    from doc_organize import DEFAULT_DESIGN_LIMITS, AiError, PromptRegistry, TaxonomyDesignAgent
 
     base = _manifest(request.base_markdown) if request.base_markdown is not None else None
     on_progress("agent_corpus")
@@ -190,7 +187,7 @@ def design_taxonomy(
         stop.set()
     best = proposal.best
     best_differs = best is not None and (proposal.manifest is None or best != proposal.manifest)
-    from doc_organize.context.taxonomy_templates import render_taxonomy_template
+    from doc_organize import render_taxonomy_template
 
     return {
         **_run_stats(proposal.run),
@@ -228,8 +225,7 @@ class ReviewRequest:
 
 
 def _load_context(output_root: Path, name: str, created_at: Any) -> Any:
-    from doc_organize import ContextRegistry
-    from doc_organize.core.exceptions import ContextError
+    from doc_organize import ContextError, ContextRegistry
 
     from app.integrations.doc_organize.context import _project
 
@@ -251,9 +247,7 @@ def review(
     Raises:
         DocOrganizeOperationError: Sin contexto legible, sin ejes de taxonomía o fallo del proxy de IA.
     """
-    from doc_organize import PromptRegistry, ReviewAgent
-    from doc_organize.context.review_agent import DEFAULT_REVIEW_LIMITS
-    from doc_organize.core.exceptions import AiError
+    from doc_organize import DEFAULT_REVIEW_LIMITS, AiError, PromptRegistry, ReviewAgent
 
     context = _load_context(request.output_root, request.name, request.created_at)
     if not context.taxonomy_axes:

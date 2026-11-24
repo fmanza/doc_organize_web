@@ -128,7 +128,7 @@ def run_diagnostics(
 def _main() -> dict[str, Any]:  # pragma: no cover - punto de entrada del subproceso (lo ejercitan los tests)
     import asyncio
 
-    from doc_organize.diagnostics import AiEndpoint, check_environment
+    from doc_organize import AiEndpoint, check_environment
 
     payload = json.loads(sys.stdin.read() or "{}")
     endpoints = [AiEndpoint(**item) for item in payload.get("endpoints", [])]

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from doc_organize.core.models import ContextBuildRecord, ContextChange
+from doc_organize import ContextBuildRecord, ContextChange
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
