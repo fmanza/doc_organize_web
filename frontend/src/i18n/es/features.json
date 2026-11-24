@@ -517,6 +517,8 @@
       "confirmButton": "Desactivar",
       "versions": "Versiones de un mismo documento",
       "versionsHelp": "Documentos con marcador de versión en el nombre («v1.2», «rev2», «versión 3»…) en la misma carpeta. Se aplica desde la siguiente construcción.",
+      "versionsAcross": "Agrupar versiones aunque cambie el formato",
+      "versionsAcrossHelp": "«Manual_v2.docx» y «Manual_v3.pdf» cuentan como versiones del mismo documento, y la misma versión en varios formatos es vigente entera. Actívalo solo si en este proyecto el mismo nombre en otro formato es el mismo documento (no, por ejemplo, unos datos en Excel y su informe en PDF).",
       "versionModes": {
         "mark": "Marcar la vigente (todas entran en el contexto)",
         "current_only": "Solo la vigente (las antiguas quedan fuera)",
@@ -1841,6 +1843,8 @@
     "intro": "Lo que conviene mirar según la última construcción, de lo más urgente a lo menos. Tus decisiones se guardan en el proyecto y se aplican en la siguiente construcción, antes de la IA; ni las reglas ni la IA las cambian.",
     "reason": "Motivo",
     "allReasons": "Todos los motivos",
+    "search": "Buscar por nombre o ruta del documento",
+    "noMatches": "Ningún documento de la cola coincide con la búsqueda.",
     "option": "{{label}} ({{count}})",
     "total_one": "{{formatted}} motivo de revisión",
     "total_other": "{{formatted}} motivos de revisión",

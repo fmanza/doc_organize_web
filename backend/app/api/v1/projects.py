@@ -71,6 +71,7 @@ def project_out(access: ProjectAccess, last_run: Run | None = None, *, active_ru
         capture_owner=p.capture_owner,
         ai_redact_credentials=p.ai_redact_credentials,
         context_versions=p.context_versions,
+        context_versions_across_extensions=p.context_versions_across_extensions,
         context_semantic=p.context_semantic,
         context_semantic_threshold=p.context_semantic_threshold,
         created_at=p.created_at,

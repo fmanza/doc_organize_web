@@ -19,6 +19,7 @@ export const PROJECT = {
   capture_owner: false,
   ai_redact_credentials: true,
   context_versions: 'mark',
+  context_versions_across_extensions: false,
   context_semantic: false,
   context_semantic_threshold: 0.75,
 };

@@ -502,6 +502,7 @@ class ProjectOut(BaseModel):
         description="Redactar credenciales de lo que sale hacia la IA y del sitio publicado (D7, W4; por defecto sí)",
     )
     context_versions: Literal["all", "mark", "current_only"] = "mark"
+    context_versions_across_extensions: bool = False
     context_semantic: bool = False
     context_semantic_threshold: float = 0.75
     created_at: datetime
@@ -528,6 +529,13 @@ class ProjectAiSettingsIn(BaseModel):
         description=(
             "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la "
             "web) o current_only (solo la vigente entra en el contexto)"
+        ),
+    )
+    context_versions_across_extensions: bool | None = Field(
+        default=None,
+        description=(
+            "Agrupar versiones aunque cambie el formato (Manual_v2.docx con Manual_v3.pdf; 2.5.0). Desactivado por "
+            "defecto: dos ficheros con el mismo nombre en otro formato pueden no ser el mismo documento"
         ),
     )
     context_semantic: bool | None = Field(
@@ -1145,6 +1153,8 @@ class ContextOut(BaseModel):
     freshness: ContextFreshnessOut | None = None
     #: W6 (F5): modo de versiones de la construcción, sus grupos y las versiones antiguas fuera del contexto.
     versions_mode: Literal["all", "mark", "current_only"] | None = None
+    #: 2.5.0: si la construcción agrupó versiones entre formatos; nulo en las anteriores.
+    versions_across_extensions: bool | None = None
     version_groups: list[VersionGroupOut] = []
     superseded: list[str] = []
     superseded_count: int = 0

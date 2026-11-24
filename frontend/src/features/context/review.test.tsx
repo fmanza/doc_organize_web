@@ -115,6 +115,40 @@ describe('Revisar clasificación', () => {
   });
 });
 
+describe('Buscar en la revisión (2.5.0)', () => {
+  it('filtra la cola por nombre y avisa si nada coincide', async () => {
+    const fetchMock = stubApi({
+      ...session(USER),
+      'GET /api/v1/projects/7': { body: PROJECT },
+      'GET /api/v1/projects/7/context': { body: CONTEXT },
+      'GET /api/v1/projects/7/context/review': (request: Request) =>
+        new URL(request.url).searchParams.get('q')
+          ? { body: { items: [], total: 0, counts: {} } }
+          : { body: { items: [ITEM], total: 1, counts: { unclassified: 1 } } },
+      'GET /api/v1/projects/7/context/decisions': {
+        body: { decisions: [], revoked: [], stale: [], orphan: [], applied: 0 },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/context/review');
+    expect(await screen.findByText('Receta sintética')).toBeInTheDocument();
+    await user.type(
+      screen.getByRole('textbox', { name: 'Buscar por nombre o ruta del documento' }),
+      'factura',
+    );
+
+    expect(
+      await screen.findByText('Ningún documento de la cola coincide con la búsqueda.'),
+    ).toBeInTheDocument();
+    const searched = callsTo(fetchMock, 'GET', '/api/v1/projects/7/context/review').map(
+      (request) => new URL(request.url).searchParams,
+    );
+    expect(searched.at(-1)?.get('q')).toBe('factura');
+    expect(searched.at(-1)?.get('offset')).toBe('0');
+  });
+});
+
 // W7 (M9): propuestas del revisor; se guardan sin aplicarse y una persona las acepta o descarta.
 const RUN_ID = '88888888-8888-4888-8888-888888888888';
 const PROPOSAL = {

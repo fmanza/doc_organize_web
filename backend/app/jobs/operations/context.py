@@ -167,6 +167,7 @@ def _project_rows(
                 stale_decisions=outcome.stale_decisions,
                 orphan_decisions=outcome.orphan_decisions,
                 versions_mode=outcome.versions_mode,
+                versions_across_extensions=outcome.versions_across_extensions,
                 version_groups=[
                     {
                         **group,
@@ -347,6 +348,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
         ai_scope=params.ai_scope if params.ai_classification else "off",
         enrich=params.ai_enrichment,
         versions=project.context_versions,
+        version_across_extensions=project.context_versions_across_extensions,
         redact_credentials=project.ai_redact_credentials,
         semantic=semantic,
         semantic_threshold=project.context_semantic_threshold,

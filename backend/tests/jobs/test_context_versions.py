@@ -149,3 +149,53 @@ def test_settings_api(versioned: Project, user_client: TestClient, db: Session) 
     assert invalid.status_code == 422
     entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "project.ai_settings_update")).one()
     assert entry.details == {"context_versions": ["mark", "current_only"]}
+
+
+@pytest.mark.posix_paths
+def test_versions_across_formats_when_the_project_asks(
+    run: Any, versioned: Project, db: Session, migrated: Settings, user_client: TestClient
+) -> None:
+    """2.5.0: con la casilla, ``plan v3.docx`` es la versión siguiente de los ``.txt`` y la construcción lo registra."""
+    source = (migrated.locations_root / "origen").resolve()
+    conversion = migrated.locations_root / "salidas" / "Proyecto A" / CONVERSION_DIR
+    (source / "2024" / "plan v3.docx").write_text("plan de obra tercera", encoding="utf-8")
+    paths = output_paths("2024", "plan v3.docx")
+    (conversion / paths.markdown).write_text("# Plan de obra v3\n\nplan de obra tercera\n", encoding="utf-8")
+    (conversion / paths.json).write_text(
+        json.dumps({"title": "Plan de obra v3", "chunks": [{"text": "plan"}]}), encoding="utf-8"
+    )
+    cache = folder_cache(state_dir(migrated, versioned.id), "2024")
+    entry = CacheEntry(
+        file_path=str(source / "2024" / "plan v3.docx"),
+        sha256_hash="9" * 64,
+        timestamp=time.time(),
+        status=DocumentStatus.NEW,
+        conversion_status=ConversionStatus.SUCCESS,
+    )
+    write_cache(cache, [entry])  # se añade a la caché de la fixture
+    assert (
+        user_client.put(
+            f"/api/v1/projects/{versioned.id}/ai-settings", json={"context_versions_across_extensions": True}
+        ).status_code
+        == 200
+    )
+    ctx, params = run(TEMPLATE_RUN)
+
+    operation.run_build(ctx, params, versioned)
+
+    stored = db.get(ProjectContext, versioned.id)
+    assert stored is not None and stored.versions_across_extensions is True
+    (group,) = stored.version_groups
+    assert group["current"] == "2024/plan v3.docx" and group["versions"] == ["1", "2", "3"]
+    assert user_client.get(f"/api/v1/projects/{versioned.id}/context").json()["versions_across_extensions"] is True
+
+
+def test_across_formats_setting_api(versioned: Project, user_client: TestClient, db: Session) -> None:
+    url = f"/api/v1/projects/{versioned.id}/ai-settings"
+    assert user_client.get(f"/api/v1/projects/{versioned.id}").json()["context_versions_across_extensions"] is False
+
+    response = user_client.put(url, json={"context_versions_across_extensions": True})
+
+    assert response.status_code == 200 and response.json()["context_versions_across_extensions"] is True
+    entry = db.scalars(select(AuditEntry).where(AuditEntry.action == "project.ai_settings_update")).one()
+    assert entry.details == {"context_versions_across_extensions": [False, True]}

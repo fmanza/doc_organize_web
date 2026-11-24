@@ -322,6 +322,9 @@ class Project(Base):
     #: versiones de un documento al construir el contexto (D8: ``mark`` en la web) y sub-fase semántica (D13, opt-in).
     ai_redact_credentials: Mapped[bool] = mapped_column(default=True, server_default=true())
     context_versions: Mapped[str] = mapped_column(String(16), default="mark", server_default="mark")
+    #: Agrupar versiones aunque cambie el formato (web 2.5.0, migración ``0030``; doc_organize 2.5.0
+    #: ``build(version_across_extensions=)``). Desactivado: dos ficheros en otro formato pueden no ser el mismo documento.
+    context_versions_across_extensions: Mapped[bool] = mapped_column(default=False, server_default=false())
     context_semantic: Mapped[bool] = mapped_column(default=False, server_default=false())
     #: Similitud mínima de la sub-fase semántica (W6, migración ``0021``; ``semantic_threshold`` de la librería).
     context_semantic_threshold: Mapped[float] = mapped_column(Float, default=0.75, server_default="0.75")
@@ -608,6 +611,8 @@ class ProjectContext(Base):
     #: Versiones de un documento (W6, F5; ``0021``): modo de la construcción, grupos (``key``, ``members`` con ruta
     #: relativa, ``versions``, ``current``, ``confirmed``) y versiones antiguas fuera del contexto con ``current_only``.
     versions_mode: Mapped[str | None] = mapped_column(String(16), default=None)
+    #: Si esa construcción agrupó versiones entre formatos (``0030``); nulo en las anteriores a la 2.5.0.
+    versions_across_extensions: Mapped[bool | None] = mapped_column(default=None)
     version_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]")
     superseded: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
     superseded_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

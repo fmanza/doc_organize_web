@@ -31,6 +31,7 @@ from app.domain.context.profile import _regular
 from app.domain.context.service import _check_writable, _output_root, get_context
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.listing import apply_search
 from app.domain.locations.errors import LocationUnavailableError
 from app.domain.locations.paths import run_with_timeout
 from app.integrations.doc_organize import context as library
@@ -237,43 +238,54 @@ def revoke(
 
 
 def review_items(
-    db: Session, project: Project, *, reason: str | None, limit: int, offset: int
+    db: Session, project: Project, *, reason: str | None, limit: int, offset: int, q: str | None = None
 ) -> tuple[list[tuple[ContextReviewItem, ContextDocument | None]], int, dict[str, int]]:
     """Página de la cola de revisión (por prioridad), con su documento, el total y el recuento por motivo.
+
+    ``q`` (2.5.0) filtra por nombre sin distinguir mayúsculas: el título, la carpeta o la ruta del documento, o la clave
+    (la única que tiene una decisión de un documento que ya no está). El total y los recuentos por motivo, también los
+    de las propuestas del revisor, cuentan solo lo que coincide.
 
     Raises:
         ContextNotFoundError: Sin contexto construido.
     """
+    from app.db.models import ContextReviewProposal
+
     get_context(db, project)
-    where = [ContextReviewItem.project_id == project.id]
-    if reason:
-        where.append(ContextReviewItem.reason == reason)
-    total = db.scalar(select(func.count()).select_from(ContextReviewItem).where(*where)) or 0
-    rows = db.execute(
-        select(ContextReviewItem, ContextDocument)
-        .outerjoin(
-            ContextDocument,
-            (ContextDocument.project_id == ContextReviewItem.project_id)
-            & (ContextDocument.seq == ContextReviewItem.seq),
+    joined = (ContextDocument.project_id == ContextReviewItem.project_id) & (
+        ContextDocument.seq == ContextReviewItem.seq
+    )
+    columns = (ContextReviewItem.document_key, ContextDocument.title, ContextDocument.folder, ContextDocument.path)
+
+    def _filtered(query: Any) -> Any:  # un Select de una o dos entidades (SQLAlchemy 2.1 tipa cada columna)
+        return apply_search(query.outerjoin(ContextDocument, joined), q, columns).where(
+            ContextReviewItem.project_id == project.id
         )
-        .where(*where)
+
+    by_reason = [ContextReviewItem.reason == reason] if reason else []
+    total = db.scalar(_filtered(select(func.count()).select_from(ContextReviewItem)).where(*by_reason)) or 0
+    rows = db.execute(
+        _filtered(select(ContextReviewItem, ContextDocument).select_from(ContextReviewItem))
+        .where(*by_reason)
         .order_by(ContextReviewItem.priority, ContextReviewItem.id)
         .limit(limit)
         .offset(offset)
     ).all()
     counts = dict(
         db.execute(
-            select(ContextReviewItem.reason, func.count())
-            .where(ContextReviewItem.project_id == project.id)
-            .group_by(ContextReviewItem.reason)
+            _filtered(select(ContextReviewItem.reason, func.count()).select_from(ContextReviewItem)).group_by(
+                ContextReviewItem.reason
+            )
         ).all()
     )
-    from app.db.models import ContextReviewProposal
-
     pending = db.scalar(
-        select(func.count())
-        .select_from(ContextReviewProposal)
-        .where(ContextReviewProposal.project_id == project.id, ContextReviewProposal.status == "pending")
+        apply_search(
+            select(func.count())
+            .select_from(ContextReviewProposal)
+            .where(ContextReviewProposal.project_id == project.id, ContextReviewProposal.status == "pending"),
+            q,
+            (ContextReviewProposal.document_key,),
+        )
     )
     result = {k: int(v) for k, v in counts.items()}
     if pending:

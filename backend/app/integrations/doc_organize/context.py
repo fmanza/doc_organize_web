@@ -162,6 +162,8 @@ class ContextRequest:
     semantic: bool = False
     semantic_threshold: float = 0.75
     versions: str = "all"
+    #: doc_organize 2.5.0 (``build(version_across_extensions=)``): agrupar versiones aunque cambie el formato.
+    version_across_extensions: bool = False
     #: Redactar credenciales en el sitio publicado (``SiteGenerator.generate(redact_credentials=)``, D7); lo que va a
     #: la IA lo redacta ``AiSettings.redact_credentials`` (``AiConnection``).
     redact_credentials: bool = True
@@ -267,6 +269,7 @@ class ContextOutcome:
     #: W6 (F5): modo de versiones, grupos (rutas del contenedor: el job las hace relativas) y versiones antiguas fuera
     #: del contexto (``current_only``).
     versions_mode: str | None = None
+    versions_across_extensions: bool | None = None
     version_groups: list[dict[str, Any]] = field(default_factory=list)
     superseded: list[str] = field(default_factory=list)
 
@@ -971,6 +974,7 @@ def _outcome(context: Any, failed: list[tuple[str, str]], missing: int, roots: l
         stale_decisions=[_issue(issue) for issue in context.stale_decisions],
         orphan_decisions=[_issue(issue) for issue in context.orphan_decisions],
         versions_mode=str(context.versions_mode),
+        versions_across_extensions=bool(context.versions_across_extensions),
         version_groups=[
             {
                 "key": str(group.key),
@@ -1063,6 +1067,7 @@ def build_context(
             "taxonomy_manifest": manifest,
             "taxonomy_template_name": request.template_name if manifest is not None else None,
             "versions": request.versions,
+            "version_across_extensions": request.version_across_extensions,
             "scan_roots": roots,
             "cancel_token": token,
         }

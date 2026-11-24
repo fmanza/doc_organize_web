@@ -357,6 +357,35 @@ describe('W6: semántica del proyecto', () => {
   });
 });
 
+describe('2.5.0: versiones entre formatos', () => {
+  it('la casilla solo aparece si se usan versiones y se guarda al pulsarla', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes({ ...PROJECT, context_versions: 'mark' }),
+      'PUT /api/v1/projects/7/ai-settings': { body: PROJECT },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
+    await user.click(
+      within(card).getByRole('switch', { name: /Agrupar versiones aunque cambie el formato/ }),
+    );
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings');
+    expect(await request?.json()).toEqual({ context_versions_across_extensions: true });
+  });
+
+  it('con «todas» no hay grupos de versiones y la casilla no aparece', async () => {
+    stubApi(detailRoutes({ ...PROJECT, context_versions: 'all' }));
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
+
+    expect(within(card).queryByRole('switch', { name: /Agrupar versiones/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('Fase 10: menú del proyecto', () => {
   it('con un proyecto abierto, Duplicados va la primera', async () => {
     stubApi({

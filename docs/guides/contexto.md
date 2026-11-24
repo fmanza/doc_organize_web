@@ -137,6 +137,12 @@ reconstruir):
 La vigente es la versión más alta, salvo que una persona elija otra con «Marcar como vigente» (en la tarjeta de
 versiones o en «Revisar clasificación»), que se guarda como decisión y se aplica al reconstruir.
 
+**Agrupar versiones aunque cambie el formato** (2.5.0, debajo del modo de versiones; desactivado por defecto): con la
+casilla, `Manual_v2.docx` y `Manual_v3.pdf` también son versiones del mismo documento. La misma versión en varios
+formatos (`Manual_v3.docx` y `Manual_v3.pdf`) es vigente entera: «Solo la vigente» no deja fuera ninguno de los dos.
+Actívala solo si en el proyecto el mismo nombre en otro formato es el mismo documento (no, por ejemplo, unos datos en
+Excel y su informe en PDF).
+
 ### Clasificación semántica (2.0)
 
 Con «Clasificación semántica» activada en «Contexto e IA del proyecto» (propietario o editor; desactivada por
@@ -309,6 +315,11 @@ una copia trae las versiones de ese momento, que pueden no coincidir con el mani
 «Revisar clasificación» (paso «4. Revisar» de la cabecera) lista lo que conviene mirar tras la última construcción, de lo
 más urgente a lo menos: decisiones desfasadas, documentos sin clasificar, reglas e IA que no coinciden en el dominio,
 citas de la IA no encontradas en el texto, valores con confianza baja y versiones cuya vigente no se ha confirmado.
+Desde la 2.5.0 también las decisiones de documentos que ya no están (como «Decisión desfasada», sin documento).
+
+Se filtra por **motivo** y, desde la 2.5.0, por **nombre**: el buscador mira el título, la carpeta y la ruta del
+documento (también la clave de una decisión sin documento). El total y el número de cada motivo del desplegable cuentan
+solo lo que coincide con la búsqueda.
 
 Sobre cada documento, el propietario y los editores (con el destino de lectura y escritura) pueden **decidir**:
 
