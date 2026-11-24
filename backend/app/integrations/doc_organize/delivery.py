@@ -104,6 +104,7 @@ def write_offline_site(
         ContextMissingError, SiteNotReadyError, OfflineSiteProblemsError, ExportCancelled, DocOrganizeOperationError.
     """
     from doc_organize import (
+        DocOrganizeError,
         OfflineSiteError,
         Project,
         ProjectLayout,
@@ -111,7 +112,6 @@ def write_offline_site(
         check_site_offline,
         write_site_zip,
     )
-    from doc_organize.core.exceptions import DocOrganizeError
 
     export = request.export
     context = load_context(export)

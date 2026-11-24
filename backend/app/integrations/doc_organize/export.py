@@ -80,8 +80,7 @@ class ExportSize:
 
 
 def _entries(request: ExportRequest) -> list[CacheEntry]:
-    from doc_organize import ProjectLayout
-    from doc_organize.export import load_cache_entries
+    from doc_organize import ProjectLayout, load_cache_entries
 
     if "entries" in request.loaded:
         cached: list[CacheEntry] = request.loaded["entries"]
@@ -101,8 +100,7 @@ def _entries(request: ExportRequest) -> list[CacheEntry]:
 
 
 def _history(request: ExportRequest) -> list[ScanErrorReport]:
-    from doc_organize import ProjectLayout
-    from doc_organize.export import load_scan_error_history
+    from doc_organize import ProjectLayout, load_scan_error_history
 
     logs = [ProjectLayout(request.output_root, state_root=state).scan_errors_log for state in request.states]
     return [
@@ -131,7 +129,7 @@ def _conversion_dir(output_root: Path) -> Path:
 
 def zip_preview(request: ExportRequest) -> ExportSize:
     """Ficheros y bytes que tendría el ZIP del proyecto, sin escribirlo (recorre ``Conversión/``)."""
-    from doc_organize.export import preview_project_zip
+    from doc_organize import preview_project_zip
 
     stats = preview_project_zip(_entries(request), conversion_dir=_conversion_dir(request.output_root))
     return ExportSize(stats.file_count, stats.total_size_bytes)
@@ -182,7 +180,7 @@ def write_zip(
         ExportCancelled: Se canceló (el parcial ya está borrado).
         DocOrganizeOperationError: doc_organize no pudo escribirlo.
     """
-    from doc_organize.export import write_project_zip
+    from doc_organize import write_project_zip
 
     entries = _entries(request)
     conversion = _conversion_dir(request.output_root)
@@ -200,7 +198,7 @@ def write_cache_xlsx(
     destination: Path, request: ExportRequest, *, on_progress: ProgressFn, is_cancelled: Callable[[], bool]
 ) -> int:
     """Excel con todas las entradas de las cachés del proyecto; devuelve las filas escritas."""
-    from doc_organize.export import write_cache_xlsx as _write
+    from doc_organize import write_cache_xlsx as _write
 
     entries = _entries(request)
     rows: int = _run(
@@ -213,8 +211,7 @@ def write_cache_xlsx(
 
 def _context_history(request: ExportRequest) -> list[Any]:
     """``ContextBuildRecord`` del proyecto (1.5.0), las más recientes primero, con rutas relativas al origen."""
-    from doc_organize import ProjectLayout
-    from doc_organize.export import load_context_history
+    from doc_organize import ProjectLayout, load_context_history
 
     records = load_context_history([ProjectLayout(request.output_root).context_history])
     return [
@@ -238,7 +235,7 @@ def write_context_history_xlsx(
     El historial vive en la carpeta del proyecto (``historial_contexto/CONTEXT_HISTORY.jsonl``) y no se borra con el
     contexto. Las líneas dañadas se ignoran (``load_context_history``).
     """
-    from doc_organize.export import write_context_history_xlsx as _write
+    from doc_organize import write_context_history_xlsx as _write
 
     history = _context_history(request)
     rows: int = _run(
@@ -253,7 +250,7 @@ def write_errors_xlsx(
     destination: Path, request: ExportRequest, *, on_progress: ProgressFn, is_cancelled: Callable[[], bool]
 ) -> int:
     """Excel de errores de escaneo (estado actual e histórico de todas las carpetas); devuelve las filas escritas."""
-    from doc_organize.export import write_scan_errors_xlsx
+    from doc_organize import write_scan_errors_xlsx
 
     entries, history = _entries(request), _history(request)
     rows: int = _run(
@@ -272,8 +269,7 @@ def load_context(request: ExportRequest) -> Any:
     Raises:
         ContextMissingError: Sin ``context.json`` o no válido.
     """
-    from doc_organize import ContextRegistry, Project
-    from doc_organize.core.exceptions import DocOrganizeError
+    from doc_organize import ContextRegistry, DocOrganizeError, Project
 
     created_at = (request.created_at or datetime.now()).isoformat()
     project = Project(name=request.project_name, root_path=str(request.output_root), created_at=created_at)
@@ -294,7 +290,7 @@ def write_context_documents_xlsx(
         ContextMissingError: Sin contexto construido.
         ExportCancelled, DocOrganizeOperationError.
     """
-    from doc_organize.export import write_context_documents_xlsx as _write
+    from doc_organize import write_context_documents_xlsx as _write
 
     context = load_context(request)
     roots = list(request.roots) or None

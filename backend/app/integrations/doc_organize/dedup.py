@@ -96,7 +96,7 @@ class ApplyOutcome:
 
 def cache_documents(cache_dbs: Iterable[Path]) -> list[tuple[str, str]]:
     """``(ruta absoluta, sha256)`` de todas las entradas de las cachés (``load_cache_entries``, sin crearlas)."""
-    from doc_organize.export import load_cache_entries
+    from doc_organize import load_cache_entries
 
     entries = asyncio.run(load_cache_entries(list(cache_dbs)))
     return [(entry.file_path, entry.sha256_hash) for entry in entries]
@@ -151,8 +151,7 @@ def find_content_groups(
         AiServiceError: La IA no está configurada para ``dedup`` o falló (``code``: ``ai_auth``, ``ai_connection``,
             ``ai_error``).
     """
-    from doc_organize import ContentDocument, ContentDuplicateFinder
-    from doc_organize.core.exceptions import AiConfigurationError, AiError
+    from doc_organize import AiConfigurationError, AiError, ContentDocument, ContentDuplicateFinder
 
     from app.integrations.doc_organize.ai import AiServiceError, _ai_error, llm_client
 
