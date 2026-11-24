@@ -7,8 +7,8 @@ navegable con Zensical. Todo se escribe en la carpeta del proyecto, en la ubicac
 conversiones no cambian.
 
 Necesita que el proyecto esté [escaneado](escaneo.md): solo entran los documentos convertidos con éxito cuyo original
-sigue en el origen. Los que se movieron a `duplicados` o se borraron desde el último escaneo no entran, y el resultado
-los cuenta en «Originales que ya no están».
+sigue en el origen. Los que se movieron a `duplicados` (desde la 2.2, con su conversión) o se borraron desde el último
+escaneo no entran, y el resultado los cuenta en «Originales que ya no están».
 
 ## Los pasos (2.1)
 
@@ -95,15 +95,16 @@ conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
 Desde la 1.5.0, cada documento clasificado muestra:
 
 - **Autor**, **descripción** y **palabras clave** que declara el propio fichero (propiedades del PDF u Office).
-  - Si el documento no las declara y se activó [completar con IA](ia.md#completar-descripciones-con-ia), las rellena la IA y llevan la marca **IA**.
-  - El autor nunca lo pone la IA.
+    - Si el documento no las declara y se activó [completar con IA](ia.md#completar-descripciones-con-ia), las
+      rellena la IA y llevan la marca **IA**.
+    - El autor nunca lo pone la IA.
 - **Idioma**, detectado en el texto convertido. Si no es seguro, no se muestra.
 - **Cómo se clasificó** (plegable):
-  - el dominio que propusieron las reglas y su confianza;
-  - si se preguntó a la IA, su propuesta, su confianza y su motivo;
-  - en las plantillas, la confianza del tipo de material.
+    - el dominio que propusieron las reglas y su confianza;
+    - si se preguntó a la IA, su propuesta, su confianza y su motivo;
+    - en las plantillas, la confianza del tipo de material.
 
-  «No aplicada» marca una propuesta de la IA que no se usó, porque las reglas ya habían decidido ese eje.
+    «No aplicada» marca una propuesta de la IA que no se usó, porque las reglas ya habían decidido ese eje.
 
 El resumen indica con qué versión de doc_organize se construyó y qué modelos de IA se usaron.
 
@@ -144,9 +145,9 @@ comparando el texto de cada documento con el nombre, la descripción y las palab
 Los valores que asigna llevan la marca «Semántica» y la «Similitud mínima» (0,75 por defecto) decide cuándo se
 asigna. Con la IA activada, además, los documentos parecidos ya clasificados con fiabilidad le sirven de ejemplo.
 
-Necesita «Modelos de IA» configurado (tarea «Embeddings»; sin modelo propio, el alias `doc-organize-embed`): si no lo
-está, la construcción se hace sin semántica y lo avisa. El texto de los documentos sale hacia el servicio de
-embeddings (redactado si la redacción está activada). Los vectores se guardan en `.doc_organize/embeddings/` de la
+Necesita la IA configurada (fila «Embeddings (semántica)» de «Modelos por funcionalidad»; sin modelo propio, el
+alias `doc-organize-embed`): si no lo está, la construcción se hace sin semántica y lo avisa. El texto de los documentos
+sale hacia el servicio de embeddings (redactado si la redacción está activada). Los vectores se guardan en `.doc_organize/embeddings/` de la
 carpeta del proyecto, como `Conversión/`: reconstruir no vuelve a pedir los que no han cambiado, y borrar el contexto
 no los borra. El resultado de la construcción dice cuántos textos se embebieron, cuántos salieron del índice y cuántos
 documentos recibieron algún valor.
@@ -191,6 +192,7 @@ puede traer HTML o scripts, así que se muestra **aislado** ([ADR-010](../adr/AD
 - Sus scripts no pueden usar tu sesión ni leer datos de la aplicación.
 - La dirección lleva un acceso temporal que caduca en una hora o al cerrar tu sesión. **Renovar acceso** pide otro.
 - **Abrir en otra pestaña** mantiene el mismo aislamiento.
+- **Volver a 6. Entregar** (2.2) regresa al paso, aunque se haya navegado dentro del sitio.
 
 Desde la 1.9.0 (doc_organize 1.7.0), el sitio y la carpeta reorganizada se publican con las **credenciales**
 (contraseñas, tokens, claves) sustituidas por `«REDACTADO»`, también en los títulos del menú. `Conversión/` y los
@@ -198,8 +200,8 @@ originales no cambian.
 
 ### Entregar el contexto (2.0)
 
-La tarjeta **Entregar el contexto** del resumen prepara el contexto para quien no tiene cuenta en la aplicación o para
-un chat de IA. Cada entrega es una ejecución (con progreso y cancelación) que puede lanzar cualquier miembro, como las
+La tarjeta **Entregar el contexto** del paso «Entregar» prepara el contexto para quien no tiene cuenta en la aplicación o
+para un chat de IA. Cada entrega es una ejecución (con progreso y cancelación) que puede lanzar cualquier miembro, como las
 [exportaciones](documentos.md); el fichero se descarga desde su detalle y caduca con la retención de siempre.
 
 - **Excel del contexto**: los documentos con sus ejes (también desde Documentos → Exportar).
@@ -268,8 +270,8 @@ El bloque sigue el orden de trabajo: estado del manifiesto → **Crear o mejorar
 
 En el bloque del manifiesto hay dos ayudas más, que **nunca guardan nada**:
 
-- **Diseñar taxonomía con IA (agente)**: un agente (tarea «Agentes» de «Modelos de IA») explora los documentos y
-  mejora el manifiesto, una plantilla o empieza de cero, con cambios pequeños que comprueba con las reglas contra
+- **Diseñar taxonomía con IA (agente)**: un agente (fila «Agentes» de «Modelos por funcionalidad») explora los
+  documentos y mejora el manifiesto, una plantilla o empieza de cero, con cambios pequeños que comprueba con las reglas contra
   todos los documentos, siguiendo tus indicaciones si las das. El «Tope de pasos» limita las llamadas al modelo. Al
   terminar enseña si mejora el de partida (cobertura y conflictos por eje, antes y después), su justificación y el
   coste; «Cargar la propuesta en el editor» la pone en el editor para revisarla y guardarla (con sus versiones, como
@@ -324,7 +326,7 @@ manifiesto.
 
 ### Propuestas del revisor (2.0)
 
-La tarjeta **Propuestas del revisor (IA)** pide a un agente (tarea «Agentes» de «Modelos de IA») que repase los
+La tarjeta **Propuestas del revisor (IA)** pide a un agente (fila «Agentes» de «Modelos por funcionalidad») que repase los
 primeros documentos de la cola (20 por defecto, hasta 100) y proponga una decisión para cada uno, con su motivo y una
 cita del texto. Es una ejecución con progreso y cancelación; el **tope de pasos** (llamadas al modelo, 40 por defecto)
 acota el gasto y el resultado dice cuántos pasos, herramientas y tokens usó. El texto de esos documentos sale hacia el

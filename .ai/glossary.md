@@ -18,13 +18,13 @@
 | **Manifiesto** | `run.json` de una ejecución (sin secretos) |
 | **Caché** | `cache.db` de un proyecto (SQLite de doc_organize): documentos convertidos, hashes y metadatos |
 | **Escaneo incremental** | Solo se reconvierten los documentos cuyo tamaño + mtime (y después hash) cambiaron |
-| **Grupo de duplicados** | Conjunto de documentos exactos o similares (difusos) con uno a conservar |
+| **Grupo de duplicados** | Conjunto de documentos exactos, versiones, nombres parecidos o por contenido (mismo texto o, con IA, contenido parecido) con uno a conservar |
 | **Vista previa (modo seco)** | Ejecución que calcula lo que haría sin mover ni borrar ficheros; obligatoria antes de aplicar |
 | **Contexto** | Reorganización de las salidas por dominios y taxonomía, con sitio navegable (Zensical) |
-| **Taxonomía** | Plantilla (incluida o personalizada) que define dominios y categorías del contexto |
-| **Manifiesto de taxonomía** | Borrador de taxonomía generado con IA a partir de los documentos |
-| **Familia IA** | Grupo de ajustes IA con su credencial: uso LiteLLM, clasificación de dominio, clasificación de taxonomía, borrador de manifiesto, GitHub Copilot |
+| **Taxonomía** | Lista de **ejes** (dominio, tipo de material y los que solo etiquetan) que organiza el contexto; viene de una plantilla, del manifiesto del proyecto o, sin ejes, de las carpetas o una lista de dominios |
+| **Manifiesto de taxonomía** | Taxonomía propia del proyecto (YAML), editable, con versiones, y que se puede crear o mejorar con IA (borrador y agente) |
+| **Familia IA** | Grupo de ajustes IA con su credencial: `litellm` (URL y clave general y, por tarea `classify`, `enrich`, `taxonomy_design`, `agent`, `embed` y `dedup`, modelo, clave y presupuesto) y `litellm_usage` (consulta de uso). GitHub Copilot se quitó en la 2.1 |
 | **Capacidades de la instancia** | GPU, audio/vídeo, LibreOffice y modelos presentes en la imagen desplegada |
-| **Tenant** | Organización aislada (Fase 9); hasta entonces existe solo `default` |
+| **Tenant** | Organización aislada con sus usuarios, ubicaciones y proyectos (Fase 9); la instancia arranca con `default` |
 | **Capa anticorrupción** | `backend/app/integrations/doc_organize/`, único importador de doc_organize |
 | **GAP** | Hueco de la API de doc_organize registrado en `docs/plan/DOC_ORGANIZE_GAPS.md` (`G<n>`) |

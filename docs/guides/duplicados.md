@@ -45,12 +45,14 @@ aplicación.
 ## Revisar
 
 «Revisar los grupos de duplicados», en el detalle de la ejecución, abre los grupos. Se ven de 10 en 10 (la página
-está en la dirección), filtrados por motivo. Un grupo de más de 5 documentos se ve plegado, con los 5 primeros y el
+está en la dirección), filtrados por motivo, con búsqueda y «Ordenar por» (orden de la vista previa, motivo o número de
+documentos). Un grupo de más de 5 documentos se ve plegado, con los 5 primeros y el
 que se conserva; «Ver N documentos más» abre el resto. Cada grupo muestra sus documentos lado a lado: ruta, tamaño, fecha de modificación y el principio del hash.
 «Ver convertido» abre su Markdown en el [visor](documentos.md#visor).
 
 - **Conservar por defecto** decide qué documento se queda en cada grupo: el más antiguo (como doc_organize), el más
-  reciente o el de ruta más corta. En cada grupo puedes elegir otro.
+  reciente o el de ruta más corta. En cada grupo puedes elegir otro («Elegido a mano»); «Restablecer las elecciones»
+  las deshace.
 - **Aplicar este grupo** viene marcado en los exactos y las versiones, y desmarcado en los de nombre parecido y en
   los de contenido: revísalos y márcalos uno a uno.
 - Tus decisiones se mantienen al pasar de página mientras no salgas de la pantalla.
@@ -70,7 +72,8 @@ Si alguien aplicó duplicados después de esta búsqueda, un aviso te pide que v
 Después sigue los mismos pasos que mover o borrar un proyecto:
 
 1. **Calcular qué se aplicaría** (vista previa): cuántos grupos y ficheros, qué ocupan y cuántos grupos han cambiado
-   desde la búsqueda.
+   desde la búsqueda. Como mucho 10 000 grupos de una vez: con más, aplica por partes o vuelve a buscar sin nombres
+   parecidos.
 2. Escribir el nombre del proyecto y confirmar.
 
 Antes de tocar nada, la aplicación recalcula el hash de los documentos de cada grupo elegido. Si alguno cambió o ya no

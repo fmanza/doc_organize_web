@@ -32,8 +32,8 @@ con `status: degraded`. El `HEALTHCHECK` de la imagen usa el mismo endpoint.
 | `worker-gpu` | El mismo worker con la imagen `runtime-gpu`, cola `gpu` (escaneos con «Usar GPU») | perfil `gpu` |
 | `models-init` | Descarga los modelos de Docling al volumen `models` y termina | perfil `setup`, a mano |
 
-Ambos usan la misma imagen, con usuario no root (uid 10001), sistema de ficheros de solo lectura, `tmpfs` en `/tmp`,
-sin capacidades y `no-new-privileges`.
+`web` y `worker` usan la misma imagen (`worker-gpu`, la `runtime-gpu`); todos con usuario no root (uid 10001),
+sistema de ficheros de solo lectura, `tmpfs` en `/tmp`, sin capacidades y `no-new-privileges`.
 
 Sin `worker` la aplicación funciona, pero las ejecuciones se quedan **en cola**. `/api/health` indica su estado en
 `worker` (`ok`, `stale` si dejó de latir, `none` si no hay ninguno) sin cambiar el `status` general, y
@@ -135,8 +135,8 @@ docker compose exec -T worker python - --libreoffice --av < scripts/smoke_varian
   modelo de Whisper se descarga la primera vez que se usa: el worker necesita salida a Internet para eso, o el modelo
   en la caché de `HF_HOME` del volumen `models`.
 
-Las ubicaciones se montan **igual en `web` y en `worker`** (mismas rutas bajo `/mnt`): la API valida y explora y el
-worker lee y escribe. Al detener el worker (`docker compose stop worker`) las operaciones en marcha se interrumpen y
+Las ubicaciones se montan **igual en `web` y en `worker`** (y en `worker-gpu`, si se usa; mismas rutas bajo `/mnt`):
+la API valida y explora y el worker lee y escribe. Al detener el worker (`docker compose stop worker`) las operaciones en marcha se interrumpen y
 quedan como fallidas («El worker se detuvo»); se pueden volver a lanzar.
 
 ## Secretos
@@ -146,7 +146,7 @@ Docker secrets montados en `/run/secrets/`:
 | Secreto | Fichero | Uso |
 |---|---|---|
 | `dow_app_secret_key` | `secrets/app_secret_key.txt` | Firma del token CSRF de cada sesión |
-| `dow_fernet_keys` | `secrets/fernet_keys.txt` | Cifrado de credenciales IA (Fase 8); lista separada por comas para rotar |
+| `dow_fernet_keys` | `secrets/fernet_keys.txt` | Cifrado de credenciales IA (Fase 8); lista separada por comas para rotar ([Rotar la clave de cifrado](ia.md#rotar-la-clave-de-cifrado)) |
 
 Sin ambos, la aplicación no arranca en producción. `secrets/` nunca se versiona. Guarda una copia segura: sin
 `dow_fernet_keys` no se pueden descifrar las credenciales guardadas.
@@ -179,9 +179,9 @@ Se ajustan en un `.env` junto a `docker-compose.yml` (plantilla en `.env.example
 | `DOW_SCAN_REUSE_HASHES` | `true` | No rehashear un fichero cuyo tamaño y fecha coinciden con la caché: ahorra horas en carpetas grandes de red. No detecta un cambio que conserve tamaño y fecha; «Forzar reconversión» rehashea todo |
 | `DOW_WITH_LIBREOFFICE`, `DOW_WITH_AV` | `false` | Al construir: imagen con LibreOffice o con audio y vídeo |
 
-Variables de la aplicación (en `environment:` del servicio `web` en `docker-compose.yml`). Los administradores pueden
-cambiarlas también desde **Administración → Ajustes** sin reiniciar; lo guardado allí tiene prioridad
-([ADR-012](../adr/ADR-012-ajustes-administrables.md)):
+Variables de la aplicación (se añaden a `environment:` de `web` y `worker`, p. ej. en `docker-compose.override.yml`).
+Los administradores pueden cambiarlas también desde **Administración → Ajustes** (las de IA, en **IA → Parámetros**)
+sin reiniciar; lo guardado allí tiene prioridad ([ADR-012](../adr/ADR-012-ajustes-administrables.md)):
 
 | Variable | Por defecto | Uso |
 |---|---|---|
@@ -196,7 +196,11 @@ cambiarlas también desde **Administración → Ajustes** sin reiniciar; lo guar
 | `DOW_LOCATION_PROBE_INTERVAL_MINUTES` | `5` | Cada cuánto sondea el worker las ubicaciones (0 = nunca) |
 | `DOW_RUN_RETENTION_DAYS` | `30` | Días que se guardan los ficheros de las ejecuciones terminadas (el historial se conserva) |
 | `DOW_USER_QUOTA_MB` | `0` | Espacio de ficheros de ejecuciones por usuario (0 = sin límite) |
-| `DOW_CONTEXT_SITE_TIMEOUT_SECONDS` | `600` | Tiempo máximo de `zensical build` al construir el contexto; si se pasa, el contexto queda sin sitio y con un aviso |
+| `DOW_AI_TIMEOUT_SECONDS` | `120` | Tiempo máximo de cada petición de IA |
+| `DOW_AI_RETRIES` | `2` | Reintentos de una petición de IA ante fallos de conexión |
+| `DOW_AI_MAX_DOCUMENTS_PER_RUN` | `500` | Documentos que una ejecución puede enviar a la IA, por tarea |
+| `DOW_AI_DRAFT_TIMEOUT_SECONDS` | `300` | Tiempo máximo de las tareas largas (borrador de manifiesto y agentes) |
+| `DOW_AI_DRAFT_RETRIES` | `0` | Reintentos de las tareas largas |
 
 Límites de la API (no administrables, Fase 10):
 
@@ -223,6 +227,7 @@ Variables del worker (en `environment:` del servicio `worker`; no son administra
 | `DOW_WORKER_HEARTBEAT_SECONDS` | `10` | Latido; un run sin latido durante 3 intervalos se da por huérfano |
 | `DOW_JOB_TIMEOUT_SECONDS` | `21600` | Duración máxima de una operación (6 h); al vencer se pide una parada ordenada y lo hecho se guarda |
 | `DOW_CANCEL_GRACE_SECONDS` | `30` | Plazo para atender una cancelación antes de terminar el subproceso |
+| `DOW_CONTEXT_SITE_TIMEOUT_SECONDS` | `600` | Tiempo máximo de `zensical build` al construir el contexto y el sitio sin conexión; si se pasa, el contexto queda sin sitio y con un aviso |
 | `DOW_TIMEOUT_GRACE_SECONDS` | `600` | Plazo de la parada ordenada al vencer el tiempo máximo (un PDF grande con OCR tarda minutos; si no para, se pierde la caché de la carpeta en curso) |
 
 ## Copias de seguridad
@@ -288,5 +293,7 @@ git pull
 docker compose up -d --build     # entrypoint.sh aplica las migraciones de config.db antes de arrancar
 ```
 
-Para volver atrás: imagen anterior y, si la versión nueva añadió migraciones, `alembic downgrade <revisión>` dentro del
-contenedor antes de cambiar de imagen.
+Antes, haz una copia (`app.cli backup`, arriba). Para volver atrás: imagen anterior y, si la versión nueva añadió
+migraciones (la última es la `0029`), `alembic downgrade <revisión>` dentro del contenedor antes de cambiar de imagen.
+El CHANGELOG avisa de las que no se pueden deshacer (p. ej. la `0029` si algún proyecto borrado ya soltó sus
+ubicaciones): en ese caso, se vuelve atrás restaurando la copia.

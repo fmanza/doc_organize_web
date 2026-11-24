@@ -12,7 +12,8 @@ en su propio disco.
 
 ## Crear un proyecto
 
-**Proyectos → Nuevo proyecto** (cualquier usuario; quien lo crea queda como **propietario**):
+**Proyectos → Nuevo proyecto** (con el permiso «Crear proyectos», que tiene el rol «Usuario»; quien lo crea queda como
+**propietario**):
 
 1. Nombre y, si quieres, una descripción.
 2. **Ubicación de origen** y sus carpetas: navega y pulsa «Elegir esta carpeta» en cada una (hasta 20). Una carpeta no
@@ -32,19 +33,25 @@ la de otro proyecto.
 | Rol | Puede |
 |---|---|
 | Lector | Ver el proyecto, sus miembros, sus ejecuciones, sus [documentos](documentos.md) y los errores de escaneo, buscar en el contenido, exportar y descargar sus ficheros |
-| Editor | Lo anterior, escanear, actualizar la búsqueda, buscar [duplicados](duplicados.md) y copiarlos, y cancelar sus ejecuciones |
-| Propietario | Todo: editar el proyecto y sus carpetas de origen, gestionar miembros, cancelar cualquier ejecución, forzar la reconversión, mover duplicados fuera del origen, mover, vaciar y borrar |
+| Editor | Lo anterior, escanear, actualizar la búsqueda, buscar [duplicados](duplicados.md) y copiarlos, construir el [contexto](contexto.md) y cancelar sus ejecuciones |
+| Propietario | Todo: editar el proyecto y sus carpetas de origen (y excluir subcarpetas), gestionar miembros, cancelar cualquier ejecución, forzar la reconversión, mover duplicados fuera del origen, mover, vaciar y borrar |
 
-Los administradores ven todos los proyectos y actúan como propietarios. Un proyecto del que no eres miembro no aparece
-y su enlace responde «Proyecto no encontrado».
+Quien tiene el permiso «Todos los proyectos» (el rol «Administrador» y el administrador de la instancia) ve todos los
+proyectos del tenant y actúa como propietario ([Tenants y roles](tenants_y_roles.md)). Un proyecto del que no eres
+miembro no aparece y su enlace responde «Proyecto no encontrado».
 
 **Miembros**: el propietario busca a un usuario activo (al menos dos letras), elige el rol y pulsa «Añadir». Siempre
 queda al menos un propietario.
 
 ## Editar
 
-«Editar» cambia el nombre y la descripción. **Cambiar el nombre no renombra la carpeta de salidas.** Las carpetas de
-origen se añaden y se quitan desde la pantalla de **Escanear**, sin ejecuciones en marcha.
+«Editar» cambia el nombre, la descripción y «Guardar el propietario de cada fichero»
+([Usuarios y sesiones](usuarios_y_sesiones.md#propietario-de-los-ficheros)). **Cambiar el nombre no renombra la carpeta
+de salidas.** Las carpetas de origen se añaden y se quitan desde la pantalla de **Escanear**, sin ejecuciones en
+marcha.
+
+La tarjeta «Contexto e IA del proyecto» (propietarios y editores) tiene la redacción de credenciales, las versiones de
+un documento y la clasificación semántica ([Contexto](contexto.md)).
 
 ## Mover, vaciar y borrar (zona de peligro)
 
@@ -58,12 +65,12 @@ Solo propietarios, y solo si no hay otra ejecución en marcha en el proyecto. La
 |---|---|
 | **Mover salidas** | Lleva la carpeta de salidas a una carpeta nueva de otra ubicación de destino (o de la misma). En el mismo disco es instantáneo; entre ubicaciones distintas se copia y después se borra la carpeta anterior. Si la copia falla o la cancelas, se deshace y el proyecto no cambia |
 | **Vaciar histórico** | Borra las salidas (también el manifiesto de taxonomía, que antes se guarda como [versión](contexto.md#versiones-restaurar-y-borrar-180)) y la caché; el proyecto, sus miembros y su configuración se conservan, listo para volver a procesar desde cero |
-| **Borrar proyecto** | El proyecto desaparece de la lista y su caché se borra. Con «Borrar también la carpeta de salidas» se borra esa carpeta; si no, se queda en el destino. El historial de ejecuciones se conserva |
+| **Borrar proyecto** | El proyecto desaparece de la lista y su caché se borra. Con «Borrar también la carpeta de salidas» se borra esa carpeta; si no, se queda en el destino. El historial de ejecuciones se conserva. Desde la 2.3.1 suelta sus ubicaciones de origen y destino, que ya se pueden borrar o pasar a otro tenant |
 
 Todas quedan en la auditoría con quién, cuándo y cuántos ficheros.
 
 ## Probar el motor
 
-«Probar el motor» (solo administradores) lanza una ejecución de prueba (cinco pasos de un segundo) que no toca los
+«Probar el motor» (solo el administrador de la instancia) lanza una ejecución de prueba (cinco pasos de un segundo) que no toca los
 documentos: sirve para comprobar que el worker está en marcha y ver el progreso en vivo. Para convertir documentos,
 **Escanear** ([Escaneo](escaneo.md)).

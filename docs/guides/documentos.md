@@ -19,9 +19,16 @@ la fecha de la última actualización y el estado de la conversión:
   distinguir mayúsculas.
 - **Estado** muestra solo los documentos convertidos, con error, pendientes…
 - **Carpeta** limita la lista a una carpeta de origen.
-- La lista va **por páginas** (50 por defecto; 25, 50 o 100 en el selector de abajo) y cada página la pide al
-  servidor: funciona igual con cien documentos que con cien mil. La página está en la dirección (`?page=3`), así que
-  «Atrás» y los enlaces compartidos vuelven a ella. Cambiar la búsqueda o un filtro vuelve a la primera.
+- **Tipo de fichero** filtra por uno o varios tipos MIME; el desplegable dice cuántos documentos hay de cada uno (los
+  escaneados antes de la 1.5 no lo tienen).
+- **Ordenar por**: ruta, última actualización, estado de conversión, fallos seguidos, tipo o fecha de creación; los
+  propietarios del proyecto, también por propietario. Sin elegir nada, por carpeta y ruta.
+- Debajo de cada ruta, el tipo, la fecha de creación y los permisos, si el sistema de ficheros los da, y el
+  propietario si el proyecto lo guarda y eres propietario del proyecto
+  ([Usuarios y sesiones](usuarios_y_sesiones.md#propietario-de-los-ficheros)).
+- La lista va **por páginas** de 25 y cada página la pide al servidor: funciona igual con cien documentos que con cien
+  mil. La página está en la dirección (`?page=3`), así que «Atrás» y los enlaces compartidos vuelven a ella. Cambiar la
+  búsqueda o un filtro vuelve a la primera.
 
 ## Visor
 

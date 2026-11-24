@@ -70,9 +70,12 @@ El sitio entregado («6. Entregar» → «Ver el sitio») lo genera doc_organize
 ## Sesiones y auditoría
 
 - **Administración → Sesiones** lista las sesiones abiertas de los usuarios del tenant; revocar una la cierra al momento.
-- **Administración → Auditoría** (permiso «Consultar la auditoría») muestra los eventos del tenant activo. Registra inicios y cierres de sesión (también los fallidos), bloqueos, cambios de
-  contraseña, altas, ediciones, desactivaciones y desbloqueos de usuarios, y sesiones revocadas, con fecha, autor e IP.
-  Se puede filtrar por tipo de acción y por usuario que actuó. Nunca se guardan contraseñas.
+- **Administración → Auditoría** (permiso «Consultar la auditoría») muestra los eventos del tenant activo. Registra
+  inicios y cierres de sesión (también los fallidos), bloqueos, cambios de contraseña, altas, ediciones,
+  desactivaciones y desbloqueos de usuarios y sesiones revocadas, y también los cambios en roles, tenants, ubicaciones,
+  ajustes, IA y proyectos (miembros, carpetas, operaciones que mueven o borran, contexto), con fecha, autor e IP. Se
+  puede buscar y filtrar por tipo de acción (Autenticación, Usuarios, Sesiones) y por usuario que actuó. Nunca se
+  guardan contraseñas.
 - **Eliminar auditoría por fechas** (solo el **administrador de la instancia**): botón «Eliminar por fechas» de
   Administración → Auditoría. Borra para siempre las entradas del **tenant activo** entre dos fechas (UTC).
   1. Elige «Desde» (incluido) y «Hasta» (sin incluir). «Hasta» no puede pasar de hoy: las entradas de hoy no se

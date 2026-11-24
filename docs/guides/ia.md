@@ -7,6 +7,7 @@ La IA es opcional. La aplicación funciona sin ella. Cuando se configura, sirve 
   justifica.
 - **Completar descripciones** y palabras clave de los documentos clasificados.
 - La **clasificación semántica** (embeddings), antes de la IA, para los ejes que las reglas dejan vacíos.
+- Buscar **duplicados por contenido parecido** (2.2): ver [Duplicados](duplicados.md#por-contenido-22).
 - Pedir un **borrador del manifiesto** de taxonomía y los **agentes**: diseñar la taxonomía y el revisor de la
   clasificación.
 - Ver el **uso**: el gasto y el presupuesto de la clave de LiteLLM, y los tokens, documentos y caché de cada
@@ -19,8 +20,8 @@ uso de GitHub Copilot.
 
     Al clasificar, describir, pedir un borrador o lanzar un agente se envían al servicio configurado el **título y un
     extracto** de cada documento (los agentes y los embeddings, también fragmentos del texto). No se envían rutas del
-    servidor. Nunca se hace por defecto: cada ejecución lo pide de forma explícita y la
-    pantalla lo avisa. No lo actives con documentos que no puedan salir de tu organización.
+    servidor. La búsqueda de duplicados por contenido parecido envía el **texto completo** de cada documento. Nunca se
+    hace por defecto: cada ejecución lo pide de forma explícita y la pantalla lo avisa. No lo actives con documentos que no puedan salir de tu organización.
 
     Las **credenciales** que aparezcan en ese título o extracto (contraseñas,
     tokens, claves de API, claves privadas, usuario y contraseña en una URL) se envían como `«REDACTADO»`. Es una red de
@@ -51,14 +52,14 @@ uso de GitHub Copilot.
   `bge-m3` en Ollama, alias `doc-organize-dedup`).
 - Un **cliente único** hace todas las tareas con el mismo LiteLLM Proxy. Cada tarea usa su modelo o, si no se
   configura, el alias recomendado `doc-organize-<tarea>`: `doc-organize-classify`, `doc-organize-enrich`,
-  `doc-organize-taxonomy-design`, `doc-organize-agent` y `doc-organize-embed`. Si usas los alias, defínelos en el
-  proxy. Las **claves propias por tarea son opcionales**: sin ella, la tarea usa la general. Sin máximo propio, una
-  tarea usa «Documentos con IA por ejecución» de los parámetros.
+  `doc-organize-taxonomy-design`, `doc-organize-agent` y `doc-organize-embed` (`dedup` no tiene alias por defecto:
+  necesita su modelo). Si usas los alias, defínelos en el proxy. Las **claves propias por tarea son opcionales**: sin
+  ella, la tarea usa la general. Sin máximo propio, una tarea usa «Documentos con IA por ejecución» de los parámetros.
 - La tarea **`embed`** (embeddings) solo se usa si un proyecto activa la clasificación semántica («Contexto e IA del
   proyecto»). Su modelo tiene que ser de embeddings, no de chat.
-- Al actualizar desde la 1.x, la migración pasa las cuatro tarjetas antiguas a «Modelos de IA»: la clasificación (con
-  plantilla o manifiesto manda la de taxonomía), las descripciones y el borrador conservan cada una su clave y su
-  modelo. Si usaban URL distintas, queda la de la clasificación por taxonomía (el aviso queda en el log de la
+- Al actualizar desde la 1.x, la migración pasa las cuatro tarjetas antiguas a la conexión con LiteLLM y sus
+  funcionalidades: la clasificación (con plantilla o manifiesto manda la de taxonomía), las descripciones y el borrador
+  conservan cada una su clave y su modelo. Si usaban URL distintas, queda la de la clasificación por taxonomía (el aviso queda en el log de la
   migración). Volver a la 1.x desde la 2.0.0 rehace las cuatro tarjetas antiguas desde la configuración de 2.0 (la URL,
   la clave de cada tarea o la general y su modelo): no se guarda una copia de la de 1.x.
 - Cada campo indica de dónde sale su valor: **Guardado aquí**, **Variable del servidor** (`DOC_ORGANIZE_LITELLM_BASE_URL`,
@@ -68,23 +69,24 @@ uso de GitHub Copilot.
   `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`) **ya no se leen** (decisión D15, sin periodo de transición). Si siguen
   definidas, la página lo avisa con la equivalente de cada una y, si la IA queda sin configurar, encolar una ejecución
   con IA falla con un error que dice qué variable usar en su lugar: nunca se queda sin IA en silencio. La API de
-  configuración las lista, sin valores.
+  configuración las lista, sin valores. También avisa de `DOC_ORGANIZE_GITHUB_USERNAME` y `DOC_ORGANIZE_GITHUB_PAT`
+  (GitHub Copilot, quitado en la 2.1): ya no se usan y se pueden borrar.
 - Las **claves y tokens** se guardan cifrados y nunca se vuelven a mostrar: solo «Guardada: …ab12» (los 4 últimos
   caracteres, o `***` si son muy cortos). Para cambiar una, escribe la nueva. Para volver a la variable del servidor,
   pulsa «Borrar valor guardado».
 - La URL tiene que ser `http://` o `https://`, sin usuario ni contraseña, sin parámetros ni fragmento.
 - Guardar claves exige el secreto `dow_fernet_keys` (lo crea `scripts/generate_secrets.py`). Si falta, la página lo
-  avisa y solo deja guardar URL, modelo y usuario.
+  avisa y solo deja guardar la URL, los modelos y los máximos de documentos.
 - Cada cambio queda en la [auditoría](usuarios_y_sesiones.md) con los nombres de los campos, nunca con las claves.
 
 ### Probar la conexión
 
-Cada tarjeta tiene **Probar conexión**. Prueba con lo que haya en el formulario, **sin guardarlo**; lo que no has tocado
-se toma de lo guardado o de la variable del servidor. Así puedes comprobar un cambio antes de guardarlo.
+«Conexión con LiteLLM» y «Uso de LiteLLM» tienen **Probar conexión**. Prueba con lo que haya en el formulario, **sin
+guardarlo**; lo que no has tocado se toma de lo guardado o de la variable del servidor. Así puedes comprobar un cambio antes de guardarlo.
 
 - **Probar conexión** comprueba que el servidor responde y que la clave es válida, sin gastar tokens:
-  - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al modelo
-    configurado, lo avisa.
+    - LiteLLM: consulta los datos de la clave (`/key/info`). Si el servidor dice que la clave no tiene acceso al
+      modelo configurado, lo avisa.
 - **Probar** (en cada fila de «Modelos por funcionalidad») envía además una petición mínima al modelo de esa tarea, con
   su clave, y con salida `json_schema` estricta (en embeddings, pide un vector), que gasta unos pocos tokens. Es la
   prueba que detecta un nombre de modelo mal escrito, y dice si el modelo admite `json_schema` (si no, doc_organize usa
@@ -105,11 +107,11 @@ usan**:
 
 | Ajuste | Por defecto | Qué hace |
 |---|---|---|
-| Tiempo máximo por petición de IA | 120 s | Cada petición de clasificar, describir y embeddings (el panel de uso espera como mucho 10 s). Con un modelo local de 14B, una clasificación tarda de media unos 25 s y algunas pasan de 30 s (5–300) |
+| Tiempo máximo por petición de IA | 120 s | Cada petición de clasificar, describir y embeddings, del contexto y de duplicados (el panel de uso espera como mucho 10 s). Con un modelo local de 14B, una clasificación tarda de media unos 25 s y algunas pasan de 30 s (5–300) |
 | Reintentos de conexión con la IA | 2 | Solo ante fallos de conexión |
-| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea: clasificar y completar descripciones cuentan cada uno el suyo. Una tarea con máximo propio en «Modelos de IA» usa el menor de los dos |
-| Tiempo máximo del borrador y los agentes de IA | 300 s | Para las tareas largas: la petición del borrador (una sola y larga) y cada llamada de los agentes; con un modelo local puede tardar minutos (5–900) |
-| Reintentos del borrador y los agentes de IA | 0 | Ante un fallo de conexión o de tiempo. Reintentar un timeout vuelve a pedir la misma generación al modelo |
+| Documentos con IA por ejecución | 500 | Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea: clasificar y completar descripciones cuentan cada uno el suyo. Una tarea con máximo propio en «Modelos por funcionalidad» usa el menor de los dos |
+| Tiempo máximo de las tareas largas | 300 s | Para las tareas largas: la petición del borrador (una sola y larga) y cada llamada de los agentes; con un modelo local puede tardar minutos (5–900) |
+| Reintentos de las tareas largas | 0 | Ante un fallo de conexión o de tiempo. Reintentar un timeout vuelve a pedir la misma generación al modelo |
 
 ### Modelos locales (Ollama)
 
@@ -123,8 +125,9 @@ Más contexto ocupa más memoria de la GPU.
 ## Clasificar con IA
 
 En la página **Contexto**, marca «Clasificar con IA lo que las reglas dejen sin clasificar» antes de construir.
-Solo está disponible si «Modelos de IA» está configurado. Con dominios descubiertos o con un catálogo propio la IA
-asigna el dominio; con plantilla o manifiesto, los ejes que las reglas (y la semántica) dejaron vacíos.
+Solo está disponible si la IA está configurada (fila «Clasificar» de «Modelos por funcionalidad»). Con «Por carpetas»
+o «Lista de dominios» la IA asigna el dominio; con plantilla o manifiesto, los ejes que las reglas (y la semántica)
+dejaron vacíos.
 
 Con plantilla o manifiesto, **«Qué se envía a la IA»** (2.1) elige qué documentos van al modelo:
 
@@ -156,8 +159,9 @@ qué opción se usó.
 
 ## Completar descripciones con IA
 
-En la página **Contexto** se puede marcar «Completar descripción y palabras clave con IA» antes de construir. Solo está disponible si «Modelos de IA» está configurado (tarea `enrich`: variables
-`DOC_ORGANIZE_LITELLM_MODEL_ENRICH` y, si quiere clave propia, `DOC_ORGANIZE_LITELLM_VIRTUAL_KEY_ENRICH`).
+En la página **Contexto** se puede marcar «Completar descripción y palabras clave con IA» antes de construir. Solo
+está disponible si la IA está configurada (tarea `enrich`: variables `DOC_ORGANIZE_LITELLM_MODEL_ENRICH` y, si quiere
+clave propia, `DOC_ORGANIZE_LITELLM_VIRTUAL_KEY_ENRICH`).
 
 - Solo se envían los documentos **clasificados** a los que les falta la descripción o las palabras clave en sus
   propiedades. Lo que declara el documento nunca se sustituye, y el autor nunca lo pone la IA.
@@ -171,8 +175,8 @@ En la página **Contexto** se puede marcar «Completar descripción y palabras c
 
 ## Borrador de manifiesto
 
-En la tarjeta **Manifiesto de taxonomía** de la página Contexto, «Pedir borrador» envía una muestra de documentos
-convertidos al servicio y propone dominios y tipos de material. Por defecto son 25 documentos, como mucho 60,
+En el bloque del manifiesto (paso «1. Taxonomía» de Contexto, «Crear o mejorar con IA»), «Pedir borrador» envía una
+muestra de documentos convertidos al servicio y propone dominios y tipos de material. Por defecto son 25 documentos, como mucho 60,
 repartidos entre carpetas.
 
 Es una [ejecución](ejecuciones.md) que **no guarda nada**. Al terminar, el borrador se carga en el editor: revísalo,
@@ -180,7 +184,7 @@ cámbialo si hace falta y pulsa «Guardar manifiesto». Después puedes construi
 proyecto». Lo pueden pedir los editores y propietarios. Queda en la auditoría como «Borrador de manifiesto con IA».
 
 Si la ejecución falla con «El servicio de IA no respondió a tiempo», el servicio aceptó la petición pero el modelo no
-terminó en el plazo: sube «Tiempo máximo del borrador y los agentes de IA», pide una muestra más pequeña o usa un modelo más rápido.
+terminó en el plazo: sube «Tiempo máximo de las tareas largas», pide una muestra más pequeña o usa un modelo más rápido.
 «No se pudo conectar con el servicio de IA» es otra cosa: la URL no responde (el proxy está parado o no se alcanza).
 
 ## Clasificación semántica
@@ -201,7 +205,7 @@ Los agentes (tarea `agent`) trabajan con herramientas, varios pasos seguidos, y 
   acepta o descarta.
 
 Cada uno tiene un **tope de pasos** (llamadas al modelo) y su resultado dice cuántos pasos, herramientas y tokens usó.
-Usan el plazo y los reintentos de las tareas largas («Tiempo máximo del borrador y los agentes de IA») y necesitan un
+Usan el plazo y los reintentos de las tareas largas («Tiempo máximo de las tareas largas») y necesitan un
 modelo con llamadas a herramientas y contexto amplio (ver [Modelos locales](#modelos-locales-ollama)).
 
 ## Uso de IA (administradores)
@@ -213,11 +217,11 @@ modelo con llamadas a herramientas y contexto amplio (ver [Modelos locales](#mod
   datos nuevos, como mucho una vez cada 30 segundos.
 - **Consumo por ejecución**, que registra la propia aplicación al terminar cada ejecución con IA (construir el
   contexto, borrador de manifiesto, agentes y la prueba de clasificación de Calidad), en el periodo elegido (7 días,
-  30 días, este mes o todo):
-  - indicadores: ejecuciones con IA, documentos enviados, resueltos con la caché (y qué parte del total), tokens de
-    entrada y de salida;
-  - **tokens por día**, en la hora local del navegador (la zona se indica en el gráfico), también como tabla;
-  - tablas **por tarea**, **por modelo**, **por proyecto** y las **ejecuciones que más tokens gastaron**, con enlace.
+  30 días, este mes o todo; la búsqueda de duplicados por contenido parecido no se registra):
+    - indicadores: ejecuciones con IA, documentos enviados, resueltos con la caché (y qué parte del total), tokens de
+      entrada y de salida;
+    - **tokens por día**, en la hora local del navegador (la zona se indica en el gráfico), también como tabla;
+    - tablas **por tarea**, **por modelo**, **por proyecto** y las **ejecuciones que más tokens gastaron**, con enlace.
 
 El proxy no da el coste de cada llamada, así que no hay coste por ejecución ni por tarea: el coste es el de la clave.
 Los tokens de los agentes son estimados (marcados con «≈») cuando el proxy no los informa.

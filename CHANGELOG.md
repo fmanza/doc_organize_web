@@ -5,6 +5,14 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Textos de la IA al día con la 2.2**: los avisos de «sin IA» del contexto y del proyecto, la ayuda de la semántica y
+  de «Documentos con IA por ejecución» ya no remiten a «Modelos de IA» (dicen la fila de «Modelos por funcionalidad» o
+  IA › Configuración); el botón de guardar la conexión es «Guardar Conexión con LiteLLM»; el aviso sin cifrado ya no
+  habla de «usuario» (era de GitHub Copilot), y la presentación de LiteLLM incluye los duplicados por contenido.
+- Documentación revisada contra el código de la 2.3.1 (guías de uso y de operación, portadas y contexto para las IA).
+
 ## [2.3.1] - 2026-11-23
 
 Los proyectos borrados sueltan sus ubicaciones. Sigue con doc_organize 2.2.0.

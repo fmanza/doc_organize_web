@@ -1,6 +1,8 @@
 # Publicar una versión
 
-Hasta la 1.0.0, una MINOR por fase cerrada del ROADMAP (`0.<fase+1>.0`) y PATCH para hotfix.
+Hasta la 1.0.0, una MINOR por fase cerrada del ROADMAP (`0.<fase+1>.0`) y PATCH para hotfix. Desde la 1.0.0,
+SemVer: PATCH para correcciones, MINOR para funcionalidad compatible y MAJOR si rompe la API o exige intervención al
+actualizar.
 
 ## 1. Sincronizar la versión
 
@@ -54,6 +56,6 @@ Reglas de las ramas (rulesets del repositorio):
 
 ## Cambiar la versión de doc_organize
 
-Ver [ADR-006](../adr/ADR-006-integracion-doc-organize.md): versión en `dependencies` y URL del wheel en
-`[tool.uv.sources]` de `backend/pyproject.toml`, `uv lock`, suite completa, nota en el CHANGELOG y en la columna
+Ver [ADR-006](../adr/ADR-006-integracion-doc-organize.md): versión en `dependencies` (y en los grupos `gpu` y `av`)
+y URL del wheel en `[tool.uv.sources]` de `backend/pyproject.toml`, `uv lock`, suite completa, nota en el CHANGELOG y en la columna
 «Requiere» del ROADMAP.

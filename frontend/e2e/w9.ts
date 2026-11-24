@@ -86,7 +86,7 @@ export async function api(
   return response;
 }
 
-/** «Modelos de IA» contra el LiteLLM falso, con modelo propio para agentes y embeddings (idempotente). */
+/** IA («Conexión con LiteLLM» y «Modelos por funcionalidad») contra el LiteLLM falso, con modelo propio para agentes y embeddings (idempotente). */
 export async function configureAi(page: Page) {
   const current = (await (await api(page, 'GET', '/api/v1/admin/ai-settings')).json()) as {
     families: { key: string; fields: { name: string; value: string | null; hint: string | null }[] }[];

@@ -313,7 +313,7 @@
       },
       "ai_max_documents_per_run": {
         "label": "Documentos con IA por ejecución",
-        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea (clasificar y describir cuentan cada uno el suyo). Una tarea con máximo propio en «Modelos de IA» usa el menor."
+        "hint": "Tope de documentos que una construcción del contexto puede enviar a la IA, por tarea (clasificar y describir cuentan cada uno el suyo). Una funcionalidad con máximo propio en «Modelos por funcionalidad» usa el menor."
       }
     },
     "aiMoved": "Los tiempos, reintentos y límites de la IA están ahora en",
@@ -523,10 +523,10 @@
         "all": "Todas, sin marcar (como antes de la 2.0)"
       },
       "semantic": "Clasificación semántica (embeddings)",
-      "semanticHelp": "Antes de la IA, rellena los ejes vacíos comparando cada documento con la descripción de cada valor (tarea «Embeddings» de «Modelos de IA»). Los valores llevan la marca «Semántica». El texto de los documentos sale hacia el servicio de embeddings; el índice se guarda en la carpeta del proyecto.",
+      "semanticHelp": "Antes de la IA, rellena los ejes vacíos comparando cada documento con la descripción de cada valor (fila «Embeddings (semántica)» de «Modelos por funcionalidad»). Los valores llevan la marca «Semántica». El texto de los documentos sale hacia el servicio de embeddings; el índice se guarda en la carpeta del proyecto.",
       "threshold": "Similitud mínima",
       "thresholdHelp": "Entre 0 y 1 (por defecto 0,75): cuanto más alto, menos valores y más seguros.",
-      "semanticNotConfigured": "«Modelos de IA» no está configurado: la construcción se hará sin semántica hasta que un administrador lo configure."
+      "semanticNotConfigured": "La IA no está configurada para «Embeddings (semántica)»: la construcción se hará sin semántica hasta que un administrador la configure en IA › Configuración."
     }
   },
   "runs": {
@@ -1364,9 +1364,9 @@
       "classify": "Clasificar con IA lo que las reglas dejen sin clasificar",
       "classifyHelp": "Solo se envían los documentos pendientes, hasta el máximo por ejecución de los ajustes. Si la clave se rechaza, se deja de llamar al servicio.",
       "notConfigured": {
-        "classify": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
-        "enrich": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA.",
-        "taxonomy_design": "Un administrador tiene que configurar los «Modelos de IA» en Configuración IA."
+        "classify": "Un administrador tiene que configurar la IA para «Clasificar» en IA › Configuración.",
+        "enrich": "Un administrador tiene que configurar la IA para «Describir» en IA › Configuración.",
+        "taxonomy_design": "Un administrador tiene que configurar la IA para «Diseñar la taxonomía» en IA › Configuración."
       },
       "enrich": "Completar descripción y palabras clave con IA",
       "enrichHelp": "Solo los documentos clasificados que no las declaran, con su propio máximo por ejecución. Lo que declara el documento no se sustituye.",
@@ -1629,7 +1629,7 @@
       "title": "Configuración IA",
       "intro": "Servicios de IA que usa la instancia. Lo que guardes aquí tiene prioridad sobre las variables DOC_ORGANIZE_* del servidor. Las claves se guardan cifradas y nunca se vuelven a mostrar: solo sus 4 últimos caracteres.",
       "noEncryptionTitle": "Cifrado no configurado",
-      "noEncryption": "Falta DOW_FERNET_KEYS en el servidor: puedes guardar URL, modelo y usuario, pero no claves ni tokens.",
+      "noEncryption": "Falta DOW_FERNET_KEYS en el servidor: puedes guardar la URL, los modelos y los máximos de documentos, pero no claves.",
       "secretNeedsEncryption": "Para guardar una clave hace falta el cifrado (DOW_FERNET_KEYS).",
       "configured": "Configurada",
       "notConfigured": "Sin configurar",
@@ -1706,8 +1706,8 @@
     },
     "families": {
       "litellm": {
-        "title": "Modelos de IA",
-        "intro": "LiteLLM Proxy de todas las tareas de IA: clasificar, describir, diseñar la taxonomía, agentes y embeddings. Cada tarea puede tener su modelo, su clave y su máximo de documentos por ejecución; sin modelo usa el alias recomendado «doc-organize-<tarea>» del proxy y sin clave, la general."
+        "title": "Conexión con LiteLLM",
+        "intro": "LiteLLM Proxy de todas las funcionalidades de IA: clasificar, describir, diseñar la taxonomía, agentes, embeddings y duplicados por contenido. Cada funcionalidad puede tener su modelo, su clave y su máximo de documentos por ejecución; sin modelo usa el alias recomendado «doc-organize-<tarea>» del proxy (salvo duplicados por contenido, que necesita el suyo) y sin clave, la general."
       },
       "litellm_usage": {
         "title": "Uso de LiteLLM",

@@ -3,7 +3,7 @@
 ## Requisitos
 
 - [uv](https://docs.astral.sh/uv/) 0.13.1 o superior (descarga Python 3.12 si hace falta).
-- Node.js 24.15 o superior (la imagen y el CI usan 24.21.0) con npm 11.
+- Node.js 24 o superior (la imagen y el CI usan 24.21.0) con npm 11.
 - Docker (Docker Desktop en Windows) para la imagen y los E2E.
 
 Sin uv local, la imagen `backend-dev` contiene las mismas herramientas que el CI:
@@ -23,6 +23,7 @@ uv run --frozen ruff format --check .
 uv run --frozen ruff check .
 uv run --frozen mypy
 uv run --frozen pytest
+uv run --frozen python scripts/export_openapi.py --check   # contrato al día (lo comprueba el CI)
 uv run --frozen python scripts/export_openapi.py   # tras cambiar la API: actualiza openapi/openapi.json
 ```
 
@@ -63,13 +64,14 @@ necesita.
 
 ## Con Docker Desktop
 
-`docker-compose.dev.yml` levanta la API con recarga sobre el código montado y monta dos ubicaciones de prueba
-(`dev-data/locations/origen` en solo lectura y `dev-data/locations/destino`), que se usarán desde la Fase 2. Pon ahí
-solo documentos sintéticos.
+`docker-compose.dev.yml` levanta la API con recarga sobre el código montado, publicada en `127.0.0.1:8000` (la del
+proxy de Vite: el frontend corre en el host con `npm run dev`), y el worker con el mismo código (lo recoge al
+reiniciarlo, sin recarga). Los dos montan dos ubicaciones de prueba bajo `/mnt`: `dev-data/locations/origen` en solo
+lectura y `dev-data/locations/destino`. Pon ahí solo documentos sintéticos.
 
 ```bash
 python scripts/generate_secrets.py
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build web
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build web worker
 ```
 
 ## Documentación
@@ -83,9 +85,19 @@ uv run --frozen --project backend --only-group docs zensical build --strict   # 
 
 ## E2E
 
-Con la aplicación levantada (`docker compose up`), desde `frontend/`:
+Como en el CI: carpetas sintéticas de `dev-data/e2e` como ubicaciones (`docker-compose.e2e.yml`, que añade un
+LiteLLM Proxy falso) y un admin creado por la CLI, con la contraseña en `DOW_E2E_ADMIN_PASSWORD`. Desde la raíz:
+
+```bash
+sh scripts/e2e_data.sh                                                  # datos sintéticos
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+printf '%s
+' "$DOW_E2E_ADMIN_PASSWORD" | docker compose -f docker-compose.yml -f docker-compose.e2e.yml     exec -T web python -m app.cli create-admin --username e2e-admin --password-stdin
+```
+
+Después, desde `frontend/` (sin `DOW_E2E_ADMIN_USER` y `DOW_E2E_ADMIN_PASSWORD`, las pruebas se saltan):
 
 ```bash
 npx playwright install chromium   # la primera vez
-DOW_E2E_URL=http://127.0.0.1:8080 npm run e2e
+DOW_E2E_URL=http://127.0.0.1:8080 DOW_E2E_ADMIN_USER=e2e-admin npm run e2e
 ```

@@ -20,12 +20,15 @@ dentro de ella. Si la ubicación no está disponible, el explorador lo indica y 
 
 ## Registrar y gestionar (administradores)
 
+Solo el administrador de la instancia, en el tenant activo ([Tenants y roles](tenants_y_roles.md)).
+
 - **Nueva ubicación**: nombre, carpeta (navega por `/mnt` y pulsa «Elegir esta carpeta»), uso, acceso
-  (**solo lectura** o **lectura y escritura**), tipo (local o red) y, opcionalmente, una ruta para mostrar (por
-  ejemplo, la ruta UNC que conocen los usuarios). La carpeta **no se puede cambiar** después.
+  (**solo lectura** o **lectura y escritura**), tipo (local o red), opcionalmente una ruta para mostrar (por
+  ejemplo, la ruta UNC que conocen los usuarios) y, si es de origen, los
+  [nombres que no se escanean](#nombres-que-no-se-escanean). La carpeta **no se puede cambiar** después.
 - **Comprobar** vuelve a medir el estado. Con «lectura y escritura» también prueba a escribir y borrar un fichero
   temporal.
-- **Editar** cambia nombre, ruta para mostrar, uso, acceso y tipo.
+- **Editar** cambia nombre, ruta para mostrar, uso, acceso, tipo y, si es de origen, los nombres que no se escanean.
 - **Borrar** quita la ubicación de la aplicación; **la carpeta y sus documentos no se tocan**. Pide escribir el nombre
   para confirmar. No se puede borrar una ubicación que use algún proyecto activo: al abrir el borrado se ven, con
   enlace a cada uno, y mientras haya alguno «Borrar» queda desactivado. Los proyectos borrados no cuentan: al borrarse
@@ -34,6 +37,18 @@ dentro de ella. Si la ubicación no está disponible, el explorador lo indica y 
 
 No se puede registrar la propia `/mnt`, una carpeta dentro de otra ubicación (ni al revés) ni una que contenga los
 datos de la aplicación.
+
+## Nombres que no se escanean
+
+En una ubicación de origen (uso «Origen» u «Origen y destino»), la tarjeta **Nombres que no se escanean** de su ficha
+lista los ficheros y carpetas que no se escanean en **ningún proyecto** que lea de ella. El administrador de la
+instancia los edita ahí o en el formulario («Patrones (uno por línea)»); el resto de usuarios solo los ve.
+
+- Comodines `*` y `?`, sin distinguir mayúsculas, sin `/` ni `\`; hasta 30 patrones de hasta 64 caracteres. Ejemplos:
+  `~$*`, `@eaDir`, `#recycle`, `$RECYCLE.BIN`, `System Volume Information`.
+- Lo ya convertido que encaje se conserva, pero «Forzar reconversión» lo borra
+  ([Escaneo](escaneo.md#forzar-reconversión)).
+- Un escaneo en marcha sigue con los patrones que había al lanzarlo. El cambio queda en la auditoría.
 
 ## Ajustes, capacidades y workers (administradores)
 

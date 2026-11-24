@@ -344,7 +344,9 @@ describe('W6: semántica del proyecto', () => {
     renderRoute('/projects/7');
     const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
     expect(
-      await within(card).findByText(/no está configurado: la construcción se hará sin semántica/),
+      await within(card).findByText(
+        /no está configurada para «Embeddings \(semántica\)»: la construcción se hará sin semántica/,
+      ),
     ).toBeInTheDocument();
     expect(within(card).getByRole('textbox', { name: /Similitud mínima/ })).toHaveValue('0.75');
     await user.click(within(card).getByRole('switch', { name: /Clasificación semántica/ }));

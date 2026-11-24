@@ -6,7 +6,7 @@ producción ni los documentos. Tres pruebas, cada una con su script:
 1. **Migraciones de ida y vuelta** sobre una copia de la base de datos de producción.
 2. **Diagnóstico sin errores** en una instancia aislada.
 3. **Contexto y entregas** (Excel, sitio sin conexión y paquete para IA) sobre una copia, o un montaje de solo lectura,
-   de los documentos (por ejemplo, CALIDAD_VD).
+   de los documentos (por ejemplo, el de un proyecto de calidad).
 
 !!! danger "Reglas"
     - Producción no se para ni se cambia. La base de datos real solo se lee para copiarla, con `app.cli backup`, y
@@ -22,7 +22,7 @@ producción ni los documentos. Tres pruebas, cada una con su script:
 - El repositorio en la rama que se prueba, con Docker y `uv` en el equipo.
 - El nombre del contenedor web de producción (por defecto `doc_organize_web-web-1`).
 - Una carpeta nueva y vacía para las salidas (`DOW_PREPROD_OUT`) y la ruta de los documentos (`DOW_PREPROD_SOURCE`).
-  Si se usa una copia de CALIDAD_VD, mejor; si no, se monta el original de solo lectura.
+  Si se usa una copia de los documentos, mejor; si no, se monta el original de solo lectura.
 
 En Windows, ejecuta los scripts desde Git Bash con `export COMPOSE_PATH_SEPARATOR=";"` (`up.sh` y `down.sh` usan `:`
 para separar los ficheros de Compose si no). Los tres scripts se han probado con datos sintéticos: una instancia
@@ -47,14 +47,15 @@ borrarla a mano.
 
 ```bash
 export COMPOSE_PATH_SEPARATOR=";"          # solo en Windows
-export DOW_PREPROD_SOURCE="/ruta/a/la/copia/de/CALIDAD_VD"
+export DOW_PREPROD_SOURCE="/ruta/a/la/copia/de/<documentos>"
 export DOW_PREPROD_OUT="/ruta/a/una/carpeta/nueva"
 sh scripts/preprod/up.sh                   # construye la imagen del árbol y levanta web y worker en :18090
 ```
 
 Crea el admin de la instancia aislada (la contraseña por la entrada estándar, como se indica al final de `up.sh`).
 Los modelos de Docling, si hacen falta (PDF e imágenes), se descargan en el volumen `dow-preprod_models` como en
-producción, con las mismas variables de `up.sh` (`COMPOSE_PROJECT_NAME=dow-preprod`, `COMPOSE_FILE`, `DOW_PREPROD_*`):
+producción, con las mismas variables de `up.sh` (`COMPOSE_PROJECT_NAME=dow-preprod`, `COMPOSE_FILE`, `DOW_TAG=preprod`,
+`DOW_PREPROD_*`):
 `docker compose --profile setup run --rm models-init`.
 
 ## 3. Contexto y entregas
