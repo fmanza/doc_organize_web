@@ -3,7 +3,7 @@
 ## Session metadata
 - id: 2026-11-24-revision-docs
 - fecha: 2026-11-23 → 2026-11-24
-- rama: `docs/revision-2.3.1` (PR #114) y `release/v2.3.2`
+- rama: `docs/revision-2.3.1` (PR #114), `release/v2.3.2` (PR #115) → `main`
 - skill: documentation + version_closure
 - fase: IMPLEMENT (documentación y textos de la interfaz) + VERSION
 
@@ -39,14 +39,19 @@ el PR a develop», «fusiona el PR cuando el CI esté en verde» y `/version-clo
 - PR #114 con CI en verde (`backend`, `frontend`, `docs`, `image` con E2E) fusionado con squash en `develop`
   (`1c12481`).
 - VERSION: 2.3.2 sincronizada en `CHANGELOG.md`, `backend/pyproject.toml`, `app/__init__.py`, `package.json` y lock,
-  `uv.lock`, `openapi.json` y `DOW_TAG` de `.env.example`; `.ai/product.md` e `INDEX.md` al día. Commit propuesto, no
-  ejecutado.
+  `uv.lock`, `openapi.json` y `DOW_TAG` de `.env.example`; `.ai/product.md` e `INDEX.md` al día.
+- PR #115 `release: v2.3.2` con CI en verde fusionado con squash en `develop` (`240313c`); CI de `develop` en verde;
+  `main` por fast-forward de `df66045` a `240313c`; etiqueta `v2.3.2`; release de GitHub «Latest» con las notas del
+  CHANGELOG y la sección «Actualizar» (sin migraciones; `DOW_TAG=2.3.2`; volver atrás con `DOW_TAG=2.3.1`).
+- Sin despliegue local en esta sesión.
 
 ## Artefactos generados
 | Artefacto | Ruta | Estado |
 |---|---|---|
 | PR de documentación y textos | https://github.com/fmanza/doc_organize_web/pull/114 | fusionado (`1c12481`) |
-| Release 2.3.2 | rama `release/v2.3.2` | preparada, sin commit |
+| PR de release | https://github.com/fmanza/doc_organize_web/pull/115 | fusionado (`240313c`) |
+| Release | https://github.com/fmanza/doc_organize_web/releases/tag/v2.3.2 | publicada |
+| Etiqueta | `v2.3.2` sobre `240313c` | subida |
 
 ## Directrices para Futuras IAs
 - **[docs]**: toda guía nueva va a `docs/guides/` y se registra en el `nav` de `zensical.toml` y en `docs/README.md`;
@@ -58,13 +63,16 @@ el PR a develop», «fusiona el PR cuando el CI esté en verde» y `/version-clo
 - **[frontend]**: en regex de tests de Testing Library, escapar los paréntesis de textos como «Embeddings (semántica)».
 - **[repositorio público]**: `.ai/sessions/` de sesiones anteriores contiene el nombre de un fondo documental interno;
   no repetirlo en documentación nueva.
+- **[release]**: igual que en `2026-11-23-version-2.3.1`; una PATCH sin migraciones vuelve atrás solo con la imagen
+  anterior (`DOW_TAG`).
 - **[git]**: los scripts que reescriben ficheros en Windows con `write_text` dejan CRLF; el repositorio es LF
   (`git ls-files --eol`).
 
 ## Veredicto final
 Veredicto: CLOSED
 Pendientes al cierre:
-- Commit `release: v2.3.2 - …`, PR a `develop`, fast-forward de `main`, etiqueta y release de GitHub (a petición).
+- Despliegue local 2.2.0 → 2.3.2 (copia de seguridad, `DOW_TAG=2.3.2`; migraciones `0027`–`0029` si se viene de la
+  2.2.0).
 - Sin verificar en las guías: prueba con RTX 5070 y tamaño de los modelos (~1 GB), límites del perfil (8000
   caracteres / 20 ejemplos), contenido exacto del ZIP y del Excel de la caché, `app.cli backup --dest` «desde la
   0.6.0».
