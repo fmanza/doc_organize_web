@@ -2,7 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 2.3.2 con doc_organize 2.2.0 (textos de IA al día y documentación revisada), sobre la 2.3.1
+- **Versión actual**: 2.4.0 con doc_organize 2.4.1 (todo desde la API pública de la librería), sobre la 2.3.2 (textos
+  de IA al día y documentación revisada), la 2.3.1
   (los proyectos borrados sueltan sus ubicaciones), la 2.3.0 (tema claro u oscuro por usuario), la 2.2.0 (IA por
   funcionalidad con avisos flotantes y duplicados por contenido) y la 2.1.0 (contexto en pasos de trabajo, consumo de
   IA por ejecución y sin GitHub Copilot). Historial completo en `CHANGELOG.md`; siguiente: lo que quede en `docs/plan/MEJORAS.md`. Plan: `docs/plan/ROADMAP.md`.

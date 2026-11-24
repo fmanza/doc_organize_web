@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-24
+
+Con doc_organize 2.4.1: la web importa todo desde la API pública de la librería y recoge sus dos correcciones (progreso
+del escaneo entre carpetas y duplicados con la misma fecha). Sin migraciones.
+
 ### Changed
 
 - **doc_organize 2.4.1** (antes 2.2.0): la capa anticorrupción, los tests y los scripts importan todo desde
