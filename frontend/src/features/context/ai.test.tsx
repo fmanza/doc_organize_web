@@ -57,7 +57,7 @@ describe('ContextPage con IA', () => {
 
     const toggle = await screen.findByRole('switch', { name: /Clasificar con IA/ });
     expect(toggle).toBeDisabled();
-    expect(screen.getAllByText(/configurar los «Modelos de IA»/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/configurar la IA para «Clasificar»/).length).toBeGreaterThan(0);
     // «Pedir borrador» está con el manifiesto, en el paso Taxonomía y solo con su catálogo (A5).
     expect(screen.queryByRole('button', { name: 'Pedir borrador' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: '1. Taxonomía' }));
@@ -180,7 +180,7 @@ describe('ContextPage con IA', () => {
     expect(
       await screen.findByRole('switch', { name: /Completar descripción y palabras clave/ }),
     ).toBeDisabled();
-    expect(screen.getAllByText(/configurar los «Modelos de IA»/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/configurar la IA para «Describir»/).length).toBeGreaterThan(0);
   });
 
   it('el borrador se carga en el editor sin guardarse', async () => {

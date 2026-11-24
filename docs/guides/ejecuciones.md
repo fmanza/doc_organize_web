@@ -14,12 +14,18 @@ al volver ves cómo va.
 | ✕ Fallida | Acabó con un error; el detalle explica el motivo |
 | ■ Cancelada | Se canceló |
 
-En cada proyecto solo puede haber **una operación que escriba a la vez** (mover, vaciar, borrar y, desde la Fase 4,
-escanear). Si lanzas otra, la aplicación avisa de que hay una en curso. Las vistas previas y las pruebas no cuentan.
+En cada proyecto solo puede haber **una operación que escriba a la vez** (escanear, actualizar la búsqueda, aplicar
+duplicados, construir o borrar el contexto, mover, vaciar y borrar). Si lanzas otra, la aplicación avisa de que hay una
+en curso. Las vistas previas, las exportaciones y las pruebas no cuentan.
+
+Cada usuario puede tener como mucho **5 ejecuciones en cola o en marcha** a la vez («Demasiadas ejecuciones en curso»),
+para que nadie acapare la cola. Las que dejan ficheros (escaneos, exportaciones, búsquedas de duplicados) no se lanzan
+si ya has llenado tu cuota del workspace, cuando el administrador ha fijado una («Cuota de espacio superada»).
 
 ## Historial
 
-**Ejecuciones** lista las de tus proyectos de la más reciente a la más antigua, con filtros por estado y operación;
+**Ejecuciones** lista las de tus proyectos de la más reciente a la más antigua, con búsqueda y filtros por estado y
+operación;
 desde un proyecto, «Ver todas» muestra solo las suyas. Cada fila es una ejecución completa: operación, proyecto,
 estado, cuándo se lanzó, cuánto duró y quién la lanzó. La lista va por páginas; la página está en la dirección de la
 pantalla, así que «Atrás» vuelve a la anterior y puedes compartir el enlace.
@@ -38,6 +44,8 @@ plano, elige «Avisarme en el navegador cuando termine una ejecución» en el me
   anteriores» muestra el resto.
 - **Resultado**: recuentos al terminar (ficheros, tamaños, documentos convertidos…). En un escaneo, enlace a los
   documentos con errores ([Escaneo](escaneo.md)); en una exportación, ficheros y tamaño ([Documentos](documentos.md)).
+- **Consumo de IA** (2.1): en las ejecuciones que usan IA, por tarea, el modelo, los documentos enviados, los resueltos
+  con la caché y los tokens de entrada y salida.
 - **Ficheros**: lo que deja la ejecución (resultados y su registro, `run.log`, sin rutas internas del servidor ni
   trazas de error, con un máximo de 20 MB) para descargar. Se borran pasados
   `run_retention_days` días (30 por defecto); el historial se conserva.

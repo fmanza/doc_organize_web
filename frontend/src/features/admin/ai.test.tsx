@@ -71,7 +71,7 @@ describe('AiSettingsPage', () => {
 
     renderRoute('/admin/ai-settings'); // URL de 1.5: redirige a /admin/ai/settings (W1)
 
-    const models = await screen.findByRole('region', { name: 'Modelos de IA' });
+    const models = await screen.findByRole('region', { name: 'Conexión con LiteLLM' });
     expect(within(models).getByText('Configurada')).toBeInTheDocument();
     expect(within(models).getByText('Guardada: …ab12')).toBeInTheDocument();
     expect(within(models).getByLabelText(/Clave virtual/, { selector: 'input' })).toHaveValue('');

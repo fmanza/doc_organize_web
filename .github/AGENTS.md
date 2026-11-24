@@ -20,7 +20,7 @@ Registro de la configuración IA de doc_organize_web. Flujo: PLAN → AUDIT_PLAN
 | Frontend Reviewer | AUDIT_CODE | read, search | Accesibilidad, UX de estados, rendimiento, i18n |
 | Security Reviewer | AUDIT_CODE | read, search | OWASP ASVS / Top 10, rutas y ubicaciones, secretos, contenedor |
 | Version Closer | VERSION | read, edit, search | CHANGELOG, TRACEABILITY, PARIDAD, handoff |
-| Documentation Generator | documentación | read, edit, search | Docs funcionales, técnicas y ADRs |
+| Documentation Generator | documentación | read, edit, search, execute | Guías de uso y operación en `docs/guides/`, ADRs, índice y `nav`; `zensical build --strict` |
 | Config Reviewer | configuración IA | read, search | DRY y referencias huérfanas |
 | Explore | apoyo | read, search | Localizar código (solo lectura) |
 
@@ -50,4 +50,4 @@ lugar de escritura en BD destino, y doc_organize como librería consumida.
 
 ---
 
-*Actualizado: 2026-11-01*
+*Actualizado: 2026-11-23*

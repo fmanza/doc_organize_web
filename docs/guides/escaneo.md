@@ -4,7 +4,8 @@ El **escaneo** busca los documentos de las carpetas de origen de un [proyecto](p
 JSON los **nuevos o modificados** en su carpeta de salidas. Es una [ejecución](ejecuciones.md): sigue aunque cierres
 la pestaña y su progreso se ve en vivo.
 
-Abre el proyecto y pulsa **Escanear** (los lectores ven la pantalla, pero solo los editores y propietarios escanean).
+Abre el proyecto y pulsa **Escanear** (los lectores, **Ver escaneo**: ven la pantalla, pero solo los editores y
+propietarios escanean).
 
 ## Carpetas
 
@@ -16,6 +17,11 @@ escaneo (enlaza a la ejecución) y si ha dejado de existir en el origen («no ex
   de otra del proyecto ni contenerla**: cada documento se convierte a una ruta que depende de la carpeta escaneada, y
   si las carpetas se anidaran el mismo documento acabaría en dos salidas distintas.
 - Quitar una carpeta **no borra nada**: si ya se escaneó, sus salidas siguen en el destino.
+- **Excluir subcarpetas** (propietarios): abre el explorador limitado a esa carpeta para marcar las subcarpetas que el
+  escaneo no recorre (hasta 50). Salen como «Excluida» y se pueden quitar. Lo ya convertido de ellas se conserva;
+  «Forzar reconversión» lo borra, y si después dejas de excluirlas se vuelve a convertir.
+- Tampoco se escanean los [nombres que excluye la ubicación de origen](ubicaciones.md#nombres-que-no-se-escanean).
+  Un escaneo en marcha sigue con las exclusiones y los patrones que había al lanzarlo.
 
 ## Opciones
 
@@ -72,8 +78,12 @@ de una ejecución muestran, paginados, el documento, el error y cuántas veces s
 En la zona roja (solo propietarios): vacía la caché del proyecto y vuelve a convertir **todos** los documentos de
 **todas** las carpetas con las opciones elegidas. Además **borra las salidas de los documentos que ya no están** en el
 origen. Por eso sigue los mismos pasos que mover o borrar un proyecto: una **vista previa** sin cambios (cuántos
-documentos hay en la caché, cuántos ya no existen y el tamaño de las salidas) y después escribir el nombre del
-proyecto. La vista previa caduca a los 15 minutos o si cambian las carpetas del proyecto.
+documentos hay en la caché, cuántos ya no existen, cuántos excluidos se borrarán y el tamaño de las salidas) y después
+escribir el nombre del proyecto. La vista previa caduca a los 15 minutos o si cambian las carpetas del proyecto, sus
+exclusiones o los patrones de la ubicación.
+
+Los **excluidos** son documentos ya convertidos que ahora quedan fuera del escaneo (subcarpeta excluida o patrón de la
+ubicación): al forzar se borran su salida y su entrada de la caché.
 
 Actúa carpeta a carpeta: las salidas de carpetas que quitaste del proyecto no se tocan. Por seguridad, no se fuerza
 nada si alguna carpeta no se puede leer (un montaje de red caído haría creer que sus documentos ya no existen) o si la

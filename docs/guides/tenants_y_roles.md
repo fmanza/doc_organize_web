@@ -75,5 +75,6 @@ Los permisos que se pueden dar son:
 
 Cada ubicación es de un tenant. La registra el administrador de la instancia en el tenant activo, porque los montajes
 son del servidor y un tenant podría apuntar a carpetas de otro. Los usuarios del tenant la ven y la usan en sus
-proyectos. Una ubicación solo cambia de tenant si ningún proyecto la usa. Una misma carpeta no puede ser de dos
+proyectos. Una ubicación solo cambia de tenant si ningún proyecto activo la usa (los borrados la sueltan desde la
+2.3.1); el cambio se hace por la API (`PATCH /api/v1/locations/{id}` con `tenant_id`), no desde la pantalla. Una misma carpeta no puede ser de dos
 ubicaciones, y por tanto tampoco de dos tenants ([Ubicaciones](ubicaciones.md)).

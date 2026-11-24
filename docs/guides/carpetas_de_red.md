@@ -61,7 +61,8 @@ services:
       - /srv/dow/salidas:/mnt/salidas
 ```
 
-El `web` y el `worker` deben ver **las mismas** rutas bajo `/mnt`. Aplica con `docker compose up -d`.
+El `web` y el `worker` (y `worker-gpu`, si usas el perfil `gpu`) deben ver **las mismas** rutas bajo `/mnt`. Aplica con
+`docker compose up -d`.
 
 ## 3. Registrar la ubicación
 
