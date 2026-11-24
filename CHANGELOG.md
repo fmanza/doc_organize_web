@@ -5,6 +5,10 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-11-24
+
+Textos de la IA al día y documentación revisada contra el código. Sigue con doc_organize 2.2.0. Sin migraciones.
+
 ### Fixed
 
 - **Textos de la IA al día con la 2.2**: los avisos de «sin IA» del contexto y del proyecto, la ayuda de la semántica y
