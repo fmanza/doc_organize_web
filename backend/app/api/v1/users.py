@@ -12,10 +12,19 @@ from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep, UserManager
 from app.api.v1.listing import OrderQuery, UserSort, listing
-from app.api.v1.schemas import MAX_PAGE_SIZE, UserBrief, UserCreate, UserLookup, UserOut, UserPage, UserUpdate
+from app.api.v1.schemas import (
+    MAX_PAGE_SIZE,
+    UserBrief,
+    UserCreate,
+    UserLookup,
+    UserOut,
+    UserPage,
+    UserStatus,
+    UserUpdate,
+)
 from app.db.models import User
 from app.domain.identity import users
-from app.domain.identity.users import UserChanges
+from app.domain.identity.users import UserChanges, UserFilters
 from app.domain.tenancy.errors import PermissionEscalationError
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -35,10 +44,29 @@ def list_users(
     offset: Annotated[int, Query(ge=0)] = 0,
     sort: Annotated[UserSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
+    role_id: Annotated[int | None, Query(ge=1, description="Solo usuarios de este rol del tenant")] = None,
+    status_filter: Annotated[
+        UserStatus | None,
+        Query(
+            alias="status",
+            description="``active`` (activo y sin bloqueo), ``inactive`` (desactivado) o ``locked`` (por intentos)",
+        ),
+    ] = None,
+    instance_admin: Annotated[
+        bool | None, Query(description="Solo admins de instancia (true) o solo quienes no lo son (false)")
+    ] = None,
 ) -> UserPage:
-    """Usuarios del tenant activo (por nombre de usuario si no se pide otro orden)."""
+    """Usuarios del tenant activo (por nombre de usuario si no se pide otro orden), con filtros por rol, estado y admin
+    de instancia. Un rol de otro tenant da una lista vacía."""
+    filters = UserFilters(role_id=role_id, status=status_filter, instance_admin=instance_admin)
     rows, total = users.list_users(
-        db, tenant_id=manager.scope_tenant_id, q=q, limit=limit, offset=offset, listing=listing(q, sort, order)
+        db,
+        tenant_id=manager.scope_tenant_id,
+        q=q,
+        limit=limit,
+        offset=offset,
+        listing=listing(q, sort, order),
+        filters=filters,
     )
     return UserPage(items=[UserOut.model_validate(u) for u in rows], total=total)
 

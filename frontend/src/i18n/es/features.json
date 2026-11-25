@@ -28,7 +28,15 @@
       "instanceAdmin": "Administrador de la instancia",
       "instanceAdminHint": "Tenants, ubicaciones, ajustes, IA y workers, y actuar en cualquier tenant.",
       "tenant": "Tenant",
-      "tenantHint": "Al moverlo pierde sus proyectos y sus sesiones, y pasa al rol «Usuario»."
+      "tenantHint": "Al moverlo pierde sus proyectos y sus sesiones, y pasa al rol «Usuario».",
+      "filter": {
+        "role": "Rol",
+        "status": "Estado",
+        "all": "Todos",
+        "instanceAdmin": "Solo administradores de la instancia",
+        "empty": "Ningún usuario coincide con los filtros.",
+        "clear": "Quitar filtros"
+      }
     },
     "sessions": {
       "title": {

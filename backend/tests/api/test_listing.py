@@ -195,3 +195,41 @@ def test_only_the_instance_admin_purges(
     tenant_admin = login_as(user_client, "jefa")
     assert tenant_admin.get("/api/v1/audit").status_code == 200  # ve la auditoría de su tenant…
     assert tenant_admin.post("/api/v1/audit/purge", json=window).status_code == 403  # …pero no la borra
+
+
+def test_users_filter_by_role_status_and_instance_admin(
+    admin_client: TestClient,
+    make_user: Callable[..., User],
+    make_tenant: Callable[..., Tenant],
+    admin: User,
+    db: Session,
+) -> None:
+    """2.7: filtros exactos por rol, estado (con la regla de la insignia) y admin de instancia, combinables."""
+    ana = make_user("ana")
+    luis = make_user("luis")
+    luis.is_active = False
+    marta = make_user("marta")
+    marta.locked_until = datetime.now(UTC) + timedelta(minutes=10)
+    pedro = make_user("pedro")
+    pedro.locked_until = datetime.now(UTC) - timedelta(minutes=10)  # bloqueo caducado: activo
+    other = make_tenant("otro")
+    db.commit()
+    user_role = ana.role_id
+
+    def names(**params: Any) -> list[str]:
+        response = admin_client.get("/api/v1/users", params=params)
+        assert response.status_code == 200, response.text
+        return sorted(i["username"] for i in response.json()["items"])
+
+    assert names(role_id=user_role) == ["ana", "luis", "marta", "pedro"]
+    assert names(role_id=admin.role_id) == [admin.username]
+    assert names(status="inactive") == ["luis"]
+    assert names(status="locked") == ["marta"]
+    assert names(status="active") == sorted([admin.username, "ana", "pedro"])
+    assert names(instance_admin="true") == [admin.username]
+    assert names(instance_admin="false") == ["ana", "luis", "marta", "pedro"]
+    assert names(role_id=user_role, status="active", q="pe") == ["pedro"]
+    # Un rol de otro tenant no revela nada: lista vacía, no error.
+    other_role = db.scalar(select(User.role_id).where(User.tenant_id == other.id)) or 10_000
+    assert names(role_id=other_role) == []
+    assert admin_client.get("/api/v1/users", params={"status": "deleted"}).status_code == 422

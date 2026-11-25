@@ -1678,7 +1678,8 @@ export interface paths {
         };
         /**
          * Listar usuarios
-         * @description Usuarios del tenant activo (por nombre de usuario si no se pide otro orden).
+         * @description Usuarios del tenant activo (por nombre de usuario si no se pide otro orden), con filtros por rol, estado y admin
+         *     de instancia. Un rol de otro tenant da una lista vacía.
          */
         get: operations["list_users_api_v1_users_get"];
         put?: never;
@@ -10805,6 +10806,12 @@ export interface operations {
                 sort?: ("username" | "display_name" | "role" | "status" | "created_at") | null;
                 /** @description Sentido del orden */
                 order?: "asc" | "desc";
+                /** @description Solo usuarios de este rol del tenant */
+                role_id?: number | null;
+                /** @description ``active`` (activo y sin bloqueo), ``inactive`` (desactivado) o ``locked`` (por intentos) */
+                status?: ("active" | "inactive" | "locked") | null;
+                /** @description Solo admins de instancia (true) o solo quienes no lo son (false) */
+                instance_admin?: boolean | null;
             };
             header?: never;
             path?: never;

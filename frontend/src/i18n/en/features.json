@@ -28,7 +28,15 @@
       "instanceAdmin": "Instance administrator",
       "instanceAdminHint": "Tenants, locations, settings, AI and workers, and acting in any tenant.",
       "tenant": "Tenant",
-      "tenantHint": "Moving them removes their projects and sessions, and gives them the “User” role."
+      "tenantHint": "Moving them removes their projects and sessions, and gives them the “User” role.",
+      "filter": {
+        "role": "Role",
+        "status": "Status",
+        "all": "All",
+        "instanceAdmin": "Instance administrators only",
+        "empty": "No users match the filters.",
+        "clear": "Clear filters"
+      }
     },
     "sessions": {
       "title": {

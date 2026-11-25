@@ -68,6 +68,10 @@ En inglés siguen en español los textos que genera el servidor:
 
 **Administración → Usuarios** (con el permiso «Gestionar usuarios»), con los usuarios del tenant activo:
 
+- **Buscar y filtrar**: el cuadro de búsqueda busca en el usuario, el nombre visible y el rol. Además puedes filtrar
+  por **Rol** y por **Estado** (activo, desactivado o bloqueado por intentos fallidos). El administrador de la
+  instancia puede ver **solo los administradores de la instancia**. Los filtros quedan en la dirección de la página
+  y, si no hay resultados, **Quitar filtros** los borra todos.
 - **Nuevo usuario**: nombre de usuario (3 a 64 caracteres: letras, números, punto, guion o guion bajo; no distingue
   mayúsculas y es único en toda la instancia), nombre visible, rol del tenant y contraseña inicial.
 - **Editar**: cambia el nombre visible o el rol, desactiva o reactiva la cuenta y restablece la contraseña. El

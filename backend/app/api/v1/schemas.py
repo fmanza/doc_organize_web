@@ -102,6 +102,10 @@ class Me(BaseModel):
 # --- users ------------------------------------------------------------------------------------------------------
 
 
+#: Estado por el que se filtra la lista de usuarios (2.7).
+UserStatus = Literal["active", "inactive", "locked"]
+
+
 class UserOut(_Out):
     """Usuario visto por quien gestiona usuarios."""
 

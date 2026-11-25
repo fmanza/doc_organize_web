@@ -4,7 +4,9 @@ import {
   Center,
   Group,
   Loader,
+  Select,
   Stack,
+  Switch,
   Table,
   Text,
   Title,
@@ -12,18 +14,57 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
 import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { type User, type UserSort, useUsers } from './useAdmin';
+import { useMe } from '../auth/useAuth';
+import { type User, type UserFilters, type UserSort, type UserStatusFilter, useUsers } from './useAdmin';
 import { UserFormModal } from './UserFormModal';
+import { useRoles } from './useTenancy';
 
 type Editing = { user: User | null } | null;
 
 const USER_SORT: readonly UserSort[] = ['username', 'display_name', 'role', 'status', 'created_at'];
+const USER_STATUSES: readonly UserStatusFilter[] = ['active', 'inactive', 'locked'];
+const STATUS_LABELS: Readonly<Record<UserStatusFilter, string>> = {
+  active: 'admin.users.activeBadge',
+  inactive: 'admin.users.inactive',
+  locked: 'admin.users.locked',
+};
+
+/** Filtros de la lista (2.7) en la URL (`?role=&status=&instance_admin=1`), como la búsqueda y el orden. */
+function useUserFilters() {
+  const [params, setParams] = useSearchParams();
+  const role = Number(params.get('role'));
+  const status = params.get('status');
+  const filters: UserFilters = {
+    ...(Number.isInteger(role) && role > 0 ? { role_id: role } : {}),
+    ...(USER_STATUSES.find((s) => s === status) ? { status: status as UserStatusFilter } : {}),
+    ...(params.get('instance_admin') === '1' ? { instance_admin: true } : {}),
+  };
+  const set = (key: 'role' | 'status' | 'instance_admin', value: string | null) => {
+    const next = new URLSearchParams(params);
+    if (value) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    next.delete('page'); // otro filtro: de vuelta a la página 1
+    setParams(next, { preventScrollReset: true, replace: true });
+  };
+  const clear = () => {
+    const next = new URLSearchParams(params);
+    for (const key of ['role', 'status', 'instance_admin', 'q', 'page']) {
+      next.delete(key);
+    }
+    setParams(next, { preventScrollReset: true, replace: true });
+  };
+  return { filters, set, clear };
+}
 
 function UserStatus({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -40,7 +81,11 @@ export function UsersPage() {
   const { t } = useTranslation();
   const list = useListState(USER_SORT);
   const [editing, setEditing] = useState<Editing>(null);
-  const { data, isPending, isError, error } = useUsers(list.query);
+  const { filters, set, clear } = useUserFilters();
+  const { data: me } = useMe();
+  const roles = useRoles();
+  const { data, isPending, isError, error } = useUsers({ ...list.query, ...filters });
+  const filtered = Object.keys(filters).length > 0 || list.q.trim() !== '';
 
   return (
     <Stack>
@@ -48,14 +93,58 @@ export function UsersPage() {
         <Title order={2}>{t('admin.users.title')}</Title>
         <Button onClick={() => setEditing({ user: null })}>{t('admin.users.new')}</Button>
       </Group>
-      <SearchBox value={list.q} onChange={list.setQ} label={t('admin.users.search')} />
+      <Group align="flex-end" wrap="wrap">
+        <SearchBox value={list.q} onChange={list.setQ} label={t('admin.users.search')} />
+        <Select
+          label={t('admin.users.filter.role')}
+          data={[
+            { value: '', label: t('admin.users.filter.all') },
+            ...(roles.data ?? []).map((role) => ({
+              value: String(role.id),
+              label: role.builtin ? t(`roles.builtin.${role.builtin}`) : role.name,
+            })),
+          ]}
+          value={filters.role_id ? String(filters.role_id) : ''}
+          onChange={(value) => set('role', value)}
+          allowDeselect={false}
+          w={200}
+        />
+        <Select
+          label={t('admin.users.filter.status')}
+          data={[
+            { value: '', label: t('admin.users.filter.all') },
+            ...USER_STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) })),
+          ]}
+          value={filters.status ?? ''}
+          onChange={(value) => set('status', value)}
+          allowDeselect={false}
+          w={180}
+        />
+        {me?.is_instance_admin && (
+          <Switch
+            label={t('admin.users.filter.instanceAdmin')}
+            checked={filters.instance_admin === true}
+            onChange={(event) => set('instance_admin', event.currentTarget.checked ? '1' : null)}
+            mb={8}
+          />
+        )}
+      </Group>
       {isPending && (
         <Center>
           <Loader aria-label={t('common.loading')} />
         </Center>
       )}
       {isError && <ErrorAlert error={error} />}
-      {data && data.items.length === 0 && <Text c="dimmed">{t('admin.users.empty')}</Text>}
+      {data && data.items.length === 0 && (
+        <Group>
+          <Text c="dimmed">{t(filtered ? 'admin.users.filter.empty' : 'admin.users.empty')}</Text>
+          {filtered && (
+            <Button size="xs" variant="subtle" onClick={clear}>
+              {t('admin.users.filter.clear')}
+            </Button>
+          )}
+        </Group>
+      )}
       {data && data.items.length > 0 && (
         <Table.ScrollContainer minWidth={720}>
           <Table striped highlightOnHover>
