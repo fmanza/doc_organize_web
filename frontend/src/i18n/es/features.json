@@ -1099,7 +1099,6 @@
     "total_one": "{{formatted}} grupo.",
     "total_other": "{{formatted}} grupos.",
     "include": "Aplicar este grupo",
-    "keepLabel": "Documento que se conserva",
     "keepMember": "Conservar {{path}}",
     "view": "Ver convertido",
     "fields": {
@@ -1425,6 +1424,7 @@
       "title": "Perfil del proyecto",
       "intro": "Lo que el modelo debe saber de este proyecto: contexto, reglas de desempate, glosario y ejemplos. Se añade al perfil de la plantilla o del manifiesto (que va en su cuerpo) y solo lo usa la IA, al clasificar y al describir.",
       "markdown": "Perfil (Markdown con las secciones «## Contexto del proyecto», «## Reglas de desempate», «## Glosario» y «## Ejemplos»)",
+      "placeholder": "## Contexto del proyecto\n…\n\n## Reglas de desempate\n- …\n\n## Glosario\n- …\n\n## Ejemplos\n- «Título de un documento» → dominio, tipo",
       "noSections": "El perfil guardado no tiene ninguna de las secciones que lee doc_organize: no se envía nada al modelo.",
       "tooLarge": "El perfil pasa de 32 KiB.",
       "save": "Guardar perfil",
@@ -1650,16 +1650,10 @@
       "test": "Probar conexión",
       "testLabel": "Probar la conexión de {{label}}",
       "testModel": "Probar el modelo",
-      "testModelLabel": "Probar el modelo de {{label}}",
       "testModelHint": "Envía una petición mínima al modelo: gasta unos pocos tokens.",
-      "testOk": "Conexión correcta ({{ms}} ms)",
-      "testOkKey": "El servidor responde y la clave es válida (con los valores del formulario, sin guardar). El modelo no se ha probado.",
-      "testOkModel": "El servidor, la clave y el modelo responden (con los valores del formulario, sin guardar).",
-      "testFailed": "La prueba falló",
       "testAuthHint": "Algunos proxies no dejan a la clave consultar sus datos: prueba el modelo para confirmarlo.",
       "modelDenied": "Según el servidor, esta clave no tiene acceso al modelo configurado.",
       "testTaskLabel": "Probar el modelo de la tarea {{task}}",
-      "testedTask": "Tarea probada: {{task}}.",
       "format": {
         "json_schema": "El modelo admite la salida json_schema estricta.",
         "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
@@ -1838,7 +1832,6 @@
     "noneAliveBody": "Ningún worker ha dado señales de vida recientemente: los escaneos y las construcciones quedarán en cola hasta que arranque alguno."
   },
   "review": {
-    "open": "Revisar clasificación",
     "title": "Revisar clasificación",
     "intro": "Lo que conviene mirar según la última construcción, de lo más urgente a lo menos. Tus decisiones se guardan en el proyecto y se aplican en la siguiente construcción, antes de la IA; ni las reglas ni la IA las cambian.",
     "reason": "Motivo",
@@ -1915,7 +1908,6 @@
     }
   },
   "quality": {
-    "open": "Calidad",
     "title": "Calidad de la clasificación",
     "intro": "Cuánto acierta la clasificación contra una referencia: un Excel etiquetado a mano o las decisiones del proyecto. «Comparar cambios» prueba otra configuración sin guardar nada.",
     "source": "Referencia",

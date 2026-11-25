@@ -314,7 +314,7 @@ function errorToast(error: unknown, label: string, t: Translate): Omit<Toast, 'i
     color: 'red',
     title: t('ai.settings.toast.failed', { label }),
     message:
-      error instanceof ApiError ? (error.problem.detail ?? error.problem.title) : t('common.errorBody'),
+      (error instanceof ApiError && (error.problem.detail || error.problem.title)) || t('common.errorBody'),
   };
 }
 

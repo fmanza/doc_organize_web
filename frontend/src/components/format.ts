@@ -1,4 +1,6 @@
-const dateTime = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'medium' });
+import { INTL_LOCALE } from '../i18n';
+
+const dateTime = new Intl.DateTimeFormat(INTL_LOCALE, { dateStyle: 'short', timeStyle: 'medium' });
 
 /** Fecha ISO 8601 de la API en hora local. */
 export function formatDateTime(iso: string | null | undefined): string {
@@ -6,8 +8,8 @@ export function formatDateTime(iso: string | null | undefined): string {
 }
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
-const decimal = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
-const integer = new Intl.NumberFormat('es-ES');
+const decimal = new Intl.NumberFormat(INTL_LOCALE, { maximumFractionDigits: 1 });
+const integer = new Intl.NumberFormat(INTL_LOCALE);
 
 /** Tamaño en bytes con unidad binaria (1 KB = 1024 B). */
 export function formatBytes(bytes: number | null | undefined): string {

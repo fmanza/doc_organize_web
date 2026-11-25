@@ -20,15 +20,16 @@ import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
+import { INTL_LOCALE } from '../../i18n';
 import { TokensByDayChart } from './AiUsageCharts';
 import { type AiUsage, type AiUsagePeriod, type AiUsageSource, useAiUsage, useRefreshAiUsage } from './useAi';
 
-const money = new Intl.NumberFormat('es-ES', {
+const money = new Intl.NumberFormat(INTL_LOCALE, {
   style: 'currency',
   currency: 'USD',
   maximumFractionDigits: 4,
 });
-const number = new Intl.NumberFormat('es-ES');
+const number = new Intl.NumberFormat(INTL_LOCALE);
 const PERIODS: readonly AiUsagePeriod[] = ['7d', '30d', 'month', 'all'];
 
 type Local = NonNullable<AiUsage['local']>;

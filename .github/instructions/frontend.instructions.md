@@ -37,5 +37,9 @@ applyTo: "frontend/**/*.{ts,tsx}"
 ## Estilo
 - Sin `any`; tipos del cliente generado; `import type` para tipos.
 - Textos con `useTranslation()`; claves en `src/i18n/es/core.json` (lo que se ve sin pasar por una ruta lazy) o
-  `src/i18n/es/features.json` (pantallas; se carga con la primera ruta lazy).
+  `src/i18n/es/features.json` (pantallas; se carga con la primera ruta lazy). Es requisito: `src/i18n/i18n.test.ts`
+  falla con texto visible fuera de `t()` (JSX, `aria-label`, `title`, `placeholder`, `label`...), una clave usada que
+  no existe o una clave sin uso. Una excepción (valor técnico, no texto) va en su `ALLOWED_LITERALS` con el motivo.
+- Fechas y números con los formateadores de `src/components/format.ts` o con `INTL_LOCALE` de `src/i18n`, nunca con
+  un locale fijo.
 - Prettier + ESLint (`npm run lint`) sin avisos.
