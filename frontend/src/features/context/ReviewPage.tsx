@@ -19,7 +19,7 @@ import {
   Title,
 } from '@mantine/core';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
@@ -27,6 +27,7 @@ import { api, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
+import { SearchBox } from '../../components/listing';
 import { type PageState, usePageState } from '../../components/usePageState';
 import { formatCount, formatDateTime } from '../../components/format';
 import { canDo, useProject } from '../projects/useProjects';
@@ -65,16 +66,16 @@ const REASONS: ReviewReason[] = [
 
 const reviewKey = (projectId: number) => ['projects', projectId, 'context', 'review'] as const;
 
-function useReview(projectId: number, reason: ReviewReason | null, paging: PageState) {
+function useReview(projectId: number, reason: ReviewReason | null, q: string, paging: PageState) {
   const { pageSize, offset } = paging;
   return useQuery({
-    queryKey: [...reviewKey(projectId), { reason, pageSize, offset }],
+    queryKey: [...reviewKey(projectId), { reason, q, pageSize, offset }],
     queryFn: async () =>
       unwrap(
         await api.GET('/api/v1/projects/{project_id}/context/review', {
           params: {
             path: { project_id: projectId },
-            query: { reason, limit: pageSize, offset },
+            query: { reason, ...(q ? { q } : {}), limit: pageSize, offset },
           },
         }),
       ),
@@ -169,8 +170,17 @@ export function ReviewPage() {
   const project = useProject(projectId);
   const context = useProjectContext(projectId);
   const [reason, setReason] = useState<ReviewReason | null>(null);
+  const [q, setQ] = useState('');
   const paging = usePageState();
-  const review = useReview(projectId, reason, paging);
+  const review = useReview(projectId, reason, q.trim(), paging);
+  const { setPage } = paging;
+  const search = useCallback(
+    (value: string) => {
+      setQ(value);
+      setPage(1, true);
+    },
+    [setPage],
+  );
 
   if (project.isError || context.isError) {
     return <ErrorAlert error={project.error ?? context.error} />;
@@ -217,6 +227,7 @@ export function ReviewPage() {
                   paging.setPage(1, true);
                 }}
               />
+              <SearchBox value={q} onChange={search} label={t('review.search')} />
               {review.data && (
                 <Text size="sm" role="status">
                   {t('review.total', { count: review.data.total, formatted: formatCount(review.data.total) })}
@@ -226,7 +237,7 @@ export function ReviewPage() {
             {review.isError && <ErrorAlert error={review.error} mt="sm" />}
             {review.data && review.data.total === 0 && (
               <Text c="dimmed" mt="sm">
-                {t('review.empty')}
+                {q.trim() ? t('review.noMatches') : t('review.empty')}
               </Text>
             )}
             {review.data && review.data.items.length > 0 && (

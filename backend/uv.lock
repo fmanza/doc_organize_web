@@ -511,8 +511,8 @@ wheels = [
 
 [[package]]
 name = "doc-organize"
-version = "2.4.1"
-source = { url = "https://github.com/fmanza/doc_organize/releases/download/v2.4.1/doc_organize-2.4.1-py3-none-any.whl" }
+version = "2.5.0"
+source = { url = "https://github.com/fmanza/doc_organize/releases/download/v2.5.0/doc_organize-2.5.0-py3-none-any.whl" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
@@ -529,7 +529,7 @@ dependencies = [
     { name = "tzdata" },
 ]
 wheels = [
-    { url = "https://github.com/fmanza/doc_organize/releases/download/v2.4.1/doc_organize-2.4.1-py3-none-any.whl", hash = "sha256:db393c841c875bcd98e803bf6c05fb0bc5baa81eabbb31f2dc2a881248a8e541" },
+    { url = "https://github.com/fmanza/doc_organize/releases/download/v2.5.0/doc_organize-2.5.0-py3-none-any.whl", hash = "sha256:c7af792320256158b4a49677adae8038e9ffdbbe62ec3e605cc8acbc52d5927c" },
 ]
 
 [package.optional-dependencies]
@@ -645,7 +645,7 @@ gpu = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
     { name = "cryptography", specifier = ">=50.0.2" },
-    { name = "doc-organize", extras = ["ai", "context", "export", "site"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.4.1/doc_organize-2.4.1-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ai", "context", "export", "site"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.5.0/doc_organize-2.5.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3" },
@@ -656,7 +656,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-av = [{ name = "doc-organize", extras = ["av"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.4.1/doc_organize-2.4.1-py3-none-any.whl" }]
+av = [{ name = "doc-organize", extras = ["av"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.5.0/doc_organize-2.5.0-py3-none-any.whl" }]
 cpu = [
     { name = "torch", specifier = ">=2.2.2,<3", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "doc-organize-web", group = "cpu" } },
     { name = "torchvision", specifier = ">=0.17,<1", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "doc-organize-web", group = "cpu" } },
@@ -670,7 +670,7 @@ dev = [
 ]
 docs = [{ name = "zensical", specifier = ">=0.1.1" }]
 gpu = [
-    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.4.1/doc_organize-2.4.1-py3-none-any.whl" },
+    { name = "doc-organize", extras = ["ocr-gpu"], url = "https://github.com/fmanza/doc_organize/releases/download/v2.5.0/doc_organize-2.5.0-py3-none-any.whl" },
     { name = "torch", specifier = ">=2.2.2,<3", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
     { name = "torchvision", specifier = ">=0.17,<1", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "doc-organize-web", group = "gpu" } },
 ]

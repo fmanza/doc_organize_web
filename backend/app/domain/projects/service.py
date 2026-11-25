@@ -504,7 +504,13 @@ def update_project(
 
 
 #: Ajustes de IA y del contexto del proyecto que se cambian con ``update_ai_settings`` (W4, W6).
-AI_SETTINGS: Final = ("ai_redact_credentials", "context_versions", "context_semantic", "context_semantic_threshold")
+AI_SETTINGS: Final = (
+    "ai_redact_credentials",
+    "context_versions",
+    "context_versions_across_extensions",
+    "context_semantic",
+    "context_semantic_threshold",
+)
 
 
 def update_ai_settings(

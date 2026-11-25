@@ -146,6 +146,7 @@ class DryRunRequest:
     ai_scope: str = "off"
     profile_markdown: str | None = None
     versions: str = "all"
+    version_across_extensions: bool = False
 
 
 #: Cambios por documento que se guardan en el resultado del run (el total va aparte).
@@ -223,6 +224,7 @@ def dry_run(
             "taxonomy_manifest": manifest,
             "taxonomy_template_name": request.template_name if manifest is not None else None,
             "versions": request.versions,
+            "version_across_extensions": request.version_across_extensions,
             "cancel_token": token,
             "on_progress": _ai_progress,
         }

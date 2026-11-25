@@ -143,6 +143,18 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
           value && update.mutate({ context_versions: value as ProjectOut['context_versions'] })
         }
       />
+      {project.context_versions !== 'all' && (
+        <Switch
+          mt="xs"
+          label={t('projects.ai.versionsAcross')}
+          description={t('projects.ai.versionsAcrossHelp')}
+          checked={project.context_versions_across_extensions}
+          disabled={!writable || update.isPending}
+          onChange={(event) =>
+            update.mutate({ context_versions_across_extensions: event.currentTarget.checked })
+          }
+        />
+      )}
       <Switch
         mt="md"
         label={t('projects.ai.semantic')}

@@ -882,7 +882,8 @@ export interface paths {
         /**
          * Cola de revisión de la clasificación
          * @description Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
-         *     si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).
+         *     si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir). Con ``q`` (2.5.0), solo lo que coincide;
+         *     el total y los recuentos por motivo también.
          */
         get: operations["get_review_api_v1_projects__project_id__context_review_get"];
         put?: never;
@@ -2801,6 +2802,8 @@ export interface components {
              * @default []
              */
             version_groups: components["schemas"]["VersionGroupOut"][];
+            /** Versions Across Extensions */
+            versions_across_extensions?: boolean | null;
             /** Versions Mode */
             versions_mode?: ("all" | "mark" | "current_only") | null;
         };
@@ -4001,6 +4004,11 @@ export interface components {
              * @description Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)
              */
             context_versions?: ("all" | "mark" | "current_only") | null;
+            /**
+             * Context Versions Across Extensions
+             * @description Agrupar versiones aunque cambie el formato (Manual_v2.docx con Manual_v3.pdf; 2.5.0). Desactivado por defecto: dos ficheros con el mismo nombre en otro formato pueden no ser el mismo documento
+             */
+            context_versions_across_extensions?: boolean | null;
         };
         /**
          * ProjectCreate
@@ -4121,6 +4129,11 @@ export interface components {
              * @enum {string}
              */
             context_versions: "all" | "mark" | "current_only";
+            /**
+             * Context Versions Across Extensions
+             * @default false
+             */
+            context_versions_across_extensions: boolean;
             /**
              * Created At
              * Format: date-time
@@ -7934,6 +7947,8 @@ export interface operations {
             query?: {
                 /** @description Solo este motivo */
                 reason?: ("stale_decision" | "unclassified" | "rules_ai_disagreement" | "unverified_evidence" | "low_confidence" | "unconfirmed_version") | null;
+                /** @description Texto en el título, la carpeta, la ruta o la clave del documento */
+                q?: string | null;
                 limit?: number;
                 offset?: number;
             };

@@ -5,6 +5,21 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **Buscar por nombre en «Revisar clasificación»**: junto al motivo, un buscador que mira el título, la carpeta y la
+  ruta del documento (y la clave de una decisión sin documento). El total y el número de cada motivo cuentan solo lo
+  que coincide (`GET /projects/{id}/context/review?q=`).
+- **Agrupar versiones aunque cambie el formato**: casilla en «Contexto e IA del proyecto» (doc_organize 2.5.0
+  `version_across_extensions`), desactivada por defecto; la misma versión en varios formatos es vigente entera. La
+  construcción registra si se usó (`versions_across_extensions` en `GET /projects/{id}/context`). Migración `0030`.
+
+### Changed
+
+- **doc_organize 2.5.0** (antes 2.4.1): incluye las correcciones de la 2.4.2 (las claves ya no salen en `repr()` y la
+  cola de revisión muestra las decisiones de documentos que ya no están) y, en el consumo de LiteLLM, `product`
+  `litellm` y el periodo desde que cuenta el gasto (la API de uso lo devuelve; la pantalla no lo muestra).
+
 ## [2.4.0] - 2026-11-24
 
 Con doc_organize 2.4.1: la web importa todo desde la API pública de la librería y recoge sus dos correcciones (progreso

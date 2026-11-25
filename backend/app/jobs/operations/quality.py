@@ -76,6 +76,7 @@ def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project |
         ai_scope=params.ai_scope,
         profile_markdown=params.profile_markdown,
         versions=project.context_versions,
+        version_across_extensions=project.context_versions_across_extensions,
     )
 
     def on_progress(phase: str, processed: int, total: int | None) -> None:

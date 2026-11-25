@@ -14,7 +14,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import AuditEntry, ContextDocument, ContextDocumentAxisValue, Project, ProjectContext, User
+from app.db.models import (
+    AuditEntry,
+    ContextDocument,
+    ContextDocumentAxisValue,
+    ContextReviewItem,
+    Project,
+    ProjectContext,
+    User,
+)
 from app.domain.projects.service import state_dir
 from app.domain.scan.state import folder_cache
 from app.jobs.operations import context as operation
@@ -89,6 +97,39 @@ def test_review_queue_and_a_decision_applied_on_rebuild(
     listing = user_client.get(f"{base}/decisions").json()
     assert listing["decisions"] == [] and listing["revoked"][0]["revoke_reason"] == "Ya no"
     assert user_client.post(f"{base}/decisions/{decision['id']}/revoke", json={}).status_code == 404
+
+
+def test_review_filters_by_name(run: Any, project: Project, db: Session, user_client: TestClient, admin: User) -> None:
+    """2.5.0: además del motivo, por texto en el título, la carpeta, la ruta o la clave (la única de una decisión de un
+    documento que ya no está); el total y los recuentos por motivo cuentan solo lo que coincide."""
+    _setup(user_client, admin)
+    _build(run, project, db)
+    db.add(
+        ContextReviewItem(
+            project_id=project.id,
+            document_key="2019/borrado.pdf",
+            reason="stale_decision",
+            priority=0,
+            detail="missing_document",
+        )
+    )
+    db.commit()
+    url = f"/api/v1/projects/{project.id}/context/review"
+    everything = user_client.get(url).json()
+
+    receta = user_client.get(url, params={"q": "RECETA"}).json()
+    orphan = user_client.get(url, params={"q": "borrado"}).json()
+    literal = user_client.get(url, params={"q": "%"}).json()
+    both = user_client.get(url, params={"q": "receta", "reason": "unclassified"}).json()
+
+    assert receta["total"] < everything["total"]
+    assert {i["document_key"] for i in receta["items"]} == {RECETA}
+    assert sum(receta["counts"].values()) == receta["total"]
+    assert [(i["document_key"], i["document"]) for i in orphan["items"]] == [("2019/borrado.pdf", None)]
+    assert orphan["counts"] == {"stale_decision": 1}
+    assert literal["total"] == 0 and literal["counts"] == {}
+    assert [i["reason"] for i in both["items"]] == ["unclassified"]
+    assert user_client.get(url, params={"q": "x" * 201}).status_code == 422
 
 
 def test_decisions_are_validated_against_the_catalog(

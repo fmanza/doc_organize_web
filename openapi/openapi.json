@@ -2604,6 +2604,17 @@
             "title": "Version Groups",
             "type": "array"
           },
+          "versions_across_extensions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions Across Extensions"
+          },
           "versions_mode": {
             "anyOf": [
               {
@@ -5235,6 +5246,18 @@
             ],
             "description": "Versiones de un mismo documento (F5): all (todas, como 1.x), mark (marcar la vigente, por defecto en la web) o current_only (solo la vigente entra en el contexto)",
             "title": "Context Versions"
+          },
+          "context_versions_across_extensions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Agrupar versiones aunque cambie el formato (Manual_v2.docx con Manual_v3.pdf; 2.5.0). Desactivado por defecto: dos ficheros con el mismo nombre en otro formato pueden no ser el mismo documento",
+            "title": "Context Versions Across Extensions"
           }
         },
         "title": "ProjectAiSettingsIn",
@@ -5464,6 +5487,11 @@
             ],
             "title": "Context Versions",
             "type": "string"
+          },
+          "context_versions_across_extensions": {
+            "default": false,
+            "title": "Context Versions Across Extensions",
+            "type": "boolean"
           },
           "created_at": {
             "format": "date-time",
@@ -11657,7 +11685,7 @@
     },
     "/api/v1/projects/{project_id}/context/review": {
       "get": {
-        "description": "Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,\nsi la hay, su decisión vigente (pendiente de aplicar hasta reconstruir).",
+        "description": "Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,\nsi la hay, su decisión vigente (pendiente de aplicar hasta reconstruir). Con ``q`` (2.5.0), solo lo que coincide;\nel total y los recuentos por motivo también.",
         "operationId": "get_review_api_v1_projects__project_id__context_review_get",
         "parameters": [
           {
@@ -11693,6 +11721,25 @@
               ],
               "description": "Solo este motivo",
               "title": "Reason"
+            }
+          },
+          {
+            "description": "Texto en el título, la carpeta, la ruta o la clave del documento",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto en el título, la carpeta, la ruta o la clave del documento",
+              "title": "Q"
             }
           },
           {

@@ -227,6 +227,7 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         ai_provenance=[PromptProvenanceOut.model_validate(item) for item in row.ai_provenance],
         freshness=ContextFreshnessOut.model_validate(row.freshness) if row.freshness else None,
         versions_mode=row.versions_mode,
+        versions_across_extensions=row.versions_across_extensions,
         version_groups=[VersionGroupOut.model_validate(group) for group in row.version_groups],
         superseded=list(row.superseded),
         superseded_count=row.superseded_count,
@@ -729,13 +730,20 @@ def get_review(
     db: DbSession,
     settings: SettingsDep,
     reason: Annotated[ReviewReason | None, Query(description="Solo este motivo")] = None,
+    q: Annotated[
+        str | None,
+        Query(max_length=200, description="Texto en el título, la carpeta, la ruta o la clave del documento"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ReviewPage:
     """Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
-    si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir)."""
+    si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir). Con ``q`` (2.5.0), solo lo que coincide;
+    el total y los recuentos por motivo también."""
     access = projects.get_access(db, project_id, user)
-    rows, total, counts = decisions_service.review_items(db, access.project, reason=reason, limit=limit, offset=offset)
+    rows, total, counts = decisions_service.review_items(
+        db, access.project, reason=reason, limit=limit, offset=offset, q=q
+    )
     active = {d["document_key"]: d for d in decisions_service.load(db, settings, access.project).active}
     axes = context.document_axes(db, access.project.id, [doc.seq for _, doc in rows if doc is not None])
     items = []
