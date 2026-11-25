@@ -3105,6 +3105,30 @@
         "title": "DedupPreviewParams",
         "type": "object"
       },
+      "DeletionProjectRef": {
+        "description": "Proyecto citado en la comprobación de borrado: solo id, nombre y rol del usuario en él.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "title": "DeletionProjectRef",
+        "type": "object"
+      },
       "DiagnosticCheckOut": {
         "description": "Una comprobación de ``check_environment``: ``ok``, ``warning`` o ``error``, con qué hacer si no es ``ok``.",
         "properties": {
@@ -8143,6 +8167,65 @@
         "title": "UserCreate",
         "type": "object"
       },
+      "UserDeletionCheck": {
+        "description": "Qué impide borrar a un usuario y qué se borraría con él (ADR-016). Es también el cuerpo del ``409``.",
+        "properties": {
+          "active_runs": {
+            "description": "Runs suyos en cola o en marcha",
+            "title": "Active Runs",
+            "type": "integer"
+          },
+          "can_delete": {
+            "title": "Can Delete",
+            "type": "boolean"
+          },
+          "memberships": {
+            "description": "Proyectos de los que sale al borrarlo",
+            "items": {
+              "$ref": "#/components/schemas/DeletionProjectRef"
+            },
+            "title": "Memberships",
+            "type": "array"
+          },
+          "reasons": {
+            "items": {
+              "enum": [
+                "self",
+                "last_instance_admin",
+                "last_manager",
+                "sole_owner",
+                "active_runs"
+              ],
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "sessions": {
+            "description": "Sesiones abiertas que se cierran",
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "sole_owner_projects": {
+            "description": "Proyectos de los que es el único propietario",
+            "items": {
+              "$ref": "#/components/schemas/DeletionProjectRef"
+            },
+            "title": "Sole Owner Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "can_delete",
+          "reasons",
+          "sole_owner_projects",
+          "memberships",
+          "active_runs",
+          "sessions"
+        ],
+        "title": "UserDeletionCheck",
+        "type": "object"
+      },
       "UserLookup": {
         "description": "Resultado de la búsqueda de usuarios.",
         "properties": {
@@ -8242,6 +8325,18 @@
       "UserPage": {
         "description": "Página de usuarios.",
         "properties": {
+          "active_instance_admins": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Admins de instancia activos (siempre al menos uno, 2.7); solo para un admin de instancia",
+            "title": "Active Instance Admins"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/UserOut"
@@ -8313,6 +8408,19 @@
               }
             ],
             "title": "Password"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo de desactivar (bloquear) o reactivar: solo va a la auditoría (2.7)",
+            "title": "Reason"
           },
           "role_id": {
             "anyOf": [
@@ -13918,7 +14026,7 @@
             "description": "No existe (o es de otro tenant)"
           },
           "409": {
-            "description": "Rol base o nombre en uso"
+            "description": "Rol base, nombre en uso o el tenant quedaría sin gestores de usuarios"
           },
           "422": {
             "content": {
@@ -15804,6 +15912,52 @@
       }
     },
     "/api/v1/users/{user_id}": {
+      "delete": {
+        "description": "Borra al usuario si no deja nada huérfano (ADR-016): sus sesiones y pertenencias se borran; sus runs y\nartefactos quedan sin usuario y la auditoría conserva su nombre.",
+        "operationId": "delete_user_api_v1_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin permiso users.manage, permiso que no tienes o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "409": {
+            "description": "Algo depende de él (``user_has_dependencies``, con ``reasons`` y los datos de la comprobación) o no quedaría ningún administrador activo (``last_admin``)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Borrar usuario",
+        "tags": [
+          "users"
+        ]
+      },
       "get": {
         "description": "Detalle de un usuario.",
         "operationId": "get_user_api_v1_users__user_id__get",
@@ -15916,6 +16070,58 @@
           }
         },
         "summary": "Editar, desactivar, reactivar, desbloquear o mover usuario",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/deletion-check": {
+      "get": {
+        "description": "Qué impide borrar al usuario y qué se borraría con él (ADR-016), para la confirmación de la interfaz.",
+        "operationId": "user_deletion_check_api_v1_users__user_id__deletion_check_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDeletionCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Sin permiso users.manage, permiso que no tienes o token CSRF no válido"
+          },
+          "404": {
+            "description": "No existe"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comprobar si se puede borrar un usuario",
         "tags": [
           "users"
         ]

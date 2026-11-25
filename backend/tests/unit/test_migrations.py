@@ -497,3 +497,33 @@ def test_0031_adds_the_language_with_spanish_for_existing_users(settings: Settin
 
     command.downgrade(config, "0030")
     assert "language" not in {c["name"] for c in inspect(get_engine()).get_columns("users")}
+
+
+def test_0032_adds_the_actor_name_filled_with_each_username(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0031")
+    engine = get_engine()
+    with engine.begin() as conn:
+        role_id = conn.execute(text("SELECT id FROM roles LIMIT 1")).scalar_one()
+        conn.execute(
+            text(
+                "INSERT INTO users (id, tenant_id, username, display_name, password_hash, role_id, is_instance_admin,"
+                " is_active, failed_attempts, password_changed_at, created_at, updated_at)"
+                " VALUES (90, 1, 'auditada', 'Auditada', 'x', :role, 0, 1, 0, '2026-11-25', '2026-11-25', '2026-11-25')"
+            ),
+            {"role": role_id},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO audit_log (tenant_id, ts, actor_user_id, action, outcome)"
+                " VALUES (1, '2026-11-25', 90, 'auth.login', 'success'), (1, '2026-11-25', NULL, 'system', 'success')"
+            )
+        )
+
+    command.upgrade(config, "0032")
+    with engine.begin() as conn:
+        names = conn.execute(text("SELECT action, actor_name FROM audit_log ORDER BY id")).all()
+    assert [tuple(row) for row in names][-2:] == [("auth.login", "auditada"), ("system", None)]
+
+    command.downgrade(config, "0031")
+    assert "actor_name" not in {c["name"] for c in inspect(get_engine()).get_columns("audit_log")}

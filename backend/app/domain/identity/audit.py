@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.core.errors import AppError
@@ -31,6 +31,8 @@ class AuditAction:
     USER_REACTIVATE: Final = "user.reactivate"
     USER_PASSWORD_RESET: Final = "user.password_reset"  # noqa: S105 (nombre de acción)
     USER_UNLOCK: Final = "user.unlock"
+    USER_DELETE: Final = "user.delete"
+    USER_RECOVER: Final = "user.recover"
     SETTINGS_UPDATE: Final = "settings.update"
     LOCATION_CREATE: Final = "location.create"
     LOCATION_UPDATE: Final = "location.update"
@@ -131,14 +133,15 @@ def record(
     if tenant_id is None:
         scoped = db.info.get("tenant_id")
         tenant_id = scoped if isinstance(scoped, int) else current_tenant_id()
-    if tenant_id is None and actor_id is not None:
-        actor = db.get(User, actor_id)
-        tenant_id = actor.tenant_id if actor is not None else None
+    actor = db.get(User, actor_id) if actor_id is not None else None
+    if tenant_id is None and actor is not None:
+        tenant_id = actor.tenant_id
     entry = AuditEntry(
         tenant_id=tenant_id if tenant_id is not None else DEFAULT_TENANT_ID,
         action=action,
         outcome=outcome,
         actor_user_id=actor_id,
+        actor_name=actor.username if actor is not None else None,
         target_type=target_type,
         target_id=None if target_id is None else str(target_id),
         ip=ctx.ip,
@@ -169,7 +172,13 @@ def list_entries(
     if actor_id is not None:
         query = query.where(AuditEntry.actor_user_id == actor_id)
     if actor:
-        query = query.where(AuditEntry.actor_user_id.in_(select(User.id).where(User.username == actor.strip().lower())))
+        name = actor.strip().lower()
+        query = query.where(
+            or_(
+                AuditEntry.actor_user_id.in_(select(User.id).where(User.username == name)),
+                and_(AuditEntry.actor_user_id.is_(None), AuditEntry.actor_name == name),  # usuario ya borrado
+            )
+        )
     if since is not None:
         query = query.where(AuditEntry.ts >= since)
     if until is not None:
@@ -180,14 +189,21 @@ def list_entries(
     query = apply_search(
         query,
         listing.q,
-        [AuditEntry.action, author.username, AuditEntry.target_type, AuditEntry.target_id, AuditEntry.ip],
+        [
+            AuditEntry.action,
+            author.username,
+            AuditEntry.actor_name,
+            AuditEntry.target_type,
+            AuditEntry.target_id,
+            AuditEntry.ip,
+        ],
     )
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     columns = {
         "ts": AuditEntry.ts,
         "action": AuditEntry.action,
         "outcome": AuditEntry.outcome,
-        "actor": func.lower(author.username),
+        "actor": func.lower(func.coalesce(author.username, AuditEntry.actor_name)),
         "target": AuditEntry.target_type,
         "ip": AuditEntry.ip,
     }

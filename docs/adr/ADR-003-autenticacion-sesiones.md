@@ -47,6 +47,7 @@ Fase 9.
   inactividad `DOW_SESSION_IDLE_MINUTES` (60) y absoluta `DOW_SESSION_ABSOLUTE_HOURS` (12); `last_seen_at` se escribe
   como mucho una vez por minuto. El token CSRF con sesión es `HMAC(dow_app_secret_key, token_de_sesión)`.
 - **Sesiones**: el admin ve y revoca todas; cada usuario, solo las suyas (las ajenas dan `404`).
-- **Usuarios**: no se borran; desactivar cierra sus sesiones. Ni el último admin activo ni uno mismo pueden perder el
-  rol o desactivarse (`409`).
+- **Usuarios**: desactivar («bloquear») cierra sus sesiones. Ni el último admin activo ni uno mismo pueden perder el
+  rol o desactivarse (`409`). Desde la 2.7 se pueden borrar si no dejan nada huérfano
+  ([ADR-016](ADR-016-borrado-de-usuarios.md)).
 - **CLI**: `python -m app.cli create-admin --username <u> --password-stdin`.

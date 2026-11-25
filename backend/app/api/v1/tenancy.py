@@ -186,7 +186,11 @@ def get_role(role_id: int, manager: RoleManager, db: DbSession) -> RoleOut:
     "/roles/{role_id}",
     response_model=RoleOut,
     summary="Editar rol",
-    responses={**_ERRORS, **_404, 409: {"description": "Rol base o nombre en uso"}},
+    responses={
+        **_ERRORS,
+        **_404,
+        409: {"description": "Rol base, nombre en uso o el tenant quedaría sin gestores de usuarios"},
+    },
 )
 def update_role(role_id: int, body: RoleUpdate, manager: RoleManager, db: DbSession, ctx: Context) -> RoleOut:
     """Quitar permisos cierra las sesiones de quienes tienen el rol."""

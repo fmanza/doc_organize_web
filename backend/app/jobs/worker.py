@@ -49,6 +49,7 @@ from app.db.models import (
     utcnow,
 )
 from app.db.session import get_engine
+from app.domain.identity import users as identity_users
 from app.domain.locations.service import probe_all
 from app.domain.settings.service import effective_settings
 from app.integrations.doc_organize import library_version, run_probe
@@ -212,6 +213,8 @@ class JobWorker:
     def serve(self, stop: threading.Event) -> None:
         """Atiende las colas hasta que ``stop`` se active."""
         self.register()
+        with self.factory() as db:
+            identity_users.warn_if_no_instance_admin(db)  # F0 (2.7): solo avisa
         threading.Thread(target=self._maintenance, args=(stop,), name="dow-maintenance", daemon=True).start()
         self.refresh_capabilities()
         while not stop.is_set():

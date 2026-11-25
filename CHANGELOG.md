@@ -7,6 +7,23 @@ ROADMAP (`0.<fase+1>.0`).
 
 ### Added
 
+- **Bloquear y borrar usuarios** ([ADR-016](docs/adr/ADR-016-borrado-de-usuarios.md)). En «Administración → Usuarios»,
+  cada fila tiene un menú con «Bloquear»/«Desbloquear», «Quitar bloqueo por intentos» y «Borrar».
+    - Bloquear es desactivar la cuenta. En la interfaz pasa a llamarse «Bloqueado», y el bloqueo temporal, «Bloqueado
+      por intentos». `PATCH /api/v1/users/{id}` admite `reason`, que solo va a la auditoría.
+    - Borrar solo se permite si no deja nada huérfano. `GET /api/v1/users/{id}/deletion-check` y
+      `DELETE /api/v1/users/{id}` (`204`, o `409 user_has_dependencies` con `reasons`): `self`,
+      `last_instance_admin`, `last_manager`, `sole_owner` y `active_runs`.
+    - Se borran sus sesiones y pertenencias. Runs y artefactos quedan sin usuario, y la auditoría conserva el nombre
+      (`audit_log.actor_name`, migración `0032`, aditiva) y lo muestra como «nombre (borrado)».
+- **Siempre un administrador de la instancia activo**:
+    - Desactivar, quitar el admin y borrar se serializan con el bloqueo de escritura de SQLite y se vuelven a contar
+      tras el cambio (`409 last_admin`).
+    - `UserPage.active_instance_admins` deshabilita en la interfaz las acciones del último admin.
+    - Aviso en el log al arrancar la web y el worker, y comprobación `instance_admins` en el diagnóstico.
+    - Comando nuevo `python -m app.cli recover-admin --username <u> [--reset-password | --password-stdin]`.
+    - `PATCH /api/v1/roles/{id}` ya no puede dejar un tenant sin gestores de usuarios (`409 last_tenant_manager`).
+
 - **Filtros de la lista de usuarios por rol y estado**. En «Administración → Usuarios», junto a la búsqueda, se puede
   filtrar por «Rol» y por «Estado». El administrador de la instancia puede además ver solo a los administradores de
   la instancia.

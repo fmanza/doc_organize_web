@@ -1,9 +1,11 @@
 import {
+  ActionIcon,
   Badge,
   Button,
   Center,
   Group,
   Loader,
+  Menu,
   Select,
   Stack,
   Switch,
@@ -21,12 +23,27 @@ import { SearchBox, SortableTh } from '../../components/listing';
 import { useListState } from '../../components/useListState';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
+import { ICON_STROKE, MoreActionsIcon, NAV_ICON_SIZE } from '../../components/icons';
 import { useMe } from '../auth/useAuth';
-import { type User, type UserFilters, type UserSort, type UserStatusFilter, useUsers } from './useAdmin';
+import {
+  type User,
+  type UserFilters,
+  type UserSort,
+  type UserStatusFilter,
+  useUpdateUser,
+  useUsers,
+} from './useAdmin';
+import { UserBlockModal } from './UserBlockModal';
+import { UserDeleteModal } from './UserDeleteModal';
 import { UserFormModal } from './UserFormModal';
 import { useRoles } from './useTenancy';
 
 type Editing = { user: User | null } | null;
+/** Acción del menú de una fila que abre un diálogo (2.7). */
+type RowAction = { kind: 'block' | 'delete'; user: User } | null;
+
+/** Bloqueado por intentos fallidos y todavía vigente (la misma regla que el filtro `locked` de la API). */
+const isLockedOut = (user: User) => user.locked_until !== null && new Date(user.locked_until) > new Date();
 
 const USER_SORT: readonly UserSort[] = ['username', 'display_name', 'role', 'status', 'created_at'];
 const USER_STATUSES: readonly UserStatusFilter[] = ['active', 'inactive', 'locked'];
@@ -71,7 +88,7 @@ function UserStatus({ user }: { user: User }) {
   if (!user.is_active) {
     return <Badge color="gray">{t('admin.users.inactive')}</Badge>;
   }
-  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+  if (isLockedOut(user)) {
     return <Badge color="orange">{t('admin.users.locked')}</Badge>;
   }
   return <Badge color="green">{t('admin.users.activeBadge')}</Badge>;
@@ -81,11 +98,16 @@ export function UsersPage() {
   const { t } = useTranslation();
   const list = useListState(USER_SORT);
   const [editing, setEditing] = useState<Editing>(null);
+  const [action, setAction] = useState<RowAction>(null);
+  const unlock = useUpdateUser();
   const { filters, set, clear } = useUserFilters();
   const { data: me } = useMe();
   const roles = useRoles();
   const { data, isPending, isError, error } = useUsers({ ...list.query, ...filters });
   const filtered = Object.keys(filters).length > 0 || list.q.trim() !== '';
+  // F0 (2.7): el último admin de instancia activo no se bloquea, ni se borra (el backend lo vuelve a comprobar).
+  const isLastAdmin = (user: User) =>
+    user.is_instance_admin && user.is_active && data?.active_instance_admins === 1;
 
   return (
     <Stack>
@@ -135,6 +157,7 @@ export function UsersPage() {
         </Center>
       )}
       {isError && <ErrorAlert error={error} />}
+      {unlock.isError && <ErrorAlert error={unlock.error} />}
       {data && data.items.length === 0 && (
         <Group>
           <Text c="dimmed">{t(filtered ? 'admin.users.filter.empty' : 'admin.users.empty')}</Text>
@@ -188,14 +211,48 @@ export function UsersPage() {
                   </Table.Td>
                   <Table.Td>{formatDateTime(user.created_at)}</Table.Td>
                   <Table.Td>
-                    <Button
-                      size="xs"
-                      variant="light"
-                      onClick={() => setEditing({ user })}
-                      aria-label={t('admin.users.editLabel', { username: user.username })}
-                    >
-                      {t('common.edit')}
-                    </Button>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button
+                        size="xs"
+                        variant="light"
+                        onClick={() => setEditing({ user })}
+                        aria-label={t('admin.users.editLabel', { username: user.username })}
+                      >
+                        {t('common.edit')}
+                      </Button>
+                      <Menu position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant="subtle"
+                            aria-label={t('admin.users.actionsLabel', { username: user.username })}
+                          >
+                            <MoreActionsIcon size={NAV_ICON_SIZE} stroke={ICON_STROKE} aria-hidden />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {isLastAdmin(user) && <Menu.Label>{t('admin.users.lastAdmin')}</Menu.Label>}
+                          <Menu.Item
+                            disabled={isLastAdmin(user) && user.is_active}
+                            onClick={() => setAction({ kind: 'block', user })}
+                          >
+                            {t(user.is_active ? 'admin.users.block.action' : 'admin.users.unblock.action')}
+                          </Menu.Item>
+                          {isLockedOut(user) && (
+                            <Menu.Item onClick={() => unlock.mutate({ id: user.id, body: { unlock: true } })}>
+                              {t('admin.users.unlock')}
+                            </Menu.Item>
+                          )}
+                          <Menu.Divider />
+                          <Menu.Item
+                            color="red"
+                            disabled={isLastAdmin(user)}
+                            onClick={() => setAction({ kind: 'delete', user })}
+                          >
+                            {t('admin.users.delete.action')}
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -204,6 +261,8 @@ export function UsersPage() {
         </Table.ScrollContainer>
       )}
       {data && <PageControls state={list.paging} total={data.total} label={t('paging.label')} />}
+      {action?.kind === 'block' && <UserBlockModal user={action.user} onClose={() => setAction(null)} />}
+      {action?.kind === 'delete' && <UserDeleteModal user={action.user} onClose={() => setAction(null)} />}
       {editing && (
         <UserFormModal
           key={editing.user?.id ?? 'new'}

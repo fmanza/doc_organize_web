@@ -40,6 +40,10 @@ class AppError(Exception):
         super().__init__(detail or self.title)
         self.detail = detail
 
+    def extensions(self) -> dict[str, object]:
+        """Miembros de extensión del *problem details* (RFC 9457 §3.2); nunca secretos ni rutas."""
+        return {}
+
 
 def problem(status: int, title: str, detail: str | None = None, **extra: object) -> JSONResponse:
     """Respuesta ``application/problem+json`` con el ``request_id`` de la petición si lo hay."""
@@ -58,9 +62,10 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(AppError)
     async def _app(_: Request, exc: AppError) -> JSONResponse:
+        extra = exc.extensions()
         if exc.code:
-            return problem(exc.status, exc.title, exc.detail, code=exc.code)
-        return problem(exc.status, exc.title, exc.detail)
+            extra = {"code": exc.code, **extra}
+        return problem(exc.status, exc.title, exc.detail, **extra)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:

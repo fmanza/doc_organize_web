@@ -33,7 +33,7 @@ describe('UsersPage', () => {
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('ana')).toBeInTheDocument();
-    expect(within(table).getByText('Desactivado')).toBeInTheDocument();
+    expect(within(table).getByText('Bloqueado')).toBeInTheDocument();
     expect(within(table).getByText('Activo')).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe('UsersPage', () => {
     const user = userEvent.setup();
 
     renderRoute('/admin/users');
-    expect(within(await screen.findByRole('table')).getByText('Bloqueado')).toBeInTheDocument();
+    expect(within(await screen.findByRole('table')).getByText('Bloqueado por intentos')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Editar ana' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Cuenta bloqueada por intentos fallidos')).toBeInTheDocument();
@@ -300,7 +300,7 @@ describe('Filtros de usuarios (2.7)', () => {
     await user.click(screen.getByRole('combobox', { name: 'Rol' }));
     await user.click(await screen.findByRole('option', { name: 'Usuario' }));
     await user.click(screen.getByRole('combobox', { name: 'Estado' }));
-    await user.click(await screen.findByRole('option', { name: 'Desactivado' }));
+    await user.click(await screen.findByRole('option', { name: 'Bloqueado' }));
     await user.click(screen.getByRole('switch', { name: 'Solo administradores de la instancia' }));
 
     await waitFor(() =>
@@ -394,5 +394,105 @@ describe('Eliminar auditoría por fechas (1.2.0)', () => {
       dry_run: false,
       confirm_count: 3,
     });
+  });
+});
+
+describe('Bloquear y borrar usuarios (2.7)', () => {
+  it('bloquea con motivo desde el menú de la fila', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/users': { body: { items: [ANA], total: 1, active_instance_admins: 1 } },
+      'PATCH /api/v1/users/2': { body: { ...ANA, is_active: false } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users');
+    await user.click(await screen.findByRole('button', { name: 'Más acciones de ana' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Bloquear' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Bloquear a ana' });
+    await user.type(within(dialog).getByRole('textbox', { name: /Motivo/ }), 'Baja temporal');
+    await user.click(within(dialog).getByRole('button', { name: 'Bloquear' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PATCH', '/api/v1/users/2')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PATCH', '/api/v1/users/2');
+    expect(await request?.json()).toEqual({ unlock: false, is_active: false, reason: 'Baja temporal' });
+  });
+
+  it('el último administrador activo no se puede bloquear ni borrar', async () => {
+    const admin = { ...ANA, id: 1, username: 'admin', is_instance_admin: true };
+    stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/users': { body: { items: [admin], total: 1, active_instance_admins: 1 } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users');
+    await user.click(await screen.findByRole('button', { name: 'Más acciones de admin' }));
+
+    expect(await screen.findByText('Debe quedar al menos un administrador activo')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Bloquear' })).toBeDisabled();
+    expect(screen.getByRole('menuitem', { name: 'Borrar' })).toBeDisabled();
+  });
+
+  it('explica por qué no se puede borrar', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/users': { body: { items: [ANA], total: 1, active_instance_admins: 1 } },
+      'GET /api/v1/users/2/deletion-check': {
+        body: {
+          can_delete: false,
+          reasons: ['sole_owner', 'active_runs'],
+          sole_owner_projects: [{ id: 7, name: 'Facturas', role: 'owner' }],
+          memberships: [{ id: 7, name: 'Facturas', role: 'owner' }],
+          active_runs: 2,
+          sessions: 0,
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users');
+    await user.click(await screen.findByRole('button', { name: 'Más acciones de ana' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Borrar' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Borrar a ana' });
+
+    expect(await within(dialog).findByText(/único propietario de algún proyecto/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Tiene 2 ejecuciones en cola o en marcha/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Facturas' })).toHaveAttribute('href', '/projects/7');
+    expect(within(dialog).queryByRole('button', { name: 'Borrar usuario' })).not.toBeInTheDocument();
+    expect(callsTo(fetchMock, 'DELETE', '/api/v1/users/2')).toHaveLength(0);
+  });
+
+  it('borra tras teclear el nombre de usuario', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/users': { body: { items: [ANA], total: 1, active_instance_admins: 1 } },
+      'GET /api/v1/users/2/deletion-check': {
+        body: {
+          can_delete: true,
+          reasons: [],
+          sole_owner_projects: [],
+          memberships: [{ id: 7, name: 'Facturas', role: 'editor' }],
+          active_runs: 0,
+          sessions: 1,
+        },
+      },
+      'DELETE /api/v1/users/2': { status: 204 },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users');
+    await user.click(await screen.findByRole('button', { name: 'Más acciones de ana' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Borrar' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Borrar a ana' });
+
+    expect(await within(dialog).findByText('Se cerrará 1 sesión abierta.')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Facturas/)).toBeInTheDocument();
+    const submit = within(dialog).getByRole('button', { name: 'Borrar usuario' });
+    expect(submit).toBeDisabled();
+    await user.type(within(dialog).getByRole('textbox', { name: 'Escribe «ana» para confirmar' }), 'ana');
+    await user.click(submit);
+
+    await waitFor(() => expect(callsTo(fetchMock, 'DELETE', '/api/v1/users/2')).toHaveLength(1));
   });
 });

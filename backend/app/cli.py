@@ -7,6 +7,11 @@ Uso::
     python -m app.cli verify-backup /data/backups/20261102T030000Z
     python -m app.cli restore /data/backups/20261102T030000Z [--yes]
     python -m app.cli rotate-secrets
+    python -m app.cli recover-admin --username admin [--reset-password | --password-stdin]
+
+``recover-admin`` (2.7) recupera el acceso de administrador sobre un usuario **existente**: lo reactiva, quita el
+bloqueo por intentos, lo marca como administrador de la instancia y, con ``--reset-password`` o ``--password-stdin``,
+cambia su contraseña. Cierra sus sesiones y se audita como ``user.recover``.
 
 ``rotate-secrets`` vuelve a cifrar las credenciales de IA con la primera clave de ``DOW_FERNET_KEYS`` (ADR-004): se
 antepone la clave nueva, se ejecuta y, después, se puede retirar la antigua.
@@ -35,6 +40,7 @@ from app.db import backup
 from app.db.models import DEFAULT_TENANT_ID
 from app.db.session import get_engine
 from app.domain.ai import settings as ai_settings
+from app.domain.identity import users as identity_users
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
 from app.domain.settings.service import effective_settings
@@ -154,6 +160,21 @@ def run_rotate() -> int:
     return 0
 
 
+def recover_admin(username: str, *, reset_password: bool, password_stdin: bool) -> int:
+    """Recupera el acceso de administrador de un usuario existente (F0, 2.7); devuelve el código de salida."""
+    password = _read_password(password_stdin) if reset_password or password_stdin else None
+    factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
+    with factory() as db:
+        settings = effective_settings(db, get_settings())
+        try:
+            user = identity_users.recover_admin(db, username, password=password, settings=settings)
+        except AppError as exc:
+            print(f"Error: {exc.title}. {exc.detail or ''}".strip(), file=sys.stderr)
+            return 1
+    print(f"Administrador «{user.username}» recuperado: activo, sin bloqueo y administrador de la instancia.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Administración de doc_organize_web")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -170,6 +191,12 @@ def main(argv: list[str] | None = None) -> int:
     restore.add_argument("path", help="carpeta de la copia")
     restore.add_argument("--yes", action="store_true", help="restaura de verdad (sin él, solo la vista previa)")
     commands.add_parser("rotate-secrets", help="vuelve a cifrar las credenciales de IA con la primera clave")
+    recover = commands.add_parser(
+        "recover-admin", help="reactiva un usuario existente como administrador de la instancia y quita su bloqueo"
+    )
+    recover.add_argument("--username", required=True)
+    recover.add_argument("--reset-password", action="store_true", help="pide una contraseña nueva por terminal")
+    recover.add_argument("--password-stdin", action="store_true", help="lee la contraseña nueva de la entrada estándar")
     args = parser.parse_args(argv)
 
     configure_logging(get_settings().log_level)
@@ -183,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_restore(args.path, yes=args.yes)
     if args.command == "rotate-secrets":
         return run_rotate()
+    if args.command == "recover-admin":
+        return recover_admin(args.username, reset_password=args.reset_password, password_stdin=args.password_stdin)
     return 2  # pragma: no cover - argparse exige un comando
 
 

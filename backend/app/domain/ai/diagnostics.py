@@ -21,6 +21,7 @@ from app.db.models import User
 from app.domain.ai import settings as ai_settings
 from app.domain.ai.errors import AiNotConfiguredError, DiagnosticsFailedError, DiagnosticsTooSoonError
 from app.domain.identity import audit
+from app.domain.identity import users as identity_users
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.runs import workers as run_workers
 from app.integrations.doc_organize import models as library_models
@@ -106,7 +107,7 @@ def run(
             raise DiagnosticsFailedError(str(exc)) from None
     finally:
         _lock.release()
-    report = with_worker_gpu(report, db, settings)
+    report = with_instance_admins(with_worker_gpu(report, db, settings), db)
     audit.record(
         db,
         action=AuditAction.ADMIN_DIAGNOSTICS,
@@ -122,6 +123,25 @@ def run(
     )
     db.commit()
     return report
+
+
+def with_instance_admins(report: DiagnosticsReport, db: Session) -> DiagnosticsReport:
+    """Añade la comprobación ``instance_admins`` (F0, 2.7): siempre debe haber un admin de instancia activo.
+
+    Con la API no se puede llegar a cero; sí restaurando una copia o editando la BD. La recuperación es la CLI
+    ``recover-admin`` o ``create-admin``.
+    """
+    count = identity_users.active_instance_admins(db)
+    if count:
+        check = DiagnosticCheck("instance_admins", "ok", f"{count} administrador(es) de la instancia activo(s)")
+    else:
+        check = DiagnosticCheck(
+            "instance_admins",
+            "error",
+            "No hay ningún administrador de la instancia activo",
+            "Recupera uno con «python -m app.cli recover-admin --username <usuario>» o crea otro con «create-admin».",
+        )
+    return DiagnosticsReport(checks=[*report.checks, check], checked_at=report.checked_at)
 
 
 def with_worker_gpu(report: DiagnosticsReport, db: Session, settings: Settings) -> DiagnosticsReport:

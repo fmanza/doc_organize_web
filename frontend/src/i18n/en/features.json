@@ -13,11 +13,11 @@
       "role": "Role",
       "status": "Status",
       "createdAt": "Created",
-      "active": "Active account",
-      "activeHint": "Deactivating it signs out all its sessions; it can be reactivated later. Users are never deleted.",
+      "active": "Active account (unblocked)",
+      "activeHint": "Blocking it signs out all its sessions; it can be unblocked later.",
       "activeBadge": "Active",
-      "inactive": "Deactivated",
-      "locked": "Locked",
+      "inactive": "Blocked",
+      "locked": "Locked (failed attempts)",
       "lockedTitle": "Account locked after failed attempts",
       "lockedBody": "It unlocks automatically at {{until}}.",
       "unlock": "Unlock now",
@@ -36,6 +36,43 @@
         "instanceAdmin": "Instance administrators only",
         "empty": "No users match the filters.",
         "clear": "Clear filters"
+      },
+      "actionsLabel": "More actions for {{username}}",
+      "lastAdmin": "At least one active administrator must remain",
+      "block": {
+        "action": "Block",
+        "title": "Block {{username}}",
+        "body": "They will not be able to sign in and their sessions will be closed. You can unblock them later.",
+        "confirm": "Block",
+        "reason": "Reason (optional)",
+        "reasonHint": "Only recorded in the audit log."
+      },
+      "unblock": {
+        "action": "Unblock",
+        "title": "Unblock {{username}}",
+        "body": "They will be able to sign in again. The failed-attempts lock is also removed.",
+        "confirm": "Unblock"
+      },
+      "delete": {
+        "action": "Delete",
+        "title": "Delete {{username}}",
+        "blockedTitle": "Cannot be deleted yet",
+        "reason": {
+          "self": "You cannot delete your own account.",
+          "last_instance_admin": "They are the last active instance administrator.",
+          "last_manager": "They are the last active user who manages the users of their tenant.",
+          "sole_owner": "They are the only owner of some projects: add another owner first.",
+          "active_runs_one": "They have {{count}} queued or running run: wait for it to finish or cancel it.",
+          "active_runs_other": "They have {{count}} queued or running runs: wait for them to finish or cancel them."
+        },
+        "soleOwnerProjects": "Projects of which they are the only owner:",
+        "warningTitle": "This cannot be undone",
+        "warning": "The account is deleted. Their runs and results are kept without a user and the audit log keeps their name.",
+        "sessions_one": "{{count}} open session will be closed.",
+        "sessions_other": "{{count}} open sessions will be closed.",
+        "memberships": "They will leave these projects:",
+        "confirm": "Type “{{username}}” to confirm",
+        "submit": "Delete user"
       }
     },
     "sessions": {
@@ -93,11 +130,13 @@
         "user": {
           "create": "User created",
           "update": "User edited",
-          "deactivate": "Deactivation",
-          "reactivate": "Reactivation",
+          "deactivate": "Block",
+          "reactivate": "Unblock",
           "password_reset": "Password reset",
           "unlock": "Unlock",
-          "move": "User moved to another tenant"
+          "move": "User moved to another tenant",
+          "delete": "User deleted",
+          "recover": "Administrator recovered (CLI)"
         },
         "session": {
           "revoke": "Session revoked",
@@ -145,7 +184,8 @@
         "delete_other": "Delete {{count}} entries",
         "done_one": "{{formatted}} entry has been deleted.",
         "done_other": "{{formatted}} entries have been deleted."
-      }
+      },
+      "deletedActor": "{{name}} (deleted)"
     }
   },
   "status": {

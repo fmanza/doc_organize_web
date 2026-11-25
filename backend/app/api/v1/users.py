@@ -16,6 +16,7 @@ from app.api.v1.schemas import (
     MAX_PAGE_SIZE,
     UserBrief,
     UserCreate,
+    UserDeletionCheck,
     UserLookup,
     UserOut,
     UserPage,
@@ -68,7 +69,8 @@ def list_users(
         listing=listing(q, sort, order),
         filters=filters,
     )
-    return UserPage(items=[UserOut.model_validate(u) for u in rows], total=total)
+    admins = users.active_instance_admins(db) if manager.is_instance_admin else None
+    return UserPage(items=[UserOut.model_validate(u) for u in rows], total=total, active_instance_admins=admins)
 
 
 @router.post(
@@ -159,5 +161,39 @@ def update_user(
         is_active=body.is_active,
         password=body.password.get_secret_value() if body.password is not None else None,
         unlock=body.unlock,
+        reason=body.reason,
     )
     return UserOut.model_validate(users.update_user(db, user, changes, actor=manager, settings=settings, ctx=ctx))
+
+
+@router.get(
+    "/{user_id}/deletion-check",
+    response_model=UserDeletionCheck,
+    summary="Comprobar si se puede borrar un usuario",
+    responses={**_ERRORS, 404: {"description": "No existe"}},
+)
+def user_deletion_check(user_id: int, manager: UserManager, db: DbSession) -> UserDeletionCheck:
+    """Qué impide borrar al usuario y qué se borraría con él (ADR-016), para la confirmación de la interfaz."""
+    user = users.get_user(db, user_id, tenant_id=_scope(manager))
+    users.check_can_manage(manager, user)
+    return UserDeletionCheck.model_validate(users.deletion_check(db, user, actor=manager).as_problem())
+
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Borrar usuario",
+    responses={
+        **_ERRORS,
+        404: {"description": "No existe"},
+        409: {
+            "description": "Algo depende de él (``user_has_dependencies``, con ``reasons`` y los datos de la "
+            "comprobación) o no quedaría ningún administrador activo (``last_admin``)"
+        },
+    },
+)
+def delete_user(user_id: int, manager: UserManager, db: DbSession, ctx: Context) -> None:
+    """Borra al usuario si no deja nada huérfano (ADR-016): sus sesiones y pertenencias se borran; sus runs y
+    artefactos quedan sin usuario y la auditoría conserva su nombre."""
+    user = users.get_user(db, user_id, tenant_id=_scope(manager))
+    users.delete_user(db, user, actor=manager, ctx=ctx)
