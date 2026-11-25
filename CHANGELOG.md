@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-25
+
+Idioma de la interfaz por usuario (español o inglés) e i18n como requisito del frontend. Sigue con doc_organize 2.5.0.
+Migración `0031` (aditiva).
+
 ### Added
 
 - **Idioma de la interfaz por usuario: español o inglés**. En el menú de usuario, «Idioma» con «Español» (por defecto)
