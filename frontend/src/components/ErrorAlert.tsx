@@ -10,7 +10,8 @@ interface ErrorAlertProps extends Omit<AlertProps, 'title' | 'children'> {
 /** Muestra el *problem details* de un `ApiError` (título y detalle), nunca trazas. */
 export function ErrorAlert({ error, ...props }: ErrorAlertProps) {
   const { t } = useTranslation();
-  const title = error instanceof ApiError ? error.problem.title : t('common.error');
+  // Sin *problem details* (p. ej. un 502 del proxy con HTTP/2) el título llega vacío: lo pone i18n.
+  const title = (error instanceof ApiError && error.problem.title) || t('common.error');
   const detail = error instanceof ApiError ? error.problem.detail : t('common.errorBody');
   return (
     <Alert color="red" role="alert" title={title} {...props}>

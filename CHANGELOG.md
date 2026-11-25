@@ -5,6 +5,13 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **i18n como requisito del frontend**: el test `src/i18n/i18n.test.ts` falla si hay texto visible fuera de `t()`, una
+  clave usada que no existe o una clave sin uso. El ejemplo del perfil del proyecto pasa a i18n, el locale de fechas y
+  números sale de `INTL_LOCALE` (`src/i18n`) y se quitan 13 claves que no se usaban. Un error sin *problem details* ni
+  `statusText` se titula «Se ha producido un error» en lugar de «Error».
+
 ## [2.5.0] - 2026-11-25
 
 Buscar por nombre en «Revisar clasificación» y agrupar versiones de un documento aunque cambie el formato, con

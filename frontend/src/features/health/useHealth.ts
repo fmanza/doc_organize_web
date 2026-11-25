@@ -18,7 +18,7 @@ export function useHealth() {
         return error;
       }
       throw new ApiError({
-        title: response.statusText || 'Error',
+        title: response.statusText,
         status: response.status,
       } satisfies Problem);
     },

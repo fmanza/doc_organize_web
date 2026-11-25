@@ -77,7 +77,7 @@ export function unwrap<T>(result: { data?: T; error?: unknown; response: Respons
     return result.data;
   }
   const problem = (result.error as Problem | undefined) ?? {
-    title: result.response.statusText || 'Error',
+    title: result.response.statusText,
     status: result.response.status,
   };
   throw new ApiError(problem);

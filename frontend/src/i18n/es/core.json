@@ -20,8 +20,6 @@
     "close": "Cerrar"
   },
   "roles": {
-    "admin": "Administrador",
-    "user": "Usuario",
     "instanceAdmin": "Admin de instancia",
     "builtin": {
       "admin": "Administrador",
@@ -37,7 +35,6 @@
     "users_one": "{{count}} usuario",
     "users_other": "{{count}} usuarios",
     "deleteLabel": "Borrar el rol {{name}}",
-    "saveLabel": "Guardar el rol {{name}}",
     "inUse": "Tiene usuarios: asígnales otro rol antes de borrarlo.",
     "search": "Buscar roles",
     "type": "Tipo",
@@ -202,7 +199,6 @@
     "label": "Páginas"
   },
   "listing": {
-    "search": "Buscar…",
     "searchLabel": "Buscar",
     "clear": "Limpiar la búsqueda",
     "sortBy": "Ordenar por esta columna",

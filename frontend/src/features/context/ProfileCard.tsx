@@ -15,17 +15,6 @@ type Sections = components['schemas']['ProfileSectionsOut'];
 
 /** Tamaño máximo de `profile.md` (`MAX_PROFILE_BYTES` de la API). */
 const MAX_PROFILE_BYTES = 32 * 1024;
-const PLACEHOLDER = `## Contexto del proyecto
-…
-
-## Reglas de desempate
-- …
-
-## Glosario
-- …
-
-## Ejemplos
-- «Título de un documento» → dominio, tipo`;
 
 const profileKey = (projectId: number) => ['projects', projectId, 'context', 'profile'] as const;
 
@@ -174,7 +163,7 @@ export function ProfileCard({
       <Textarea
         label={t('context.profile.markdown')}
         value={text}
-        placeholder={PLACEHOLDER}
+        placeholder={t('context.profile.placeholder')}
         readOnly={!editable}
         onChange={(event) => {
           setDraft(event.currentTarget.value);

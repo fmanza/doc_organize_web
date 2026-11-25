@@ -3,13 +3,18 @@ import { initReactI18next } from 'react-i18next';
 
 import core from './es/core.json';
 
+/** Idioma de la interfaz y su locale de `Intl` (fechas y números): un idioma nuevo añade aquí su locale. */
+export const LANGUAGE = 'es';
+const INTL_LOCALES: Readonly<Record<string, string>> = { es: 'es-ES' };
+export const INTL_LOCALE = INTL_LOCALES[LANGUAGE] ?? LANGUAGE;
+
 // Español por defecto; un idioma nuevo es otra carpeta con los mismos ficheros y claves.
 // `core.json` (menú, salud, textos comunes) va en el bundle inicial; `features.json` (el resto de pantallas) se carga
 // una vez con la primera ruta lazy (`loadFeatureMessages`, desde el router, a partir de la Fase 1).
 void i18n.use(initReactI18next).init({
   resources: { es: { translation: core } },
-  lng: 'es',
-  fallbackLng: 'es',
+  lng: LANGUAGE,
+  fallbackLng: LANGUAGE,
   interpolation: { escapeValue: false },
 });
 
