@@ -2,8 +2,8 @@
 
 - **Qué es**: aplicación web multiusuario (FastAPI + React) que expone la funcionalidad de la librería doc_organize y
   sustituye a su web integrada.
-- **Versión actual**: 2.5.0 con doc_organize 2.5.0 (buscar por nombre en la revisión y versiones entre formatos),
-  sobre la 2.4.0 (todo desde la API pública de la librería), la 2.3.2 (textos
+- **Versión actual**: 2.6.0 con doc_organize 2.5.0 (idioma de la interfaz por usuario, español o inglés, e i18n como
+  requisito), sobre la 2.5.0 (buscar por nombre en la revisión y versiones entre formatos), la 2.4.0 (todo desde la API pública de la librería), la 2.3.2 (textos
   de IA al día y documentación revisada), la 2.3.1
   (los proyectos borrados sueltan sus ubicaciones), la 2.3.0 (tema claro u oscuro por usuario), la 2.2.0 (IA por
   funcionalidad con avisos flotantes y duplicados por contenido) y la 2.1.0 (contexto en pasos de trabajo, consumo de
