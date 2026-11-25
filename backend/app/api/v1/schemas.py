@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, SecretStr
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from app.domain.identity.passwords import MAX_PASSWORD_LENGTH
 
@@ -45,12 +45,23 @@ ColorScheme = Literal["auto", "light", "dark"]
 """Tema de la interfaz: ``auto`` sigue al sistema operativo."""
 
 
+Language = Literal["es", "en"]
+"""Idioma de la interfaz (2.6)."""
+
+
 class Preferences(BaseModel):
-    """Preferencias del propio usuario (2.3)."""
+    """Preferencias del propio usuario: tema (2.3) e idioma (2.6). Se guarda lo que llegue; al menos una."""
 
     model_config = ConfigDict(extra="forbid")
 
-    color_scheme: ColorScheme
+    color_scheme: ColorScheme | None = None
+    language: Language | None = None
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> Preferences:
+        if self.color_scheme is None and self.language is None:
+            raise ValueError("Indica al menos una preferencia")
+        return self
 
 
 class PasswordChange(BaseModel):
@@ -85,6 +96,7 @@ class Me(BaseModel):
     role: RoleRef
     permissions: list[Permission]
     color_scheme: ColorScheme
+    language: Language
 
 
 # --- users ------------------------------------------------------------------------------------------------------

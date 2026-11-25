@@ -256,3 +256,45 @@ def test_update_preferences_is_not_audited(user_client: TestClient, db: Session)
     user_client.put("/api/v1/auth/me/preferences", json={"color_scheme": "dark"})
 
     assert db.scalar(select(func.count()).select_from(AuditEntry)) == before
+
+
+# --- 2.6: idioma de la interfaz por usuario -------------------------------------------------------------------------
+
+
+def test_me_language_defaults_to_spanish(user_client: TestClient) -> None:
+    assert user_client.get("/api/v1/auth/me").json()["language"] == "es"
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_update_preferences_saves_language(user_client: TestClient, db: Session, user: User, language: str) -> None:
+    response = user_client.put("/api/v1/auth/me/preferences", json={"language": language})
+
+    assert response.status_code == 200
+    assert response.json()["language"] == language
+    assert response.json()["color_scheme"] == "auto"  # lo que no llega no cambia
+    db.refresh(user)
+    assert user.language == language
+
+
+def test_update_preferences_saves_language_and_color_scheme_together(user_client: TestClient) -> None:
+    body = user_client.put("/api/v1/auth/me/preferences", json={"language": "en", "color_scheme": "dark"}).json()
+
+    assert (body["language"], body["color_scheme"]) == ("en", "dark")
+
+
+def test_color_scheme_alone_keeps_the_language(user_client: TestClient) -> None:
+    user_client.put("/api/v1/auth/me/preferences", json={"language": "en"})
+
+    assert user_client.put("/api/v1/auth/me/preferences", json={"color_scheme": "light"}).json()["language"] == "en"
+
+
+def test_language_is_per_user(user_client: TestClient, admin: User) -> None:
+    user_client.put("/api/v1/auth/me/preferences", json={"language": "en"})
+
+    other = login_as(user_client, admin.username, ADMIN_PASSWORD)
+    assert other.get("/api/v1/auth/me").json()["language"] == "es"
+
+
+@pytest.mark.parametrize("body", [{"language": "fr"}, {"language": None}, {"language": "EN"}])
+def test_update_preferences_rejects_invalid_language(user_client: TestClient, body: dict[str, object]) -> None:
+    assert user_client.put("/api/v1/auth/me/preferences", json=body).status_code == 422

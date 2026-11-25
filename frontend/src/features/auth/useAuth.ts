@@ -7,6 +7,7 @@ export type Me = components['schemas']['Me'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type PasswordChange = components['schemas']['PasswordChange'];
 export type ColorScheme = Me['color_scheme'];
+export type MeLanguage = Me['language'];
 
 export const meQueryKey = ['auth', 'me'] as const;
 
@@ -89,6 +90,31 @@ export function useUpdateColorScheme() {
       return { previous };
     },
     onError: (_error, _scheme, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(meQueryKey, context.previous);
+      }
+    },
+    onSuccess: (me) => {
+      queryClient.setQueryData(meQueryKey, me);
+    },
+  });
+}
+
+/** Guarda el idioma del usuario (2.6) con mutación optimista, como el tema: `LanguageSync` lo aplica. */
+export function useUpdateLanguage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (language: MeLanguage): Promise<Me> =>
+      unwrap(await api.PUT('/api/v1/auth/me/preferences', { body: { language } })),
+    onMutate: async (language) => {
+      await queryClient.cancelQueries({ queryKey: meQueryKey });
+      const previous = queryClient.getQueryData<Me | null>(meQueryKey);
+      if (previous) {
+        queryClient.setQueryData<Me>(meQueryKey, { ...previous, language });
+      }
+      return { previous };
+    },
+    onError: (_error, _language, context) => {
       if (context?.previous) {
         queryClient.setQueryData(meQueryKey, context.previous);
       }

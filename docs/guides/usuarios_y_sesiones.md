@@ -49,6 +49,21 @@ el último tema usado en él.
 
 El sitio entregado («6. Entregar» → «Ver el sitio») lo genera doc_organize y se ve siempre en claro.
 
+## Idioma
+
+Menú de usuario → **Idioma**: **Español** (el valor por defecto) o **English** (2.6). Se aplica al momento, también a
+las fechas y los números (`en-GB` en inglés: día/mes/año y 24 h), y se guarda en tu usuario. El navegador guarda una
+copia para mostrar el inicio de sesión en el último idioma usado en él; si no la hay, se usa el idioma del navegador
+(inglés si lo prefiere, español en otro caso).
+
+En inglés siguen en español los textos que genera el servidor:
+
+- el detalle de los errores (el título sí se traduce);
+- el mensaje de error y el registro de cada ejecución;
+- las exportaciones (Excel, informes de duplicados) y el sitio del contexto, que genera doc_organize;
+- los nombres de carpeta que crea doc_organize (`duplicados/`, `sitio/`) y los títulos de sección del perfil del
+  proyecto (`## Contexto del proyecto`…), que son su formato.
+
 ## Administración de usuarios
 
 **Administración → Usuarios** (con el permiso «Gestionar usuarios»), con los usuarios del tenant activo:

@@ -4850,6 +4850,14 @@
             "title": "Is Instance Admin",
             "type": "boolean"
           },
+          "language": {
+            "enum": [
+              "es",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
           "permissions": {
             "items": {
               "enum": [
@@ -4885,7 +4893,8 @@
           "is_instance_admin",
           "role",
           "permissions",
-          "color_scheme"
+          "color_scheme",
+          "language"
         ],
         "title": "Me",
         "type": "object"
@@ -5122,21 +5131,40 @@
       },
       "Preferences": {
         "additionalProperties": false,
-        "description": "Preferencias del propio usuario (2.3).",
+        "description": "Preferencias del propio usuario: tema (2.3) e idioma (2.6). Se guarda lo que llegue; al menos una.",
         "properties": {
           "color_scheme": {
-            "enum": [
-              "auto",
-              "light",
-              "dark"
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "light",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Color Scheme",
-            "type": "string"
+            "title": "Color Scheme"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "es",
+                  "en"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
           }
         },
-        "required": [
-          "color_scheme"
-        ],
         "title": "Preferences",
         "type": "object"
       },
@@ -9562,7 +9590,7 @@
     },
     "/api/v1/auth/me/preferences": {
       "put": {
-        "description": "Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.\n\nEs una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).",
+        "description": "Guarda las preferencias del propio usuario (tema y/o idioma) y devuelve ``Me``.\n\nEs una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).",
         "operationId": "update_preferences_api_v1_auth_me_preferences_put",
         "requestBody": {
           "content": {

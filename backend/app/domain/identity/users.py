@@ -79,6 +79,22 @@ def set_color_scheme(db: Session, user: User, color_scheme: str) -> None:
         db.commit()
 
 
+LANGUAGES: Final = frozenset({"es", "en"})
+
+
+def set_language(db: Session, user: User, language: str) -> None:
+    """Guarda el idioma de la interfaz de ``user`` (``es`` o ``en``).
+
+    Raises:
+        ValueError: si ``language`` no es uno de :data:`LANGUAGES`.
+    """
+    if language not in LANGUAGES:
+        raise ValueError(f"Idioma no válido: {language!r}")
+    if user.language != language:
+        user.language = language
+        db.commit()
+
+
 def get_by_username(db: Session, username: str) -> User | None:
     """Usuario por nombre (normalizado; único en la instancia) o ``None``."""
     return db.scalar(select(User).where(User.username == normalize_username(username)))

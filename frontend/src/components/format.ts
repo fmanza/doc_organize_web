@@ -1,15 +1,34 @@
-import { INTL_LOCALE } from '../i18n';
+import { intlLocale } from '../i18n';
 
-const dateTime = new Intl.DateTimeFormat(INTL_LOCALE, { dateStyle: 'short', timeStyle: 'medium' });
+/**
+ * Formateador de `Intl` del idioma activo, creado una vez por locale y opciones: el idioma cambia en caliente (2.6),
+ * así que no pueden ser constantes de módulo.
+ */
+export function cachedFormat<T>(create: (locale: string) => T): () => T {
+  const byLocale = new Map<string, T>();
+  return () => {
+    const locale = intlLocale();
+    let formatter = byLocale.get(locale);
+    if (formatter === undefined) {
+      formatter = create(locale);
+      byLocale.set(locale, formatter);
+    }
+    return formatter;
+  };
+}
+
+const dateTime = cachedFormat(
+  (locale) => new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' }),
+);
 
 /** Fecha ISO 8601 de la API en hora local. */
 export function formatDateTime(iso: string | null | undefined): string {
-  return iso ? dateTime.format(new Date(iso)) : '—';
+  return iso ? dateTime().format(new Date(iso)) : '—';
 }
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
-const decimal = new Intl.NumberFormat(INTL_LOCALE, { maximumFractionDigits: 1 });
-const integer = new Intl.NumberFormat(INTL_LOCALE);
+const decimal = cachedFormat((locale) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }));
+const integer = cachedFormat((locale) => new Intl.NumberFormat(locale));
 
 /** Tamaño en bytes con unidad binaria (1 KB = 1024 B). */
 export function formatBytes(bytes: number | null | undefined): string {
@@ -22,12 +41,12 @@ export function formatBytes(bytes: number | null | undefined): string {
     value /= 1024;
     unit += 1;
   }
-  return `${unit === 0 ? integer.format(value) : decimal.format(value)} ${UNITS[unit]}`;
+  return `${unit === 0 ? integer().format(value) : decimal().format(value)} ${UNITS[unit]}`;
 }
 
 /** Número con separador de miles. */
 export function formatCount(value: number | null | undefined): string {
-  return value === null || value === undefined ? '—' : integer.format(value);
+  return value === null || value === undefined ? '—' : integer().format(value);
 }
 
 /** Duración entre dos instantes ISO (o hasta ahora) como `1 h 2 min`, `3 min 4 s` o `5 s`. */

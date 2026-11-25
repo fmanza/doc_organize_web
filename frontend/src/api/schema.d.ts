@@ -368,7 +368,7 @@ export interface paths {
         get?: never;
         /**
          * Guardar mis preferencias
-         * @description Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.
+         * @description Guarda las preferencias del propio usuario (tema y/o idioma) y devuelve ``Me``.
          *
          *     Es una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).
          */
@@ -3822,6 +3822,11 @@ export interface components {
             id: number;
             /** Is Instance Admin */
             is_instance_admin: boolean;
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "es" | "en";
             /** Permissions */
             permissions: ("users.manage" | "roles.manage" | "audit.read" | "templates.manage" | "projects.create" | "projects.all")[];
             role: components["schemas"]["RoleRef"];
@@ -3952,14 +3957,13 @@ export interface components {
         };
         /**
          * Preferences
-         * @description Preferencias del propio usuario (2.3).
+         * @description Preferencias del propio usuario: tema (2.3) e idioma (2.6). Se guarda lo que llegue; al menos una.
          */
         Preferences: {
-            /**
-             * Color Scheme
-             * @enum {string}
-             */
-            color_scheme: "auto" | "light" | "dark";
+            /** Color Scheme */
+            color_scheme?: ("auto" | "light" | "dark") | null;
+            /** Language */
+            language?: ("es" | "en") | null;
         };
         /**
          * ProfileSectionsOut

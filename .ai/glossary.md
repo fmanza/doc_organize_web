@@ -28,3 +28,11 @@
 | **Tenant** | Organización aislada con sus usuarios, ubicaciones y proyectos (Fase 9); la instancia arranca con `default` |
 | **Capa anticorrupción** | `backend/app/integrations/doc_organize/`, único importador de doc_organize |
 | **GAP** | Hueco de la API de doc_organize registrado en `docs/plan/DOC_ORGANIZE_GAPS.md` (`G<n>`) |
+
+## Términos en inglés de la interfaz (2.6)
+
+Inglés británico. Ubicación → *location*; proyecto → *project*; ejecución → *run*; escaneo → *scan*; contexto →
+*context*; taxonomía / eje → *taxonomy* / *axis*; manifiesto del proyecto → *project manifest*; perfil → *profile*;
+Por carpetas / Lista de dominios → *By folders* / *Domain list*; pasos 1–6 → *Taxonomy, Build, Result, Review,
+Quality, Deliver*; Modelos por funcionalidad → *Models by feature*; propietario / editor / lector → *owner / editor /
+viewer*; admin de instancia → *instance admin*; tenant → *tenant*. Citas con “…” en lugar de «…».
