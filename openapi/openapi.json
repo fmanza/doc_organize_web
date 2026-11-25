@@ -15517,7 +15517,7 @@
     },
     "/api/v1/users": {
       "get": {
-        "description": "Usuarios del tenant activo (por nombre de usuario si no se pide otro orden).",
+        "description": "Usuarios del tenant activo (por nombre de usuario si no se pide otro orden), con filtros por rol, estado y admin\nde instancia. Un rol de otro tenant da una lista vacía.",
         "operationId": "list_users_api_v1_users_get",
         "parameters": [
           {
@@ -15601,6 +15601,66 @@
               ],
               "title": "Order",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo usuarios de este rol del tenant",
+            "in": "query",
+            "name": "role_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo usuarios de este rol del tenant",
+              "title": "Role Id"
+            }
+          },
+          {
+            "description": "``active`` (activo y sin bloqueo), ``inactive`` (desactivado) o ``locked`` (por intentos)",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "active",
+                    "inactive",
+                    "locked"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "``active`` (activo y sin bloqueo), ``inactive`` (desactivado) o ``locked`` (por intentos)",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Solo admins de instancia (true) o solo quienes no lo son (false)",
+            "in": "query",
+            "name": "instance_admin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo admins de instancia (true) o solo quienes no lo son (false)",
+              "title": "Instance Admin"
             }
           }
         ],

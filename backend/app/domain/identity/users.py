@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, not_, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -100,14 +100,49 @@ def get_by_username(db: Session, username: str) -> User | None:
     return db.scalar(select(User).where(User.username == normalize_username(username)))
 
 
+#: Estados por los que se filtra la lista de usuarios (2.7), con la regla de la insignia de la interfaz: ``active``
+#: (activo y sin bloqueo por intentos vigente), ``inactive`` (desactivado) y ``locked`` (activo y bloqueado por intentos).
+USER_STATUSES: Final = ("active", "inactive", "locked")
+
+
+@dataclass(frozen=True)
+class UserFilters:
+    """Filtros exactos de la lista de usuarios (2.7), además del texto."""
+
+    role_id: int | None = None
+    status: str | None = None
+    instance_admin: bool | None = None
+
+
 def list_users(
-    db: Session, *, tenant_id: int, q: str | None, limit: int, offset: int, listing: ListQuery | None = None
+    db: Session,
+    *,
+    tenant_id: int,
+    q: str | None,
+    limit: int,
+    offset: int,
+    listing: ListQuery | None = None,
+    filters: UserFilters | None = None,
 ) -> tuple[list[User], int]:
     """Usuarios del tenant (por nombre de usuario si no se pide otro orden), filtrados por texto en usuario, nombre
-    visible o rol."""
+    visible o rol, y por rol, estado o admin de instancia."""
     listing = listing or ListQuery()
+    filters = filters or UserFilters()
     query = select(User).join(TenantRole, TenantRole.id == User.role_id).where(User.tenant_id == tenant_id)
     query = apply_search(query, q or listing.q, [User.username, User.display_name, TenantRole.name])
+    if filters.role_id is not None:
+        query = query.where(User.role_id == filters.role_id)
+    if filters.instance_admin is not None:
+        query = query.where(User.is_instance_admin.is_(filters.instance_admin))
+    if filters.status is not None:
+        now = utcnow()
+        locked = and_(User.locked_until.is_not(None), User.locked_until > now)
+        if filters.status == "inactive":
+            query = query.where(User.is_active.is_(False))
+        elif filters.status == "locked":
+            query = query.where(User.is_active.is_(True), locked)
+        else:
+            query = query.where(User.is_active.is_(True), not_(locked))
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     columns = {
         "username": User.username,

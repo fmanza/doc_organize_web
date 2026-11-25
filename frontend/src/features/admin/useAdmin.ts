@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import type { ListParams, SortOf } from '../../api/listing';
 import { api, ensureOk, unwrap } from '../../api/client';
-import type { components } from '../../api/schema';
+import type { components, operations } from '../../api/schema';
 import { meQueryKey } from '../auth/useAuth';
 
 export type User = components['schemas']['UserOut'];
@@ -16,7 +16,18 @@ export type UserSort = SortOf<'/api/v1/users'>;
 export type SessionSort = SortOf<'/api/v1/sessions'>;
 export type AuditSort = SortOf<'/api/v1/audit'>;
 
-export function useUsers(query: ListParams<UserSort>) {
+/** Estado por el que se filtra la lista de usuarios (2.7). */
+export type UserStatusFilter = NonNullable<
+  NonNullable<operations['list_users_api_v1_users_get']['parameters']['query']>['status']
+>;
+/** Filtros exactos de la lista de usuarios (2.7). */
+export interface UserFilters {
+  role_id?: number;
+  status?: UserStatusFilter;
+  instance_admin?: boolean;
+}
+
+export function useUsers(query: ListParams<UserSort> & UserFilters) {
   return useQuery({
     queryKey: ['users', query],
     queryFn: async () => unwrap(await api.GET('/api/v1/users', { params: { query } })),

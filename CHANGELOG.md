@@ -5,6 +5,16 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **Filtros de la lista de usuarios por rol y estado**. En «Administración → Usuarios», junto a la búsqueda, se puede
+  filtrar por «Rol» y por «Estado». El administrador de la instancia puede además ver solo a los administradores de
+  la instancia.
+    - `GET /api/v1/users` admite `role_id`, `status` (`active`, `inactive` o `locked`, con la misma regla que la
+      insignia de estado) e `instance_admin`. Se pueden combinar entre sí y con `q`.
+    - Un rol de otro tenant devuelve una lista vacía, no un error.
+    - Los filtros quedan en la URL. Si no hay resultados, «Quitar filtros» los borra.
+
 ## [2.6.0] - 2026-11-25
 
 Idioma de la interfaz por usuario (español o inglés) e i18n como requisito del frontend. Sigue con doc_organize 2.5.0.

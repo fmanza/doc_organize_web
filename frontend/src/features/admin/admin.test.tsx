@@ -31,9 +31,10 @@ describe('UsersPage', () => {
 
     renderRoute('/admin/users');
 
-    expect(await screen.findByText('ana')).toBeInTheDocument();
-    expect(screen.getByText('Desactivado')).toBeInTheDocument();
-    expect(screen.getByText('Activo')).toBeInTheDocument();
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('ana')).toBeInTheDocument();
+    expect(within(table).getByText('Desactivado')).toBeInTheDocument();
+    expect(within(table).getByText('Activo')).toBeInTheDocument();
   });
 
   it('muestra el estado vacío', async () => {
@@ -115,7 +116,7 @@ describe('UsersPage', () => {
     const user = userEvent.setup();
 
     renderRoute('/admin/users');
-    expect(await screen.findByText('Bloqueado')).toBeInTheDocument();
+    expect(within(await screen.findByRole('table')).getByText('Bloqueado')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Editar ana' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Cuenta bloqueada por intentos fallidos')).toBeInTheDocument();
@@ -274,6 +275,70 @@ describe('Listados con orden y búsqueda (1.2.0)', () => {
       ).toBe(true),
     );
     expect(screen.getByRole('columnheader', { name: /^Alta/ })).toHaveAttribute('aria-sort', 'descending');
+  });
+});
+
+describe('Filtros de usuarios (2.7)', () => {
+  const ROLES = {
+    items: [
+      { id: 1, name: 'Administrador', builtin: 'admin', permissions: [], users: 1 },
+      { id: 2, name: 'Usuario', builtin: 'user', permissions: [], users: 1 },
+    ],
+  };
+
+  it('filtra por rol, estado y admin de instancia, y vuelve a la página 1', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/roles': { body: ROLES },
+      'GET /api/v1/users': { body: { items: [ANA], total: 60 } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users?page=2');
+
+    expect(await screen.findByText('26–50 de 60')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Rol' }));
+    await user.click(await screen.findByRole('option', { name: 'Usuario' }));
+    await user.click(screen.getByRole('combobox', { name: 'Estado' }));
+    await user.click(await screen.findByRole('option', { name: 'Desactivado' }));
+    await user.click(screen.getByRole('switch', { name: 'Solo administradores de la instancia' }));
+
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/users').some((request) => {
+          const params = new URL(request.url).searchParams;
+          return (
+            params.get('role_id') === '2' &&
+            params.get('status') === 'inactive' &&
+            params.get('instance_admin') === 'true' &&
+            params.get('offset') === '0'
+          );
+        }),
+      ).toBe(true),
+    );
+  });
+
+  it('sin resultados con filtros, ofrece quitarlos', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/roles': { body: ROLES },
+      'GET /api/v1/users': { body: { items: [], total: 0 } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/users?status=locked');
+
+    expect(await screen.findByText('Ningún usuario coincide con los filtros.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Quitar filtros' }));
+
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/users').some(
+          (request) => !new URL(request.url).searchParams.has('status'),
+        ),
+      ).toBe(true),
+    );
+    expect(await screen.findByText('No hay usuarios que coincidan.')).toBeInTheDocument();
   });
 });
 
