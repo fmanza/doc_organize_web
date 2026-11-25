@@ -94,7 +94,8 @@ class TenantRole(Base):
 
 
 class User(Base):
-    """Usuario de la aplicación. No se borra: se desactiva (la auditoría lo referencia).
+    """Usuario de la aplicación. Se desactiva («bloquear») o, desde la 2.7, se borra si no deja nada huérfano (ADR-016):
+    la auditoría conserva su nombre en ``audit_log.actor_name``.
 
     ``username`` es único en toda la instancia (decisión de la Fase 9). Pertenece a un tenant y tiene un rol de ese
     tenant. ``is_instance_admin`` da lo que es del servidor y deja actuar en cualquier tenant (``acting_tenant_id``).
@@ -183,6 +184,8 @@ class AuditEntry(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True, default=DEFAULT_TENANT_ID)
     ts: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    #: Nombre de usuario del actor al registrar el evento (2.7, ADR-016): se conserva si el usuario se borra.
+    actor_name: Mapped[str | None] = mapped_column(String(64), default=None)
     action: Mapped[str] = mapped_column(String(64))
     outcome: Mapped[str] = mapped_column(String(16), default="success")
     target_type: Mapped[str | None] = mapped_column(String(32), default=None)
@@ -194,8 +197,8 @@ class AuditEntry(Base):
 
     @property
     def actor_username(self) -> str | None:
-        """Usuario que hizo la acción, si lo hay."""
-        return self.actor.username if self.actor else None
+        """Usuario que hizo la acción, si lo hay (su nombre guardado si ya se borró)."""
+        return self.actor.username if self.actor else self.actor_name
 
 
 LocationKind = Literal["local", "network"]

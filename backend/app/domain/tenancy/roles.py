@@ -17,6 +17,7 @@ from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.tenancy.errors import (
     InvalidPermissionError,
+    LastTenantManagerError,
     PermissionEscalationError,
     RoleBuiltinError,
     RoleInUseError,
@@ -24,6 +25,9 @@ from app.domain.tenancy.errors import (
     RoleNotFoundError,
 )
 from app.domain.tenancy.permissions import BUILTIN_ROLES, BuiltinRole, normalize, unknown
+
+#: Permiso de gestionar usuarios: algún usuario activo de cada tenant debe tenerlo (como en ``identity.users``).
+USERS_MANAGE = "users.manage"
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,20 @@ def get_role(db: Session, role_id: int, *, tenant_id: int) -> TenantRole:
 
 def _users(db: Session, role_id: int) -> int:
     return db.scalar(select(func.count()).where(User.role_id == role_id)) or 0
+
+
+def _leaves_tenant_without_managers(db: Session, role: TenantRole) -> bool:
+    """Quitar ``users.manage`` a ``role`` dejaría su tenant sin ningún usuario activo que gestione usuarios (F0, 2.7):
+    el rol tiene usuarios activos y ningún otro usuario activo del tenant tiene el permiso por otro rol."""
+    active = (User.tenant_id == role.tenant_id, User.is_active.is_(True))
+    if not db.scalar(select(func.count()).where(User.role_id == role.id, *active)):
+        return False
+    others = db.execute(
+        select(TenantRole.permissions)
+        .join(User, User.role_id == TenantRole.id)
+        .where(*active, TenantRole.id != role.id)
+    )
+    return not any(USERS_MANAGE in (permissions or []) for (permissions,) in others)
 
 
 def list_roles(db: Session, *, tenant_id: int) -> list[RoleView]:
@@ -147,6 +165,8 @@ def update_role(
 
     Raises:
         RoleBuiltinError, InvalidPermissionError, PermissionEscalationError, RoleNameTakenError.
+        LastTenantManagerError: Quitar ``users.manage`` dejaría el tenant sin gestores activos (salvo si actúa un
+            admin de instancia, como al editar usuarios).
     """
     from app.domain.identity.sessions import revoke_user_sessions
 
@@ -162,6 +182,8 @@ def update_role(
         granted = _validated(permissions)
         check_grant(actor, sorted(set(granted) ^ set(role.permissions or [])))  # ni dar ni quitar lo que no tienes
         removed = set(role.permissions or []) - set(granted)
+        if USERS_MANAGE in removed and not actor.is_instance_admin and _leaves_tenant_without_managers(db, role):
+            raise LastTenantManagerError()
         if granted != list(role.permissions or []):
             changes["permissions"] = [list(role.permissions or []), granted]
             role.permissions = granted

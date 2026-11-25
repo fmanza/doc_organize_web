@@ -53,6 +53,7 @@ nav = [
       "adr/ADR-013-multi-tenant.md",
       "adr/ADR-014-uso-de-servicios-de-ia.md",
       "adr/ADR-015-endurecimiento.md",
+      "adr/ADR-016-borrado-de-usuarios.md",
     ] },
     { "Plan" = [
       "plan/README.md",

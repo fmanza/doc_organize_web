@@ -53,6 +53,26 @@ class LastAdminError(AppError):
 
     status = 409
     title = "Debe quedar al menos un administrador activo"
+    code = "last_admin"
+
+
+class UserDeletionConflictError(AppError):
+    """El usuario no se puede borrar sin dejar algo huérfano (ADR-016): ``reasons`` dice por qué.
+
+    Las extensiones del *problem details* repiten la comprobación previa (``deletion-check``): solo ids, nombres y
+    recuentos, nunca rutas ni secretos.
+    """
+
+    status = 409
+    title = "No se puede borrar el usuario"
+    code = "user_has_dependencies"
+
+    def __init__(self, check: dict[str, object]) -> None:
+        super().__init__("Resuelve antes lo que indica la comprobación.")
+        self.check = check
+
+    def extensions(self) -> dict[str, object]:
+        return dict(self.check)
 
 
 class SelfModificationError(AppError):

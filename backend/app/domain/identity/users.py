@@ -1,4 +1,4 @@
-"""Administración de usuarios: alta, edición, desactivación y reactivación (sin borrado físico).
+"""Administración de usuarios: alta, edición, bloqueo (desactivación), reactivación y borrado (ADR-016).
 
 Desde la Fase 9 cada usuario pertenece a un tenant y tiene un rol de ese tenant (``role_id``); ``is_instance_admin``
 da lo que es del servidor. Las consultas reciben el tenant (ADR-013) y las salvaguardas impiden quedarse sin admin de
@@ -7,19 +7,32 @@ instancia o sin quien gestione los usuarios de un tenant, y dar permisos que uno
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Final
 
-from sqlalchemy import and_, delete, func, not_, or_, select
+from sqlalchemy import and_, delete, func, not_, or_, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.models import DEFAULT_TENANT_ID, ProjectMember, TenantRole, User, utcnow
+from app.db.models import (
+    ACTIVE_RUN_STATUSES,
+    DEFAULT_TENANT_ID,
+    Project,
+    ProjectMember,
+    Run,
+    TenantRole,
+    User,
+    UserSession,
+    utcnow,
+)
 from app.domain.identity import audit
-from app.domain.identity.audit import AuditAction, RequestContext
+from app.domain.identity.audit import CLI_CONTEXT, AuditAction, RequestContext
 from app.domain.identity.errors import (
     LastAdminError,
     SelfModificationError,
+    UserDeletionConflictError,
     UsernameTakenError,
     UserNotFoundError,
 )
@@ -29,6 +42,8 @@ from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.tenancy import roles as tenant_roles
 from app.domain.tenancy.errors import LastTenantManagerError, PermissionEscalationError
 from app.domain.tenancy.tenants import get_tenant
+
+logger = logging.getLogger(__name__)
 
 USERS_MANAGE = "users.manage"
 
@@ -49,6 +64,8 @@ class UserChanges:
     is_active: bool | None = None
     password: str | None = None
     unlock: bool = False
+    #: Motivo de desactivar o reactivar (2.7): solo va a la auditoría (``details.reason``).
+    reason: str | None = None
 
 
 def get_user(db: Session, user_id: int, *, tenant_id: int | None) -> User:
@@ -179,6 +196,51 @@ def lookup_users(db: Session, *, tenant_id: int, q: str, limit: int = 20) -> lis
 
 def _active_instance_admins(db: Session) -> int:
     return db.scalar(select(func.count()).where(User.is_instance_admin.is_(True), User.is_active.is_(True))) or 0
+
+
+def active_instance_admins(db: Session) -> int:
+    """Administradores de la instancia activos (F0, 2.7: siempre debe haber al menos uno)."""
+    return _active_instance_admins(db)
+
+
+def ensure_instance_admin(db: Session) -> None:
+    """Comprueba, **después** de aplicar un cambio (``flush``), que queda algún admin de instancia activo (F0, 2.7).
+
+    Es la segunda barrera tras la comprobación previa. Quien llama no confirma y la petición deshace el cambio.
+
+    Raises:
+        LastAdminError: No queda ninguno.
+    """
+    db.flush()
+    if _active_instance_admins(db) == 0:
+        raise LastAdminError()
+
+
+def warn_if_no_instance_admin(db: Session) -> bool:
+    """Al arrancar la API o el worker (F0, 2.7): ``logger.critical`` si no hay ningún admin de instancia activo.
+
+    Con la API no se puede llegar a cero; sí restaurando una copia o editando la BD. Devuelve si hay alguno (una BD
+    sin migrar no se considera un fallo: lo dirá la migración).
+    """
+    try:
+        count = _active_instance_admins(db)
+    except SQLAlchemyError:
+        return True
+    if count == 0:
+        logger.critical(
+            "No hay ningún administrador de la instancia activo: recupera uno con «python -m app.cli recover-admin»",
+            extra={"event": "no_active_instance_admin"},
+        )
+    return count > 0
+
+
+def _lock_user_row(db: Session, user: User) -> None:
+    """Escribe en la fila de ``user`` para tomar el bloqueo de escritura de SQLite antes de contar (F0, ADR-016).
+
+    Dos peticiones que quiten a los dos últimos admins (o gestores) se serializan: la segunda espera
+    (``busy_timeout``) y cuenta ya con el cambio de la primera, en lugar de un recuento obsoleto.
+    """
+    db.execute(update(User).where(User.id == user.id).values(updated_at=utcnow()))
 
 
 def _managers(db: Session, tenant_id: int, *, excluding: int) -> int:
@@ -327,13 +389,15 @@ def update_user(
     loses_instance_admin = (
         user.is_instance_admin and user.is_active and (deactivating or changes.is_instance_admin is False)
     )
-    if loses_instance_admin and _active_instance_admins(db) <= 1:
-        raise LastAdminError()
     loses_manager = (
         user.is_active
         and USERS_MANAGE in (user.role.permissions or [])
         and (deactivating or moving or (new_role is not None and USERS_MANAGE not in (new_role.permissions or [])))
     )
+    if loses_instance_admin or loses_manager:
+        _lock_user_row(db, user)  # F0: contar ya con el bloqueo de escritura tomado
+    if loses_instance_admin and _active_instance_admins(db) <= 1:
+        raise LastAdminError()
     if loses_manager and not actor.is_instance_admin and _managers(db, user.tenant_id, excluding=user.id) == 0:
         raise LastTenantManagerError()
 
@@ -379,6 +443,7 @@ def update_user(
             user.locked_until = None
         else:
             revoke_user_sessions(db, user.id)
+        reason = (changes.reason or "").strip()
         audit.record(
             db,
             action=AuditAction.USER_REACTIVATE if changes.is_active else AuditAction.USER_DEACTIVATE,
@@ -386,6 +451,7 @@ def update_user(
             actor_id=actor.id,
             target_type="user",
             target_id=user.id,
+            details={"reason": reason} if reason else None,
         )
     if changed:
         details: dict[str, object] = {"fields": changed}
@@ -402,6 +468,173 @@ def update_user(
             target_id=user.id,
             details=details,
         )
+    if loses_instance_admin:
+        ensure_instance_admin(db)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@dataclass(frozen=True)
+class ProjectRef:
+    """Proyecto citado por la comprobación de borrado: solo id, nombre y rol del usuario."""
+
+    id: int
+    name: str
+    role: str
+
+
+@dataclass(frozen=True)
+class DeletionCheck:
+    """Qué impide borrar a un usuario y qué se borraría con él (ADR-016)."""
+
+    reasons: list[str]
+    sole_owner_projects: list[ProjectRef]
+    memberships: list[ProjectRef]
+    active_runs: int
+    sessions: int
+
+    @property
+    def can_delete(self) -> bool:
+        return not self.reasons
+
+    def as_problem(self) -> dict[str, object]:
+        """Extensiones del ``409``: lo mismo que ``GET .../deletion-check``."""
+        return {
+            "can_delete": self.can_delete,
+            "reasons": list(self.reasons),
+            "sole_owner_projects": [{"id": p.id, "name": p.name, "role": p.role} for p in self.sole_owner_projects],
+            "memberships": [{"id": p.id, "name": p.name, "role": p.role} for p in self.memberships],
+            "active_runs": self.active_runs,
+            "sessions": self.sessions,
+        }
+
+
+def deletion_check(db: Session, user: User, *, actor: User) -> DeletionCheck:
+    """Comprueba si ``user`` se puede borrar sin dejar nada huérfano (ADR-016).
+
+    Bloquean (``reasons``, en este orden): ``self``, ``last_instance_admin`` (último admin de instancia activo),
+    ``last_manager`` (último gestor activo del tenant, salvo que actúe un admin de instancia, como al desactivar),
+    ``sole_owner`` (único ``owner`` de algún proyecto) y ``active_runs`` (runs suyos en cola o en marcha). Ser miembro,
+    también ``owner`` junto a otros, no bloquea: la pertenencia se borra con la cuenta.
+    """
+    owners = (
+        select(ProjectMember.project_id, func.count().label("owners"))
+        .where(ProjectMember.role == "owner")
+        .group_by(ProjectMember.project_id)
+        .subquery()
+    )
+    rows = db.execute(
+        select(Project.id, Project.name, ProjectMember.role, owners.c.owners)
+        .join(ProjectMember, ProjectMember.project_id == Project.id)
+        .outerjoin(owners, owners.c.project_id == Project.id)
+        .where(ProjectMember.user_id == user.id)
+        .order_by(func.lower(Project.name), Project.id)
+    ).all()
+    memberships = [ProjectRef(id=pid, name=name, role=role) for pid, name, role, _ in rows]
+    sole = [
+        ProjectRef(id=pid, name=name, role=role) for pid, name, role, count in rows if role == "owner" and count == 1
+    ]
+    active_runs = (
+        db.scalar(select(func.count()).where(Run.created_by == user.id, Run.status.in_(ACTIVE_RUN_STATUSES))) or 0
+    )
+    sessions = db.scalar(select(func.count()).where(UserSession.user_id == user.id)) or 0
+    reasons: list[str] = []
+    if user.id == actor.id:
+        reasons.append("self")
+    if user.is_instance_admin and user.is_active and _active_instance_admins(db) <= 1:
+        reasons.append("last_instance_admin")
+    if (
+        user.is_active
+        and USERS_MANAGE in (user.role.permissions or [])
+        and not actor.is_instance_admin
+        and _managers(db, user.tenant_id, excluding=user.id) == 0
+    ):
+        reasons.append("last_manager")
+    if sole:
+        reasons.append("sole_owner")
+    if active_runs:
+        reasons.append("active_runs")
+    return DeletionCheck(
+        reasons=reasons, sole_owner_projects=sole, memberships=memberships, active_runs=active_runs, sessions=sessions
+    )
+
+
+def delete_user(db: Session, user: User, *, actor: User, ctx: RequestContext) -> None:
+    """Borra ``user`` si no deja nada huérfano (ADR-016) y lo confirma.
+
+    Primero escribe en su fila (bloqueo de escritura de SQLite): nadie puede hacerlo único ``owner`` ni encolarle un run
+    entre la comprobación y el ``DELETE``. Se borran en cascada sus sesiones y pertenencias; runs, artefactos,
+    plantillas y auditoría quedan sin usuario (``SET NULL``), y la auditoría conserva su nombre (``actor_name``).
+
+    Raises:
+        PermissionEscalationError: ``user`` tiene permisos que ``actor`` no tiene (o es admin de instancia).
+        UserDeletionConflictError: Algo depende de él (``reasons``).
+        LastAdminError: Tras borrar no quedaría ningún admin de instancia activo (segunda barrera de F0).
+    """
+    check_can_manage(actor, user)
+    _lock_user_row(db, user)
+    check = deletion_check(db, user, actor=actor)
+    if not check.can_delete:
+        db.rollback()
+        raise UserDeletionConflictError(check.as_problem())
+    audit.record(
+        db,
+        action=AuditAction.USER_DELETE,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+        tenant_id=user.tenant_id,
+        details={
+            "username": user.username,
+            "role": user.role.name,
+            "instance_admin": user.is_instance_admin,
+            "sessions_closed": check.sessions,
+            "memberships_removed": [{"id": p.id, "name": p.name, "role": p.role} for p in check.memberships],
+        },
+    )
+    user_id = user.id
+    db.flush()
+    db.expunge(user)
+    db.execute(delete(User).where(User.id == user_id))
+    ensure_instance_admin(db)
+    db.commit()
+
+
+def recover_admin(db: Session, username: str, *, password: str | None, settings: Settings) -> User:
+    """Recupera el acceso de administrador desde la CLI (F0, 2.7).
+
+    Reactiva ``username``, quita el bloqueo por intentos, lo marca como admin de instancia y, si se da, cambia su
+    contraseña (con la política). Cierra sus sesiones y lo audita como ``user.recover`` (actor: la CLI).
+
+    Raises:
+        UserNotFoundError: No existe.
+        PasswordPolicyError: La contraseña no cumple la política.
+    """
+    user = get_by_username(db, username)
+    if user is None:
+        raise UserNotFoundError()
+    if password is not None:
+        check_policy(password, username=user.username, min_length=settings.password_min_length)
+        user.password_hash = hash_password(password)
+        user.password_changed_at = utcnow()
+    was = {"active": user.is_active, "instance_admin": user.is_instance_admin}
+    user.is_active = True
+    user.is_instance_admin = True
+    user.failed_attempts = 0
+    user.locked_until = None
+    closed = revoke_user_sessions(db, user.id)
+    audit.record(
+        db,
+        action=AuditAction.USER_RECOVER,
+        ctx=CLI_CONTEXT,
+        actor_id=None,
+        target_type="user",
+        target_id=user.id,
+        tenant_id=user.tenant_id,
+        details={"was": was, "password_changed": password is not None, "sessions_closed": closed},
+    )
     db.commit()
     db.refresh(user)
     return user

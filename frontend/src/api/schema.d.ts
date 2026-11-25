@@ -1728,7 +1728,12 @@ export interface paths {
         get: operations["get_user_api_v1_users__user_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Borrar usuario
+         * @description Borra al usuario si no deja nada huérfano (ADR-016): sus sesiones y pertenencias se borran; sus runs y
+         *     artefactos quedan sin usuario y la auditoría conserva su nombre.
+         */
+        delete: operations["delete_user_api_v1_users__user_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -1737,6 +1742,26 @@ export interface paths {
          *     cambiar el rol o el tenant cierra sus sesiones.
          */
         patch: operations["update_user_api_v1_users__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/deletion-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comprobar si se puede borrar un usuario
+         * @description Qué impide borrar al usuario y qué se borraría con él (ADR-016), para la confirmación de la interfaz.
+         */
+        get: operations["user_deletion_check_api_v1_users__user_id__deletion_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -3018,6 +3043,18 @@ export interface components {
             operation: "dedup_preview";
             /** Semantic Threshold */
             semantic_threshold?: number | null;
+        };
+        /**
+         * DeletionProjectRef
+         * @description Proyecto citado en la comprobación de borrado: solo id, nombre y rol del usuario en él.
+         */
+        DeletionProjectRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
         };
         /**
          * DiagnosticCheckOut
@@ -5197,6 +5234,36 @@ export interface components {
             username: string;
         };
         /**
+         * UserDeletionCheck
+         * @description Qué impide borrar a un usuario y qué se borraría con él (ADR-016). Es también el cuerpo del ``409``.
+         */
+        UserDeletionCheck: {
+            /**
+             * Active Runs
+             * @description Runs suyos en cola o en marcha
+             */
+            active_runs: number;
+            /** Can Delete */
+            can_delete: boolean;
+            /**
+             * Memberships
+             * @description Proyectos de los que sale al borrarlo
+             */
+            memberships: components["schemas"]["DeletionProjectRef"][];
+            /** Reasons */
+            reasons: ("self" | "last_instance_admin" | "last_manager" | "sole_owner" | "active_runs")[];
+            /**
+             * Sessions
+             * @description Sesiones abiertas que se cierran
+             */
+            sessions: number;
+            /**
+             * Sole Owner Projects
+             * @description Proyectos de los que es el único propietario
+             */
+            sole_owner_projects: components["schemas"]["DeletionProjectRef"][];
+        };
+        /**
          * UserLookup
          * @description Resultado de la búsqueda de usuarios.
          */
@@ -5247,6 +5314,11 @@ export interface components {
          * @description Página de usuarios.
          */
         UserPage: {
+            /**
+             * Active Instance Admins
+             * @description Admins de instancia activos (siempre al menos uno, 2.7); solo para un admin de instancia
+             */
+            active_instance_admins?: number | null;
             /** Items */
             items: components["schemas"]["UserOut"][];
             /** Total */
@@ -5266,6 +5338,11 @@ export interface components {
             is_instance_admin?: boolean | null;
             /** Password */
             password?: string | null;
+            /**
+             * Reason
+             * @description Motivo de desactivar (bloquear) o reactivar: solo va a la auditoría (2.7)
+             */
+            reason?: string | null;
             /** Role Id */
             role_id?: number | null;
             /**
@@ -9746,7 +9823,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Rol base o nombre en uso */
+            /** @description Rol base, nombre en uso o el tenant quedaría sin gestores de usuarios */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11012,6 +11089,63 @@ export interface operations {
             };
         };
     };
+    delete_user_api_v1_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Algo depende de él (``user_has_dependencies``, con ``reasons`` y los datos de la comprobación) o no quedaría ningún administrador activo (``last_admin``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_user_api_v1_users__user_id__patch: {
         parameters: {
             query?: never;
@@ -11066,6 +11200,58 @@ export interface operations {
             };
             /** @description Último administrador, último gestor del tenant o cambio sobre uno mismo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    user_deletion_check_api_v1_users__user_id__deletion_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDeletionCheck"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin permiso users.manage, permiso que no tienes o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No existe */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

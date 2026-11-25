@@ -147,6 +147,11 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     password: Password | None = None
     unlock: bool = False
+    reason: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Motivo de desactivar (bloquear) o reactivar: solo va a la auditoría (2.7)",
+    )
 
 
 class UserPage(BaseModel):
@@ -154,6 +159,33 @@ class UserPage(BaseModel):
 
     items: list[UserOut]
     total: int
+    active_instance_admins: int | None = Field(
+        default=None,
+        description="Admins de instancia activos (siempre al menos uno, 2.7); solo para un admin de instancia",
+    )
+
+
+#: Motivo por el que un usuario no se puede borrar (ADR-016).
+DeletionReason = Literal["self", "last_instance_admin", "last_manager", "sole_owner", "active_runs"]
+
+
+class DeletionProjectRef(BaseModel):
+    """Proyecto citado en la comprobación de borrado: solo id, nombre y rol del usuario en él."""
+
+    id: int
+    name: str
+    role: str
+
+
+class UserDeletionCheck(BaseModel):
+    """Qué impide borrar a un usuario y qué se borraría con él (ADR-016). Es también el cuerpo del ``409``."""
+
+    can_delete: bool
+    reasons: list[DeletionReason]
+    sole_owner_projects: list[DeletionProjectRef] = Field(description="Proyectos de los que es el único propietario")
+    memberships: list[DeletionProjectRef] = Field(description="Proyectos de los que sale al borrarlo")
+    active_runs: int = Field(description="Runs suyos en cola o en marcha")
+    sessions: int = Field(description="Sesiones abiertas que se cierran")
 
 
 # --- sessions ---------------------------------------------------------------------------------------------------

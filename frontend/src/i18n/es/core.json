@@ -279,7 +279,9 @@
       "tenant_slug_taken": "Identificador de tenant en uso",
       "too_many_runs": "Demasiadas ejecuciones en curso",
       "too_many_streams": "Demasiadas conexiones de progreso abiertas",
-      "write_locked": "Hay otra operación de escritura en curso"
+      "write_locked": "Hay otra operación de escritura en curso",
+      "last_admin": "Debe quedar al menos un administrador activo",
+      "user_has_dependencies": "No se puede borrar el usuario"
     },
     "http": {
       "400": "Petición no válida",

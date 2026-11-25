@@ -21,6 +21,7 @@ import {
   IconCopy,
   IconDeviceDesktop,
   IconDevices,
+  IconDots,
   IconFileText,
   IconFolder,
   IconFolders,
@@ -121,3 +122,5 @@ export const SelectedIcon = IconCheck;
 export const FolderIcon = IconFolder;
 export const ParentFolderIcon = IconArrowUp;
 export const BackIcon = IconArrowLeft;
+/** Menú de acciones de una fila (2.7: usuarios). */
+export const MoreActionsIcon = IconDots;

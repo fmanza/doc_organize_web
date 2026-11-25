@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from app import __version__
 from app.api import health, metrics, site
@@ -17,6 +21,19 @@ from app.core.logging import configure_logging
 from app.core.metrics import HttpMetrics
 from app.core.middleware import BodyLimitMiddleware, RequestMiddleware
 from app.core.ratelimit import RateLimitMiddleware
+from app.db.session import get_engine
+from app.domain.identity.users import warn_if_no_instance_admin
+
+
+@asynccontextmanager
+async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Al arrancar, avisa en el log si no hay ningún admin de instancia activo (F0, 2.7)."""
+    try:
+        with sessionmaker(bind=get_engine())() as db:
+            warn_if_no_instance_admin(db)
+    except (SQLAlchemyError, OSError):  # sin BD todavía: lo dirán /api/health y la migración
+        pass
+    yield
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/api/openapi.json" if settings.environment != "production" else None,
         docs_url="/api/docs" if settings.environment == "development" else None,
         redoc_url=None,
+        lifespan=_lifespan,
     )
     install_error_handlers(app)
     http_metrics = HttpMetrics()

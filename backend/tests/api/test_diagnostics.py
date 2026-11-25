@@ -139,6 +139,8 @@ def test_without_gpu_workers_the_web_check_stays(admin_api: TestClient, monkeypa
     fake = DiagnosticsReport(checks=[web], checked_at="2026-11-21T00:00:00Z")
     monkeypatch.setattr(diagnostics, "run_diagnostics", lambda **_: fake)
 
-    [check] = admin_api.post(URL, json={}).json()["checks"]
+    # 2.7: el informe añade siempre la comprobación de administradores (F0).
+    check, admins = admin_api.post(URL, json={}).json()["checks"]
 
     assert check["detail"] == web.detail
+    assert (admins["name"], admins["status"]) == ("instance_admins", "ok")

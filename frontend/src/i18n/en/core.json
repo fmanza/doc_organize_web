@@ -279,7 +279,9 @@
       "tenant_slug_taken": "Tenant identifier in use",
       "too_many_runs": "Too many runs in progress",
       "too_many_streams": "Too many progress connections open",
-      "write_locked": "Another write operation is in progress"
+      "write_locked": "Another write operation is in progress",
+      "last_admin": "At least one active administrator must remain",
+      "user_has_dependencies": "The user cannot be deleted"
     },
     "http": {
       "400": "Invalid request",

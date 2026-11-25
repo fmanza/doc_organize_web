@@ -35,6 +35,35 @@ export function useUsers(query: ListParams<UserSort> & UserFilters) {
   });
 }
 
+export type UserDeletionCheck = components['schemas']['UserDeletionCheck'];
+export type DeletionReason = UserDeletionCheck['reasons'][number];
+
+/** Qué impide borrar a un usuario y qué se borraría con él (2.7, ADR-016). Siempre fresco: se pide al abrir. */
+export function useUserDeletionCheck(userId: number) {
+  return useQuery({
+    queryKey: ['users', userId, 'deletion-check'],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/users/{user_id}/deletion-check', { params: { path: { user_id: userId } } }),
+      ),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: number) =>
+      ensureOk(await api.DELETE('/api/v1/users/{user_id}', { params: { path: { user_id: userId } } })),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['users'] }),
+        queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+      ]),
+  });
+}
+
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({

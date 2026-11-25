@@ -13,11 +13,11 @@
       "role": "Rol",
       "status": "Estado",
       "createdAt": "Alta",
-      "active": "Cuenta activa",
-      "activeHint": "Al desactivarla se cierran sus sesiones; puede reactivarse después. Los usuarios no se borran.",
+      "active": "Cuenta activa (desbloqueada)",
+      "activeHint": "Al bloquearla se cierran sus sesiones; puede desbloquearse después.",
       "activeBadge": "Activo",
-      "inactive": "Desactivado",
-      "locked": "Bloqueado",
+      "inactive": "Bloqueado",
+      "locked": "Bloqueado por intentos",
       "lockedTitle": "Cuenta bloqueada por intentos fallidos",
       "lockedBody": "Se desbloquea sola a las {{until}}.",
       "unlock": "Quitar el bloqueo ahora",
@@ -36,6 +36,43 @@
         "instanceAdmin": "Solo administradores de la instancia",
         "empty": "Ningún usuario coincide con los filtros.",
         "clear": "Quitar filtros"
+      },
+      "actionsLabel": "Más acciones de {{username}}",
+      "lastAdmin": "Debe quedar al menos un administrador activo",
+      "block": {
+        "action": "Bloquear",
+        "title": "Bloquear a {{username}}",
+        "body": "No podrá entrar y se cerrarán sus sesiones. Puedes desbloquearlo después.",
+        "confirm": "Bloquear",
+        "reason": "Motivo (opcional)",
+        "reasonHint": "Solo queda en la auditoría."
+      },
+      "unblock": {
+        "action": "Desbloquear",
+        "title": "Desbloquear a {{username}}",
+        "body": "Podrá volver a entrar. También se quita el bloqueo por intentos fallidos.",
+        "confirm": "Desbloquear"
+      },
+      "delete": {
+        "action": "Borrar",
+        "title": "Borrar a {{username}}",
+        "blockedTitle": "No se puede borrar todavía",
+        "reason": {
+          "self": "No puedes borrar tu propia cuenta.",
+          "last_instance_admin": "Es el último administrador de la instancia activo.",
+          "last_manager": "Es el último usuario activo que gestiona los usuarios de su tenant.",
+          "sole_owner": "Es el único propietario de algún proyecto: añade otro propietario antes.",
+          "active_runs_one": "Tiene {{count}} ejecución en cola o en marcha: espera a que termine o cancélala.",
+          "active_runs_other": "Tiene {{count}} ejecuciones en cola o en marcha: espera a que terminen o cancélalas."
+        },
+        "soleOwnerProjects": "Proyectos de los que es el único propietario:",
+        "warningTitle": "Esta acción no se puede deshacer",
+        "warning": "Se borra la cuenta. Sus ejecuciones y resultados se conservan sin usuario y la auditoría guarda su nombre.",
+        "sessions_one": "Se cerrará {{count}} sesión abierta.",
+        "sessions_other": "Se cerrarán {{count}} sesiones abiertas.",
+        "memberships": "Saldrá de estos proyectos:",
+        "confirm": "Escribe «{{username}}» para confirmar",
+        "submit": "Borrar usuario"
       }
     },
     "sessions": {
@@ -93,11 +130,13 @@
         "user": {
           "create": "Alta de usuario",
           "update": "Edición de usuario",
-          "deactivate": "Desactivación",
-          "reactivate": "Reactivación",
+          "deactivate": "Bloqueo",
+          "reactivate": "Desbloqueo",
           "password_reset": "Contraseña restablecida",
           "unlock": "Desbloqueo",
-          "move": "Usuario movido de tenant"
+          "move": "Usuario movido de tenant",
+          "delete": "Usuario borrado",
+          "recover": "Administrador recuperado (CLI)"
         },
         "session": {
           "revoke": "Sesión revocada",
@@ -145,7 +184,8 @@
         "delete_other": "Eliminar {{count}} entradas",
         "done_one": "Se ha eliminado {{formatted}} entrada.",
         "done_other": "Se han eliminado {{formatted}} entradas."
-      }
+      },
+      "deletedActor": "{{name}} (borrado)"
     }
   },
   "status": {

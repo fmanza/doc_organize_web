@@ -137,7 +137,13 @@ export function AuditPage() {
                       {t(`admin.audit.outcomes.${entry.outcome}`, { defaultValue: entry.outcome })}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>{entry.actor_username ?? t('admin.audit.system')}</Table.Td>
+                  <Table.Td>
+                    {entry.actor_username === null
+                      ? t('admin.audit.system')
+                      : entry.actor_user_id === null
+                        ? t('admin.audit.deletedActor', { name: entry.actor_username })
+                        : entry.actor_username}
+                  </Table.Td>
                   <Table.Td>
                     {entry.target_type ? `${entry.target_type} #${entry.target_id ?? ''}` : '—'}
                   </Table.Td>

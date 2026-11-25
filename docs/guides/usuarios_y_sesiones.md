@@ -16,6 +16,20 @@ docker compose exec web python -m app.cli create-admin --username <usuario>
 La contraseña se pide dos veces por el terminal. Para scripts, `--password-stdin` la lee de la entrada estándar (nunca
 la pases como argumento: quedaría en el historial del shell).
 
+### Recuperar el acceso de administrador
+
+Si nadie puede entrar como administrador (contraseña olvidada, cuenta bloqueada por intentos o, tras restaurar una
+copia, sin ningún administrador activo), recupera una cuenta **existente** desde la línea de comandos:
+
+```bash
+docker compose exec web python -m app.cli recover-admin --username <usuario> --reset-password
+```
+
+La reactiva, quita el bloqueo, la marca como administrador de la instancia y, con `--reset-password` (o
+`--password-stdin` para scripts), le pone una contraseña nueva. Cierra sus sesiones y queda en la auditoría como
+«Administrador recuperado (CLI)». Si no hay ningún administrador activo, la web y el worker lo avisan en el log al
+arrancar, y **Administración → Diagnóstico** lo marca como error.
+
 ## Iniciar y cerrar sesión
 
 - Entra en la aplicación con tu usuario y contraseña. Si el usuario no existe, está desactivado o bloqueado, o la
@@ -69,21 +83,32 @@ En inglés siguen en español los textos que genera el servidor:
 **Administración → Usuarios** (con el permiso «Gestionar usuarios»), con los usuarios del tenant activo:
 
 - **Buscar y filtrar**: el cuadro de búsqueda busca en el usuario, el nombre visible y el rol. Además puedes filtrar
-  por **Rol** y por **Estado** (activo, desactivado o bloqueado por intentos fallidos). El administrador de la
+  por **Rol** y por **Estado** (activo, bloqueado o bloqueado por intentos fallidos). El administrador de la
   instancia puede ver **solo los administradores de la instancia**. Los filtros quedan en la dirección de la página
   y, si no hay resultados, **Quitar filtros** los borra todos.
 - **Nuevo usuario**: nombre de usuario (3 a 64 caracteres: letras, números, punto, guion o guion bajo; no distingue
   mayúsculas y es único en toda la instancia), nombre visible, rol del tenant y contraseña inicial.
-- **Editar**: cambia el nombre visible o el rol, desactiva o reactiva la cuenta y restablece la contraseña. El
+- **Editar**: cambia el nombre visible o el rol, bloquea o desbloquea la cuenta y restablece la contraseña. El
   administrador de la instancia también puede marcar a otros como administradores de la instancia y moverlos de
   tenant ([Tenants y roles](tenants_y_roles.md#mover-a-un-usuario-de-tenant)).
     - **Cambiar el rol** cierra sus sesiones (los permisos nuevos valen desde que vuelva a entrar).
-    - **Desactivar** cierra todas sus sesiones. Los usuarios **no se borran**: así la auditoría conserva quién hizo
-      cada cosa.
     - **Restablecer la contraseña** cierra sus sesiones y quita el bloqueo.
     - Si la cuenta está bloqueada por intentos fallidos, aparece **Quitar el bloqueo ahora**.
-- No puedes desactivarte, cambiarte el rol ni quitarte ser administrador de la instancia. Siempre queda al menos un
-  administrador de la instancia activo y, en cada tenant, alguien activo que gestione sus usuarios.
+- **Más acciones** (el botón de los tres puntos de cada fila):
+    - **Bloquear** impide entrar y cierra todas sus sesiones (es lo mismo que desactivar la cuenta). Puedes indicar un
+      **motivo**, que solo queda en la auditoría. **Desbloquear** le deja volver a entrar y quita también el bloqueo
+      por intentos fallidos.
+    - **Quitar bloqueo por intentos**, si la cuenta está bloqueada temporalmente por contraseñas incorrectas.
+    - **Borrar** elimina la cuenta, solo si no deja nada huérfano. Primero se comprueba y se explica qué lo impide:
+      que sea tu propia cuenta, el último administrador de la instancia activo, el último gestor de usuarios del
+      tenant, el **único propietario** de algún proyecto (añade otro propietario antes) o que tenga ejecuciones en cola
+      o en marcha. Si se puede, se enumeran los proyectos de los que sale y las sesiones que se cierran, y hay que
+      **escribir su nombre de usuario** para confirmar. No se puede deshacer. Sus ejecuciones y resultados se conservan
+      sin usuario, y la auditoría guarda su nombre («ana (borrado)»).
+- No puedes bloquearte, borrarte, cambiarte el rol ni quitarte ser administrador de la instancia. **Siempre queda al
+  menos un administrador de la instancia activo**: al último no se le puede bloquear, quitar el rol ni borrar (sus
+  acciones salen deshabilitadas, con el aviso «Debe quedar al menos un administrador activo»). Tampoco se puede dejar
+  un tenant sin alguien activo que gestione sus usuarios, ni editando usuarios ni quitando el permiso a un rol.
 - Solo puedes dar roles con permisos que tienes.
 
 ## Sesiones y auditoría
