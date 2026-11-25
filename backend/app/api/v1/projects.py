@@ -24,6 +24,9 @@ from app.api.v1.schemas import (
     MemberUpdate,
     ProjectAiSettingsIn,
     ProjectCreate,
+    ProjectExclusionPathOut,
+    ProjectExclusionsOut,
+    ProjectExclusionsUpdate,
     ProjectOut,
     ProjectPage,
     ProjectUpdate,
@@ -38,7 +41,8 @@ from app.api.v1.schemas import (
     ScannedFolderOut,
     ScannedFolderRemoved,
 )
-from app.db.models import ProjectMember, Run
+from app.db.models import Project, ProjectMember, Run
+from app.domain.projects import exclusions as project_exclusions
 from app.domain.projects import service
 from app.domain.projects.service import ProjectAccess, ProjectChanges
 from app.domain.runs import service as runs
@@ -306,6 +310,71 @@ def remove_scanned_folder(
     access = service.get_access(db, project_id, user, min_role="owner")
     used = scan_folders.remove_folder(db, access, subpath, actor=user, ctx=ctx)
     return ScannedFolderRemoved(subpath=subpath, used=used)
+
+
+def _exclusions_out(project: Project, value: project_exclusions.ProjectExclusions) -> ProjectExclusionsOut:
+    location = project.source_location
+    return ProjectExclusionsOut(
+        excluded=[ProjectExclusionPathOut(path=e.path, exists=e.exists) for e in value.excluded],
+        ignore_patterns=value.ignore_patterns,
+        exclude_system_folders=value.exclude_system_folders,
+        system_patterns=list(project_exclusions.SYSTEM_PATTERNS),
+        location_patterns=list(location.ignore_patterns or []) if location is not None else [],
+    )
+
+
+@router.get(
+    "/{project_id}/exclusions",
+    response_model=ProjectExclusionsOut,
+    summary="Ver las exclusiones del proyecto",
+    responses=_ERRORS,
+)
+def get_project_exclusions(
+    project_id: int, user: CurrentUser, db: DbSession, settings: SettingsDep
+) -> ProjectExclusionsOut:
+    """Carpetas y patrones excluidos en todo el proyecto, el preset de carpetas de sistema y los patrones de la
+    ubicación (cualquier miembro)."""
+    access = service.get_access(db, project_id, user)
+    return _exclusions_out(access.project, project_exclusions.get_exclusions(access.project, settings))
+
+
+@router.put(
+    "/{project_id}/exclusions",
+    response_model=ProjectExclusionsOut,
+    summary="Cambiar las exclusiones del proyecto",
+    responses={
+        **_ERRORS,
+        **FS_ERRORS,
+        400: {
+            "description": "Exclusión o patrón no válidos (invalid_exclusion, invalid_ignore_patterns) o ruta no válida"
+        },
+    },
+)
+def set_project_exclusions(
+    project_id: int,
+    body: ProjectExclusionsUpdate,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    ctx: Context,
+) -> ProjectExclusionsOut:
+    """Sustituye las carpetas y patrones excluidos en todo el proyecto y el preset de carpetas de sistema (``owner``).
+
+    Valen desde el siguiente run: escaneo, duplicados, contexto y exportaciones de la caché. Lo ya convertido de una
+    carpeta excluida sigue en la caché (sin «forzar») pero no se usa.
+    """
+    access = service.get_access(db, project_id, user, min_role="owner")
+    value = project_exclusions.set_exclusions(
+        db,
+        access,
+        excluded=body.excluded,
+        ignore_patterns=body.ignore_patterns,
+        exclude_system_folders=body.exclude_system_folders,
+        settings=settings,
+        actor=user,
+        ctx=ctx,
+    )
+    return _exclusions_out(access.project, value)
 
 
 @router.put(

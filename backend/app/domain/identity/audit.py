@@ -50,6 +50,7 @@ class AuditAction:
     SCAN_FOLDER_ADD: Final = "project.scan_folder_add"
     SCAN_FOLDER_REMOVE: Final = "project.scan_folder_remove"
     SCAN_FOLDER_EXCLUSIONS: Final = "project.scan_folder_exclusions"
+    PROJECT_EXCLUSIONS: Final = "project.exclusions"
     PROJECT_SCAN_FORCE: Final = "project.scan_force"
     DUPLICATE_MOVE: Final = "duplicate.move"
     DUPLICATE_COPY: Final = "duplicate.copy"

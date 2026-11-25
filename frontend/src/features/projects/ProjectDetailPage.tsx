@@ -30,6 +30,7 @@ import { RunsTable } from '../runs/RunsTable';
 import { useRuns } from '../runs/useRuns';
 import { type DangerousOperation, DangerousOperationModal } from './DangerousOperationModal';
 import { MembersPanel } from './MembersPanel';
+import { ProjectExclusionsCard } from './ProjectExclusionsCard';
 import {
   canDo,
   NOOP_RUN,
@@ -334,6 +335,8 @@ export function ProjectDetailPage() {
       <Card withBorder>
         <MembersPanel project={project} />
       </Card>
+
+      <ProjectExclusionsCard project={project} />
 
       {canDo(project, 'editor') && <AiSettingsCard project={project} />}
 

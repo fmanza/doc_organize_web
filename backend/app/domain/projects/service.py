@@ -394,6 +394,8 @@ def create_project(
             source_subpaths=sources,
             destination_location_id=destination.id,
             destination_subpath=output.relative,
+            # Web 2.7 (ADR-017): los proyectos nuevos excluyen las carpetas de sistema; los existentes, no (0033).
+            exclude_system_folders=True,
             created_by=actor.id,
         )
         db.add(project)

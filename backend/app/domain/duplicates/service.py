@@ -15,9 +15,14 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import ACTIVE_RUN_STATUSES, DuplicateGroupRow, Project, Run, utcnow
-from app.domain.duplicates.errors import DuplicatePreviewRequiredError, GroupNotInPreviewError, SourceReadOnlyError
+from app.domain.duplicates.errors import (
+    DuplicatePreviewRequiredError,
+    ExclusionsChangedError,
+    GroupNotInPreviewError,
+    SourceReadOnlyError,
+)
 from app.domain.listing import ListQuery, apply_search, apply_sort
-from app.domain.runs.operations import DedupApplyParams
+from app.domain.runs.operations import DedupApplyParams, ExclusionSnapshot
 
 #: Vigencia de una vista previa de duplicados para aplicarla (después, otra escritura pudo cambiar el origen).
 PREVIEW_TTL: Final = timedelta(minutes=60)
@@ -73,8 +78,10 @@ def validate_apply(db: Session, project: Project, params: DedupApplyParams) -> D
         DuplicatePreviewRequiredError: Vista previa no válida.
         GroupNotInPreviewError: Un grupo no es de la vista previa o ``keep`` no es de su grupo.
         SourceReadOnlyError: ``move`` con la ubicación de origen de solo lectura.
+        ExclusionsChangedError: Las exclusiones del proyecto cambiaron después de la vista previa (web 2.7).
     """
     run = preview_run(db, project, params.groups_run_id)
+    check_exclusions_unchanged(db, project, run)
     if params.mode == "move" and project.source_location.access != "rw":
         raise SourceReadOnlyError("Elige «Copiar» o «Solo informe»: el origen es de solo lectura.")
     wanted = {choice.group_id: choice.keep for choice in params.groups}
@@ -95,6 +102,28 @@ def validate_apply(db: Session, project: Project, params: DedupApplyParams) -> D
         if keep not in {member_key(m) for m in row.members}:
             raise GroupNotInPreviewError(f"«{keep}» no es de su grupo de duplicados.")
     return params
+
+
+def exclusions_changed(db: Session, project: Project, run: Run) -> bool:
+    """Si la exclusión efectiva del proyecto cambió desde la vista previa ``run`` (web 2.7, ADR-017).
+
+    Las vistas previas anteriores a la 2.7 no guardan la huella: no cuentan como cambiadas.
+    """
+    from app.domain.projects.exclusions import effective
+
+    raw = (run.params or {}).get("exclusion")
+    if not raw:
+        return False
+    snapshot = ExclusionSnapshot.model_validate(raw)
+    return bool(snapshot.fingerprint) and snapshot.fingerprint != effective(db, project).fingerprint()
+
+
+def check_exclusions_unchanged(db: Session, project: Project, run: Run) -> None:
+    """Raises: ExclusionsChangedError: Cambiaron; hay que repetir la vista previa (regla 7)."""
+    if exclusions_changed(db, project, run):
+        raise ExclusionsChangedError(
+            "Las exclusiones del proyecto cambiaron después de este análisis: vuelve a buscar duplicados."
+        )
 
 
 def list_groups(

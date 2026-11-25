@@ -219,6 +219,7 @@ export function RunDetailPage() {
           )}
         </Card>
       )}
+      <RunExclusions run={run} />
       {(run.ai_usage ?? []).length > 0 && <AiUsageCard rows={run.ai_usage ?? []} />}
       {live.log.length > 0 && <RunLog log={live.log} />}
       <Card withBorder>
@@ -286,6 +287,55 @@ function continuable(run: Run): boolean {
     run.project_id !== null &&
     run.params.dry_run !== true &&
     (run.status === 'cancelled' || (run.status === 'failed' && CONTINUABLE.has(run.error_code ?? '')))
+  );
+}
+
+/** Rutas (relativas) y patrones de una lista de `params`, o vacío si no hay. */
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+/**
+ * Exclusiones que usó el run (2.7, ADR-017): la copia que hizo la API al encolar el escaneo o la búsqueda de
+ * duplicados. Rutas relativas a la ubicación de origen (las del escaneo, a cada carpeta).
+ */
+function RunExclusions({ run }: { run: Run }) {
+  const { t } = useTranslation();
+  let paths: string[] = [];
+  let patterns: string[] = [];
+  if (run.operation === 'scan') {
+    const exclusions = run.params.exclusions;
+    if (typeof exclusions === 'object' && exclusions !== null) {
+      paths = Object.entries(exclusions).flatMap(([folder, rels]) =>
+        stringList(rels).map((rel) => `/${folder ? `${folder}/` : ''}${rel}`),
+      );
+    }
+    patterns = stringList(run.params.ignore_patterns);
+  } else if (run.operation === 'dedup_preview') {
+    const exclusion = run.params.exclusion;
+    if (typeof exclusion === 'object' && exclusion !== null) {
+      const snapshot = exclusion as { paths?: unknown; patterns?: unknown };
+      paths = stringList(snapshot.paths).map((path) => `/${path}`);
+      patterns = stringList(snapshot.patterns);
+    }
+  }
+  if (paths.length === 0 && patterns.length === 0) {
+    return null;
+  }
+  return (
+    <Card withBorder>
+      <Title order={3} size="h4" mb="sm">
+        {t('runs.exclusions.title')}
+      </Title>
+      <Stack gap={4}>
+        {paths.length > 0 && (
+          <Text size="sm">{t('runs.exclusions.folders', { folders: paths.join(', ') })}</Text>
+        )}
+        {patterns.length > 0 && (
+          <Text size="sm">{t('runs.exclusions.patterns', { patterns: patterns.join(', ') })}</Text>
+        )}
+      </Stack>
+    </Card>
   );
 }
 

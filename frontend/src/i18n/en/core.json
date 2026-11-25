@@ -281,7 +281,8 @@
       "too_many_streams": "Too many progress connections open",
       "write_locked": "Another write operation is in progress",
       "last_admin": "At least one active administrator must remain",
-      "user_has_dependencies": "The user cannot be deleted"
+      "user_has_dependencies": "The user cannot be deleted",
+      "exclusions_changed": "The exclusions changed after the search"
     },
     "http": {
       "400": "Invalid request",

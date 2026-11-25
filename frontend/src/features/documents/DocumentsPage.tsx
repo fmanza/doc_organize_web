@@ -1,4 +1,5 @@
 import {
+  Alert,
   Anchor,
   Badge,
   Box,
@@ -24,7 +25,7 @@ import { formatCount, formatDateTime } from '../../components/format';
 import { PageControls } from '../../components/Paging';
 import { ClearSection, SortSelect } from '../../components/listing';
 import { useListState } from '../../components/useListState';
-import { canDo, useProject } from '../projects/useProjects';
+import { canDo, useProject, useProjectExclusions } from '../projects/useProjects';
 import { ExportPanel } from './ExportPanel';
 import {
   CONVERSION_STATUSES,
@@ -77,6 +78,8 @@ export function DocumentsPage() {
     list.query,
   );
   const types = useMimeTypes(projectId, { search: debounced, folder, conversionStatus });
+  // 2.7 (ADR-017): lo excluido que siga en la caché se lista, pero no se usa (sin recuento: exigiría leer toda la caché).
+  const exclusions = useProjectExclusions(projectId);
 
   if (project.isPending) {
     return (
@@ -103,6 +106,12 @@ export function DocumentsPage() {
           {t('documents.searchContent')}
         </Button>
       </Group>
+      {exclusions.data &&
+        (exclusions.data.excluded.length > 0 || exclusions.data.ignore_patterns.length > 0) && (
+          <Alert color="gray" variant="light">
+            {t('documents.excludedNotice')}
+          </Alert>
+        )}
       <ExportPanel projectId={projectId} />
       <Group align="flex-end">
         <TextInput

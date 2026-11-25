@@ -182,3 +182,21 @@ def test_search_index_is_incremental(ctx: JobContext, project: Project, migrated
     assert (third["removed"], third["indexed"]) == (1, 1)
     hits, total, _ = search(search_db(state_dir(migrated, project.id)), "luz", limit=10, offset=0)
     assert total == 1 and hits[0].output_path == "2024/factura.md"
+
+
+@pytest.mark.posix_paths
+def test_excluded_folders_still_in_the_cache_are_not_exported(ctx: JobContext, project: Project, db: Session) -> None:
+    """Web 2.7 (ADR-017): una carpeta excluida que sigue en la caché (sin «forzar») no se exporta."""
+    stored = db.get(Project, project.id)
+    assert stored is not None
+    stored.ignore_patterns = ["roto.*"]
+    stored.excluded_paths = ["2025"]
+    db.commit()
+
+    result = export.run_zip(ctx, ExportZipParams(), project)
+
+    artifact = db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).one()
+    with zipfile.ZipFile(ctx.workdir / artifact.rel_path) as archive:
+        snapshot = archive.read("cache_export.json").decode("utf-8")
+    assert [e["file_path"] for e in json.loads(snapshot)["entries"]] == ["2024/factura.txt"]
+    assert result["file_count"] >= 1

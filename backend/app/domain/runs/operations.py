@@ -71,17 +71,18 @@ class ScanParams(_Params):
     ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
     ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
     run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
-    ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.
+    ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto. Desde la 2.7 (ADR-017) las exclusiones
+    y los patrones son la exclusión efectiva: incluyen los del proyecto y el preset de carpetas de sistema.
     """
 
     operation: Literal["scan"] = "scan"
     folders: list[Annotated[str, Field(max_length=4096)]] = Field(default_factory=list, max_length=20)
     exclusions: dict[
         Annotated[str, Field(max_length=4096)],
-        Annotated[list[Annotated[str, Field(min_length=1, max_length=4096)]], Field(max_length=50)],
+        Annotated[list[Annotated[str, Field(min_length=1, max_length=4096)]], Field(max_length=150)],
     ] = Field(default_factory=dict, max_length=20)
     ignore_patterns: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(
-        default_factory=list, max_length=30
+        default_factory=list, max_length=100
     )
     use_ocr: bool = True
     use_gpu: bool = False
@@ -142,6 +143,17 @@ class ExportAiBundleParams(_Params):
     max_full_chars: int | None = Field(default=None, ge=1_000, le=100_000_000)
 
 
+class ExclusionSnapshot(BaseModel):
+    """Copia de la exclusión efectiva del proyecto al encolar (web 2.7, ADR-017): rutas relativas a la ubicación de
+    origen, patrones de nombre y la huella de lo que venía del proyecto (para saber si cambió después)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    paths: list[Annotated[str, Field(min_length=1, max_length=4096)]] = Field(default_factory=list, max_length=3_100)
+    patterns: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(default_factory=list, max_length=100)
+    fingerprint: str = Field(default="", max_length=64)
+
+
 class DedupPreviewParams(_Params):
     """Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).
 
@@ -151,12 +163,20 @@ class DedupPreviewParams(_Params):
     Por contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el
     mismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la
     tarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).
+
+    Exclusiones (web 2.7, ADR-017): ``extra_excluded_paths`` (relativas a la ubicación de origen, dentro de alguna
+    carpeta del proyecto) se excluyen solo en este análisis; ``exclusion`` la copia la API al encolar con la exclusión
+    efectiva del proyecto más esas (lo que mande el cliente se descarta).
     """
 
     operation: Literal["dedup_preview"] = "dedup_preview"
     fuzzy_threshold: int | None = Field(default=None, ge=50, le=100)
     content: bool = False
     semantic_threshold: float | None = Field(default=None, ge=0.5, le=1.0)
+    extra_excluded_paths: list[Annotated[str, Field(min_length=1, max_length=4096)]] = Field(
+        default_factory=list, max_length=50
+    )
+    exclusion: SkipJsonSchema[ExclusionSnapshot | None] = None
 
     @model_validator(mode="after")
     def _semantic_implies_content(self) -> DedupPreviewParams:

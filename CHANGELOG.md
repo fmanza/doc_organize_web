@@ -31,6 +31,22 @@ ROADMAP (`0.<fase+1>.0`).
       insignia de estado) e `instance_admin`. Se pueden combinar entre sí y con `q`.
     - Un rol de otro tenant devuelve una lista vacía, no un error.
     - Los filtros quedan en la URL. Si no hay resultados, «Quitar filtros» los borra.
+- **Exclusiones de carpetas en todo el proyecto** ([ADR-017](docs/adr/ADR-017-exclusion-efectiva.md)). Una carpeta
+  excluida queda fuera del proyecto: no se escanea y lo que siga en la caché no se usa en duplicados, contexto (ni en
+  lo que lo lee) ni en las exportaciones ZIP y Excel.
+    - **Exclusiones del proyecto** (propietario), en la página del proyecto: carpetas dentro de las del proyecto (hasta
+      100) y patrones de nombre (hasta 30; no se admiten `*` ni `*.*`). `GET`/`PUT /api/v1/projects/{id}/exclusions`,
+      migración `0033` (aditiva), auditoría `project.exclusions`.
+    - **Carpetas de sistema**: un interruptor excluye `#recycle`, `@eaDir`, `.snapshot`, `~snapshot`, `$RECYCLE.BIN`,
+      `System Volume Information`, `Thumbs.db`, `desktop.ini` y `~$*`. Activado en los proyectos nuevos; los
+      existentes quedan como estaban.
+    - La exclusión efectiva (proyecto, carpeta guardada, ubicación y preset) se copia en el escaneo y en la búsqueda de
+      duplicados. El escaneo admite ahora hasta 150 exclusiones por carpeta y 100 patrones.
+    - **Duplicados**: «Excluir además en este análisis» (`extra_excluded_paths`); el resultado cuenta los `excluded`.
+      Si las exclusiones cambian después de la búsqueda, la pantalla avisa (`exclusions_changed` en
+      `GET /duplicates/last`) y aplicarla responde `409 exclusions_changed`.
+    - La pantalla de escaneo muestra las exclusiones heredadas del proyecto; el detalle de la ejecución, las que usó; el
+      listado de documentos avisa de que lo excluido sigue en la caché (hueco G47 de doc_organize).
 
 ## [2.6.0] - 2026-11-25
 

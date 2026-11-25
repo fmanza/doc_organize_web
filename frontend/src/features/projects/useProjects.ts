@@ -104,6 +104,40 @@ export function useUpdateProjectAi(id: number) {
   });
 }
 
+export type ProjectExclusions = components['schemas']['ProjectExclusionsOut'];
+export type ProjectExclusionsUpdate = components['schemas']['ProjectExclusionsUpdate'];
+
+/** Exclusiones del proyecto (2.7, ADR-017): las ve cualquier miembro. */
+export function useProjectExclusions(projectId: number) {
+  return useQuery({
+    queryKey: ['project-exclusions', projectId],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/projects/{project_id}/exclusions', {
+          params: { path: { project_id: projectId } },
+        }),
+      ),
+  });
+}
+
+/** Cambia las exclusiones del proyecto (solo el propietario). */
+export function useSetProjectExclusions(projectId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: ProjectExclusionsUpdate) =>
+      unwrap(
+        await api.PUT('/api/v1/projects/{project_id}/exclusions', {
+          params: { path: { project_id: projectId } },
+          body,
+        }),
+      ),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['project-exclusions', projectId], data);
+      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'duplicates', 'last'] });
+    },
+  });
+}
+
 export function useEnqueueRun(projectId: number) {
   const invalidate = useInvalidateProjects();
   return useMutation({

@@ -527,3 +527,20 @@ def test_0032_adds_the_actor_name_filled_with_each_username(settings: Settings) 
 
     command.downgrade(config, "0031")
     assert "actor_name" not in {c["name"] for c in inspect(get_engine()).get_columns("audit_log")}
+
+
+def test_0033_adds_the_project_exclusions_empty_and_without_the_preset(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0033")
+    columns = {c["name"]: c for c in inspect(get_engine()).get_columns("projects")}
+    for name in ("excluded_paths", "ignore_patterns", "exclude_system_folders"):
+        assert columns[name]["nullable"] is False
+    assert "[]" in str(columns["excluded_paths"]["default"])
+    assert (
+        "0" in str(columns["exclude_system_folders"]["default"])
+        or "false" in str(columns["exclude_system_folders"]["default"]).lower()
+    )
+
+    command.downgrade(config, "0032")
+    remaining = {c["name"] for c in inspect(get_engine()).get_columns("projects")}
+    assert not remaining & {"excluded_paths", "ignore_patterns", "exclude_system_folders"}

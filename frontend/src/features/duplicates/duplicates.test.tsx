@@ -139,6 +139,35 @@ describe('DuplicatesPage', () => {
     });
   });
 
+  it('2.7: excluye carpetas solo en este análisis y avisa si las exclusiones cambiaron', async () => {
+    const fetchMock = routes({
+      'GET /api/v1/projects/7/duplicates/last': {
+        body: { preview: { ...PREVIEW, operation: 'dedup_preview' }, apply: null, exclusions_changed: true },
+      },
+      'POST /api/v1/projects/7/runs': {
+        status: 202,
+        body: runOut({ id: DRY_ID, operation: 'dedup_preview' }),
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7/duplicates');
+
+    expect(await screen.findByText('Las exclusiones cambiaron')).toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText('Excluir además en este análisis', { selector: 'input:not([type=hidden])' }),
+      '/2019/archivo/{enter}',
+    );
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs');
+    expect(await request?.clone().json()).toMatchObject({
+      operation: 'dedup_preview',
+      extra_excluded_paths: ['2019/archivo'],
+    });
+  });
+
   it('2.2: con el modelo de duplicados pide el umbral y avisa de lo que se envía', async () => {
     const fetchMock = routes({
       'GET /api/v1/ai/status': { body: { families: { litellm: true }, tasks: { dedup: true } } },

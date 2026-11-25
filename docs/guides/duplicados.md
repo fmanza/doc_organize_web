@@ -37,6 +37,15 @@ comparar por contenido».
 - **Ver diferencias** abre los textos de dos documentos del grupo lado a lado, sin formato, con las líneas que no están
   en el otro resaltadas.
 
+### Excluir carpetas
+
+La búsqueda no compara nada de las [carpetas excluidas del proyecto](escaneo.md#excluir-carpetas), aunque siga en la
+caché de un escaneo anterior; el resultado lo cuenta como «Excluidos». Para dejar fuera algo **solo en esta búsqueda**,
+escribe sus carpetas (relativas al origen, como `2019/archivo`) en «Excluir además en este análisis».
+
+Si las exclusiones del proyecto cambian después de una búsqueda, la pantalla lo avisa y **Aplicar** la rechaza: hay
+que volver a buscar, para que solo se mueva lo que se revisó.
+
 El resultado dice cuántos grupos hay de cada tipo, cuántos ficheros sobran y cuánto ocupan los duplicados exactos.
 «En la caché pero ya no en el origen» cuenta los documentos que se borraron o movieron desde el último escaneo. La
 ejecución deja también un **Excel** con todos los grupos (sin rutas del servidor), para revisarlos fuera de la

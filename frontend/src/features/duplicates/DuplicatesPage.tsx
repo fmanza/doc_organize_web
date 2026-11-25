@@ -15,6 +15,7 @@ import {
   Stack,
   Switch,
   Table,
+  TagsInput,
   Text,
   Title,
 } from '@mantine/core';
@@ -91,6 +92,7 @@ export function DuplicatesPage() {
   const [content, setContent] = useState(false);
   const [semantic, setSemantic] = useState(false);
   const [semanticThreshold, setSemanticThreshold] = useState<number>(DEFAULT_SEMANTIC);
+  const [extraExcluded, setExtraExcluded] = useState<string[]>([]);
   const aiTasks = useAiStatus();
   const dedupReady = aiTasks.data?.dedup === true;
   const [reason, setReason] = useState<DuplicateReason | null>(null);
@@ -140,6 +142,11 @@ export function DuplicatesPage() {
       <BackLink to={`/projects/${projectId}`}>{t('duplicates.back', { name: project.data.name })}</BackLink>
       <Title order={2}>{t('duplicates.title')}</Title>
       <Text c="dimmed">{t('duplicates.intro')}</Text>
+      {last.data.exclusions_changed && (
+        <Alert color="yellow" title={t('duplicates.exclusionsChanged.title')}>
+          {t('duplicates.exclusionsChanged.body')}
+        </Alert>
+      )}
 
       {canEdit && (
         <Card withBorder>
@@ -173,6 +180,9 @@ export function DuplicatesPage() {
                     fuzzy_threshold: fuzzy ? threshold : null,
                     content: content || semantic,
                     semantic_threshold: semantic && dedupReady ? semanticThreshold : null,
+                    ...(extraExcluded.length > 0
+                      ? { extra_excluded_paths: extraExcluded.map((path) => path.replace(/^\/+|\/+$/g, '')) }
+                      : {}),
                   },
                   { onSuccess: (run) => void navigate(`/runs/${run.id}`) },
                 )
@@ -181,6 +191,15 @@ export function DuplicatesPage() {
               {t('duplicates.search.run')}
             </Button>
           </Group>
+          <TagsInput
+            mt="sm"
+            label={t('duplicates.search.extraExcluded')}
+            description={t('duplicates.search.extraExcludedHelp')}
+            value={extraExcluded}
+            onChange={setExtraExcluded}
+            maxTags={50}
+            clearable
+          />
           <Title order={4} size="h5" mt="md" mb={4}>
             {t('duplicates.search.contentTitle')}
           </Title>

@@ -304,6 +304,61 @@ describe('ProjectDetailPage', () => {
   });
 });
 
+describe('2.7: exclusiones del proyecto', () => {
+  const EXCLUSIONS = {
+    excluded: [{ path: '2024/borradores', exists: true }],
+    ignore_patterns: ['*.tmp'],
+    exclude_system_folders: true,
+    system_patterns: ['#recycle', 'Thumbs.db'],
+    location_patterns: ['~$*'],
+  };
+
+  it('el propietario las ve y las cambia: patrones y preset de carpetas de sistema', async () => {
+    const fetchMock = stubApi({
+      ...detailRoutes(),
+      'GET /api/v1/projects/7/exclusions': { body: EXCLUSIONS },
+      'GET /api/v1/fs/browse': folders(1, ['2024']),
+      'PUT /api/v1/projects/7/exclusions': { body: { ...EXCLUSIONS, exclude_system_folders: false } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+
+    expect(await screen.findByText('/2024/borradores')).toBeInTheDocument();
+    expect(screen.getByText('La ubicación de origen excluye además estos patrones')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Editar las exclusiones del proyecto' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(
+      within(dialog).getByLabelText(/Patrones de nombre/, { selector: 'input:not([type=hidden])' }),
+      'old_*{enter}',
+    );
+    await user.click(within(dialog).getByRole('switch', { name: /Excluir carpetas de sistema/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/v1/projects/7/exclusions')).toHaveLength(1));
+    const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/exclusions');
+    expect(await request?.json()).toEqual({
+      excluded: ['2024/borradores'],
+      ignore_patterns: ['*.tmp', 'old_*'],
+      exclude_system_folders: false,
+    });
+  });
+
+  it('un lector las ve sin poder cambiarlas', async () => {
+    stubApi({
+      ...detailRoutes({ ...PROJECT, role: 'viewer' }),
+      'GET /api/v1/projects/7/exclusions': { body: EXCLUSIONS },
+    });
+
+    renderRoute('/projects/7');
+
+    expect(await screen.findByText('/2024/borradores')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Editar las exclusiones del proyecto' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('W4: IA del proyecto', () => {
   it('desactivar la redacción pide confirmación y la guarda', async () => {
     const fetchMock = stubApi({

@@ -402,3 +402,31 @@ def test_moving_a_content_duplicate_moves_its_conversion_too(
     assert len(moved) == 1  # el que se conserva sigue en su sitio
     target = output / "duplicados" / "Conversión" / moved[0].relative_to(conversions)
     assert target.is_file() and target.with_suffix(".json").is_file()
+
+
+@pytest.mark.posix_paths
+def test_excluded_folders_and_patterns_are_not_compared(ctx: JobContext, project: Project, db: Session) -> None:
+    """Web 2.7 (ADR-017): lo excluido sigue en la caché, pero la vista previa no lo compara y lo cuenta."""
+    from app.domain.runs.operations import ExclusionSnapshot
+
+    by_folder = dedup.run_preview(ctx, DedupPreviewParams(exclusion=ExclusionSnapshot(paths=["2025"])), project)
+    by_pattern = dedup.run_preview(
+        ctx, DedupPreviewParams(exclusion=ExclusionSnapshot(patterns=["* copia.*"])), project
+    )
+
+    assert (by_folder["documents"], by_folder["excluded"], by_folder["exact_groups"]) == (3, 3, 0)
+    assert (by_pattern["documents"], by_pattern["excluded"], by_pattern["exact_groups"]) == (5, 1, 0)
+
+
+@pytest.mark.posix_paths
+def test_without_a_snapshot_the_current_project_exclusion_applies(
+    ctx: JobContext, project: Project, db: Session
+) -> None:
+    stored = db.get(Project, project.id)
+    assert stored is not None
+    stored.excluded_paths = ["2025"]
+    db.commit()
+
+    result = dedup.run_preview(ctx, DedupPreviewParams(), project)
+
+    assert result["excluded"] == 3 and result["exact_groups"] == 0
