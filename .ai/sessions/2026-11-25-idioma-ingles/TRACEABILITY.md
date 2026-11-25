@@ -32,13 +32,20 @@ D2 = `es` por defecto, `en-GB`); «haz el commit, abre el PR y publica la 2.6.0�
   `language.spec.ts`. PR #123 con CI en verde (E2E incluidos) fusionado (`053f7ea`).
 - VERSION: 2.6.0 sincronizada (CHANGELOG, `pyproject.toml`, `app/__init__.py`, `package.json` y lock, `uv.lock`,
   `openapi.json`, `DOW_TAG`), `.ai/product.md` e `INDEX.md`.
+- PR #124 `release: v2.6.0` con CI en verde fusionado con squash en `develop` (`54f239d`); CI de `develop` en verde;
+  `main` por fast-forward de `37a7e34` a `54f239d`; etiqueta `v2.6.0`; release de GitHub «Latest» con las notas del
+  CHANGELOG y la sección «Actualizar» (copia de seguridad, migración `0031` aditiva con todos en español, volver atrás
+  con `alembic downgrade 0030` y `DOW_TAG=2.5.0`).
+- Sin despliegue local en esta sesión.
 
 ## Artefactos generados
 | Artefacto | Ruta | Estado |
 |---|---|---|
 | PLAN refactor | `.ai/sessions/2026-11-25-i18n-requisito/PLAN.md` | GO, implementado (#122) |
 | PLAN funcionalidad | `.ai/sessions/2026-11-25-idioma-ingles/PLAN.md` | GO, implementado (#123) |
-| Release 2.6.0 | PR `release: v2.6.0` | en curso |
+| PR de release | https://github.com/fmanza/doc_organize_web/pull/124 | fusionado (`54f239d`) |
+| Release | https://github.com/fmanza/doc_organize_web/releases/tag/v2.6.0 | publicada |
+| Etiqueta | `v2.6.0` sobre `54f239d` | subida |
 
 ## Directrices para Futuras IAs
 - **[i18n]**: un texto nuevo va en `src/i18n/es/` y `src/i18n/en/` con la misma clave y marcadores; lo exige
@@ -56,8 +63,9 @@ D2 = `es` por defecto, `en-GB`); «haz el commit, abre el PR y publica la 2.6.0�
   se pierden (pasó con `features.json`; se recuperó de una copia).
 
 ## Veredicto final
-Veredicto: CLOSED (al publicar)
+Veredicto: CLOSED
 Pendientes al cierre:
+- Despliegue local 2.5.0 → 2.6.0 (copia de seguridad, `DOW_TAG=2.6.0`, migración `0031`).
 - Revisión humana del tono y la terminología del inglés (dudas: «Submitted», «Built-in», «In / Out / Changed» del
   historial, «Batches»).
 - Mensajes del backend en inglés (`Accept-Language`, D1-B) como funcionalidad aparte con ADR si se necesita.
