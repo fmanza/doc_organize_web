@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-25
+
+Buscar por nombre en «Revisar clasificación» y agrupar versiones de un documento aunque cambie el formato, con
+doc_organize 2.5.0. Migración `0030` (aditiva y reversible).
+
 ### Added
 
 - **Buscar por nombre en «Revisar clasificación»**: junto al motivo, un buscador que mira el título, la carpeta y la
