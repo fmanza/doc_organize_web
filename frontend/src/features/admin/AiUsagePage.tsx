@@ -19,17 +19,14 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { formatDateTime } from '../../components/format';
-import { INTL_LOCALE } from '../../i18n';
+import { cachedFormat, formatDateTime } from '../../components/format';
 import { TokensByDayChart } from './AiUsageCharts';
 import { type AiUsage, type AiUsagePeriod, type AiUsageSource, useAiUsage, useRefreshAiUsage } from './useAi';
 
-const money = new Intl.NumberFormat(INTL_LOCALE, {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 4,
-});
-const number = new Intl.NumberFormat(INTL_LOCALE);
+const money = cachedFormat(
+  (locale) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 4 }),
+);
+const number = cachedFormat((locale) => new Intl.NumberFormat(locale));
 const PERIODS: readonly AiUsagePeriod[] = ['7d', '30d', 'month', 'all'];
 
 type Local = NonNullable<AiUsage['local']>;
@@ -89,7 +86,7 @@ export function AiUsagePage() {
   );
 }
 
-const tokens = (value: number, estimated: boolean) => `${estimated ? '≈ ' : ''}${number.format(value)}`;
+const tokens = (value: number, estimated: boolean) => `${estimated ? '≈ ' : ''}${number().format(value)}`;
 
 /** Fila de indicadores del periodo. */
 function Indicators({ totals }: { totals: Totals }) {
@@ -97,11 +94,11 @@ function Indicators({ totals }: { totals: Totals }) {
   const asked = totals.calls + totals.cached;
   const saved = asked > 0 ? Math.round((totals.cached / asked) * 100) : 0;
   const tiles: [string, string, string | null][] = [
-    ['runs', number.format(totals.runs), null],
-    ['calls', number.format(totals.calls), null],
+    ['runs', number().format(totals.runs), null],
+    ['calls', number().format(totals.calls), null],
     [
       'cached',
-      number.format(totals.cached),
+      number().format(totals.cached),
       asked > 0 ? t('ai.usage.local.savedShare', { percent: saved }) : null,
     ],
     ['prompt', tokens(totals.prompt_tokens, totals.tokens_estimated), null],
@@ -164,13 +161,13 @@ function KeyCard({ source }: { source: AiUsageSource }) {
           <Group gap="xl">
             <Stat
               label={t('ai.usage.key.spend')}
-              value={spend === null || spend === undefined ? '—' : money.format(spend)}
+              value={spend === null || spend === undefined ? '—' : money().format(spend)}
             />
             {budget?.max_budget != null && (
-              <Stat label={t('ai.usage.key.budget')} value={money.format(budget.max_budget)} />
+              <Stat label={t('ai.usage.key.budget')} value={money().format(budget.max_budget)} />
             )}
             {budget?.remaining != null && (
-              <Stat label={t('ai.usage.key.remaining')} value={money.format(budget.remaining)} />
+              <Stat label={t('ai.usage.key.remaining')} value={money().format(budget.remaining)} />
             )}
             {budget?.budget_reset_at && (
               <Stat label={t('ai.usage.key.reset')} value={formatDateTime(budget.budget_reset_at)} />
@@ -255,9 +252,9 @@ function LocalUsage({ local }: { local: Local }) {
 function Counts({ totals }: { totals: Totals }) {
   return (
     <>
-      <Table.Td>{number.format(totals.runs)}</Table.Td>
-      <Table.Td>{number.format(totals.calls)}</Table.Td>
-      <Table.Td>{number.format(totals.cached)}</Table.Td>
+      <Table.Td>{number().format(totals.runs)}</Table.Td>
+      <Table.Td>{number().format(totals.calls)}</Table.Td>
+      <Table.Td>{number().format(totals.cached)}</Table.Td>
       <Table.Td>{tokens(totals.prompt_tokens, totals.tokens_estimated)}</Table.Td>
       <Table.Td>{tokens(totals.completion_tokens, totals.tokens_estimated)}</Table.Td>
     </>

@@ -486,3 +486,14 @@ def test_projects_schema_matches_the_model(settings: Settings) -> None:
     expected = {c.name for c in model.constraints if isinstance(c, CheckConstraint)}
     assert expected <= checks
     assert "ck_projects_locations" in checks
+
+
+def test_0031_adds_the_language_with_spanish_for_existing_users(settings: Settings) -> None:
+    config = _config()
+    command.upgrade(config, "0031")
+    columns = {c["name"]: c for c in inspect(get_engine()).get_columns("users")}
+    assert columns["language"]["nullable"] is False
+    assert "es" in str(columns["language"]["default"])
+
+    command.downgrade(config, "0030")
+    assert "language" not in {c["name"] for c in inspect(get_engine()).get_columns("users")}

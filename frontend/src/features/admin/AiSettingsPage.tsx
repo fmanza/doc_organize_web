@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiError } from '../../api/client';
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { problemTitle } from '../../components/problem';
 import { formatDateTime } from '../../components/format';
 import { ToastStack } from '../../components/Toasts';
 import { type Toast, useToasts } from '../../components/useToasts';
@@ -314,7 +315,9 @@ function errorToast(error: unknown, label: string, t: Translate): Omit<Toast, 'i
     color: 'red',
     title: t('ai.settings.toast.failed', { label }),
     message:
-      (error instanceof ApiError && (error.problem.detail || error.problem.title)) || t('common.errorBody'),
+      error instanceof ApiError
+        ? error.problem.detail || problemTitle(error.problem, t)
+        : t('common.errorBody'),
   };
 }
 

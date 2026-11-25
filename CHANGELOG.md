@@ -5,6 +5,21 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **Idioma de la interfaz por usuario: español o inglés**. En el menú de usuario, «Idioma» con «Español» (por defecto)
+  y «English».
+    - Se guarda en el usuario (`users.language`, migración `0031`, aditiva) y se aplica al momento, también a las
+      fechas y los números (`en-GB` en inglés).
+    - El inicio de sesión usa el último idioma de ese navegador o, sin él, el del navegador.
+    - `Me` incluye `language`, y `PUT /api/v1/auth/me/preferences` acepta `language` y/o `color_scheme` (al menos
+      uno). No se audita: es una preferencia.
+    - Toda la interfaz traducida (`src/i18n/en/`); el test de i18n exige las mismas claves y marcadores en ambos
+      idiomas.
+    - En inglés, el título de los errores de la API se traduce por su `code` o su estado HTTP. Siguen en español el
+      detalle de los errores, el mensaje y el registro de las ejecuciones, las exportaciones y el sitio del contexto.
+    - Las peticiones llevan `Accept-Language`; de momento el servidor no lo usa.
+
 ### Changed
 
 - **i18n como requisito del frontend**: el test `src/i18n/i18n.test.ts` falla si hay texto visible fuera de `t()`, una

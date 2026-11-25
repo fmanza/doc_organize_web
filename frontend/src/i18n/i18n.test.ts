@@ -1,6 +1,8 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
+import enCore from './en/core.json';
+import enFeatures from './en/features.json';
 import core from './es/core.json';
 import features from './es/features.json';
 
@@ -174,6 +176,37 @@ describe('i18n', () => {
       return ![...ANALYSIS.dynamicPrefixes].some((prefix) => prefix && base.startsWith(prefix));
     });
     expect(unused).toEqual([]);
+  });
+
+  it('el inglés tiene las mismas claves que el español, con los mismos marcadores (2.6)', () => {
+    const values = (value: unknown, prefix = '', out = new Map<string, string>()): Map<string, string> => {
+      if (value && typeof value === 'object') {
+        for (const [key, child] of Object.entries(value)) {
+          values(child, prefix ? `${prefix}.${key}` : key, out);
+        }
+      } else {
+        out.set(prefix, String(value));
+      }
+      return out;
+    };
+    const markers = (text: string) =>
+      [...text.matchAll(/\{\{\s*[\w.]+\s*\}\}/g)]
+        .map((m) => m[0])
+        .sort()
+        .join(' ');
+    const es = new Map([...values(core), ...values(features)]);
+    const en = new Map([...values(enCore), ...values(enFeatures)]);
+    const problems = [
+      ...[...es.keys()].filter((key) => !en.has(key)).map((key) => `${key}: falta en en`),
+      ...[...en.keys()].filter((key) => !es.has(key)).map((key) => `${key}: sobra en en`),
+      ...[...es]
+        .filter(([key, text]) => en.has(key) && markers(text) !== markers(en.get(key) ?? ''))
+        .map(([key]) => `${key}: marcadores distintos`),
+      ...[...es]
+        .filter(([key, text]) => text.trim() !== '' && en.get(key)?.trim() === '')
+        .map(([key]) => `${key}: vacío en en`),
+    ];
+    expect(problems).toEqual([]);
   });
 
   it('cada excepción permitida sigue existiendo', () => {

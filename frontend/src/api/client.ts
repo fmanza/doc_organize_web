@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 
+import { currentLanguage } from '../i18n';
 import type { paths } from './schema';
 
 // `__Host-dow_csrf` fuera de desarrollo; `dow_csrf` con `DOW_ENVIRONMENT=development` (HTTP sin TLS, ADR-003).
@@ -38,6 +39,14 @@ const csrfMiddleware: Middleware = {
   },
 };
 
+// Idioma de la interfaz en cada petición (2.6). De momento el backend no lo usa: sus mensajes siguen en español.
+const languageMiddleware: Middleware = {
+  onRequest({ request }) {
+    request.headers.set('Accept-Language', currentLanguage());
+    return request;
+  },
+};
+
 // Cliente tipado generado desde openapi/openapi.json (npm run gen:api). Mismo origen: la cookie de sesión viaja
 // sola y no hace falta CORS.
 // `fetch` se resuelve en cada llamada (no al crear el cliente) para que los tests puedan sustituirlo.
@@ -46,7 +55,7 @@ export const api = createClient<paths>({
   credentials: 'same-origin',
   fetch: (request) => globalThis.fetch(request),
 });
-api.use(csrfMiddleware);
+api.use(csrfMiddleware, languageMiddleware);
 
 export interface Problem {
   title: string;

@@ -40,6 +40,11 @@ applyTo: "frontend/**/*.{ts,tsx}"
   `src/i18n/es/features.json` (pantallas; se carga con la primera ruta lazy). Es requisito: `src/i18n/i18n.test.ts`
   falla con texto visible fuera de `t()` (JSX, `aria-label`, `title`, `placeholder`, `label`...), una clave usada que
   no existe o una clave sin uso. Una excepción (valor técnico, no texto) va en su `ALLOWED_LITERALS` con el motivo.
-- Fechas y números con los formateadores de `src/components/format.ts` o con `INTL_LOCALE` de `src/i18n`, nunca con
-  un locale fijo.
+- Dos idiomas (2.6): todo texto nuevo va en `src/i18n/es/` **y** `src/i18n/en/` con la misma clave y los mismos
+  `{{marcadores}}` (lo exige el mismo test). Inglés británico y términos del glosario (`.ai/glossary.md`). Los tests de
+  Vitest y los E2E trabajan en español (`src/test/setup.ts`, `locale: 'es-ES'` en Playwright).
+- Fechas y números con los formateadores de `src/components/format.ts` (o `cachedFormat` con `intlLocale()` de
+  `src/i18n`), nunca con un locale fijo ni como constante de módulo: el idioma cambia en caliente.
+- Título de un error de la API con `problemTitle` (`src/components/problem.ts`): traducido por `code` o estado HTTP
+  fuera del español. Un `code` nuevo en el backend → su título en `errors.code` de ambos `core.json`.
 - Prettier + ESLint (`npm run lint`) sin avisos.

@@ -5,6 +5,7 @@ import { NavLink as RouterNavLink, Outlet, useLocation, useMatch } from 'react-r
 
 import { UserMenu } from '../features/auth/UserMenu';
 import { ColorSchemeSync } from './ColorSchemeSync';
+import { LanguageSync } from './LanguageSync';
 import { RunNotifier } from '../features/runs/RunNotifier';
 import { Icon } from '../components/Icon';
 import { NAV_ICON_SIZE, NAV_ICONS, type NavIconKey } from '../components/icons';
@@ -121,6 +122,7 @@ export function Layout() {
     >
       <RunNotifier />
       <ColorSchemeSync />
+      <LanguageSync />
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap" miw={0}>

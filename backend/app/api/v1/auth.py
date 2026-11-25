@@ -22,6 +22,7 @@ from app.api.deps import (
 from app.api.v1.schemas import (
     ColorScheme,
     CsrfToken,
+    Language,
     LoginRequest,
     Me,
     PasswordChange,
@@ -97,6 +98,7 @@ def me_out(db: Session, user: User) -> Me:
         role=RoleRef.model_validate(user.role),
         permissions=cast(list[Permission], user.permissions),
         color_scheme=cast(ColorScheme, user.color_scheme),
+        language=cast(Language, user.language),
     )
 
 
@@ -137,11 +139,14 @@ def switch_tenant(body: TenantSwitch, session: CurrentSession, user: InstanceAdm
     responses={422: {"description": "Valor no válido"}, **_401, **_403},
 )
 def update_preferences(body: Preferences, user: CurrentUser, db: DbSession) -> Me:
-    """Guarda las preferencias del propio usuario (de momento, el tema) y devuelve ``Me``.
+    """Guarda las preferencias del propio usuario (tema y/o idioma) y devuelve ``Me``.
 
     Es una preferencia visual de uno mismo: no se audita (``user.update`` es para cambios de un admin sobre otro).
     """
-    users.set_color_scheme(db, user, body.color_scheme)
+    if body.color_scheme is not None:
+        users.set_color_scheme(db, user, body.color_scheme)
+    if body.language is not None:
+        users.set_language(db, user, body.language)
     return me_out(db, user)
 
 

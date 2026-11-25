@@ -15,5 +15,6 @@ export default defineConfig({
     baseURL: process.env.DOW_E2E_URL ?? 'http://127.0.0.1:8080',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // 2.6: sin preferencia guardada, la interfaz sigue el idioma del navegador; los E2E buscan los textos en español.
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], locale: 'es-ES' } }],
 });

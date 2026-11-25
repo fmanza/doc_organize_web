@@ -2,7 +2,7 @@ import { Group, Stack, Table, Text, useComputedColorScheme } from '@mantine/core
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { INTL_LOCALE } from '../../i18n';
+import { cachedFormat } from '../../components/format';
 
 /** Un día del consumo: tokens de entrada y de salida. */
 export interface DayTokens {
@@ -26,8 +26,10 @@ const PAD = { top: 12, right: 8, bottom: 28, left: 52 };
 const GAP = 2; // hueco de superficie entre segmentos y entre columnas
 const MAX_BAR = 24;
 
-const compact = new Intl.NumberFormat(INTL_LOCALE, { notation: 'compact', maximumFractionDigits: 1 });
-const full = new Intl.NumberFormat(INTL_LOCALE);
+const compact = cachedFormat(
+  (locale) => new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }),
+);
+const full = cachedFormat((locale) => new Intl.NumberFormat(locale));
 
 /** Escala «limpia» para el eje: 4 marcas redondas hasta cubrir `max`. */
 function ticks(max: number): number[] {
@@ -120,7 +122,7 @@ export function TokensByDayChart({ days, timezone }: { days: DayTokens[]; timezo
                 fontSize={11}
                 fill="var(--mantine-color-dimmed)"
               >
-                {compact.format(value)}
+                {compact().format(value)}
               </text>
             </g>
           ))}
@@ -201,7 +203,7 @@ export function TokensByDayChart({ days, timezone }: { days: DayTokens[]; timezo
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color }} />
                 <Text size="xs">
                   {item.label}:{' '}
-                  {full.format(item.key === 'prompt' ? active.prompt_tokens : active.completion_tokens)}
+                  {full().format(item.key === 'prompt' ? active.prompt_tokens : active.completion_tokens)}
                 </Text>
               </Group>
             ))}
@@ -223,8 +225,8 @@ export function TokensByDayChart({ days, timezone }: { days: DayTokens[]; timezo
               {days.map((day) => (
                 <Table.Tr key={day.day}>
                   <Table.Td>{day.day}</Table.Td>
-                  <Table.Td>{full.format(day.prompt_tokens)}</Table.Td>
-                  <Table.Td>{full.format(day.completion_tokens)}</Table.Td>
+                  <Table.Td>{full().format(day.prompt_tokens)}</Table.Td>
+                  <Table.Td>{full().format(day.completion_tokens)}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

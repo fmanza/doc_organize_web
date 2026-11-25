@@ -112,6 +112,8 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     #: Tema de la interfaz elegido por el usuario (2.3): ``auto`` (el del sistema), ``light`` o ``dark``.
     color_scheme: Mapped[str] = mapped_column(String(8), default="auto", server_default="auto")
+    #: Idioma de la interfaz elegido por el usuario (2.6): ``es`` (por defecto) o ``en``.
+    language: Mapped[str] = mapped_column(String(5), default="es", server_default="es")
     failed_attempts: Mapped[int] = mapped_column(default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
     password_changed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

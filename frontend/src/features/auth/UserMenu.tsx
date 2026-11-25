@@ -7,7 +7,8 @@ import { COLOR_SCHEMES } from '../../app/colorScheme';
 import { ICON_STROKE, COLOR_SCHEME_ICONS, NAV_ICON_SIZE, SelectedIcon } from '../../components/icons';
 import { ToastStack } from '../../components/Toasts';
 import { useToasts } from '../../components/useToasts';
-import { type ColorScheme, useLogout, useMe, useUpdateColorScheme } from './useAuth';
+import { LANGUAGES, type Language } from '../../i18n';
+import { type ColorScheme, useLogout, useMe, useUpdateColorScheme, useUpdateLanguage } from './useAuth';
 
 export function UserMenu() {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ export function UserMenu() {
   const { data: me } = useMe();
   const logout = useLogout();
   const updateScheme = useUpdateColorScheme();
+  const updateLanguage = useUpdateLanguage();
   const { toasts, push, dismiss } = useToasts();
   const [permission, setPermission] = useState(() =>
     typeof window.Notification === 'undefined' ? 'denied' : window.Notification.permission,
@@ -30,6 +32,15 @@ export function UserMenu() {
     }
     updateScheme.mutate(scheme, {
       onError: () => push({ color: 'red', title: t('auth.colorScheme.saveFailed') }),
+    });
+  };
+
+  const chooseLanguage = (language: Language) => {
+    if (language === me.language) {
+      return;
+    }
+    updateLanguage.mutate(language, {
+      onError: () => push({ color: 'red', title: t('auth.language.saveFailed') }),
     });
   };
 
@@ -92,6 +103,28 @@ export function UserMenu() {
                   }
                 >
                   {t(`auth.colorScheme.${scheme}`)}
+                </Menu.Item>
+              );
+            })}
+          </div>
+          <Menu.Divider />
+          {/* 2.6: el idioma se guarda en el usuario; cada idioma se nombra en su idioma (con su `lang`). */}
+          <div role="group" aria-label={t('auth.language.label')}>
+            <Menu.Label>{t('auth.language.label')}</Menu.Label>
+            {LANGUAGES.map((language) => {
+              const selected = me.language === language;
+              return (
+                <Menu.Item
+                  key={language}
+                  lang={language}
+                  aria-current={selected ? 'true' : undefined}
+                  closeMenuOnClick={false}
+                  onClick={() => chooseLanguage(language)}
+                  rightSection={
+                    selected ? <SelectedIcon size={NAV_ICON_SIZE} stroke={ICON_STROKE} aria-hidden /> : null
+                  }
+                >
+                  {t(`auth.language.${language}`)}
                 </Menu.Item>
               );
             })}

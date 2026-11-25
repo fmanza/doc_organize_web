@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import '../i18n';
+import { LANGUAGE_STORAGE_KEY, setLanguage } from '../i18n';
 
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
@@ -33,7 +33,14 @@ window.ResizeObserver = ResizeObserverStub;
 // Los desplegables de Mantine desplazan la opción activa a la vista.
 Element.prototype.scrollIntoView = vi.fn();
 
-afterEach(() => {
+// Los tests buscan los textos en español: jsdom anuncia el navegador como `en-US` y la app lo seguiría (2.6). Cada test
+// empieza en español y sin copia local del idioma, aunque el anterior lo cambiara.
+window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+await setLanguage('es');
+
+afterEach(async () => {
   cleanup();
   vi.unstubAllGlobals();
+  await setLanguage('es');
+  window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
 });
