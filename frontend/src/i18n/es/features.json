@@ -577,6 +577,23 @@
       "threshold": "Similitud mínima",
       "thresholdHelp": "Entre 0 y 1 (por defecto 0,75): cuanto más alto, menos valores y más seguros.",
       "semanticNotConfigured": "La IA no está configurada para «Embeddings (semántica)»: la construcción se hará sin semántica hasta que un administrador la configure en IA › Configuración."
+    },
+    "exclusions": {
+      "title": "Exclusiones del proyecto",
+      "intro": "Carpetas y patrones que quedan fuera de todo el proyecto: no se escanean y lo que siga en la caché no se usa en duplicados, contexto ni exportaciones. Se suman a las de cada carpeta y a los patrones de la ubicación.",
+      "editTitle": "Exclusiones del proyecto",
+      "editHint": "Marca las carpetas del origen que no forman parte del proyecto. Deben estar dentro de alguna carpeta del proyecto. Valen desde la siguiente ejecución.",
+      "browse": "Carpetas del origen",
+      "folders": "Carpetas excluidas",
+      "patterns": "Patrones de nombre",
+      "patternsHint": "Nombres de carpeta o fichero que se saltan en cualquier nivel, con * y ? (por ejemplo «borradores» o «*.tmp»). Sin «/». Pulsa Intro para añadir cada uno.",
+      "noPatterns": "Ninguno",
+      "system": "Excluir carpetas de sistema",
+      "systemHint": "Papeleras, miniaturas e instantáneas de NAS y Windows, y los temporales de Office:",
+      "systemOn": "Excluye las carpetas de sistema (papeleras, miniaturas, instantáneas y temporales).",
+      "systemOff": "No excluye las carpetas de sistema.",
+      "locationTitle": "La ubicación de origen excluye además estos patrones",
+      "editLabel": "Editar las exclusiones del proyecto"
     }
   },
   "runs": {
@@ -919,6 +936,11 @@
       "prompt": "Tokens de entrada",
       "completion": "Tokens de salida",
       "estimated": "≈: tokens estimados (el proxy no los informó)"
+    },
+    "exclusions": {
+      "title": "Exclusiones usadas",
+      "folders": "Carpetas: {{folders}}",
+      "patterns": "Patrones: {{patterns}}"
     }
   },
   "scan": {
@@ -1007,6 +1029,12 @@
       "reconvertBody": "Si se forzó la reconversión desde que la excluiste, se volverá a convertir (también el OCR); si no, lo ya convertido sale como «sin cambios».",
       "count_one": "{{count}} subcarpeta excluida",
       "count_other": "{{count}} subcarpetas excluidas"
+    },
+    "inherited": {
+      "title": "Exclusiones del proyecto",
+      "folders": "Carpetas: {{folders}}",
+      "patterns": "Patrones: {{patterns}}",
+      "link": "Cambiar en la página del proyecto"
     }
   },
   "scanErrors": {
@@ -1100,7 +1128,8 @@
     "allMimeTypes": "Todos los tipos",
     "mimeTypeOption_one": "{{type}} ({{formatted}})",
     "mimeTypeOption_other": "{{type}} ({{formatted}})",
-    "noMimeTypes": "Sin tipos: los documentos escaneados antes de la 1.5 no lo tienen"
+    "noMimeTypes": "Sin tipos: los documentos escaneados antes de la 1.5 no lo tienen",
+    "excludedNotice": "Este proyecto excluye carpetas o patrones: lo que de ellas siga en la caché aparece aquí, pero no se usa en duplicados, contexto ni exportaciones."
   },
   "duplicates": {
     "title": "Duplicados",
@@ -1120,7 +1149,9 @@
       "semanticHelp": "Versiones reescritas, borradores o plantillas con otros datos, con el modelo de duplicados.",
       "semanticUnavailable": "Necesita el modelo propio de «Duplicados por contenido» en IA › Configuración (lo configura un administrador).",
       "semanticThreshold": "Similitud mínima (0,5–1)",
-      "semanticPrivacy": "Se envía el texto completo de cada documento comparado al modelo de duplicados (con las credenciales redactadas). Los grupos por contenido nunca se aplican solos: revisa cada uno."
+      "semanticPrivacy": "Se envía el texto completo de cada documento comparado al modelo de duplicados (con las credenciales redactadas). Los grupos por contenido nunca se aplican solos: revisa cada uno.",
+      "extraExcluded": "Excluir además en este análisis",
+      "extraExcludedHelp": "Carpetas relativas al origen (por ejemplo «2019/archivo») que no se comparan solo en esta búsqueda. Pulsa Intro para añadir cada una."
     },
     "noPreview": "Aún no se han buscado duplicados en este proyecto.",
     "previewNotReady": "La búsqueda de duplicados aún no ha terminado o falló.",
@@ -1210,6 +1241,10 @@
       "left": "Izquierda",
       "right": "Derecha",
       "notConverted": "Hacen falta al menos dos documentos convertidos del grupo para compararlos."
+    },
+    "exclusionsChanged": {
+      "title": "Las exclusiones cambiaron",
+      "body": "Las exclusiones del proyecto cambiaron después de esta búsqueda: vuelve a buscar duplicados antes de aplicar."
     }
   },
   "context": {

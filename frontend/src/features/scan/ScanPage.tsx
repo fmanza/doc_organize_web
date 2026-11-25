@@ -29,7 +29,13 @@ import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
 import { useCapabilities } from '../admin/useSettings';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
-import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
+import {
+  canDo,
+  type ProjectOut,
+  useEnqueueRun,
+  useProject,
+  useProjectExclusions,
+} from '../projects/useProjects';
 import {
   DEFAULT_SCAN_OPTIONS,
   SCAN_OPTION_KEYS,
@@ -161,6 +167,45 @@ function RemoveFolderModal({
         </Group>
       </Stack>
     </Modal>
+  );
+}
+
+/**
+ * Exclusiones de todo el proyecto (2.7, ADR-017), en solo lectura: se suman a las de cada carpeta al escanear. Se
+ * cambian en la página del proyecto.
+ */
+function InheritedExclusions({ projectId }: { projectId: number }) {
+  const { t } = useTranslation();
+  const { data } = useProjectExclusions(projectId);
+  if (!data) {
+    return null;
+  }
+  const patterns = [
+    ...data.location_patterns,
+    ...data.ignore_patterns,
+    ...(data.exclude_system_folders ? data.system_patterns : []),
+  ];
+  if (data.excluded.length === 0 && patterns.length === 0) {
+    return null;
+  }
+  return (
+    <Alert color="gray" variant="light" mt="sm" title={t('scan.inherited.title')}>
+      <Stack gap={4}>
+        {data.excluded.length > 0 && (
+          <Text size="sm">
+            {t('scan.inherited.folders', { folders: data.excluded.map((e) => `/${e.path}`).join(', ') })}
+          </Text>
+        )}
+        {patterns.length > 0 && (
+          <Text size="sm">
+            {t('scan.inherited.patterns', { patterns: [...new Set(patterns)].join(', ') })}
+          </Text>
+        )}
+        <Anchor component={Link} to={`/projects/${projectId}#exclusions`} size="sm">
+          {t('scan.inherited.link')}
+        </Anchor>
+      </Stack>
+    </Alert>
   );
 }
 
@@ -450,6 +495,7 @@ export function ScanPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        <InheritedExclusions projectId={data.id} />
       </Card>
 
       <Card withBorder>

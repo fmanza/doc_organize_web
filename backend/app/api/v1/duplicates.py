@@ -100,4 +100,5 @@ def last_duplicates(project_id: int, user: CurrentUser, db: DbSession) -> Duplic
     return DuplicatesLastOut(
         preview=RunBrief.model_validate(last.preview) if last.preview else None,
         apply=RunBrief.model_validate(last.apply) if last.apply else None,
+        exclusions_changed=last.preview is not None and duplicates.exclusions_changed(db, access.project, last.preview),
     )

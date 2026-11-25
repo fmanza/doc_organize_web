@@ -10,12 +10,18 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.db.models import Location, Project
 from app.domain.locations.errors import FolderNotFoundError, InvalidRelativePathError, LocationUnavailableError
 from app.domain.locations.paths import ResolvedPath, resolve_within
+from app.domain.projects import exclusions as project_exclusions
+from app.domain.projects.exclusions import EffectiveExclusion, PathFilter
 from app.domain.projects.service import state_dir
 from app.jobs.context import JobContext, JobFailed
+
+if TYPE_CHECKING:
+    from app.domain.runs.operations import ExclusionSnapshot
 
 
 @dataclass(frozen=True)
@@ -176,3 +182,26 @@ def copy_tree(source: Path, target: Path, ctx: JobContext, phase: str, *, total:
             copied += 1
             ctx.progress(phase, copied, total)
     return copied
+
+
+def exclusion_filter(
+    ctx: JobContext,
+    project: Project,
+    roots: list[Path],
+    snapshot: ExclusionSnapshot | None = None,
+) -> PathFilter:
+    """Filtro de la exclusión efectiva del proyecto para las rutas de su caché (web 2.7, ADR-017).
+
+    Con ``snapshot`` (la copia que hizo la API al encolar, p. ej. la vista previa de duplicados) usa esa; si no, la
+    vigente al empezar el run. ``roots`` son las carpetas de origen resueltas (``source_folders``).
+    """
+    if snapshot is not None:
+        exclusion = EffectiveExclusion(paths=list(snapshot.paths), patterns=list(snapshot.patterns))
+    else:
+        with ctx.session_factory() as db:
+            fresh = db.get(Project, project.id)
+            exclusion = project_exclusions.effective(db, fresh) if fresh is not None else EffectiveExclusion()
+    if not exclusion.paths and not exclusion.patterns:
+        return PathFilter([], [], [])
+    location_root = resolve_in(project.source_location, "", ctx).absolute
+    return project_exclusions.path_filter(location_root, roots, exclusion)

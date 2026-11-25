@@ -226,6 +226,11 @@ def _collapse(paths: list[str]) -> list[str]:
     return sorted(kept, key=lambda p: (p.casefold(), p))
 
 
+#: Validación y colapso de exclusiones, también para las del proyecto (web 2.7, ``domain/projects/exclusions.py``).
+check_exclusion = _check_exclusion
+collapse_exclusions = _collapse
+
+
 def set_exclusions(
     db: Session,
     access: ProjectAccess,

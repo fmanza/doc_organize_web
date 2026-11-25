@@ -1119,6 +1119,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/exclusions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver las exclusiones del proyecto
+         * @description Carpetas y patrones excluidos en todo el proyecto, el preset de carpetas de sistema y los patrones de la
+         *     ubicación (cualquier miembro).
+         */
+        get: operations["get_project_exclusions_api_v1_projects__project_id__exclusions_get"];
+        /**
+         * Cambiar las exclusiones del proyecto
+         * @description Sustituye las carpetas y patrones excluidos en todo el proyecto y el preset de carpetas de sistema (``owner``).
+         *
+         *     Valen desde el siguiente run: escaneo, duplicados, contexto y exportaciones de la caché. Lo ya convertido de una
+         *     carpeta excluida sigue en la caché (sin «forzar») pero no se usa.
+         */
+        put: operations["set_project_exclusions_api_v1_projects__project_id__exclusions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/members": {
         parameters: {
             query?: never;
@@ -3026,6 +3054,10 @@ export interface components {
          *     Por contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el
          *     mismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la
          *     tarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).
+         *
+         *     Exclusiones (web 2.7, ADR-017): ``extra_excluded_paths`` (relativas a la ubicación de origen, dentro de alguna
+         *     carpeta del proyecto) se excluyen solo en este análisis; ``exclusion`` la copia la API al encolar con la exclusión
+         *     efectiva del proyecto más esas (lo que mande el cliente se descarta).
          */
         DedupPreviewParams: {
             /**
@@ -3033,6 +3065,8 @@ export interface components {
              * @default false
              */
             content: boolean;
+            /** Extra Excluded Paths */
+            extra_excluded_paths?: string[];
             /** Fuzzy Threshold */
             fuzzy_threshold?: number | null;
             /**
@@ -3248,7 +3282,29 @@ export interface components {
          */
         DuplicatesLastOut: {
             apply: components["schemas"]["RunBrief"] | null;
+            /**
+             * Exclusions Changed
+             * @description Las exclusiones del proyecto cambiaron después de la última búsqueda (2.7)
+             * @default false
+             */
+            exclusions_changed: boolean;
             preview: components["schemas"]["RunBrief"] | null;
+        };
+        /**
+         * ExclusionSnapshot
+         * @description Copia de la exclusión efectiva del proyecto al encolar (web 2.7, ADR-017): rutas relativas a la ubicación de
+         *     origen, patrones de nombre y la huella de lo que venía del proyecto (para saber si cambió después).
+         */
+        ExclusionSnapshot: {
+            /**
+             * Fingerprint
+             * @default
+             */
+            fingerprint: string;
+            /** Paths */
+            paths?: string[];
+            /** Patterns */
+            patterns?: string[];
         };
         /**
          * ExportAiBundleParams
@@ -4104,6 +4160,57 @@ export interface components {
             preview_run_id?: string | null;
         };
         /**
+         * ProjectExclusionPathOut
+         * @description Carpeta excluida del proyecto, relativa a la ubicación de origen; ``exists`` es ``None`` si no se pudo mirar.
+         */
+        ProjectExclusionPathOut: {
+            /** Exists */
+            exists: boolean | null;
+            /** Path */
+            path: string;
+        };
+        /**
+         * ProjectExclusionsOut
+         * @description Exclusiones del proyecto (web 2.7, ADR-017) y lo que se suma a ellas sin poder editarlo aquí.
+         *
+         *     Valen en escaneo, duplicados, contexto y exportaciones de la caché, junto con las subcarpetas excluidas de cada
+         *     carpeta guardada.
+         */
+        ProjectExclusionsOut: {
+            /** Exclude System Folders */
+            exclude_system_folders: boolean;
+            /** Excluded */
+            excluded: components["schemas"]["ProjectExclusionPathOut"][];
+            /** Ignore Patterns */
+            ignore_patterns: string[];
+            /**
+             * Location Patterns
+             * @description Patrones de la ubicación de origen (los fija un admin)
+             */
+            location_patterns: string[];
+            /**
+             * System Patterns
+             * @description Patrones del preset de carpetas de sistema
+             */
+            system_patterns: string[];
+        };
+        /**
+         * ProjectExclusionsUpdate
+         * @description Exclusiones del proyecto (sustituyen a las anteriores).
+         *
+         *     ``excluded``: hasta 100 carpetas relativas a la ubicación de origen, dentro de alguna carpeta del proyecto (las
+         *     redundantes se colapsan y las que ya no existen se conservan). ``ignore_patterns``: hasta 30 patrones de nombre
+         *     (``fnmatch``, sin «/» ni «\», como mucho 64 caracteres; no se admiten los que lo excluirían todo, como ``*``).
+         */
+        ProjectExclusionsUpdate: {
+            /** Exclude System Folders */
+            exclude_system_folders: boolean;
+            /** Excluded */
+            excluded?: string[];
+            /** Ignore Patterns */
+            ignore_patterns?: string[];
+        };
+        /**
          * ProjectMoveParams
          * @description Mover la carpeta de salidas a ``destination_parent/new_folder`` de una ubicación destino ``rw``.
          */
@@ -4693,7 +4800,8 @@ export interface components {
          *     ``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la
          *     ubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del
          *     run usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.
-         *     ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.
+         *     ``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto. Desde la 2.7 (ADR-017) las exclusiones
+         *     y los patrones son la exclusión efectiva: incluyen los del proyecto y el preset de carpetas de sistema.
          */
         ScanParams: {
             /** Confirm Name */
@@ -8821,6 +8929,128 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_project_exclusions_api_v1_projects__project_id__exclusions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectExclusionsOut"];
+                };
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proyecto no encontrado (o sin acceso) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_project_exclusions_api_v1_projects__project_id__exclusions_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectExclusionsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectExclusionsOut"];
+                };
+            };
+            /** @description Exclusión o patrón no válidos (invalid_exclusion, invalid_ignore_patterns) o ruta no válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No autenticado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol insuficiente en el proyecto o token CSRF no válido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Ubicación no disponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

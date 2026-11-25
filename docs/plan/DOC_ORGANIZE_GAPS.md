@@ -15,6 +15,7 @@ abre G42 y G43, menores. La medición en red del 2026-11-16 (`MEDICION_CONTEXTO_
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|
+| G47 | `CacheManager` (2.5.0) no borra entradas por ruta (solo `clear()` y `save_entries()`) ni filtra `load_cache_page`/`count_entries` por una lista de exclusiones (`EntryFilter`) | Lo que se excluye (web 2.7, [ADR-017](../adr/ADR-017-exclusion-efectiva.md)) sigue en la caché hasta un «forzar reconversión»: ocupa espacio, aparece en el listado de documentos y no se puede contar sin leer toda la caché | Filtro en memoria en el worker (duplicados, contexto, exportaciones) y aviso sin recuento en el listado de documentos | Borrar de la caché las entradas que cubre un `EntryFilter` (o una lista de rutas) y aceptar exclusiones en `load_cache_page`/`count_entries` | — |
 
 ## Resueltos
 

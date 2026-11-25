@@ -577,6 +577,23 @@
       "threshold": "Minimum similarity",
       "thresholdHelp": "Between 0 and 1 (default 0.75): the higher it is, the fewer and more reliable the values.",
       "semanticNotConfigured": "AI is not configured for “Embeddings (semantic)”: the build will run without semantics until an administrator configures it in AI › Settings."
+    },
+    "exclusions": {
+      "title": "Project exclusions",
+      "intro": "Folders and patterns left out of the whole project: they are not scanned, and anything still in the cache is not used for duplicates, context or exports. They add to each folder's exclusions and the location's patterns.",
+      "editTitle": "Project exclusions",
+      "editHint": "Tick the source folders that are not part of the project. They must be inside one of the project's folders. They apply from the next run.",
+      "browse": "Source folders",
+      "folders": "Excluded folders",
+      "patterns": "Name patterns",
+      "patternsHint": "Folder or file names skipped at any level, with * and ? (for example “drafts” or “*.tmp”). No “/”. Press Enter to add each one.",
+      "noPatterns": "None",
+      "system": "Exclude system folders",
+      "systemHint": "Recycle bins, thumbnails and snapshots from NAS devices and Windows, and Office temporary files:",
+      "systemOn": "System folders are excluded (recycle bins, thumbnails, snapshots and temporary files).",
+      "systemOff": "System folders are not excluded.",
+      "locationTitle": "The source location also excludes these patterns",
+      "editLabel": "Edit the project exclusions"
     }
   },
   "runs": {
@@ -919,6 +936,11 @@
       "prompt": "Input tokens",
       "completion": "Output tokens",
       "estimated": "≈: estimated tokens (the proxy did not report them)"
+    },
+    "exclusions": {
+      "title": "Exclusions used",
+      "folders": "Folders: {{folders}}",
+      "patterns": "Patterns: {{patterns}}"
     }
   },
   "scan": {
@@ -1007,6 +1029,12 @@
       "reconvertBody": "If reconversion was forced since you excluded it, it will be converted again (including OCR); otherwise, anything already converted shows as “unchanged”.",
       "count_one": "{{count}} excluded subfolder",
       "count_other": "{{count}} excluded subfolders"
+    },
+    "inherited": {
+      "title": "Project exclusions",
+      "folders": "Folders: {{folders}}",
+      "patterns": "Patterns: {{patterns}}",
+      "link": "Change on the project page"
     }
   },
   "scanErrors": {
@@ -1100,7 +1128,8 @@
     "allMimeTypes": "All types",
     "mimeTypeOption_one": "{{type}} ({{formatted}})",
     "mimeTypeOption_other": "{{type}} ({{formatted}})",
-    "noMimeTypes": "No types: documents scanned before 1.5 do not have one"
+    "noMimeTypes": "No types: documents scanned before 1.5 do not have one",
+    "excludedNotice": "This project excludes folders or patterns: anything from them still in the cache is listed here but not used for duplicates, context or exports."
   },
   "duplicates": {
     "title": "Duplicates",
@@ -1120,7 +1149,9 @@
       "semanticHelp": "Rewritten versions, drafts or templates with different data, using the duplicates model.",
       "semanticUnavailable": "Requires the dedicated “Duplicates by content” model in AI › Settings (set up by an administrator).",
       "semanticThreshold": "Minimum similarity (0.5–1)",
-      "semanticPrivacy": "The full text of each compared document is sent to the duplicates model (with credentials redacted). Content groups are never applied automatically: review each one."
+      "semanticPrivacy": "The full text of each compared document is sent to the duplicates model (with credentials redacted). Content groups are never applied automatically: review each one.",
+      "extraExcluded": "Also exclude in this search",
+      "extraExcludedHelp": "Folders relative to the source (for example “2019/archive”) that are left out of this search only. Press Enter to add each one."
     },
     "noPreview": "No duplicate search has been run in this project yet.",
     "previewNotReady": "The duplicate search has not finished yet or failed.",
@@ -1210,6 +1241,10 @@
       "left": "Left",
       "right": "Right",
       "notConverted": "At least two converted documents in the group are needed to compare them."
+    },
+    "exclusionsChanged": {
+      "title": "Exclusions have changed",
+      "body": "The project exclusions changed after this search: search for duplicates again before applying."
     }
   },
   "context": {

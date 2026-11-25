@@ -34,6 +34,7 @@ from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.listing import ListQuery, apply_search, apply_sort
 from app.domain.locations.paths import join_relative, normalize_relative, resolve_within
+from app.domain.projects import exclusions as project_exclusions
 from app.domain.projects import service as projects
 from app.domain.projects.errors import InvalidProjectError, ProjectForbiddenError, ProjectNotFoundError
 from app.domain.projects.folders import folder_name_problem, nested
@@ -58,6 +59,7 @@ from app.domain.runs.operations import (
     ContextReviewAgentParams,
     DedupApplyParams,
     DedupPreviewParams,
+    ExclusionSnapshot,
     ExportAiBundleParams,
     ExportSiteParams,
     ExportXlsxParams,
@@ -74,7 +76,8 @@ from app.domain.runs.operations import (
     queue_for,
     stored_params,
 )
-from app.domain.scan.errors import FolderNotSavedError, ForceRequiresAllFoldersError
+from app.domain.scan.errors import FolderNotSavedError, ForceRequiresAllFoldersError, InvalidExclusionError
+from app.domain.scan.folders import collapse_exclusions
 from app.domain.scan.options import check_options
 
 #: Vigencia de una vista previa para lanzar la operación real.
@@ -175,8 +178,20 @@ def _validate_scan(db: Session, project: Project, params: ScanParams, settings: 
     rows = db.scalars(
         select(ScannedFolder).where(ScannedFolder.project_id == project.id, ScannedFolder.subpath.in_(scanned))
     )
-    exclusions = {row.subpath: list(row.excluded_subpaths) for row in rows if row.excluded_subpaths}
-    patterns = list(project.source_location.ignore_patterns or [])
+    folder_exclusions = {row.subpath: list(row.excluded_subpaths) for row in rows if row.excluded_subpaths}
+    # Web 2.7 (ADR-017): la exclusión efectiva suma las del proyecto que caen en cada carpeta y sus patrones y preset.
+    effective = project_exclusions.effective(db, project)
+    exclusions: dict[str, list[str]] = {}
+    for subpath in scanned:
+        merged = collapse_exclusions([*folder_exclusions.get(subpath, []), *effective.for_folder(subpath)])
+        if len(merged) > project_exclusions.MAX_EFFECTIVE_PER_FOLDER:
+            raise InvalidExclusionError(
+                f"«{subpath or '(raíz)'}» tendría {len(merged)} exclusiones al sumar las del proyecto; "
+                f"el máximo es {project_exclusions.MAX_EFFECTIVE_PER_FOLDER}."
+            )
+        if merged:
+            exclusions[subpath] = merged
+    patterns = effective.patterns[: project_exclusions.MAX_EFFECTIVE_PATTERNS]
     params = params.model_copy(
         update={
             "folders": folders,
@@ -187,6 +202,24 @@ def _validate_scan(db: Session, project: Project, params: ScanParams, settings: 
     )
     check_options(db, settings, params)
     return params
+
+
+def _validate_dedup_preview(
+    db: Session, project: Project, params: DedupPreviewParams, settings: Settings
+) -> DedupPreviewParams:
+    """Copia la exclusión efectiva del proyecto más las de este análisis (web 2.7, ADR-017).
+
+    Raises:
+        InvalidExclusionError, InvalidRelativePathError, LocationUnavailableError: ``extra_excluded_paths`` no válidas.
+    """
+    effective = project_exclusions.effective(db, project)
+    extra = project_exclusions.check_paths(project, params.extra_excluded_paths, settings, limit=50)
+    snapshot = ExclusionSnapshot(
+        paths=collapse_exclusions([*effective.paths, *extra]),
+        patterns=effective.patterns[: project_exclusions.MAX_EFFECTIVE_PATTERNS],
+        fingerprint=effective.fingerprint(),
+    )
+    return params.model_copy(update={"extra_excluded_paths": extra, "exclusion": snapshot})
 
 
 def enqueue(
@@ -225,6 +258,8 @@ def enqueue(
         params = _validate_scan(db, project, params, settings)
     if isinstance(params, DedupApplyParams):
         params = duplicates.validate_apply(db, project, params)
+    if isinstance(params, DedupPreviewParams):
+        params = _validate_dedup_preview(db, project, params, settings)
     if isinstance(params, ContextBuildParams):
         params = context.validate_build(db, settings, project, params, actor=actor)
     if isinstance(params, ExportXlsxParams) and params.kind == "context_documents":

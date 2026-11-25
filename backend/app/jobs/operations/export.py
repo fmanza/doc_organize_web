@@ -29,7 +29,7 @@ from app.integrations import doc_organize as library
 from app.integrations.doc_organize import ExportCancelled, ExportRequest
 from app.integrations.doc_organize.export import ProgressFn
 from app.jobs.context import JobCancelled, JobContext, JobFailed
-from app.jobs.operations._files import project_paths
+from app.jobs.operations._files import exclusion_filter, project_paths
 from app.jobs.operations.common import require_project
 from app.jobs.operations.context import context_folders
 
@@ -50,9 +50,10 @@ def _request(ctx: JobContext, project: Project) -> ExportRequest:
     source = project.source_location
     folders = sorted(project.source_subpaths, key=str.casefold)
     timeout = ctx.settings.location_probe_timeout_seconds
-    namer = DocumentNamer(
-        [(subpath, folder_roots(source.container_path, subpath, timeout=timeout)) for subpath in folders], source.name
-    )
+    roots = [(subpath, folder_roots(source.container_path, subpath, timeout=timeout)) for subpath in folders]
+    namer = DocumentNamer(roots, source.name)
+    # Web 2.7 (ADR-017): lo excluido que siga en la caché no se exporta.
+    excluder = exclusion_filter(ctx, project, [Path(root) for _, found in roots for root in found])
     return ExportRequest(
         output_root=paths.output.absolute,
         states=[folder_state(paths.state, subpath) for subpath in folders],
@@ -60,6 +61,7 @@ def _request(ctx: JobContext, project: Project) -> ExportRequest:
         clean=namer.text,
         project_name=project.name,
         created_at=project.created_at,
+        skip=None if excluder.empty else excluder.covers,
     )
 
 

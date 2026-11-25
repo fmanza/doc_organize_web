@@ -27,3 +27,12 @@ class SourceReadOnlyError(AppError):
     status = 422
     title = "La ubicación de origen es de solo lectura"
     code = "location_read_only"
+
+
+class ExclusionsChangedError(AppError):
+    """Las exclusiones del proyecto cambiaron después de la vista previa de duplicados (web 2.7, ADR-017): lo que se
+    movería ya no es lo que se vio."""
+
+    status = 409
+    title = "Las exclusiones cambiaron después del análisis"
+    code = "exclusions_changed"

@@ -104,12 +104,15 @@ class SourceFolder:
         root: Carpeta real (resuelta) en el contenedor.
         cache_db: ``cache.db`` de la carpeta en el estado del proyecto.
         conversion_dir: Carpeta de sus conversiones (``Conversión/<carpeta>``).
+        skip: Si una ruta absoluta de la caché queda fuera por la exclusión efectiva del proyecto (web 2.7, ADR-017):
+            sigue en la caché, pero no se usa para el contexto ni lo que lo lee.
     """
 
     folder: str
     root: Path
     cache_db: Path
     conversion_dir: Path
+    skip: Callable[[str], bool] | None = field(default=None, compare=False, repr=False)
 
 
 def location_root(folder: SourceFolder) -> Path:
@@ -697,6 +700,8 @@ def converted_documents(folders: list[SourceFolder]) -> tuple[list[Any], int]:
                 continue
             if not Path(entry.file_path).is_relative_to(folder.root):
                 continue
+            if folder.skip is not None and folder.skip(entry.file_path):
+                continue
             markdown, json_path = resolve_output_paths(entry.file_path, folder.conversion_dir, [str(folder.root)])
             if not all(_is_file(str(path)) for path in (entry.file_path, markdown, json_path)):
                 missing += 1
@@ -762,8 +767,14 @@ def context_freshness(
         entries = asyncio.run(load_cache_entries(caches)) if caches else []
     except (DocOrganizeError, OSError) as exc:
         raise DocOrganizeOperationError("No se pudieron leer las cachés del proyecto.") from exc
-    roots = [folder.root for folder in folders]
-    in_project = [e for e in entries if any(Path(e.file_path).is_relative_to(root) for root in roots)]
+    in_project = [
+        e
+        for e in entries
+        if any(
+            Path(e.file_path).is_relative_to(folder.root) and not (folder.skip is not None and folder.skip(e.file_path))
+            for folder in folders
+        )
+    ]
     report = check_context_freshness(project, context, in_project)
     return Freshness(
         changed=list(report.changed),

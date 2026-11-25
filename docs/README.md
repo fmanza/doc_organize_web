@@ -47,7 +47,8 @@ contenido (mismo texto o, con IA, contenido parecido), y la IA se configura y se
   [ADR-008](adr/ADR-008-progreso-sse.md), [ADR-010](adr/ADR-010-sitio-de-contexto-aislado.md),
   [ADR-011](adr/ADR-011-modelos-sin-internet.md), [ADR-012](adr/ADR-012-ajustes-administrables.md),
   [ADR-013](adr/ADR-013-multi-tenant.md), [ADR-014](adr/ADR-014-uso-de-servicios-de-ia.md),
-  [ADR-015](adr/ADR-015-endurecimiento.md) y [ADR-016](adr/ADR-016-borrado-de-usuarios.md); propuestas para fases siguientes en
+  [ADR-015](adr/ADR-015-endurecimiento.md), [ADR-016](adr/ADR-016-borrado-de-usuarios.md) y
+  [ADR-017](adr/ADR-017-exclusion-efectiva.md); propuestas para fases siguientes en
   [ADRS_PROPUESTOS](plan/ADRS_PROPUESTOS.md).
 - Plan: [README del plan](plan/README.md), [arquitectura propuesta](plan/ARQUITECTURA_PROPUESTA.md),
   [ROADMAP](plan/ROADMAP.md), [huecos de doc_organize](plan/DOC_ORGANIZE_GAPS.md) y [paridad](plan/PARIDAD.md).

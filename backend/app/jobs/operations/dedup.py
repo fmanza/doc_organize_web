@@ -32,7 +32,7 @@ from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.dedup import DedupDocument, DedupGroup
 from app.jobs.context import JobCancelled, JobContext, JobFailed
-from app.jobs.operations._files import project_paths, require_rw, resolve_in, source_folders
+from app.jobs.operations._files import exclusion_filter, project_paths, require_rw, resolve_in, source_folders
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
 from app.jobs.operations.context import ai_connection, context_folders
 
@@ -56,18 +56,25 @@ _FORMULA: Final = re.compile(r"^[=+\-@\t\r]")
 # --- vista previa ----------------------------------------------------------------------------------------------------
 
 
-def _documents(ctx: JobContext, project: Project, state: Path) -> tuple[list[DedupDocument], DocumentNamer, int]:
-    """Documentos de las cachés que siguen en el origen, el traductor de rutas y cuántos de la caché ya no están."""
+def _documents(
+    ctx: JobContext, project: Project, state: Path, params: DedupPreviewParams
+) -> tuple[list[DedupDocument], DocumentNamer, int, int]:
+    """Documentos de las cachés que siguen en el origen, el traductor de rutas, cuántos de la caché ya no están y
+    cuántos quedan fuera por la exclusión efectiva (web 2.7, ADR-017: siguen en la caché pero no se comparan)."""
     folders = source_folders(ctx, project)
     namer = DocumentNamer([(subpath, [root]) for subpath, root in folders], project.source_location.name)
+    excluder = exclusion_filter(ctx, project, [root for _, root in folders], params.exclusion)
     cached = library.dedup.cache_documents(folder_cache(state, subpath) for subpath, _ in folders)
     docs: list[DedupDocument] = []
-    stale = 0
+    stale = excluded = 0
     for index, (path, sha256) in enumerate(cached, start=1):
         if index % 500 == 0:
             ctx.check_cancelled()
             ctx.progress("dedup_scan", index, len(cached))
         if namer.split(path) is None:
+            continue
+        if not excluder.empty and excluder.covers(path):
+            excluded += 1
             continue
         try:
             info = os.lstat(path)
@@ -79,7 +86,7 @@ def _documents(ctx: JobContext, project: Project, state: Path) -> tuple[list[Ded
             continue
         docs.append(DedupDocument(path=path, size_bytes=info.st_size, modified_time=info.st_mtime, sha256=sha256))
     ctx.progress("dedup_scan", len(cached), len(cached))
-    return docs, namer, stale
+    return docs, namer, stale, excluded
 
 
 def _member(namer: DocumentNamer, doc: DedupDocument, canonical: str) -> dict[str, Any]:
@@ -135,7 +142,7 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
     project = require_project(project)
     paths = project_paths(project, ctx)
     ctx.progress("dedup_scan", 0, None)
-    docs, namer, stale = _documents(ctx, project, paths.state)
+    docs, namer, stale, excluded = _documents(ctx, project, paths.state, params)
     ctx.check_cancelled()
     ctx.progress("dedup_find", 0, None)
     groups = library.dedup.find_groups(docs)
@@ -196,6 +203,7 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
             g.members[0].size_bytes * (len(g.members) - 1) for g in groups if g.reason == "exact_duplicate"
         ),
         "stale_cache": stale,
+        "excluded": excluded,
         "fuzzy_threshold": params.fuzzy_threshold,
     }
     if content is not None:  # web 2.2: solo si se pidió la búsqueda por contenido

@@ -67,6 +67,8 @@ class ExportRequest:
     created_at: datetime | None = None
     #: Raíces de escaneo para las claves de los documentos (``<carpeta>/<ruta>``; Excel del contexto, rc2).
     roots: tuple[str, ...] = ()
+    #: Si una ruta absoluta de la caché queda fuera por la exclusión efectiva (web 2.7, ADR-017): no se exporta.
+    skip: Callable[[str], bool] | None = field(default=None, compare=False, repr=False)
     #: Entradas ya cargadas (la vista previa y la escritura del ZIP leen las cachés una sola vez).
     loaded: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
@@ -87,6 +89,9 @@ def _entries(request: ExportRequest) -> list[CacheEntry]:
         return cached
     caches = [ProjectLayout(request.output_root, state_root=state).cache_db for state in request.states]
     entries = asyncio.run(load_cache_entries(caches))
+    if request.skip is not None:
+        skip = request.skip
+        entries = [entry for entry in entries if not skip(entry.file_path)]
     request.loaded["entries"] = [
         entry.model_copy(
             update={

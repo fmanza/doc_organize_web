@@ -38,7 +38,7 @@ from app.integrations import doc_organize as library
 from app.integrations.doc_organize.ai import AiConnection, FamilyKey
 from app.integrations.doc_organize.context import ContextDoc, ContextOutcome, ContextRequest, SourceFolder
 from app.jobs.context import JobCancelled, JobContext, JobFailed
-from app.jobs.operations._files import TreeSize, measure, project_paths, require_rw, source_folders
+from app.jobs.operations._files import TreeSize, exclusion_filter, measure, project_paths, require_rw, source_folders
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
 
 #: Documentos fallidos que se guardan en el resultado del run (el total va en ``failed``).
@@ -230,6 +230,9 @@ def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[Sourc
     output = paths.output.absolute
     folders = source_folders(ctx, project)
     namer = DocumentNamer([(subpath, [root]) for subpath, root in folders], project.source_location.name)
+    # Web 2.7 (ADR-017): lo excluido que siga en la caché no entra en el contexto ni en lo que lo lee.
+    excluder = exclusion_filter(ctx, project, [root for _, root in folders])
+    skip = None if excluder.empty else excluder.covers
     return (
         output,
         [
@@ -238,6 +241,7 @@ def context_folders(ctx: JobContext, project: Project) -> tuple[Path, list[Sourc
                 root=root,
                 cache_db=folder_cache(paths.state, subpath),
                 conversion_dir=library.conversion_dir(output, paths.state, subpath),
+                skip=skip,
             )
             for subpath, root in folders
         ],

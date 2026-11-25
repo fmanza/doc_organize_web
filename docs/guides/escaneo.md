@@ -20,8 +20,29 @@ escaneo (enlaza a la ejecución) y si ha dejado de existir en el origen («no ex
 - **Excluir subcarpetas** (propietarios): abre el explorador limitado a esa carpeta para marcar las subcarpetas que el
   escaneo no recorre (hasta 50). Salen como «Excluida» y se pueden quitar. Lo ya convertido de ellas se conserva;
   «Forzar reconversión» lo borra, y si después dejas de excluirlas se vuelve a convertir.
-- Tampoco se escanean los [nombres que excluye la ubicación de origen](ubicaciones.md#nombres-que-no-se-escanean).
-  Un escaneo en marcha sigue con las exclusiones y los patrones que había al lanzarlo.
+- Tampoco se escanean los [nombres que excluye la ubicación de origen](ubicaciones.md#nombres-que-no-se-escanean)
+  ni las [exclusiones del proyecto](#excluir-carpetas). Un escaneo en marcha sigue con las exclusiones y los patrones
+  que había al lanzarlo.
+
+## Excluir carpetas
+
+Desde la 2.7, una carpeta excluida queda **fuera del proyecto a todos los efectos**: no se escanea y, si ya estaba
+convertida, lo que siga en la caché no se usa en duplicados, contexto (ni en borradores, agentes, calidad o entrega) ni
+en las exportaciones ZIP y Excel. Se suman cuatro niveles:
+
+| Nivel | Dónde | Quién |
+|---|---|---|
+| **Proyecto** | Página del proyecto → «Exclusiones del proyecto»: carpetas (dentro de alguna carpeta del proyecto, hasta 100) y patrones de nombre (hasta 30, como `borradores` o `*.tmp`; no se admiten `*` ni `*.*`) | Propietario |
+| **Carpeta** | «Excluir subcarpetas» en la tabla de carpetas | Propietario |
+| **Ubicación** | [Nombres que no se escanean](ubicaciones.md#nombres-que-no-se-escanean) | Administrador |
+| **Carpetas de sistema** | Interruptor «Excluir carpetas de sistema» del proyecto: `#recycle`, `@eaDir`, `.snapshot`, `~snapshot`, `$RECYCLE.BIN`, `System Volume Information`, `Thumbs.db`, `desktop.ini` y los temporales `~$*` de Office | Propietario. Activado en los proyectos nuevos; en los anteriores a la 2.7, desactivado |
+
+- La pantalla de escaneo muestra, debajo de las carpetas, las exclusiones del proyecto que se suman a las de cada una.
+- El detalle de cada escaneo y de cada búsqueda de duplicados dice qué exclusiones usó.
+- **Lo ya convertido sigue en la caché** hasta un «Forzar reconversión»: no se usa, pero ocupa espacio y aparece en el
+  [listado de documentos](documentos.md), que avisa de ello. El índice de búsqueda de texto sigue encontrándolo hasta
+  forzar la reconversión.
+- Un contexto construido antes de excluir una carpeta aparece como desfasado hasta reconstruirlo.
 
 ## Opciones
 

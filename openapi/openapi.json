@@ -3062,12 +3062,22 @@
       },
       "DedupPreviewParams": {
         "additionalProperties": false,
-        "description": "Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).\n\n``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea\nduplicado exacto ni conflicto de versión.\n\nPor contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el\nmismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la\ntarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).",
+        "description": "Vista previa de duplicados de todas las carpetas de origen (no toca ficheros).\n\n``fuzzy_threshold`` (50–100) añade los grupos por nombre parecido (``WRatio`` de RapidFuzz) sobre lo que no sea\nduplicado exacto ni conflicto de versión.\n\nPor contenido (web 2.2, doc_organize 2.2), sobre lo que siga sin agrupar y ya esté convertido: ``content`` busca el\nmismo texto en ficheros distintos (sin IA) y ``semantic_threshold`` (0,5–1) además el contenido parecido con la\ntarea de IA ``dedup`` (necesita su propio modelo; implica ``content``).\n\nExclusiones (web 2.7, ADR-017): ``extra_excluded_paths`` (relativas a la ubicación de origen, dentro de alguna\ncarpeta del proyecto) se excluyen solo en este análisis; ``exclusion`` la copia la API al encolar con la exclusión\nefectiva del proyecto más esas (lo que mande el cliente se descarta).",
         "properties": {
           "content": {
             "default": false,
             "title": "Content",
             "type": "boolean"
+          },
+          "extra_excluded_paths": {
+            "items": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Extra Excluded Paths",
+            "type": "array"
           },
           "fuzzy_threshold": {
             "anyOf": [
@@ -3519,6 +3529,12 @@
               }
             ]
           },
+          "exclusions_changed": {
+            "default": false,
+            "description": "Las exclusiones del proyecto cambiaron después de la última búsqueda (2.7)",
+            "title": "Exclusions Changed",
+            "type": "boolean"
+          },
           "preview": {
             "anyOf": [
               {
@@ -3535,6 +3551,40 @@
           "apply"
         ],
         "title": "DuplicatesLastOut",
+        "type": "object"
+      },
+      "ExclusionSnapshot": {
+        "additionalProperties": false,
+        "description": "Copia de la exclusión efectiva del proyecto al encolar (web 2.7, ADR-017): rutas relativas a la ubicación de\norigen, patrones de nombre y la huella de lo que venía del proyecto (para saber si cambió después).",
+        "properties": {
+          "fingerprint": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Fingerprint",
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 3100,
+            "title": "Paths",
+            "type": "array"
+          },
+          "patterns": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Patterns",
+            "type": "array"
+          }
+        },
+        "title": "ExclusionSnapshot",
         "type": "object"
       },
       "ExportAiBundleParams": {
@@ -5436,6 +5486,113 @@
         "title": "ProjectDeleteParams",
         "type": "object"
       },
+      "ProjectExclusionPathOut": {
+        "description": "Carpeta excluida del proyecto, relativa a la ubicación de origen; ``exists`` es ``None`` si no se pudo mirar.",
+        "properties": {
+          "exists": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exists"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "exists"
+        ],
+        "title": "ProjectExclusionPathOut",
+        "type": "object"
+      },
+      "ProjectExclusionsOut": {
+        "description": "Exclusiones del proyecto (web 2.7, ADR-017) y lo que se suma a ellas sin poder editarlo aquí.\n\nValen en escaneo, duplicados, contexto y exportaciones de la caché, junto con las subcarpetas excluidas de cada\ncarpeta guardada.",
+        "properties": {
+          "exclude_system_folders": {
+            "title": "Exclude System Folders",
+            "type": "boolean"
+          },
+          "excluded": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectExclusionPathOut"
+            },
+            "title": "Excluded",
+            "type": "array"
+          },
+          "ignore_patterns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignore Patterns",
+            "type": "array"
+          },
+          "location_patterns": {
+            "description": "Patrones de la ubicación de origen (los fija un admin)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Location Patterns",
+            "type": "array"
+          },
+          "system_patterns": {
+            "description": "Patrones del preset de carpetas de sistema",
+            "items": {
+              "type": "string"
+            },
+            "title": "System Patterns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "excluded",
+          "ignore_patterns",
+          "exclude_system_folders",
+          "system_patterns",
+          "location_patterns"
+        ],
+        "title": "ProjectExclusionsOut",
+        "type": "object"
+      },
+      "ProjectExclusionsUpdate": {
+        "additionalProperties": false,
+        "description": "Exclusiones del proyecto (sustituyen a las anteriores).\n\n``excluded``: hasta 100 carpetas relativas a la ubicación de origen, dentro de alguna carpeta del proyecto (las\nredundantes se colapsan y las que ya no existen se conservan). ``ignore_patterns``: hasta 30 patrones de nombre\n(``fnmatch``, sin «/» ni «\\», como mucho 64 caracteres; no se admiten los que lo excluirían todo, como ``*``).",
+        "properties": {
+          "exclude_system_folders": {
+            "title": "Exclude System Folders",
+            "type": "boolean"
+          },
+          "excluded": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Excluded",
+            "type": "array"
+          },
+          "ignore_patterns": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Ignore Patterns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exclude_system_folders"
+        ],
+        "title": "ProjectExclusionsUpdate",
+        "type": "object"
+      },
       "ProjectMoveParams": {
         "additionalProperties": false,
         "description": "Mover la carpeta de salidas a ``destination_parent/new_folder`` de una ubicación destino ``rw``.",
@@ -7011,7 +7168,7 @@
       },
       "ScanParams": {
         "additionalProperties": false,
-        "description": "Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).\n\n``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que\nya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa\n(``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.\n\n``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la\nubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del\nrun usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.\n``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto.",
+        "description": "Escanear y convertir carpetas de origen del proyecto (``ScanOptions`` de doc_organize, G13).\n\n``folders`` vacío = todas las carpetas de origen. Con ``force`` (vacía la caché y **borra** las salidas de lo que\nya no está en el origen) son obligatorias todas las carpetas, el rol ``owner`` y el patrón de vista previa\n(``dry_run``, ``preview_run_id``, ``confirm_name``); sin ``force`` no hay vista previa.\n\n``exclusions`` (subcarpetas excluidas de cada carpeta, relativas a ella) e ``ignore_patterns`` (patrones de la\nubicación de origen) los copia la API al encolar (el valor del cliente se descarta, 1.4.0): todos los tramos del\nrun usan esa copia aunque se cambien después. Con ``force``, lo que cubren se borra como si ya no existiera.\n``capture_owner`` (1.5.0) también lo copia la API, del ajuste del proyecto. Desde la 2.7 (ADR-017) las exclusiones\ny los patrones son la exclusión efectiva: incluyen los del proyecto y el preset de carpetas de sistema.",
         "properties": {
           "confirm_name": {
             "anyOf": [
@@ -7037,7 +7194,7 @@
                 "minLength": 1,
                 "type": "string"
               },
-              "maxItems": 50,
+              "maxItems": 150,
               "type": "array"
             },
             "maxProperties": 20,
@@ -7072,7 +7229,7 @@
               "minLength": 1,
               "type": "string"
             },
-            "maxItems": 30,
+            "maxItems": 100,
             "title": "Ignore Patterns",
             "type": "array"
           },
@@ -12885,6 +13042,124 @@
         "summary": "Última búsqueda y aplicación de duplicados",
         "tags": [
           "duplicates"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exclusions": {
+      "get": {
+        "description": "Carpetas y patrones excluidos en todo el proyecto, el preset de carpetas de sistema y los patrones de la\nubicación (cualquier miembro).",
+        "operationId": "get_project_exclusions_api_v1_projects__project_id__exclusions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectExclusionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Proyecto no encontrado (o sin acceso)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ver las exclusiones del proyecto",
+        "tags": [
+          "projects"
+        ]
+      },
+      "put": {
+        "description": "Sustituye las carpetas y patrones excluidos en todo el proyecto y el preset de carpetas de sistema (``owner``).\n\nValen desde el siguiente run: escaneo, duplicados, contexto y exportaciones de la caché. Lo ya convertido de una\ncarpeta excluida sigue en la caché (sin «forzar») pero no se usa.",
+        "operationId": "set_project_exclusions_api_v1_projects__project_id__exclusions_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectExclusionsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectExclusionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Exclusión o patrón no válidos (invalid_exclusion, invalid_ignore_patterns) o ruta no válida"
+          },
+          "401": {
+            "description": "No autenticado"
+          },
+          "403": {
+            "description": "Rol insuficiente en el proyecto o token CSRF no válido"
+          },
+          "404": {
+            "description": "Ubicación o carpeta no encontrada (también si la ruta sale de la ubicación)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Ubicación no disponible"
+          }
+        },
+        "summary": "Cambiar las exclusiones del proyecto",
+        "tags": [
+          "projects"
         ]
       }
     },

@@ -323,6 +323,12 @@ class Project(Base):
     #: Guardar la cuenta propietaria de cada fichero al escanear (1.5.0, ``ScanOptions.capture_owner``): dato personal,
     #: solo lo activa el ``owner`` y es fijo por proyecto para que un escaneo no lo borre por olvidar la opción.
     capture_owner: Mapped[bool] = mapped_column(default=False, server_default=false())
+    #: Exclusiones del proyecto (web 2.7, migración ``0033``, ADR-017): rutas relativas a la ubicación de origen y
+    #: patrones de nombre que valen para todas sus carpetas, y el preset de carpetas de sistema (``SYSTEM_PATTERNS``).
+    #: Se suman a las de cada carpeta guardada y a los patrones de la ubicación en escaneo, duplicados y contexto.
+    excluded_paths: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    ignore_patterns: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    exclude_system_folders: Mapped[bool] = mapped_column(default=False, server_default=false())
     #: doc_organize 2.0 (migración ``0017``): redactar credenciales de lo que sale hacia la IA (D7), qué hacer con las
     #: versiones de un documento al construir el contexto (D8: ``mark`` en la web) y sub-fase semántica (D13, opt-in).
     ai_redact_credentials: Mapped[bool] = mapped_column(default=True, server_default=true())

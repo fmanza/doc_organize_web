@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import AuditEntry, Location, Run, Tenant, User, utcnow
+from app.domain.projects.exclusions import SYSTEM_PATTERNS
 from tests.conftest import USER_PASSWORD, login_as, project_payload
 
 
@@ -173,8 +174,9 @@ def test_the_run_copies_exclusions_and_patterns_when_enqueued(
 
     assert response.status_code == 202, response.text
     params = response.json()["params"]
-    # Lo que mande el cliente se descarta: manda lo guardado.
-    assert params["exclusions"] == {"2024": ["fotos"]} and params["ignore_patterns"] == ["~$*"]
+    # Lo que mande el cliente se descarta: manda lo guardado (2.7: más el preset de carpetas de sistema del proyecto).
+    assert params["exclusions"] == {"2024": ["fotos"]}
+    assert params["ignore_patterns"] == ["~$*", *[p for p in SYSTEM_PATTERNS if p != "~$*"]]
 
 
 def test_changing_exclusions_invalidates_a_force_preview(
