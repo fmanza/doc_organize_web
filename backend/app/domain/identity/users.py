@@ -356,24 +356,20 @@ def _move(db: Session, user: User, tenant_id: int, role: TenantRole, *, actor: U
     )
 
 
-def update_user(
-    db: Session, user: User, changes: UserChanges, *, actor: User, settings: Settings, ctx: RequestContext
-) -> User:
-    """Aplica ``changes`` a ``user``.
+@dataclass(frozen=True)
+class _UpdatePlan:
+    """Qué cambia en una edición de usuario, calculado antes de tocar nada."""
 
-    Desactivar, restablecer la contraseña, cambiar de rol o de tenant revoca las sesiones del usuario; reactivar,
-    restablecer la contraseña o ``unlock`` quitan el bloqueo por intentos.
+    moving: bool
+    new_tenant: int
+    instance_change: bool
+    new_role: TenantRole | None
+    loses_instance_admin: bool
+    loses_manager: bool
 
-    Raises:
-        SelfModificationError: Se intenta desactivar, cambiar de rol o de tenant, o quitarse ser admin de instancia a
-            sí mismo.
-        LastAdminError: Quedaría la instancia sin administradores activos.
-        LastTenantManagerError: El tenant se quedaría sin quien gestione sus usuarios.
-        PermissionEscalationError: ``user`` tiene permisos que ``actor`` no tiene (o es admin de instancia), se da un
-            rol con permisos que ``actor`` no tiene, o algo que solo hace el admin de instancia (marcar admins de
-            instancia, mover de tenant).
-        PasswordPolicyError: La contraseña nueva no cumple la política.
-    """
+
+def _plan_update(db: Session, user: User, changes: UserChanges, actor: User) -> _UpdatePlan:
+    """Calcula el cambio y comprueba los permisos de ``actor`` y la auto-modificación."""
     check_can_manage(actor, user)
     moving = changes.tenant_id is not None and changes.tenant_id != user.tenant_id
     new_tenant = changes.tenant_id if moving and changes.tenant_id is not None else user.tenant_id
@@ -395,81 +391,141 @@ def update_user(
         and USERS_MANAGE in (user.role.permissions or [])
         and (deactivating or moving or (new_role is not None and USERS_MANAGE not in (new_role.permissions or [])))
     )
-    if loses_instance_admin or loses_manager:
+    return _UpdatePlan(moving, new_tenant, instance_change, new_role, loses_instance_admin, loses_manager)
+
+
+def _guard_last_admins(db: Session, user: User, plan: _UpdatePlan, actor: User) -> None:
+    """La instancia no se queda sin administradores activos ni el tenant sin quien gestione sus usuarios."""
+    if plan.loses_instance_admin or plan.loses_manager:
         _lock_user_row(db, user)  # F0: contar ya con el bloqueo de escritura tomado
-    if loses_instance_admin and _active_instance_admins(db) <= 1:
+    if plan.loses_instance_admin and _active_instance_admins(db) <= 1:
         raise LastAdminError()
-    if loses_manager and not actor.is_instance_admin and _managers(db, user.tenant_id, excluding=user.id) == 0:
+    if plan.loses_manager and not actor.is_instance_admin and _managers(db, user.tenant_id, excluding=user.id) == 0:
         raise LastTenantManagerError()
 
+
+def _apply_profile_and_role(
+    db: Session, user: User, changes: UserChanges, plan: _UpdatePlan, *, actor: User, ctx: RequestContext
+) -> list[str]:
+    """Nombre visible, rol, tenant y admin de instancia; devuelve los campos cambiados que se auditan juntos."""
     changed: list[str] = []
     if changes.display_name is not None and changes.display_name.strip() != user.display_name:
         user.display_name = changes.display_name.strip() or user.username
         changed.append("display_name")
-    if moving and new_role is not None:
-        _move(db, user, new_tenant, new_role, actor=actor, ctx=ctx)
-    elif new_role is not None:
-        user.role_id = new_role.id
+    if plan.moving and plan.new_role is not None:
+        _move(db, user, plan.new_tenant, plan.new_role, actor=actor, ctx=ctx)
+    elif plan.new_role is not None:
+        user.role_id = plan.new_role.id
         revoke_user_sessions(db, user.id)
         changed.append("role")
-    if instance_change and changes.is_instance_admin is not None:
+    if plan.instance_change and changes.is_instance_admin is not None:
         user.is_instance_admin = changes.is_instance_admin
         revoke_user_sessions(db, user.id)
         changed.append("is_instance_admin")
-    if changes.password is not None:
-        check_policy(changes.password, username=user.username, min_length=settings.password_min_length)
-        user.password_hash = hash_password(changes.password)
-        user.password_changed_at = utcnow()
-        user.failed_attempts = 0
-        user.locked_until = None
-        revoke_user_sessions(db, user.id)
-        audit.record(
-            db,
-            action=AuditAction.USER_PASSWORD_RESET,
-            ctx=ctx,
-            actor_id=actor.id,
-            target_type="user",
-            target_id=user.id,
-        )
-    if changes.unlock and (user.locked_until is not None or user.failed_attempts):
+    return changed
+
+
+def _reset_password(
+    db: Session, user: User, password: str, *, actor: User, settings: Settings, ctx: RequestContext
+) -> None:
+    """Contraseña nueva: quita el bloqueo por intentos y revoca las sesiones."""
+    check_policy(password, username=user.username, min_length=settings.password_min_length)
+    user.password_hash = hash_password(password)
+    user.password_changed_at = utcnow()
+    user.failed_attempts = 0
+    user.locked_until = None
+    revoke_user_sessions(db, user.id)
+    audit.record(
+        db,
+        action=AuditAction.USER_PASSWORD_RESET,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+    )
+
+
+def _unlock(db: Session, user: User, *, actor: User, ctx: RequestContext) -> None:
+    """Quita el bloqueo por intentos, si lo hay."""
+    if user.locked_until is not None or user.failed_attempts:
         user.failed_attempts = 0
         user.locked_until = None
         audit.record(
             db, action=AuditAction.USER_UNLOCK, ctx=ctx, actor_id=actor.id, target_type="user", target_id=user.id
         )
+
+
+def _set_active(db: Session, user: User, active: bool, reason: str | None, *, actor: User, ctx: RequestContext) -> None:
+    """Desactivar revoca las sesiones; reactivar quita el bloqueo por intentos."""
+    user.is_active = active
+    if active:
+        user.failed_attempts = 0
+        user.locked_until = None
+    else:
+        revoke_user_sessions(db, user.id)
+    reason = (reason or "").strip()
+    audit.record(
+        db,
+        action=AuditAction.USER_REACTIVATE if active else AuditAction.USER_DEACTIVATE,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+        details={"reason": reason} if reason else None,
+    )
+
+
+def _audit_update(
+    db: Session, user: User, changed: list[str], plan: _UpdatePlan, *, actor: User, ctx: RequestContext
+) -> None:
+    """Un único ``user.update`` con los campos de perfil, rol y admin de instancia cambiados."""
+    details: dict[str, object] = {"fields": changed}
+    if "role" in changed and plan.new_role is not None:
+        details["role"] = plan.new_role.name
+    if "is_instance_admin" in changed:
+        details["instance_admin"] = user.is_instance_admin
+    audit.record(
+        db,
+        action=AuditAction.USER_UPDATE,
+        ctx=ctx,
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+        details=details,
+    )
+
+
+def update_user(
+    db: Session, user: User, changes: UserChanges, *, actor: User, settings: Settings, ctx: RequestContext
+) -> User:
+    """Aplica ``changes`` a ``user``.
+
+    Desactivar, restablecer la contraseña, cambiar de rol o de tenant revoca las sesiones del usuario; reactivar,
+    restablecer la contraseña o ``unlock`` quitan el bloqueo por intentos.
+
+    Raises:
+        SelfModificationError: Se intenta desactivar, cambiar de rol o de tenant, o quitarse ser admin de instancia a
+            sí mismo.
+        LastAdminError: Quedaría la instancia sin administradores activos.
+        LastTenantManagerError: El tenant se quedaría sin quien gestione sus usuarios.
+        PermissionEscalationError: ``user`` tiene permisos que ``actor`` no tiene (o es admin de instancia), se da un
+            rol con permisos que ``actor`` no tiene, o algo que solo hace el admin de instancia (marcar admins de
+            instancia, mover de tenant).
+        PasswordPolicyError: La contraseña nueva no cumple la política.
+    """
+    plan = _plan_update(db, user, changes, actor)
+    _guard_last_admins(db, user, plan, actor)
+
+    changed = _apply_profile_and_role(db, user, changes, plan, actor=actor, ctx=ctx)
+    if changes.password is not None:
+        _reset_password(db, user, changes.password, actor=actor, settings=settings, ctx=ctx)
+    if changes.unlock:
+        _unlock(db, user, actor=actor, ctx=ctx)
     if changes.is_active is not None and changes.is_active != user.is_active:
-        user.is_active = changes.is_active
-        if changes.is_active:
-            user.failed_attempts = 0
-            user.locked_until = None
-        else:
-            revoke_user_sessions(db, user.id)
-        reason = (changes.reason or "").strip()
-        audit.record(
-            db,
-            action=AuditAction.USER_REACTIVATE if changes.is_active else AuditAction.USER_DEACTIVATE,
-            ctx=ctx,
-            actor_id=actor.id,
-            target_type="user",
-            target_id=user.id,
-            details={"reason": reason} if reason else None,
-        )
+        _set_active(db, user, changes.is_active, changes.reason, actor=actor, ctx=ctx)
     if changed:
-        details: dict[str, object] = {"fields": changed}
-        if "role" in changed and new_role is not None:
-            details["role"] = new_role.name
-        if "is_instance_admin" in changed:
-            details["instance_admin"] = user.is_instance_admin
-        audit.record(
-            db,
-            action=AuditAction.USER_UPDATE,
-            ctx=ctx,
-            actor_id=actor.id,
-            target_type="user",
-            target_id=user.id,
-            details=details,
-        )
-    if loses_instance_admin:
+        _audit_update(db, user, changed, plan, actor=actor, ctx=ctx)
+    if plan.loses_instance_admin:
         ensure_instance_admin(db)
     db.commit()
     db.refresh(user)
