@@ -17,6 +17,8 @@ ROADMAP (`0.<fase+1>.0`).
   con doc_organize 2.5.0.
 - **backend** (tests): `test_options_reach_scan_options` ya no carga Docling (de minutos a menos de 1 s); el test de
   enlaces simbólicos se omite si el sistema no permite crearlos; `add_member` común en `conftest.py`.
+- **backend** (tests): `config.db` migrada una vez por sesión y copiada en cada test, y Argon2id con parámetros
+  mínimos solo en los tests; la suite completa baja de ~26 a ~17 min y los tests de API, cerca de un 70 %.
 - **docker**: entorno común de los workers en compose (`x-worker-env`); `models-init` sin el HEALTHCHECK de la
   imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
 - **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
