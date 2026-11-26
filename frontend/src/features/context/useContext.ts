@@ -6,7 +6,7 @@ import type { ListParams, SortOf } from '../../api/listing';
 import { api, ensureOk, isApiError, unwrap } from '../../api/client';
 import type { components } from '../../api/schema';
 import { type RunRequest, useEnqueueRun } from '../projects/useProjects';
-import { useRun } from '../runs/useRuns';
+import { isOperation, useRun } from '../runs/useRuns';
 
 export type ContextDocumentSort = SortOf<'/api/v1/projects/{project_id}/context/documents'>;
 
@@ -61,20 +61,13 @@ export const AI_CLASSIFY_TASK = 'classify';
  */
 export const DEFAULT_OUTPUT_FOLDER = 'organizado';
 
-/** Resultado del run `taxonomy_draft` (lo que devuelve el job). */
-export interface TaxonomyDraftResult {
-  manifest_markdown: string;
-  reasoning: string | null;
-  sample_documents: number;
-  total_documents: number;
-}
+/** Resultado del run `taxonomy_draft` con el borrador (sin él no hay nada que cargar). */
+type TaxonomyDraftResult = components['schemas']['TaxonomyDraftResult'] & { manifest_markdown: string };
 
-function isDraftResult(value: unknown): value is TaxonomyDraftResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { manifest_markdown?: unknown }).manifest_markdown === 'string'
-  );
+function isDraftResult(
+  value: components['schemas']['TaxonomyDraftResult'] | null,
+): value is TaxonomyDraftResult {
+  return typeof value?.manifest_markdown === 'string';
 }
 
 /**
@@ -87,7 +80,7 @@ export function useTaxonomyDraft(projectId: number, onDraft: (markdown: string) 
   const run = useRun(runId, 2_000);
   const delivered = useRef<string | null>(null);
   const status = run.data?.status;
-  const result: unknown = run.data?.result;
+  const result = run.data && isOperation(run.data, 'taxonomy_draft') ? run.data.result : null;
   const loaded = status === 'succeeded' && isDraftResult(result) ? result : null;
 
   useEffect(() => {

@@ -1,24 +1,9 @@
+import type { components } from '../../api/schema';
+
 export type GoldSource = 'xlsx' | 'decisions';
 
-interface AxisReport {
-  axis: string;
-  labelled: number;
-  accuracy: number | null;
-  coverage: number | null;
-  precision: number | null;
-  recall: number | null;
-  accuracy_by_classified_by: Record<string, number>;
-  labelled_by_classified_by: Record<string, number>;
-  confusions: { label: string; assigned: string; count: number }[];
-}
-
-export interface Report {
-  axes: Record<string, AxisReport>;
-  documents: number;
-  matched: number;
-  missing_documents: string[];
-  missing_total?: number;
-}
+/** Informe de evaluación (`EvaluationReport` de doc_organize) de `context_evaluate` y `context_dry_run`. */
+export type Report = components['schemas']['EvaluationReport'];
 
 export const pct = (value: number | null | undefined) =>
   typeof value === 'number' ? `${Math.round(value * 100)} %` : '—';

@@ -272,7 +272,14 @@ describe('Fase 10', () => {
 
     await waitFor(() => expect(callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')).toHaveLength(1));
     const body: unknown = await callsTo(fetchMock, 'POST', '/api/v1/projects/7/runs')[0]?.json();
-    expect(body).toEqual({ operation: 'scan', use_ocr: true, folders: ['2024'] });
+    // Sin forzar ni vista previa, explícito: el tipo generado de `ScanParams` los pide (3.0, sin conversiones).
+    expect(body).toEqual({
+      operation: 'scan',
+      use_ocr: true,
+      folders: ['2024'],
+      force: false,
+      dry_run: false,
+    });
   });
 
   it('un lector no puede continuarlo', async () => {

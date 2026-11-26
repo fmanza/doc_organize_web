@@ -6,7 +6,7 @@ import { formatDateTime, formatDuration } from '../../components/format';
 import { SortableTh } from '../../components/listing';
 import { type ListState } from '../../components/useListState';
 import { RunStatusBadge } from './RunStatusBadge';
-import type { RunOut, RunSort } from './useRuns';
+import { isPreview, type RunOut, type RunSort } from './useRuns';
 
 interface RunsTableProps {
   runs: RunOut[];
@@ -46,7 +46,7 @@ export function RunsTable({ runs, showProject = false, list }: RunsTableProps) {
               <Table.Td>
                 <Anchor component={Link} to={`/runs/${run.id}`}>
                   {t(`runs.operations.${run.operation}`)}
-                  {run.params.dry_run === true && <> {t('runs.preview')}</>}
+                  {isPreview(run) && <> {t('runs.preview')}</>}
                   <VisuallyHidden> ({formatDateTime(run.created_at)})</VisuallyHidden>
                 </Anchor>
               </Table.Td>

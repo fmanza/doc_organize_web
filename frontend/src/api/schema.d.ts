@@ -1871,6 +1871,40 @@ export interface components {
             spend: number | null;
         };
         /**
+         * AiPhaseResult
+         * @description Una fase de IA de la construcción: ``classified`` y ``scope`` al clasificar, ``applied`` al describir.
+         *
+         *     Sin la fase, solo ``{"enabled": false}``.
+         */
+        AiPhaseResult: {
+            /** Applied */
+            applied?: number | null;
+            /** Cached */
+            cached?: number | null;
+            /** Calls */
+            calls?: number | null;
+            /** Classified */
+            classified?: number | null;
+            /** Completion Tokens */
+            completion_tokens?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Failed */
+            failed?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+            /** Response Format */
+            response_format?: string | null;
+            /** Scope */
+            scope?: string | null;
+            /** Stopped */
+            stopped?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * AiSettingsOut
          * @description Configuración de IA de la instancia, sin ningún secreto.
          */
@@ -2252,6 +2286,27 @@ export interface components {
             ts: string;
         };
         /**
+         * AuditFinding
+         * @description Qué revisar del catálogo: ``kind`` es un ``AuditFindingKind`` de doc_organize (``empty_entry``…).
+         */
+        AuditFinding: {
+            /** Axis */
+            axis: string | null;
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Values */
+            values: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * AuditPage
          * @description Página de auditoría.
          */
@@ -2300,6 +2355,141 @@ export interface components {
             deleted: number;
             /** Matched */
             matched: number;
+        };
+        /** AxisAudit */
+        AxisAudit: {
+            /** Axis */
+            axis: string;
+            /** Classified By */
+            classified_by: {
+                [key: string]: number;
+            };
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /**
+             * Low Confidence
+             * @default 0
+             */
+            low_confidence: number;
+            /**
+             * Unverified Evidence
+             * @default 0
+             */
+            unverified_evidence: number;
+            /** Value Counts */
+            value_counts: {
+                [key: string]: number;
+            };
+            /**
+             * With Value
+             * @default 0
+             */
+            with_value: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * AxisEvaluation
+         * @description Métricas de un eje sobre los documentos etiquetados que están en el contexto.
+         */
+        AxisEvaluation: {
+            /** Accuracy */
+            accuracy: number | null;
+            /** Accuracy By Classified By */
+            accuracy_by_classified_by: {
+                [key: string]: number;
+            };
+            /** Axis */
+            axis: string;
+            /** Confusions */
+            confusions: components["schemas"]["LabelConfusion"][];
+            /** Coverage */
+            coverage: number | null;
+            /**
+             * Labelled
+             * @default 0
+             */
+            labelled: number;
+            /** Labelled By Classified By */
+            labelled_by_classified_by: {
+                [key: string]: number;
+            };
+            /**
+             * Multiple
+             * @default false
+             */
+            multiple: boolean;
+            /** Precision */
+            precision: number | null;
+            /** Recall */
+            recall: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * AxisRulesReport
+         * @description Comprobación por reglas de un eje (``coverage`` es un campo calculado de doc_organize).
+         */
+        AxisRulesReport: {
+            /** Axis */
+            axis: string;
+            /** Conflict Examples */
+            conflict_examples: {
+                [key: string]: string[];
+            };
+            /** Conflict Terms */
+            conflict_terms: {
+                [key: string]: {
+                    [key: string]: string[];
+                };
+            };
+            /**
+             * Conflicts
+             * @default 0
+             */
+            conflicts: number;
+            /**
+             * Coverage
+             * @default 0
+             */
+            coverage: number;
+            /**
+             * Covered
+             * @default 0
+             */
+            covered: number;
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /** Empty Entries */
+            empty_entries: string[];
+            /** Entry Counts */
+            entry_counts: {
+                [key: string]: number;
+            };
+            /** Near Misses */
+            near_misses: {
+                [key: string]: components["schemas"]["NearMiss"];
+            };
+            /** Organizes */
+            organizes: string | null;
+            /** Shared Terms */
+            shared_terms: {
+                [key: string]: string[];
+            };
+            /** Uncovered Examples */
+            uncovered_examples: string[];
+            /** Unused Keywords */
+            unused_keywords: {
+                [key: string]: string[];
+            };
+        } & {
+            [key: string]: unknown;
         };
         /**
          * AxisValueOut
@@ -2353,6 +2543,15 @@ export interface components {
              */
             picture_description_ready: boolean;
         };
+        /** CatalogEntry */
+        CatalogEntry: {
+            /** Name */
+            name?: string | null;
+            /** Slug */
+            slug?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * CatalogEntryOut
          * @description Dominio o tipo de material de una plantilla o manifiesto.
@@ -2373,6 +2572,80 @@ export interface components {
              * @enum {string}
              */
             operation: "context_audit";
+        };
+        /** ContextAuditParamsOut */
+        ContextAuditParamsOut: {
+            /**
+             * Operation
+             * @default context_audit
+             * @constant
+             */
+            operation: "context_audit";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextAuditResult */
+        ContextAuditResult: {
+            audit?: components["schemas"]["TaxonomyAudit"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextAuditRunOut */
+        ContextAuditRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_audit";
+            params: components["schemas"]["ContextAuditParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextAuditResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * ContextAxisOut
@@ -2501,6 +2774,136 @@ export interface components {
              */
             threshold: number;
         };
+        /** ContextBuildParamsOut */
+        ContextBuildParamsOut: {
+            /**
+             * Ai Classification
+             * @default false
+             */
+            ai_classification: boolean;
+            /**
+             * Ai Enrichment
+             * @default false
+             */
+            ai_enrichment: boolean;
+            /**
+             * Ai Scope
+             * @default unclassified
+             * @enum {string}
+             */
+            ai_scope: "unclassified" | "missing_axes";
+            /**
+             * Build Site
+             * @default true
+             */
+            build_site: boolean;
+            /**
+             * Catalog
+             * @default discover
+             * @enum {string}
+             */
+            catalog: "discover" | "domains" | "template" | "manifest";
+            /** Domains */
+            domains?: string[];
+            /**
+             * Operation
+             * @default context_build
+             * @constant
+             */
+            operation: "context_build";
+            /** Output Folder Name */
+            output_folder_name?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+            /**
+             * Threshold
+             * @default 0.5
+             */
+            threshold: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextBuildResult */
+        ContextBuildResult: {
+            ai?: components["schemas"]["AiPhaseResult"] | null;
+            ai_enrichment?: components["schemas"]["AiPhaseResult"] | null;
+            /** Documents */
+            documents?: number | null;
+            /** Domains */
+            domains?: number | null;
+            /** Failed */
+            failed?: number | null;
+            /** Failed Paths */
+            failed_paths?: string[] | null;
+            /** Missing Originals */
+            missing_originals?: number | null;
+            /** Output Folder Name */
+            output_folder_name?: string | null;
+            semantic?: components["schemas"]["SemanticResult"] | null;
+            /** Site Built */
+            site_built?: boolean | null;
+            /** Unclassified */
+            unclassified?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextBuildRunOut */
+        ContextBuildRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_build";
+            params: components["schemas"]["ContextBuildParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextBuildResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ContextChangeOut
          * @description Documento que entró, salió o cambió de dominio o tipo de material en una construcción (1.5.0).
@@ -2546,6 +2949,94 @@ export interface components {
             operation: "context_delete";
             /** Preview Run Id */
             preview_run_id?: string | null;
+        };
+        /** ContextDeleteParamsOut */
+        ContextDeleteParamsOut: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default context_delete
+             * @constant
+             */
+            operation: "context_delete";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextDeleteResult */
+        ContextDeleteResult: {
+            /** Bytes */
+            bytes?: number | null;
+            /** Files */
+            files?: number | null;
+            /** Output Folder Name */
+            output_folder_name?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextDeleteRunOut */
+        ContextDeleteRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_delete";
+            params: components["schemas"]["ContextDeleteParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextDeleteResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * ContextDocumentOut
@@ -2683,6 +3174,125 @@ export interface components {
             /** Template Name */
             template_name?: string | null;
         };
+        /** ContextDryRunParamsOut */
+        ContextDryRunParamsOut: {
+            /**
+             * Ai Scope
+             * @default off
+             * @enum {string}
+             */
+            ai_scope: "off" | "unclassified" | "missing_axes";
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "template" | "manifest";
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Max Documents
+             * @default 50
+             */
+            max_documents: number;
+            /** Model Classify */
+            model_classify?: string | null;
+            /**
+             * Operation
+             * @default context_dry_run
+             * @constant
+             */
+            operation: "context_dry_run";
+            /** Template Name */
+            template_name?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextDryRunResult */
+        ContextDryRunResult: {
+            ai?: components["schemas"]["DryRunAiResult"] | null;
+            /** Ai Scope */
+            ai_scope?: string | null;
+            baseline?: components["schemas"]["EvaluationReport"] | null;
+            candidate?: components["schemas"]["EvaluationReport"] | null;
+            /** Catalog */
+            catalog?: string | null;
+            /** Changes */
+            changes?: components["schemas"]["DocumentChange"][] | null;
+            /** Changes Total */
+            changes_total?: number | null;
+            /** Documents */
+            documents?: number | null;
+            /** Gold */
+            gold?: string | null;
+            /** Profile Changed */
+            profile_changed?: boolean | null;
+            /** Template Name */
+            template_name?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextDryRunRunOut */
+        ContextDryRunRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_dry_run";
+            params: components["schemas"]["ContextDryRunParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextDryRunResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ContextEvaluateParams
          * @description Evaluar el contexto construido contra una referencia (W5, G3): el Excel subido o las decisiones del proyecto.
@@ -2702,6 +3312,88 @@ export interface components {
              * @enum {string}
              */
             operation: "context_evaluate";
+        };
+        /** ContextEvaluateParamsOut */
+        ContextEvaluateParamsOut: {
+            /**
+             * Gold
+             * @default xlsx
+             * @enum {string}
+             */
+            gold: "xlsx" | "decisions";
+            /**
+             * Operation
+             * @default context_evaluate
+             * @constant
+             */
+            operation: "context_evaluate";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextEvaluateResult */
+        ContextEvaluateResult: {
+            /** Gold */
+            gold?: string | null;
+            report?: components["schemas"]["EvaluationReport"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextEvaluateRunOut */
+        ContextEvaluateRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_evaluate";
+            params: components["schemas"]["ContextEvaluateParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextEvaluateResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * ContextFreshnessOut
@@ -2862,6 +3554,125 @@ export interface components {
              */
             operation: "context_review_agent";
         };
+        /** ContextReviewAgentParamsOut */
+        ContextReviewAgentParamsOut: {
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Items
+             * @default 20
+             */
+            max_items: number;
+            /**
+             * Max Steps
+             * @default 40
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default context_review_agent
+             * @constant
+             */
+            operation: "context_review_agent";
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ContextReviewAgentResult
+         * @description ``proposals`` es el número de propuestas guardadas (no está si se canceló).
+         */
+        ContextReviewAgentResult: {
+            /** Completion Tokens */
+            completion_tokens?: number | null;
+            /** Duration S */
+            duration_s?: number | null;
+            /** Finished */
+            finished?: boolean | null;
+            /** Max Items */
+            max_items?: number | null;
+            /** Max Steps */
+            max_steps?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+            /** Proposals */
+            proposals?: number | null;
+            /** Reviewed */
+            reviewed?: number | null;
+            /** Steps */
+            steps?: number | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Tokens Estimated */
+            tokens_estimated?: boolean | null;
+            /** Tool Calls */
+            tool_calls?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ContextReviewAgentRunOut */
+        ContextReviewAgentRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "context_review_agent";
+            params: components["schemas"]["ContextReviewAgentParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ContextReviewAgentResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * CsrfToken
          * @description Token CSRF para la cabecera ``X-CSRF-Token``.
@@ -3007,6 +3818,125 @@ export interface components {
             preview_run_id?: string | null;
         };
         /**
+         * DedupApplyParamsOut
+         * @description Parámetros de ``dedup_apply``: los grupos confirmados se devuelven como su número.
+         */
+        DedupApplyParamsOut: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Groups
+             * @description Grupos confirmados (la lista no se devuelve)
+             */
+            groups: number;
+            /** Groups Run Id */
+            groups_run_id: string;
+            /**
+             * Mode
+             * @default copy
+             * @enum {string}
+             */
+            mode: "move" | "copy" | "report_only";
+            /**
+             * Operation
+             * @default dedup_apply
+             * @constant
+             */
+            operation: "dedup_apply";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * DedupApplyResult
+         * @description Vista previa: ``files``, ``bytes`` y ``skipped_changed``; ejecución real: ``processed`` … ``skipped_changed``.
+         */
+        DedupApplyResult: {
+            /** Bytes */
+            bytes?: number | null;
+            /** Failed */
+            failed?: number | null;
+            /** Failed Paths */
+            failed_paths?: string[] | null;
+            /** Files */
+            files?: number | null;
+            /** Groups */
+            groups?: number | null;
+            /** Groups Done */
+            groups_done?: number | null;
+            /** Mode */
+            mode?: string | null;
+            /** Processed */
+            processed?: number | null;
+            /** Skipped Changed */
+            skipped_changed?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** DedupApplyRunOut */
+        DedupApplyRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "dedup_apply";
+            params: components["schemas"]["DedupApplyParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["DedupApplyResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
+        /**
          * DedupChoice
          * @description Grupo confirmado y documento que se conserva (``<carpeta>/<ruta>`` tal como lo da la vista previa).
          */
@@ -3048,6 +3978,129 @@ export interface components {
             operation: "dedup_preview";
             /** Semantic Threshold */
             semantic_threshold?: number | null;
+        };
+        /** DedupPreviewParamsOut */
+        DedupPreviewParamsOut: {
+            /**
+             * Content
+             * @default false
+             */
+            content: boolean;
+            /** @description Exclusión efectiva copiada al encolar (2.7) */
+            exclusion?: components["schemas"]["ExclusionSnapshot"] | null;
+            /** Extra Excluded Paths */
+            extra_excluded_paths?: string[];
+            /** Fuzzy Threshold */
+            fuzzy_threshold?: number | null;
+            /**
+             * Operation
+             * @default dedup_preview
+             * @constant
+             */
+            operation: "dedup_preview";
+            /** Semantic Threshold */
+            semantic_threshold?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * DedupPreviewResult
+         * @description ``content_*`` solo con la búsqueda por contenido; ``semantic_*``, ``embedded`` y ``reused``, con la semántica.
+         */
+        DedupPreviewResult: {
+            /** Content Compared */
+            content_compared?: number | null;
+            /** Content Groups */
+            content_groups?: number | null;
+            /** Content Not Compared */
+            content_not_compared?: number | null;
+            /** Documents */
+            documents?: number | null;
+            /** Duplicate Files */
+            duplicate_files?: number | null;
+            /** Embedded */
+            embedded?: number | null;
+            /** Exact Groups */
+            exact_groups?: number | null;
+            /** Excluded */
+            excluded?: number | null;
+            /** Fuzzy Groups */
+            fuzzy_groups?: number | null;
+            /** Fuzzy Threshold */
+            fuzzy_threshold?: number | null;
+            /** Groups */
+            groups?: number | null;
+            /** Reclaimable Bytes */
+            reclaimable_bytes?: number | null;
+            /** Reused */
+            reused?: number | null;
+            /** Semantic Groups */
+            semantic_groups?: number | null;
+            /** Semantic Threshold */
+            semantic_threshold?: number | null;
+            /** Stale Cache */
+            stale_cache?: number | null;
+            /** Version Groups */
+            version_groups?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** DedupPreviewRunOut */
+        DedupPreviewRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "dedup_preview";
+            params: components["schemas"]["DedupPreviewParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["DedupPreviewResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * DeletionProjectRef
@@ -3100,6 +4153,26 @@ export interface components {
             checks: components["schemas"]["DiagnosticCheckOut"][];
             /** Ok */
             ok: boolean;
+        };
+        /**
+         * DocumentChange
+         * @description Un documento que cambia de valor en un eje en la clasificación de prueba.
+         */
+        DocumentChange: {
+            /** After */
+            after: string[];
+            /** After By */
+            after_by: string | null;
+            /** Axis */
+            axis: string;
+            /** Before */
+            before: string[];
+            /** Before By */
+            before_by: string | null;
+            /** Document Key */
+            document_key: string;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DocumentOut
@@ -3170,6 +4243,25 @@ export interface components {
             items: components["schemas"]["DocumentOut"][];
             /** Total */
             total: number;
+        };
+        /** DryRunAiResult */
+        DryRunAiResult: {
+            /** Calls */
+            calls?: number | null;
+            /** Completion Tokens */
+            completion_tokens?: number | null;
+            /** Failed */
+            failed?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+            /** Scope */
+            scope?: string | null;
+            /** Stopped */
+            stopped?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DuplicateGroupOut
@@ -3262,6 +4354,32 @@ export interface components {
             preview: components["schemas"]["RunBrief"] | null;
         };
         /**
+         * EvaluationReport
+         * @description Evaluación contra la referencia; la web recorta ``missing_documents`` y guarda su total en ``missing_total``.
+         */
+        EvaluationReport: {
+            /** Axes */
+            axes: {
+                [key: string]: components["schemas"]["AxisEvaluation"];
+            };
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /**
+             * Matched
+             * @default 0
+             */
+            matched: number;
+            /** Missing Documents */
+            missing_documents: string[];
+            /** Missing Total */
+            missing_total: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * ExclusionSnapshot
          * @description Copia de la exclusión efectiva del proyecto al encolar (web 2.7, ADR-017): rutas relativas a la ubicación de
          *     origen, patrones de nombre y la huella de lo que venía del proyecto (para saber si cambió después).
@@ -3308,6 +4426,131 @@ export interface components {
              */
             redact: boolean;
         };
+        /** ExportAiBundleParamsOut */
+        ExportAiBundleParamsOut: {
+            /**
+             * Current Only
+             * @default true
+             */
+            current_only: boolean;
+            /**
+             * Include Text
+             * @default true
+             */
+            include_text: boolean;
+            /** Max File Chars */
+            max_file_chars?: number | null;
+            /** Max Full Chars */
+            max_full_chars?: number | null;
+            /**
+             * Operation
+             * @default export_ai_bundle
+             * @constant
+             */
+            operation: "export_ai_bundle";
+            /**
+             * Redact
+             * @default true
+             */
+            redact: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ExportAiBundleResult
+         * @description Estadísticas de ``write_ai_context_bundle``, el fichero y las opciones con que se pidió.
+         */
+        ExportAiBundleResult: {
+            /** Current Only */
+            current_only?: boolean | null;
+            /** Documents */
+            documents?: number | null;
+            /** File Count */
+            file_count?: number | null;
+            /** File Name */
+            file_name?: string | null;
+            /** Full Text Truncated */
+            full_text_truncated?: boolean | null;
+            /** Include Text */
+            include_text?: boolean | null;
+            /** Max File Chars */
+            max_file_chars?: number | null;
+            /** Max Full Chars */
+            max_full_chars?: number | null;
+            /** Missing Text */
+            missing_text?: number | null;
+            /** Redact */
+            redact?: boolean | null;
+            /** Redacted Documents */
+            redacted_documents?: number | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Superseded Skipped */
+            superseded_skipped?: number | null;
+            /** Total Size Bytes */
+            total_size_bytes?: number | null;
+            /** Zip Size Bytes */
+            zip_size_bytes?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportAiBundleRunOut */
+        ExportAiBundleRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "export_ai_bundle";
+            params: components["schemas"]["ExportAiBundleParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ExportAiBundleResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ExportSiteParams
          * @description Sitio del contexto sin conexión en un ZIP reproducible con su SHA-256 (W8, F3): se construye sobre una copia en
@@ -3325,6 +4568,106 @@ export interface components {
              * @enum {string}
              */
             operation: "export_site";
+        };
+        /** ExportSiteParamsOut */
+        ExportSiteParamsOut: {
+            /**
+             * Llms Txt
+             * @default false
+             */
+            llms_txt: boolean;
+            /**
+             * Operation
+             * @default export_site
+             * @constant
+             */
+            operation: "export_site";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportSiteResult */
+        ExportSiteResult: {
+            /** Credentials Redacted */
+            credentials_redacted?: number | null;
+            /** File Count */
+            file_count?: number | null;
+            /** File Name */
+            file_name?: string | null;
+            /** Llms Txt */
+            llms_txt?: boolean | null;
+            /** Neutralized Items */
+            neutralized_items?: number | null;
+            /** Neutralized Pages */
+            neutralized_pages?: number | null;
+            /** Redact Credentials */
+            redact_credentials?: boolean | null;
+            /** Search Excluded */
+            search_excluded?: number | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Total Size Bytes */
+            total_size_bytes?: number | null;
+            /** Zip Size Bytes */
+            zip_size_bytes?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportSiteRunOut */
+        ExportSiteRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "export_site";
+            params: components["schemas"]["ExportSiteParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ExportSiteResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * ExportXlsxParams
@@ -3344,6 +4687,88 @@ export interface components {
              */
             operation: "export_xlsx";
         };
+        /** ExportXlsxParamsOut */
+        ExportXlsxParamsOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "cache" | "errors" | "context_history" | "context_documents";
+            /**
+             * Operation
+             * @default export_xlsx
+             * @constant
+             */
+            operation: "export_xlsx";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportXlsxResult */
+        ExportXlsxResult: {
+            /** Rows */
+            rows?: number | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportXlsxRunOut */
+        ExportXlsxRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "export_xlsx";
+            params: components["schemas"]["ExportXlsxParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ExportXlsxResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ExportZipParams
          * @description ZIP del proyecto (``Conversión/`` y ``cache_export.json``); con ``dry_run``, solo su tamaño (vista previa).
@@ -3361,6 +4786,90 @@ export interface components {
              * @enum {string}
              */
             operation: "export_zip";
+        };
+        /** ExportZipParamsOut */
+        ExportZipParamsOut: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default export_zip
+             * @constant
+             */
+            operation: "export_zip";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportZipResult */
+        ExportZipResult: {
+            /** File Count */
+            file_count?: number | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Total Size Bytes */
+            total_size_bytes?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExportZipRunOut */
+        ExportZipRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "export_zip";
+            params: components["schemas"]["ExportZipParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ExportZipResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * FolderEntry
@@ -3530,6 +5039,96 @@ export interface components {
             /** Preview Run Id */
             preview_run_id?: string | null;
         };
+        /** HistoryClearParamsOut */
+        HistoryClearParamsOut: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default history_clear
+             * @constant
+             */
+            operation: "history_clear";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** HistoryClearResult */
+        HistoryClearResult: {
+            /** Output Bytes */
+            output_bytes?: number | null;
+            /** Output Files */
+            output_files?: number | null;
+            /** State Bytes */
+            state_bytes?: number | null;
+            /** State Files */
+            state_files?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** HistoryClearRunOut */
+        HistoryClearRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "history_clear";
+            params: components["schemas"]["HistoryClearParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["HistoryClearResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * InstanceCapabilities
          * @description Ficha de capacidades publicada por los workers: ``pending`` mientras el worker vivo no las ha calculado;
@@ -3556,6 +5155,20 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "pending" | "no_worker";
+        };
+        /**
+         * LabelConfusion
+         * @description Un error frecuente: lo que decía la referencia y lo que se asignó.
+         */
+        LabelConfusion: {
+            /** Assigned */
+            assigned: string;
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * LocationCreate
@@ -3957,6 +5570,22 @@ export interface components {
             mime_type: string;
         };
         /**
+         * NearMiss
+         * @description La entrada que más se acercó al umbral en un documento sin valor.
+         */
+        NearMiss: {
+            /** Matched */
+            matched: string[];
+            /** Missing */
+            missing: string[];
+            /** Score */
+            score: number;
+            /** Slug */
+            slug: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * NoopParams
          * @description Prueba del motor: ``steps`` pasos de ``step_seconds`` con progreso; ``fail_at_step`` simula un fallo.
          */
@@ -3978,6 +5607,93 @@ export interface components {
              * @default 5
              */
             steps: number;
+        };
+        /** NoopParamsOut */
+        NoopParamsOut: {
+            /** Fail At Step */
+            fail_at_step?: number | null;
+            /**
+             * Operation
+             * @default noop
+             * @constant
+             */
+            operation: "noop";
+            /**
+             * Step Seconds
+             * @default 1
+             */
+            step_seconds: number;
+            /**
+             * Steps
+             * @default 5
+             */
+            steps: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** NoopResult */
+        NoopResult: {
+            /** Steps */
+            steps?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** NoopRunOut */
+        NoopRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "noop";
+            params: components["schemas"]["NoopParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["NoopResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * PasswordChange
@@ -4112,6 +5828,108 @@ export interface components {
             /** Preview Run Id */
             preview_run_id?: string | null;
         };
+        /** ProjectDeleteParamsOut */
+        ProjectDeleteParamsOut: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Delete Outputs
+             * @default false
+             */
+            delete_outputs: boolean;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Operation
+             * @default project_delete
+             * @constant
+             */
+            operation: "project_delete";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ProjectDeleteResult
+         * @description ``output_files``/``output_bytes`` se guardan como ``None`` cuando no se borran las salidas.
+         */
+        ProjectDeleteResult: {
+            /** Delete Outputs */
+            delete_outputs?: boolean | null;
+            /** Leftovers */
+            leftovers?: number | null;
+            /** Output Bytes */
+            output_bytes?: number | null;
+            /** Output Files */
+            output_files?: number | null;
+            /** State Bytes */
+            state_bytes?: number | null;
+            /** State Files */
+            state_files?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ProjectDeleteRunOut */
+        ProjectDeleteRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "project_delete";
+            params: components["schemas"]["ProjectDeleteParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ProjectDeleteResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ProjectExclusionPathOut
          * @description Carpeta excluida del proyecto, relativa a la ubicación de origen; ``exists`` es ``None`` si no se pudo mirar.
@@ -4191,6 +6009,111 @@ export interface components {
             operation: "project_move";
             /** Preview Run Id */
             preview_run_id?: string | null;
+        };
+        /** ProjectMoveParamsOut */
+        ProjectMoveParamsOut: {
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /** Destination Location Id */
+            destination_location_id: number;
+            /**
+             * Destination Parent
+             * @default
+             */
+            destination_parent: string;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** New Folder */
+            new_folder: string;
+            /**
+             * Operation
+             * @default project_move
+             * @constant
+             */
+            operation: "project_move";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ProjectMoveResult */
+        ProjectMoveResult: {
+            /** Bytes */
+            bytes?: number | null;
+            /** Destination Location */
+            destination_location?: string | null;
+            /** Destination Subpath */
+            destination_subpath?: string | null;
+            /** Files */
+            files?: number | null;
+            /** Free Bytes */
+            free_bytes?: number | null;
+            /** Leftovers */
+            leftovers?: number | null;
+            /** Same Filesystem */
+            same_filesystem?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ProjectMoveRunOut */
+        ProjectMoveRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "project_move";
+            params: components["schemas"]["ProjectMoveParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ProjectMoveResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * ProjectOut
@@ -4414,34 +6337,53 @@ export interface components {
             run_id?: string | null;
         };
         /**
+         * QualityAuditOut
+         * @description El último informe del auditor terminado (``context_audit``).
+         */
+        QualityAuditOut: {
+            /** Finished At */
+            finished_at: string | null;
+            result: components["schemas"]["ContextAuditResult"];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * QualityDryRunOut
+         * @description La última comparación terminada (``context_dry_run``).
+         */
+        QualityDryRunOut: {
+            /** Finished At */
+            finished_at: string | null;
+            result: components["schemas"]["ContextDryRunResult"];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * QualityEvaluationOut
+         * @description La última evaluación terminada (``context_evaluate``).
+         */
+        QualityEvaluationOut: {
+            /** Finished At */
+            finished_at: string | null;
+            result: components["schemas"]["ContextEvaluateResult"];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
          * QualityOut
          * @description Calidad de la clasificación del proyecto: la referencia y la última evaluación y comparación terminadas.
          */
         QualityOut: {
             /** @description Último informe del auditor (W7) */
-            audit?: components["schemas"]["QualityRunOut"] | null;
+            audit?: components["schemas"]["QualityAuditOut"] | null;
             /**
              * Decisions Available
              * @description Hay decisiones de personas con las que hacer una referencia
              */
             decisions_available: boolean;
-            dry_run?: components["schemas"]["QualityRunOut"] | null;
-            evaluation?: components["schemas"]["QualityRunOut"] | null;
+            dry_run?: components["schemas"]["QualityDryRunOut"] | null;
+            evaluation?: components["schemas"]["QualityEvaluationOut"] | null;
             gold?: components["schemas"]["GoldOut"] | null;
-        };
-        /**
-         * QualityRunOut
-         * @description El último run terminado de una comprobación de calidad, con su resultado.
-         */
-        QualityRunOut: {
-            /** Finished At */
-            finished_at: string | null;
-            /** Result */
-            result: {
-                [key: string]: unknown;
-            };
-            /** Run Id */
-            run_id: string;
         };
         /**
          * ReviewDocumentOut
@@ -4594,70 +6536,9 @@ export interface components {
         };
         /**
          * RunOut
-         * @description Ejecución con su estado, progreso, resultado y artefactos.
+         * @description Ejecución con su estado, progreso, resultado y artefactos; ``params`` y ``result`` según ``operation`` (3.0).
          */
-        RunOut: {
-            /**
-             * Ai Usage
-             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
-             */
-            ai_usage?: components["schemas"]["AiUsageRowOut"][];
-            /** Artifacts */
-            artifacts: components["schemas"]["ArtifactOut"][];
-            /** Can Cancel */
-            can_cancel: boolean;
-            /** Cancel Requested */
-            cancel_requested: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Created By Username */
-            created_by_username: string | null;
-            /** Error Code */
-            error_code: string | null;
-            /** Error Message */
-            error_message: string | null;
-            /** Finished At */
-            finished_at: string | null;
-            /** Id */
-            id: string;
-            /** Is Write */
-            is_write: boolean;
-            /**
-             * Operation
-             * @enum {string}
-             */
-            operation: "noop" | "history_clear" | "project_move" | "project_delete" | "scan" | "export_zip" | "export_xlsx" | "export_site" | "export_ai_bundle" | "search_index" | "dedup_preview" | "dedup_apply" | "context_build" | "context_delete" | "taxonomy_draft" | "context_evaluate" | "context_dry_run" | "taxonomy_agent" | "taxonomy_check" | "context_review_agent" | "context_audit";
-            /** Params */
-            params: {
-                [key: string]: unknown;
-            };
-            progress: components["schemas"]["RunProgress"] | null;
-            /** Project Id */
-            project_id: number | null;
-            /** Project Name */
-            project_name: string | null;
-            /**
-             * Queue
-             * @enum {string}
-             */
-            queue: "cpu" | "gpu";
-            /** Result */
-            result: {
-                [key: string]: unknown;
-            } | null;
-            /** Started At */
-            started_at: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
-            /** Workspace Purged */
-            workspace_purged: boolean;
-        };
+        RunOut: components["schemas"]["NoopRunOut"] | components["schemas"]["HistoryClearRunOut"] | components["schemas"]["ProjectMoveRunOut"] | components["schemas"]["ProjectDeleteRunOut"] | components["schemas"]["ScanRunOut"] | components["schemas"]["ExportZipRunOut"] | components["schemas"]["ExportXlsxRunOut"] | components["schemas"]["ExportSiteRunOut"] | components["schemas"]["ExportAiBundleRunOut"] | components["schemas"]["SearchIndexRunOut"] | components["schemas"]["DedupPreviewRunOut"] | components["schemas"]["DedupApplyRunOut"] | components["schemas"]["ContextBuildRunOut"] | components["schemas"]["ContextDeleteRunOut"] | components["schemas"]["TaxonomyDraftRunOut"] | components["schemas"]["ContextEvaluateRunOut"] | components["schemas"]["ContextDryRunRunOut"] | components["schemas"]["TaxonomyAgentRunOut"] | components["schemas"]["TaxonomyCheckRunOut"] | components["schemas"]["ContextReviewAgentRunOut"] | components["schemas"]["ContextAuditRunOut"];
         /**
          * RunPage
          * @description Página del historial de ejecuciones.
@@ -4809,6 +6690,207 @@ export interface components {
              */
             use_picture_description: boolean;
         };
+        /** ScanParamsOut */
+        ScanParamsOut: {
+            /**
+             * Capture Owner
+             * @description Se guardó la cuenta propietaria de cada fichero (1.5.0)
+             * @default false
+             */
+            capture_owner: boolean;
+            /** Confirm Name */
+            confirm_name?: string | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Exclusions */
+            exclusions?: {
+                [key: string]: string[];
+            };
+            /**
+             * Extract Images
+             * @default false
+             */
+            extract_images: boolean;
+            /** Folders */
+            folders?: string[];
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Ignore Patterns */
+            ignore_patterns?: string[];
+            /**
+             * Include Audio Video
+             * @default false
+             */
+            include_audio_video: boolean;
+            /**
+             * Operation
+             * @default scan
+             * @constant
+             */
+            operation: "scan";
+            /** Preview Run Id */
+            preview_run_id?: string | null;
+            /**
+             * Use Gpu
+             * @default false
+             */
+            use_gpu: boolean;
+            /**
+             * Use Ocr
+             * @default true
+             */
+            use_ocr: boolean;
+            /**
+             * Use Picture Description
+             * @default false
+             */
+            use_picture_description: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ScanResult
+         * @description Recuentos del escaneo o, con ``force`` y ``dry_run``, de su vista previa (``cached`` … ``output_bytes``).
+         *
+         *     Los segundos pueden ser enteros (``0``) o decimales: ``int | float`` conserva el tipo guardado.
+         */
+        ScanResult: {
+            /** Cached */
+            cached?: number | null;
+            /** Conversion Errors */
+            conversion_errors?: number | null;
+            /** Converted */
+            converted?: number | null;
+            /** Discovery Duration Seconds */
+            discovery_duration_seconds?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** Error Retries */
+            error_retries?: number | null;
+            /** Error Retries Capped */
+            error_retries_capped?: number | null;
+            /** Errors */
+            errors?: number | null;
+            /** Event Schema Version */
+            event_schema_version?: number | null;
+            /** Excluded */
+            excluded?: number | null;
+            /** Excluded Cached */
+            excluded_cached?: number | null;
+            /** Failed Folders */
+            failed_folders?: number | null;
+            /** Folders */
+            folders?: number | null;
+            /** Force */
+            force?: boolean | null;
+            /** Io Errors */
+            io_errors?: number | null;
+            /** Modified */
+            modified?: number | null;
+            /** New */
+            new?: number | null;
+            /** Ocr Processed */
+            ocr_processed?: number | null;
+            /** Ocr Required */
+            ocr_required?: number | null;
+            /** Orphaned */
+            orphaned?: number | null;
+            /** Output Bytes */
+            output_bytes?: number | null;
+            /** Output Files */
+            output_files?: number | null;
+            /** Scanned */
+            scanned?: number | null;
+            /** Search Indexed */
+            search_indexed?: number | null;
+            /** Segments */
+            segments?: number | null;
+            /** Total Conversion Seconds */
+            total_conversion_seconds?: number | null;
+            /** Unchanged */
+            unchanged?: number | null;
+            /** Warnings */
+            warnings?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ScanResume
+         * @description Estado entre tramos de un escaneo (``runs.result["resume"]``).
+         */
+        ScanResume: {
+            /** Done */
+            done?: string[] | null;
+            /** Failed */
+            failed?: string[] | null;
+            /** Partial */
+            partial?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ScanRunOut */
+        ScanRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "scan";
+            params: components["schemas"]["ScanParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["ScanResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * ScannedFolderCreate
          * @description Carpeta de origen nueva, relativa a la ubicación de origen del proyecto.
@@ -4888,6 +6970,87 @@ export interface components {
              */
             operation: "search_index";
         };
+        /** SearchIndexParamsOut */
+        SearchIndexParamsOut: {
+            /**
+             * Operation
+             * @default search_index
+             * @constant
+             */
+            operation: "search_index";
+        } & {
+            [key: string]: unknown;
+        };
+        /** SearchIndexResult */
+        SearchIndexResult: {
+            /** Added */
+            added?: number | null;
+            /** Indexed */
+            indexed?: number | null;
+            /** Removed */
+            removed?: number | null;
+            /** Updated */
+            updated?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** SearchIndexRunOut */
+        SearchIndexRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "search_index";
+            params: components["schemas"]["SearchIndexParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["SearchIndexResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
         /**
          * SearchPage
          * @description Resultados de la búsqueda de texto completo; ``indexed_at`` es ``None`` si aún no hay índice.
@@ -4899,6 +7062,32 @@ export interface components {
             items: components["schemas"]["SearchHitOut"][];
             /** Total */
             total: number;
+        };
+        /**
+         * SemanticResult
+         * @description Sub-fase semántica (W6) de la construcción; sin ella, ``{"enabled": false}``.
+         */
+        SemanticResult: {
+            /** Assigned */
+            assigned?: number | null;
+            /** Cached */
+            cached?: number | null;
+            /** Embedded */
+            embedded?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Failed */
+            failed?: number | null;
+            /** Index Bytes */
+            index_bytes?: number | null;
+            /** Index Vectors */
+            index_vectors?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * SessionOut
@@ -5032,6 +7221,166 @@ export interface components {
             /** Template Name */
             template_name?: string | null;
         };
+        /** TaxonomyAgentParamsOut */
+        TaxonomyAgentParamsOut: {
+            /**
+             * Catalog
+             * @default manifest
+             * @enum {string}
+             */
+            catalog: "manifest" | "template" | "none";
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /**
+             * Max Steps
+             * @default 30
+             */
+            max_steps: number;
+            /**
+             * Operation
+             * @default taxonomy_agent
+             * @constant
+             */
+            operation: "taxonomy_agent";
+            /** Template Name */
+            template_name?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyAgentResult */
+        TaxonomyAgentResult: {
+            /** Base */
+            base?: boolean | null;
+            base_report?: components["schemas"]["TaxonomyRulesReport"] | null;
+            /** Best Markdown */
+            best_markdown?: string | null;
+            best_report?: components["schemas"]["TaxonomyRulesReport"] | null;
+            /** Catalog */
+            catalog?: string | null;
+            /** Completion Tokens */
+            completion_tokens?: number | null;
+            /** Documents */
+            documents?: number | null;
+            /** Draft Markdown */
+            draft_markdown?: string | null;
+            /** Duration S */
+            duration_s?: number | null;
+            /** Edits */
+            edits?: number | null;
+            /** Finished */
+            finished?: boolean | null;
+            /** Improves */
+            improves?: boolean | null;
+            /** Instructions */
+            instructions?: boolean | null;
+            /** Markdown */
+            markdown?: string | null;
+            /** Max Steps */
+            max_steps?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+            /** Rationale */
+            rationale?: string | null;
+            report?: components["schemas"]["TaxonomyRulesReport"] | null;
+            /** Steps */
+            steps?: number | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
+            /** Template Name */
+            template_name?: string | null;
+            /** Tokens Estimated */
+            tokens_estimated?: boolean | null;
+            /** Tool Calls */
+            tool_calls?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyAgentRunOut */
+        TaxonomyAgentRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "taxonomy_agent";
+            params: components["schemas"]["TaxonomyAgentParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["TaxonomyAgentResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
+        /**
+         * TaxonomyAudit
+         * @description Informe del auditor; ``markdown`` es su resumen (``to_markdown``, lo añade la web).
+         */
+        TaxonomyAudit: {
+            /** Axes */
+            axes: components["schemas"]["AxisAudit"][];
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /** Findings */
+            findings: components["schemas"]["AuditFinding"][];
+            /** Markdown */
+            markdown: string | null;
+            /**
+             * Unclassified
+             * @default 0
+             */
+            unclassified: number;
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * TaxonomyAxisSummaryOut
          * @description Un eje de una plantilla o manifiesto (doc_organize 2.0): clave, nombre, si organiza carpetas y nº de valores.
@@ -5063,6 +7412,83 @@ export interface components {
             operation: "taxonomy_check";
         };
         /**
+         * TaxonomyCheckParamsOut
+         * @description Parámetros de ``taxonomy_check``: el manifiesto comprobado no se devuelve.
+         */
+        TaxonomyCheckParamsOut: {
+            /**
+             * Operation
+             * @default taxonomy_check
+             * @constant
+             */
+            operation: "taxonomy_check";
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyCheckResult */
+        TaxonomyCheckResult: {
+            report?: components["schemas"]["TaxonomyRulesReport"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyCheckRunOut */
+        TaxonomyCheckRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "taxonomy_check";
+            params: components["schemas"]["TaxonomyCheckParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["TaxonomyCheckResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
+        };
+        /**
          * TaxonomyDraftParams
          * @description Borrador de manifiesto de taxonomía con IA a partir de una muestra de ``sample_size`` documentos convertidos.
          *
@@ -5079,6 +7505,104 @@ export interface components {
              * @default 25
              */
             sample_size: number;
+        };
+        /** TaxonomyDraftParamsOut */
+        TaxonomyDraftParamsOut: {
+            /**
+             * Operation
+             * @default taxonomy_draft
+             * @constant
+             */
+            operation: "taxonomy_draft";
+            /**
+             * Sample Size
+             * @default 25
+             */
+            sample_size: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyDraftResult */
+        TaxonomyDraftResult: {
+            /** Ai Cached */
+            ai_cached?: boolean | null;
+            /** Completion Tokens */
+            completion_tokens?: number | null;
+            /** Domains */
+            domains?: components["schemas"]["CatalogEntry"][] | null;
+            /** Manifest Markdown */
+            manifest_markdown?: string | null;
+            /** Material Types */
+            material_types?: components["schemas"]["CatalogEntry"][] | null;
+            /** Model */
+            model?: string | null;
+            /** Prompt Tokens */
+            prompt_tokens?: number | null;
+            /** Reasoning */
+            reasoning?: string | null;
+            /** Sample Documents */
+            sample_documents?: number | null;
+            /** Total Documents */
+            total_documents?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaxonomyDraftRunOut */
+        TaxonomyDraftRunOut: {
+            /**
+             * Ai Usage
+             * @description Consumo de IA por tarea (solo en el detalle de una ejecución; 2.1)
+             */
+            ai_usage?: components["schemas"]["AiUsageRowOut"][];
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactOut"][];
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By Username */
+            created_by_username: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Is Write */
+            is_write: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "taxonomy_draft";
+            params: components["schemas"]["TaxonomyDraftParamsOut"];
+            progress: components["schemas"]["RunProgress"] | null;
+            /** Project Id */
+            project_id: number | null;
+            /** Project Name */
+            project_name: string | null;
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "cpu" | "gpu";
+            result: components["schemas"]["TaxonomyDraftResult"] | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Workspace Purged */
+            workspace_purged: boolean;
         };
         /**
          * TaxonomyManifestOut
@@ -5122,6 +7646,28 @@ export interface components {
         TaxonomyMarkdownIn: {
             /** Markdown */
             markdown: string;
+        };
+        /**
+         * TaxonomyRulesReport
+         * @description Comprobación de un manifiesto por reglas; ``markdown`` es su tabla (``to_markdown``, la añade la web).
+         */
+        TaxonomyRulesReport: {
+            /** Axes */
+            axes: components["schemas"]["AxisRulesReport"][];
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /** Markdown */
+            markdown: string | null;
+            /**
+             * Unreadable
+             * @default 0
+             */
+            unreadable: number;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * TaxonomyTemplateDetail

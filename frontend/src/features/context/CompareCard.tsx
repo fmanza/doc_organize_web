@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { type GoldSource, pct, type Report } from './qualityReport';
+import { type GoldSource, pct } from './qualityReport';
 import { useTemplates } from './useContext';
 import { type Quality, useQualityRun } from './useQuality';
 
@@ -41,16 +41,7 @@ export function CompareCard({
   const [profile, setProfile] = useState('');
   const [budget, setBudget] = useState<number | string>(50);
   const last = quality.dry_run;
-  const result = last?.result as
-    | {
-        baseline: Report | null;
-        candidate: Report | null;
-        documents: number;
-        ai: { calls: number; prompt_tokens: number; completion_tokens: number; model: string | null };
-        changes_total?: number;
-        changes?: { document_key: string; axis: string; before: string[]; after: string[] }[];
-      }
-    | undefined;
+  const result = last?.result;
   return (
     <Card withBorder component="section" aria-label={t('quality.compareTitle')}>
       <Title order={3} size="h4" mb="xs">
@@ -140,9 +131,9 @@ export function CompareCard({
           <Text size="xs" c="dimmed">
             {t('quality.lastRun', { date: last.finished_at ? formatDateTime(last.finished_at) : '—' })} ·{' '}
             {t('quality.aiUsed', {
-              calls: result.ai.calls,
-              tokens: result.ai.prompt_tokens + result.ai.completion_tokens,
-              model: result.ai.model ?? '—',
+              calls: result.ai?.calls ?? 0,
+              tokens: (result.ai?.prompt_tokens ?? 0) + (result.ai?.completion_tokens ?? 0),
+              model: result.ai?.model ?? '—',
             })}
           </Text>
           <Table aria-label={t('quality.comparison')}>

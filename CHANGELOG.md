@@ -24,6 +24,15 @@ ROADMAP (`0.<fase+1>.0`).
   (`app/domain/runs/results.py`, campos opcionales y `extra="allow"`) que las operaciones devuelven y el runner guarda
   con `exclude_unset` (mismas claves y valores en `runs.result`); `parse_result` lee con tolerancia los guardados (si
   no validan, `None` y un aviso con el id del run). Sin cambio de contrato: la API sigue devolviendo diccionarios.
+- **backend, frontend** (**incompatible**): `RunOut` (`GET /runs`, `GET /runs/{id}`, `POST /runs/{id}/cancel` y
+  `POST /projects/{id}/runs`) es una **unión discriminada por `operation`** (`ScanRunOut`, `ContextBuildRunOut`…) con
+  `params` (`ScanParamsOut`…) y `result` (`ScanResult`…, o `null`) tipados. Los resultados se sirven como se guardaron
+  (solo las claves escritas, también las desconocidas de versiones anteriores); los informes de doc_organize
+  (`EvaluationReport`, `TaxonomyRulesReport`, `TaxonomyAudit`) van enteros. Un resultado guardado que no valida se
+  devuelve como `result: null` con un aviso en el log, nunca un 500; unos parámetros que no validan, tal cual.
+  `QualityRunOut` se sustituye por `QualityEvaluationOut`, `QualityDryRunOut` y `QualityAuditOut`, con `result`
+  tipado. El frontend deja los tipos escritos a mano y las conversiones sobre `params`/`result` (`useFollowedRun` es
+  genérico por operación). Clientes propios de la API: regenerarlos contra el nuevo `openapi.json`.
 
 ### Removed
 

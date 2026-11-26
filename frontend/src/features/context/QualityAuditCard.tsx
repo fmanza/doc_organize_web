@@ -4,26 +4,12 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { type Quality, useQualityRun } from './useQuality';
 
-interface AuditReport {
-  documents: number;
-  unclassified: number;
-  axes: {
-    axis: string;
-    documents: number;
-    with_value: number;
-    value_counts: Record<string, number>;
-    low_confidence: number;
-    unverified_evidence: number;
-  }[];
-  findings: { kind: string; axis: string | null; values: string[]; count: number; message: string }[];
-}
-
 /** Informe del auditor (W7, `audit_taxonomy`): estadísticas por eje y qué revisar del catálogo, sin IA. */
 export function AuditCard({ projectId, quality }: { projectId: number; quality: Quality }) {
   const { t } = useTranslation();
   const run = useQualityRun(projectId);
   const last = quality.audit;
-  const report = (last?.result as { audit?: AuditReport } | undefined)?.audit;
+  const report = last?.result.audit;
   return (
     <Card withBorder component="section" aria-label={t('quality.audit.title')}>
       <Group justify="space-between" mb="xs">
