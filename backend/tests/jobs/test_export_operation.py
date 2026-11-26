@@ -157,7 +157,7 @@ def test_zip_cancelled_while_writing_removes_the_partial_file(
 def test_xlsx_exports_without_container_paths(
     ctx: JobContext, project: Project, db: Session, migrated: Settings, kind: str, sheets: list[str]
 ) -> None:
-    result: dict[str, Any] = export.run_xlsx(ctx, ExportXlsxParams(kind=kind), project).stored().stored()  # type: ignore[arg-type]
+    result: dict[str, Any] = export.run_xlsx(ctx, ExportXlsxParams(kind=kind), project).stored()
 
     artifact = db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).one()
     workbook = load_workbook(ctx.workdir / artifact.rel_path, read_only=True)
