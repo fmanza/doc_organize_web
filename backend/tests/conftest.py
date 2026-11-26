@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -11,11 +12,14 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.db.models import DEFAULT_TENANT_ID, Location, Tenant, User
 from app.db.session import get_engine
+from app.domain.identity import passwords
 from app.domain.identity.audit import CLI_CONTEXT
 from app.domain.identity.users import create_user
 from app.domain.locations.service import create_location
@@ -66,9 +70,53 @@ def run_migrations(revision: str = "head") -> None:
     command.upgrade(config, revision)
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _cheap_password_hashing() -> Iterator[None]:
+    """Argon2id con parámetros mínimos solo en los tests.
+
+    Con los de producción (64 MiB, 3 pasadas) cada usuario creado y cada login costaban ~0,12 s, y con la máquina
+    cargada llegaron a fallar por memoria. El algoritmo, la sal y el formato ``$argon2id$`` no cambian, así que los
+    tests de contraseñas siguen probando lo mismo."""
+    cheap = PasswordHash((Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1),))
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(passwords, "_HASHER", cheap)
+        passwords._dummy_hash.cache_clear()
+        yield
+    passwords._dummy_hash.cache_clear()
+
+
+@pytest.fixture(scope="session")
+def migrated_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """``config.db`` migrada a ``head`` una sola vez por sesión (y por proceso), que ``migrated`` copia en cada test.
+
+    Aplicar las 33 migraciones en cada test costaba más de un segundo por test. Las migraciones solo dependen de la
+    ruta de la base de datos, así que la copia es idéntica a migrar. El WAL se vuelca antes de copiar: la plantilla
+    queda en un único fichero. Los tests de migraciones siguen llamando a ``run_migrations`` sobre una BD vacía."""
+    data_dir = tmp_path_factory.mktemp("migrated-template")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("DOW_ENVIRONMENT", "test")
+        patch.setenv("DOW_DATA_DIR", str(data_dir))
+        get_settings.cache_clear()
+        get_engine.cache_clear()
+        try:
+            run_migrations()
+            engine = get_engine()
+            with engine.connect() as connection:
+                connection.exec_driver_sql("PRAGMA wal_checkpoint(TRUNCATE)")
+            engine.dispose()
+        finally:
+            get_settings.cache_clear()
+            get_engine.cache_clear()
+    template = data_dir / "config.db"
+    leftovers = [p.name for p in data_dir.iterdir() if p != template]
+    assert not leftovers, f"la plantilla debe ser un único fichero: {leftovers}"
+    return template
+
+
 @pytest.fixture
-def migrated(settings: Settings) -> Settings:
-    run_migrations()
+def migrated(settings: Settings, migrated_template: Path) -> Settings:
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(migrated_template, settings.data_dir / "config.db")
     return settings
 
 
