@@ -139,7 +139,6 @@ def location_usage(location_id: int, admin: InstanceAdmin, db: DbSession) -> Loc
     usage = service.location_projects(db, location)
     return LocationUsageOut(
         active_projects=[LocationProjectRef(id=project_id, name=name) for project_id, name in usage.active],
-        deleted_projects=usage.deleted,
         can_delete=not usage.in_use,
     )
 

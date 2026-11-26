@@ -16,7 +16,7 @@ export type ContextBuildParams = components['schemas']['ContextBuildParams'];
 export type Catalog = ContextBuildParams['catalog'];
 export type TaxonomyTemplate = components['schemas']['TaxonomyTemplateOut'];
 export type TaxonomyTemplateDetail = components['schemas']['TaxonomyTemplateDetail'];
-export type DocumentFilter = 'failed' | 'collision' | 'ai_disagrees';
+export type DocumentFilter = 'failed' | 'ai_disagrees';
 
 /** Filtros de los documentos del contexto (idioma y palabra clave desde la 1.5.0). */
 export interface ContextDocumentFilters {

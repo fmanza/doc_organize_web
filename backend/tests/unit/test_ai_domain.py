@@ -119,12 +119,6 @@ def test_only_the_litellm_family_builds_an_llm_client() -> None:
         library_ai.llm_client(AiConnection(family="litellm_usage", values={}))
 
 
-def test_legacy_variables_name_their_replacement() -> None:
-    """D15: las variables de 1.x se detectan (sin valores) con su equivalente de 2.0."""
-    found = library_ai.legacy_env({"DOC_ORGANIZE_LITELLM_TAXONOMY_MANIFEST_DRAFT_MODEL": "x", "OTRA": "y"})
-    assert found == {"DOC_ORGANIZE_LITELLM_TAXONOMY_MANIFEST_DRAFT_MODEL": "DOC_ORGANIZE_LITELLM_MODEL_TAXONOMY_DESIGN"}
-
-
 def test_usage_does_not_put_the_key_in_the_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """L-3e (G37): con 0.14.0 la clave propia ya no va en ``/key/info?key=``."""
     seen: list[httpx.Request] = []

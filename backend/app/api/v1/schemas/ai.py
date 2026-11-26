@@ -28,14 +28,6 @@ class AiFieldOut(BaseModel):
     )
 
 
-class AiLegacyVariableOut(BaseModel):
-    """Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de
-    GitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla)."""
-
-    name: str
-    replacement: str | None
-
-
 class AiFamilyOut(BaseModel):
     key: AiFamilyKey
     configured: bool = Field(description="Tiene todos sus campos obligatorios")
@@ -47,10 +39,6 @@ class AiSettingsOut(BaseModel):
 
     encryption_configured: bool
     families: list[AiFamilyOut]
-    legacy_variables: list[AiLegacyVariableOut] = Field(
-        default_factory=list,
-        description="Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)",
-    )
 
 
 class AiFamilyUpdate(BaseModel):

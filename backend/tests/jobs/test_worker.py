@@ -309,7 +309,7 @@ def test_project_delete_releases_its_locations(
     admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
     for location in (source, destination):
         usage = admin_client.get(f"/api/v1/locations/{location.id}/usage").json()
-        assert usage == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+        assert usage == {"active_projects": [], "can_delete": True}
         assert admin_client.delete(f"/api/v1/locations/{location.id}").status_code == 204
 
 

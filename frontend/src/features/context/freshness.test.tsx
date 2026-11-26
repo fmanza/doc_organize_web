@@ -13,7 +13,6 @@ const CONTEXT = {
   documents_count: 3,
   unclassified_count: 0,
   failed_count: 0,
-  collisions_count: 0,
   site_built: true,
   domains: [{ slug: 'facturas', name: 'Facturas', description: null, status: 'borrador', documents: 3 }],
   built_by_run_id: null,

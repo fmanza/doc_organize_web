@@ -105,8 +105,9 @@ def test_projects_schema_matches_the_model(settings: Settings) -> None:
 
 
 def test_roundtrip_script_on_a_baseline_copy(settings: Settings, tmp_path: Path) -> None:
-    """``scripts/migration_roundtrip.py`` sobre una copia en la línea base: sube, baja y deja las mismas filas."""
-    command.upgrade(_config(), "head")
+    """``scripts/migration_roundtrip.py`` sobre una copia en la línea base: sube (``3001``), baja y deja las mismas
+    filas."""
+    command.upgrade(_config(), BASELINE)
     get_engine().dispose()
     copy = tmp_path / "copia" / "config.db"
     copy.parent.mkdir()
@@ -124,3 +125,60 @@ def test_roundtrip_script_on_a_baseline_copy(settings: Settings, tmp_path: Path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert f"Revisión de partida: {BASELINE}" in result.stdout
+
+
+_LEGACY_COLUMNS = (
+    ("context_documents", "collision"),
+    ("project_contexts", "collisions_count"),
+    ("taxonomy_templates", "markdown_v1"),
+)
+
+
+def _columns(table: str) -> dict[str, dict[str, object]]:
+    return {c["name"]: c for c in inspect(get_engine()).get_columns(table)}
+
+
+def test_3001_drops_the_legacy_columns_and_logs_the_projects_with_collisions(
+    settings: Settings, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """3.0: ``3001`` borra las columnas heredadas y deja en el log los ids de los proyectos con colisiones (G30); la
+    bajada las recrea como en ``0033`` (NOT NULL sin default, ``markdown_v1`` nula)."""
+    config = _config()
+    command.upgrade(config, BASELINE)
+    with get_engine().begin() as conn:
+        for project_id, collisions in ((7, 2), (8, 0), (9, 1)):
+            conn.exec_driver_sql(
+                "INSERT INTO projects (id, tenant_id, name, source_subpaths, destination_subpath, status, created_at,"
+                " updated_at) VALUES (?, 1, ?, '[]', '', 'deleted', '2026-01-01', '2026-01-01')",
+                (project_id, f"Proyecto {project_id}"),
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO project_contexts (project_id, output_folder_name, catalog_kind, documents_count,"
+                " unclassified_count, failed_count, collisions_count, site_built, domains, built_at)"
+                " VALUES (?, 'organizado', 'discover', 1, 0, 0, ?, 0, '[]', '2026-01-01')",
+                (project_id, collisions),
+            )
+        conn.exec_driver_sql(
+            "INSERT INTO context_documents (project_id, seq, title, folder, path, failed, collision)"
+            " VALUES (7, 1, 'factura', '2024', 'factura.txt', 0, 1)"
+        )
+    capsys.readouterr()
+
+    command.upgrade(config, "3001")
+
+    log = capsys.readouterr().err
+    assert "3001" in log and "7, 9" in log and "8" not in log.split("contexto:")[-1]
+    for table, column in _LEGACY_COLUMNS:
+        assert column not in _columns(table)
+    with get_engine().connect() as conn:
+        assert conn.exec_driver_sql("SELECT title FROM context_documents WHERE project_id = 7").scalar() == "factura"
+
+    command.downgrade(config, BASELINE)
+
+    for table, column in _LEGACY_COLUMNS:
+        restored = _columns(table)[column]
+        assert restored["nullable"] is (column == "markdown_v1")
+        assert restored["default"] is None
+    with get_engine().connect() as conn:
+        assert conn.exec_driver_sql("SELECT collision FROM context_documents WHERE project_id = 7").scalar() == 0
+        assert conn.exec_driver_sql("SELECT sum(collisions_count) FROM project_contexts").scalar() == 0

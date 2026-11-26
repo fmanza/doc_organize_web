@@ -201,6 +201,6 @@ notas: texto libre
     assert saved.status_code == 201, saved.text
     report = saved.json()["front_matter"]
     assert report["implicit_axes"] == ["marcos"] and report["ignored_keys"] == ["notas"]
-    assert report["legacy_format"] is True
+    assert "legacy_format" not in report  # 3.0
     assert [(a["key"], a["values"]) for a in report["axes"]] == [("domains", 1), ("material_types", 1), ("marcos", 1)]
     assert user_client.get("/api/v1/taxonomy-templates/implicita").json()["front_matter"] == report

@@ -45,13 +45,12 @@ class FrontMatterReportOut(BaseModel):
     """Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
 
     ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
-    ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+    ``ignored_keys``: claves de nivel superior que no se usan al clasificar.
     """
 
     axes: list[TaxonomyAxisSummaryOut] = []
     implicit_axes: list[str] = []
     ignored_keys: list[str] = []
-    legacy_format: bool = False
 
 
 class TaxonomyTemplateDetail(TaxonomyTemplateOut):
@@ -259,7 +258,6 @@ class ContextOut(BaseModel):
     documents_count: int
     unclassified_count: int
     failed_count: int
-    collisions_count: int
     site_built: bool
     ai_classification: bool = False
     #: Trazabilidad (1.5.0): versión de doc_organize y modelos de IA usados; nulos en contextos anteriores.
@@ -307,7 +305,6 @@ class ContextDocumentOut(_Out):
     path: str
     organized_path: str | None
     failed: bool
-    collision: bool
     classified_by: Literal["rules", "semantic", "ai", "human"] | None = None
     output_path: str | None = None
     # 1.5.0: propiedades declaradas en el documento (o de la IA si faltan: ``ai_filled``) e idioma detectado.

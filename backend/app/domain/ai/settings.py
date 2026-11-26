@@ -7,9 +7,8 @@ quitó en la 2.1 (migración ``0025``).
 
 Precedencia: valor guardado por un admin en ``ai_settings`` > variable ``DOC_ORGANIZE_*`` del entorno (los mismos
 nombres que la librería: ``DOC_ORGANIZE_LITELLM_BASE_URL``, ``_VIRTUAL_KEY``, ``_MODEL_<TAREA>``,
-``_VIRTUAL_KEY_<TAREA>``). Las variables de 1.x (``DOC_ORGANIZE_LITELLM_<CLIENTE>_*``) ya no se leen (D15): si la
-familia queda sin configurar y alguna sigue definida, el error lo dice con la equivalente (U17). Los campos secretos se guardan cifrados con MultiFernet. Nunca se
-devuelven, ni se auditan, ni se escriben en un log: solo se muestra que están configurados y su ``hint``
+``_VIRTUAL_KEY_<TAREA>``). Las variables de 1.x (``DOC_ORGANIZE_LITELLM_<CLIENTE>_*``) y las de GitHub Copilot no se
+leen ni se avisa de ellas (3.0). Los campos secretos se guardan cifrados con MultiFernet. Nunca se devuelven, ni se auditan, ni se escriben en un log: solo se muestra que están configurados y su ``hint``
 («…ab12» o, si miden 4 caracteres o menos, «***»). Un token que no se descifra (porque se retiró la clave con la que se
 cifró) cuenta como «sin valor» y se marca ``undecryptable``.
 """
@@ -38,7 +37,6 @@ from app.domain.ai.errors import (
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.integrations.doc_organize.ai import (
-    COPILOT_ENV_VARS,
     FAMILIES,
     FAMILIES_BY_KEY,
     OWN_MODEL_TASKS,
@@ -48,7 +46,6 @@ from app.integrations.doc_organize.ai import (
     FamilySpec,
     FieldSpec,
     TaskKey,
-    legacy_env,
 )
 
 logger = logging.getLogger(__name__)
@@ -161,14 +158,6 @@ def configured_families(db: Session, settings: Settings) -> dict[str, bool]:
     return {view.key: view.configured for view in list_families(db, settings)}
 
 
-def legacy_variables() -> dict[str, str | None]:
-    """Variables de entorno que ya no se leen y siguen definidas (solo nombres, nunca valores): las de 1.x con su
-    equivalente de 2.0, y las de GitHub Copilot (quitado en la 2.1), sin equivalente."""
-    found: dict[str, str | None] = dict(legacy_env())
-    found.update({name: None for name in COPILOT_ENV_VARS if os.environ.get(name)})
-    return found
-
-
 def configured_tasks(db: Session, settings: Settings) -> dict[str, bool]:
     """Tarea de IA → si se puede usar: todas dependen de la familia ``litellm`` (sin modelo, el alias recomendado),
     salvo las de ``OWN_MODEL_TASKS`` (2.2: duplicados por contenido), que además necesitan su propio modelo."""
@@ -217,12 +206,7 @@ def connection(db: Session, settings: Settings, key: FamilyKey) -> AiConnection:
     values = resolve(db, settings, key)
     missing = [field.name for field in spec.fields if field.required and field.name not in values]
     if missing:
-        message = f"Falta configurar {key}: {', '.join(missing)}"
-        legacy = legacy_env() if key == "litellm" else {}
-        if legacy:  # U17: la actualización no deja la IA desactivada en silencio
-            pairs = "; ".join(f"{old} → {new}" for old, new in sorted(legacy.items()))
-            message += f". Las variables de doc_organize 1.x ya no se leen; usa las de 2.0: {pairs}"
-        raise AiNotConfiguredError(message)
+        raise AiNotConfiguredError(f"Falta configurar {key}: {', '.join(missing)}")
     return AiConnection(
         family=key,
         values=values,

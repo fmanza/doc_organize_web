@@ -151,7 +151,6 @@ export function Domains({ context, projectId }: { context: ContextOut; projectId
           data={[
             { value: 'all', label: t('context.documents.all') },
             { value: 'failed', label: t('context.documents.failed') },
-            { value: 'collision', label: t('context.documents.collision') },
             { value: 'ai_disagrees', label: t('context.documents.aiDisagrees') },
           ]}
         />
@@ -310,10 +309,6 @@ export function Domains({ context, projectId }: { context: ContextOut; projectId
                         ) : doc.failed ? (
                           <Badge color="red" variant="light">
                             {t('context.documents.notCopied')}
-                          </Badge>
-                        ) : doc.collision ? (
-                          <Badge color="orange" variant="light" title={doc.organized_path ?? undefined}>
-                            {t('context.documents.overwritten')}
                           </Badge>
                         ) : (
                           <Text ff="monospace" size="xs" style={{ wordBreak: 'break-all' }}>

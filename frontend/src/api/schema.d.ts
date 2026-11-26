@@ -33,8 +33,7 @@ export interface paths {
         };
         /**
          * Ver la configuración de IA
-         * @description Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de entorno
-         *     que siguen definidas y ya no se leen (de doc_organize 1.x y de GitHub Copilot).
+         * @description Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.
          */
         get: operations["get_ai_settings_api_v1_admin_ai_settings_get"];
         put?: never;
@@ -1872,17 +1871,6 @@ export interface components {
             spend: number | null;
         };
         /**
-         * AiLegacyVariableOut
-         * @description Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de
-         *     GitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla).
-         */
-        AiLegacyVariableOut: {
-            /** Name */
-            name: string;
-            /** Replacement */
-            replacement: string | null;
-        };
-        /**
          * AiSettingsOut
          * @description Configuración de IA de la instancia, sin ningún secreto.
          */
@@ -1891,11 +1879,6 @@ export interface components {
             encryption_configured: boolean;
             /** Families */
             families: components["schemas"]["AiFamilyOut"][];
-            /**
-             * Legacy Variables
-             * @description Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)
-             */
-            legacy_variables?: components["schemas"]["AiLegacyVariableOut"][];
         };
         /**
          * AiStatusOut
@@ -2591,8 +2574,6 @@ export interface components {
             };
             /** Classified By */
             classified_by?: ("rules" | "semantic" | "ai" | "human") | null;
-            /** Collision */
-            collision: boolean;
             /** Description */
             description?: string | null;
             /** Document Type */
@@ -2814,8 +2795,6 @@ export interface components {
             built_with_version?: string | null;
             /** Catalog Kind */
             catalog_kind: string;
-            /** Collisions Count */
-            collisions_count: number;
             /** Documents Count */
             documents_count: number;
             /** Domains */
@@ -3437,7 +3416,7 @@ export interface components {
          * @description Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.
          *
          *     ``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).
-         *     ``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.
+         *     ``ignored_keys``: claves de nivel superior que no se usan al clasificar.
          */
         FrontMatterReportOut: {
             /**
@@ -3455,11 +3434,6 @@ export interface components {
              * @default []
              */
             implicit_axes: string[];
-            /**
-             * Legacy Format
-             * @default false
-             */
-            legacy_format: boolean;
         };
         /**
          * GoldOut
@@ -3801,12 +3775,6 @@ export interface components {
              * @description Ningún proyecto activo la usa
              */
             can_delete: boolean;
-            /**
-             * Deleted Projects
-             * @deprecated
-             * @description Obsoleto desde 2.3.1, siempre 0: los proyectos borrados sueltan sus ubicaciones
-             */
-            deleted_projects: number;
         };
         /**
          * LoginRequest
@@ -5133,8 +5101,7 @@ export interface components {
              * @default {
              *       "axes": [],
              *       "ignored_keys": [],
-             *       "implicit_axes": [],
-             *       "legacy_format": false
+             *       "implicit_axes": []
              *     }
              */
             front_matter: components["schemas"]["FrontMatterReportOut"];
@@ -5171,8 +5138,7 @@ export interface components {
              * @default {
              *       "axes": [],
              *       "ignored_keys": [],
-             *       "implicit_axes": [],
-             *       "legacy_format": false
+             *       "implicit_axes": []
              *     }
              */
             front_matter: components["schemas"]["FrontMatterReportOut"];
@@ -7551,8 +7517,8 @@ export interface operations {
             query?: {
                 /** @description Slug del dominio; sin él, los documentos sin clasificar */
                 domain?: string | null;
-                /** @description Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0) */
-                only?: ("failed" | "collision" | "ai_disagrees") | null;
+                /** @description Solo fallidos o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0) */
+                only?: ("failed" | "ai_disagrees") | null;
                 /** @description Solo este idioma (ISO 639-1, 1.5.0) */
                 language?: string | null;
                 /** @description Solo si alguna palabra clave contiene este texto (1.5.0) */

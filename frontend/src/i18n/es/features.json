@@ -795,7 +795,6 @@
       "output_folder_name": "Carpeta reorganizada",
       "domains": "Dominios",
       "unclassified": "Sin clasificar",
-      "collisions": "Con nombre repetido (se sobrescriben)",
       "missing_originals": "Originales que ya no están",
       "site_built": "Sitio construido",
       "ai": {
@@ -1266,14 +1265,11 @@
       "domains": "Dominios",
       "documents": "Clasificados",
       "unclassified": "Sin clasificar",
-      "failed": "No copiados",
-      "collisions": "Nombre repetido"
+      "failed": "No copiados"
     },
     "warnings": {
       "failed_one": "{{count}} documento no se pudo copiar a la carpeta reorganizada (p. ej. pasa por un enlace).",
       "failed_other": "{{count}} documentos no se pudieron copiar a la carpeta reorganizada (p. ej. pasan por un enlace).",
-      "collisions_one": "{{count}} documento comparte nombre con otro del mismo dominio y tipo: en la carpeta reorganizada solo queda uno.",
-      "collisions_other": "{{count}} documentos comparten nombre con otro del mismo dominio y tipo: en la carpeta reorganizada solo queda uno de cada nombre.",
       "noSite": "El contexto no tiene sitio construido (no se pidió o falló: mira la ejecución)."
     },
     "build": {
@@ -1323,7 +1319,6 @@
       "filter": "Filtrar documentos",
       "all": "Todos",
       "failed": "No copiados",
-      "collision": "Nombre repetido",
       "empty": "No hay documentos.",
       "total_one": "{{formatted}} documento",
       "total_other": "{{formatted}} documentos",
@@ -1333,7 +1328,6 @@
       "copy": "Copia",
       "view": "Ver conversión",
       "notCopied": "No copiado",
-      "overwritten": "Nombre repetido",
       "search": "Buscar documentos",
       "aiDisagrees": "La IA propuso otro",
       "language": "Idioma",
@@ -1742,9 +1736,6 @@
         "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
       },
       "budgetPlaceholder": "El general de Parámetros",
-      "legacyTitle": "Variables de entorno que ya no se leen",
-      "legacy": "Estas variables siguen definidas en el servidor y la aplicación ya no las lee. Cámbialas por su equivalente o bórralas:",
-      "legacyRemoved": "ya no se usa (GitHub Copilot se quitó en la 2.1): bórrala",
       "ownModelPlaceholder": "Sin modelo: desactivada",
       "ownModelTitle": "Necesita su propio modelo",
       "ownModel": {

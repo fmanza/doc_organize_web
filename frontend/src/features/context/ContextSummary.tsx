@@ -19,7 +19,6 @@ export function Summary({
     ['documents', context.documents_count],
     ['unclassified', context.unclassified_count],
     ['failed', context.failed_count],
-    ['collisions', context.collisions_count],
   ];
   return (
     <Card withBorder>
@@ -43,7 +42,7 @@ export function Summary({
         )}
       </Text>
       <Traceability context={context} />
-      <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs" component="dl">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs" component="dl">
         {stats.map(([key, value]) => (
           <div key={key}>
             <Text size="xs" c="dimmed" component="dt">
@@ -58,11 +57,6 @@ export function Summary({
       {context.failed_count > 0 && (
         <Alert color="orange" mt="sm">
           {t('context.warnings.failed', { count: context.failed_count })}
-        </Alert>
-      )}
-      {context.collisions_count > 0 && (
-        <Alert color="orange" mt="sm">
-          {t('context.warnings.collisions', { count: context.collisions_count })}
         </Alert>
       )}
       {canDelete && (

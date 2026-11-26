@@ -3,9 +3,8 @@
 doc_organize 2.0 sustituye los cuatro clientes de 1.x (clasificación, clasificación por taxonomía, borrador de
 manifiesto y descripciones) por un **cliente único** (``LlmClient``) con un modelo, y si se quiere una clave, **por
 tarea** (``AiSettings``/``TaskSettings``). La web guarda su configuración en la familia ``litellm`` (``ai_settings``,
-migración ``0016``) y construye aquí el ``AiSettings``; nunca usa ``settings_from_env`` de la librería, pero sí su lista
-de variables de 1.x (``legacy_variables``) para avisar de las que ya no se leen (D15, U17). doc_organize se importa
-**dentro** de cada función (G15).
+migración ``0016``) y construye aquí el ``AiSettings``; nunca usa ``settings_from_env`` de la librería. doc_organize se
+importa **dentro** de cada función (G15).
 
 Firmas verificadas en el tag ``v2.0.0rc2``::
 
@@ -31,7 +30,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -124,8 +122,6 @@ FAMILIES: Final[tuple[FamilySpec, ...]] = (
         ),
     ),
 )
-#: Variables de GitHub Copilot que la web ya no lee (2.1): si siguen definidas, se avisa como con las de 1.x.
-COPILOT_ENV_VARS: Final[tuple[str, ...]] = ("DOC_ORGANIZE_GITHUB_USERNAME", "DOC_ORGANIZE_GITHUB_PAT")
 FAMILIES_BY_KEY: Final[dict[str, FamilySpec]] = {family.key: family for family in FAMILIES}
 
 
@@ -138,17 +134,6 @@ def default_model(task: TaskKey) -> str:
     from doc_organize import default_model_alias
 
     return str(default_model_alias(task))
-
-
-def legacy_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
-    """Variables de entorno de 1.x definidas (``DOC_ORGANIZE_LITELLM_<CLIENTE>_*``) con la de 2.0 que las sustituye.
-
-    doc_organize 2.0 y la web ya no las leen (D15): si siguen definidas, la configuración se queda sin ellas y hay que
-    avisar (U17). Sin valores: solo nombres.
-    """
-    from doc_organize import legacy_variables
-
-    return dict(legacy_variables(environ))
 
 
 @dataclass(frozen=True)

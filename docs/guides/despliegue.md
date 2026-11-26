@@ -71,9 +71,8 @@ manda sobre las variables.
 - Con modelos de **Ollama**, sube su `num_ctx`: por defecto es 4096 y recorta en silencio; los agentes necesitan 32768
   (ver [Modelos locales](ia.md#modelos-locales-ollama)).
 - Las variables de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`, `_ENRICHMENT_*`,
-  `_TAXONOMY_MANIFEST_DRAFT_*`) ya no se leen: quítalas o cámbialas por su equivalente. Si siguen definidas, la página
-  de configuración lo avisa y, sin otra configuración, las ejecuciones con IA fallan con un error que dice cuál usar
-  (D15).
+  `_TAXONOMY_MANIFEST_DRAFT_*`) y las de GitHub Copilot (`DOC_ORGANIZE_GITHUB_USERNAME`, `DOC_ORGANIZE_GITHUB_PAT`) no
+  se leen y, desde la 3.0, tampoco se avisa de ellas: quítalas (ver [Actualizar a la 3.0](#actualizar-a-la-30)).
 
 ### Modelos de Docling
 
@@ -304,3 +303,24 @@ Desde la 3.0 las migraciones parten de una **línea base** con la revisión `003
 anterior a la 2.7 no arranca: el contenedor se para con el mensaje «La base de datos está en la revisión …, de una
 versión de la web anterior a la 2.7». En ese caso instala antes la 2.8.x, arráncala una vez para que migre y vuelve a
 instalar la versión nueva.
+
+### Actualizar a la 3.0
+
+La 3.0 retira la compatibilidad heredada de la 1.x y la 2.x y cambia el contrato HTTP (ver el CHANGELOG):
+
+1. Si la instancia está por debajo de la 2.7, instala la 2.8.x y arráncala una vez (arriba).
+2. Haz una copia de `config.db` (`app.cli backup`).
+3. Quita del entorno de `web` y `worker` las variables `DOC_ORGANIZE_LITELLM_<CLIENTE>_*` de la 1.x
+   (`_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`, `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`),
+   `DOC_ORGANIZE_GITHUB_USERNAME` y `DOC_ORGANIZE_GITHUB_PAT`: no se leen y la página de IA ya no avisa de ellas.
+4. Al migrar, la `3001` borra las columnas de colisiones de nombre (contextos construidos con doc_organize 0.13.0) y
+   deja en el log del arranque un aviso con los ids de los proyectos que tenían alguna
+   (`3001: proyectos con colisiones de nombre…`). **Reconstruye el contexto** de esos proyectos: la web ya no marca
+   esos documentos.
+5. En los proyectos convertidos con doc_organize anterior a 0.12.0 (web anterior a la 0.6.x), el visor muestra solo el
+   nombre del fichero en el JSON: usa **«Forzar reconversión»** en [Escaneo](escaneo.md#forzar-reconversión) para
+   recuperar la ruta relativa (y para que los JSON del ZIP dejen de llevar la ruta completa del servidor).
+6. Si tienes clientes propios de la API, regenéralos contra el nuevo `openapi.json`.
+
+Para volver atrás: `alembic downgrade 0033` dentro del contenedor con la imagen 3.0 y después la imagen 2.8.x. Las
+columnas vuelven, pero sin sus valores (colisiones a 0 y sin el texto 1.x de las plantillas).

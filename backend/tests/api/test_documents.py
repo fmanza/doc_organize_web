@@ -312,19 +312,20 @@ def test_output_is_served_with_a_fixed_type(
     assert png.headers["content-type"] == "image/png"
 
 
-@pytest.mark.posix_paths
 def test_json_output_hides_the_container_path(
     user_client: TestClient, project: dict[str, object], migrated: Settings
 ) -> None:
+    """3.0: un JSON de doc_organize < 0.12.0 (``source_path`` absoluta, G23) muestra solo el nombre del fichero."""
     folder = conversion(migrated) / "2024"
     folder.mkdir()
-    source = migrated.locations_root / "origen" / "2024" / "factura.txt"
-    (folder / "factura.json").write_text(json.dumps({"source_path": str(source), "title": "factura"}), encoding="utf-8")
+    source = "/data/locations/origen/2024/factura.txt"
+    (folder / "factura.json").write_text(json.dumps({"source_path": source, "title": "factura"}), encoding="utf-8")
 
     response = user_client.get(f"/api/v1/projects/{project['id']}/outputs", params={"path": "2024/factura.json"})
 
     assert response.status_code == 200 and response.headers["content-type"] == "application/json"
-    assert response.json() == {"source_path": "2024/factura.txt", "title": "factura"}
+    assert response.json() == {"source_path": "factura.txt", "title": "factura"}
+    assert "/data/locations" not in response.text and "origen" not in response.text
     # Desde doc_organize 0.12.0 (G23) la ruta ya viene relativa a la carpeta escaneada: se le antepone la carpeta.
     (folder / "nota.json").write_text(json.dumps({"source_path": "notas/nota.html"}), encoding="utf-8")
     relative = user_client.get(f"/api/v1/projects/{project['id']}/outputs", params={"path": "2024/nota.json"})

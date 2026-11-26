@@ -216,32 +216,6 @@
         "title": "AiKeyBudgetOut",
         "type": "object"
       },
-      "AiLegacyVariableOut": {
-        "description": "Variable de entorno que sigue definida y ya no se lee: de doc_organize 1.x (D15), con la que la sustituye, o de\nGitHub Copilot (quitado en la 2.1), sin sustituta (``replacement=None``: hay que borrarla).",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "replacement": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Replacement"
-          }
-        },
-        "required": [
-          "name",
-          "replacement"
-        ],
-        "title": "AiLegacyVariableOut",
-        "type": "object"
-      },
       "AiSettingsOut": {
         "description": "Configuración de IA de la instancia, sin ningún secreto.",
         "properties": {
@@ -254,14 +228,6 @@
               "$ref": "#/components/schemas/AiFamilyOut"
             },
             "title": "Families",
-            "type": "array"
-          },
-          "legacy_variables": {
-            "description": "Variables de entorno definidas que ya no se leen: de doc_organize 1.x y de GitHub Copilot (solo nombres)",
-            "items": {
-              "$ref": "#/components/schemas/AiLegacyVariableOut"
-            },
-            "title": "Legacy Variables",
             "type": "array"
           }
         },
@@ -1947,10 +1913,6 @@
             ],
             "title": "Classified By"
           },
-          "collision": {
-            "title": "Collision",
-            "type": "boolean"
-          },
           "description": {
             "anyOf": [
               {
@@ -2154,8 +2116,7 @@
           "folder",
           "path",
           "organized_path",
-          "failed",
-          "collision"
+          "failed"
         ],
         "title": "ContextDocumentOut",
         "type": "object"
@@ -2523,10 +2484,6 @@
             "title": "Catalog Kind",
             "type": "string"
           },
-          "collisions_count": {
-            "title": "Collisions Count",
-            "type": "integer"
-          },
           "documents_count": {
             "title": "Documents Count",
             "type": "integer"
@@ -2639,7 +2596,6 @@
           "documents_count",
           "unclassified_count",
           "failed_count",
-          "collisions_count",
           "site_built",
           "domains",
           "built_by_run_id",
@@ -3816,7 +3772,7 @@
         "type": "object"
       },
       "FrontMatterReportOut": {
-        "description": "Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.\n\n``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).\n``ignored_keys``: claves de nivel superior que no se usan al clasificar. ``legacy_format``: el texto es de 1.x.",
+        "description": "Lo que doc_organize leerá del front matter (``inspect_taxonomy_front_matter``), para avisar al guardar.\n\n``implicit_axes``: ejes leídos del formato implícito de 1.x (conviene declararlos en ``axes:``).\n``ignored_keys``: claves de nivel superior que no se usan al clasificar.",
         "properties": {
           "axes": {
             "default": [],
@@ -3841,11 +3797,6 @@
             },
             "title": "Implicit Axes",
             "type": "array"
-          },
-          "legacy_format": {
-            "default": false,
-            "title": "Legacy Format",
-            "type": "boolean"
           }
         },
         "title": "FrontMatterReportOut",
@@ -4670,17 +4621,10 @@
             "description": "Ningún proyecto activo la usa",
             "title": "Can Delete",
             "type": "boolean"
-          },
-          "deleted_projects": {
-            "deprecated": true,
-            "description": "Obsoleto desde 2.3.1, siempre 0: los proyectos borrados sueltan sus ubicaciones",
-            "title": "Deleted Projects",
-            "type": "integer"
           }
         },
         "required": [
           "active_projects",
-          "deleted_projects",
           "can_delete"
         ],
         "title": "LocationUsageOut",
@@ -7850,8 +7794,7 @@
             "default": {
               "axes": [],
               "ignored_keys": [],
-              "implicit_axes": [],
-              "legacy_format": false
+              "implicit_axes": []
             }
           },
           "last_changed_at": {
@@ -7940,8 +7883,7 @@
             "default": {
               "axes": [],
               "ignored_keys": [],
-              "implicit_axes": [],
-              "legacy_format": false
+              "implicit_axes": []
             }
           },
           "markdown": {
@@ -8954,7 +8896,7 @@
     },
     "/api/v1/admin/ai-settings": {
       "get": {
-        "description": "Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos, y las variables de entorno\nque siguen definidas y ya no se leen (de doc_organize 1.x y de GitHub Copilot).",
+        "description": "Las familias con el origen de cada campo (``db``, ``env`` o ``none``), sin secretos.",
         "operationId": "get_ai_settings_api_v1_admin_ai_settings_get",
         "responses": {
           "200": {
@@ -11190,7 +11132,7 @@
             }
           },
           {
-            "description": "Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0)",
+            "description": "Solo fallidos o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0)",
             "in": "query",
             "name": "only",
             "required": false,
@@ -11199,7 +11141,6 @@
                 {
                   "enum": [
                     "failed",
-                    "collision",
                     "ai_disagrees"
                   ],
                   "type": "string"
@@ -11208,7 +11149,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0)",
+              "description": "Solo fallidos o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0)",
               "title": "Only"
             }
           },

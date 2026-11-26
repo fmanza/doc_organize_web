@@ -280,7 +280,6 @@ def test_delete_location_used_by_active_project_names_it(
     response = admin_client.delete(f"/api/v1/locations/{source_id}")
 
     assert usage.status_code == 200
-    assert usage.json()["deleted_projects"] == 0
     assert [p["name"] for p in usage.json()["active_projects"]] == ["Proyecto A"]
     assert usage.json()["can_delete"] is False
     assert response.status_code == 409
@@ -310,7 +309,7 @@ def test_location_used_only_by_deleted_projects_can_be_deleted_or_moved(
     moved = admin_client.patch(f"/api/v1/locations/{destination_id}", json={"tenant_id": make_tenant("obras").id})
     deleted = admin_client.delete(f"/api/v1/locations/{source_id}")
 
-    assert usage.json() == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+    assert usage.json() == {"active_projects": [], "can_delete": True}
     assert moved.status_code == 200, moved.text
     assert deleted.status_code == 204
 
@@ -330,7 +329,7 @@ def test_active_project_cannot_lose_its_locations(
 def test_location_usage_without_projects_allows_delete(admin_client: TestClient, location: dict[str, object]) -> None:
     usage = admin_client.get(f"/api/v1/locations/{location['id']}/usage")
 
-    assert usage.json() == {"active_projects": [], "deleted_projects": 0, "can_delete": True}
+    assert usage.json() == {"active_projects": [], "can_delete": True}
 
 
 def test_location_usage_is_admin_only(admin_client: TestClient, location: dict[str, object], user: User) -> None:

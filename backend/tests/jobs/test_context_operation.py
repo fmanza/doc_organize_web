@@ -241,9 +241,8 @@ def test_build_keeps_both_copies_of_repeated_names(run: Any, project: Project, d
     output = migrated.locations_root / "salidas" / "Proyecto A"
     docs = list(db.scalars(select(ContextDocument).where(ContextDocument.path == "factura.txt")))
     copies = {str(d.organized_path) for d in docs}
-    assert len(docs) == 2 and len(copies) == 2 and not any(d.collision for d in docs)
+    assert len(docs) == 2 and len(copies) == 2
     assert all((output / copy).is_file() for copy in copies)
-    assert db.get(ProjectContext, project.id).collisions_count == 0  # type: ignore[union-attr]
 
 
 def test_build_skips_originals_that_are_gone(run: Any, project: Project, db: Session, migrated: Settings) -> None:

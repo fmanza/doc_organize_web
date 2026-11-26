@@ -50,7 +50,6 @@ const CONTEXT = {
   documents_count: 0,
   unclassified_count: 0,
   failed_count: 0,
-  collisions_count: 0,
   site_built: false,
   domains: [],
   built_by_run_id: null,

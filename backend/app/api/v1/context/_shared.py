@@ -40,7 +40,6 @@ def front_matter(info: Any) -> FrontMatterReportOut:
         ],
         implicit_axes=info.implicit_axes,
         ignored_keys=info.ignored_keys,
-        legacy_format=info.legacy_format,
     )
 
 

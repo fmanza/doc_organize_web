@@ -14,7 +14,6 @@ const CONTEXT = {
   documents_count: 1,
   unclassified_count: 1,
   failed_count: 0,
-  collisions_count: 0,
   site_built: false,
   domains: [{ slug: 'facturas', name: 'Facturas', description: null, status: 'borrador', documents: 1 }],
   taxonomy_axes: [

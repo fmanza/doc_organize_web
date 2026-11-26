@@ -25,7 +25,6 @@ const CONTEXT = {
   documents_count: 2,
   unclassified_count: 1,
   failed_count: 1,
-  collisions_count: 2,
   site_built: true,
   domains: [{ slug: 'facturas', name: 'Facturas', description: null, status: 'borrador', documents: 2 }],
   built_by_run_id: RUN_ID,
@@ -41,7 +40,6 @@ const DOCUMENT = {
   path: 'enero/factura.pdf',
   organized_path: 'organizado/facturas/pdf/factura/factura.pdf',
   failed: false,
-  collision: false,
   output_path: '2024/enero/factura.md',
   keywords: [],
   ai_filled: [],
@@ -125,7 +123,7 @@ describe('ContextPage', () => {
       'href',
       '/projects/7/context/review',
     );
-    expect(screen.getByText(/2 documentos comparten nombre/)).toBeInTheDocument();
+    expect(screen.queryByText(/comparten nombre/)).not.toBeInTheDocument(); // sin G30 (3.0)
     expect(await screen.findByText('2024/enero/factura.pdf')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Borrar contexto' })).toBeInTheDocument();
 

@@ -80,13 +80,10 @@ tiene letras ni números.
 
 El paso **Resultado** muestra los dominios con sus documentos (con los valores de cada eje como insignias) y los **sin
 clasificar**, paginados. Cada documento enlaza a su
-conversión en el [visor](documentos.md#visor). Hay tres avisos posibles:
+conversión en el [visor](documentos.md#visor). Hay dos avisos posibles:
 
 - **No copiados**: documentos que no se pudieron copiar. Por ejemplo, el original, su Markdown o sus imágenes pasan por
   un enlace simbólico: doc_organize nunca copia lo que hay al otro lado de un enlace. El resto se copia igual.
-- **Nombre repetido** (solo en contextos construidos con doc_organize 0.13.0 o anterior): dos documentos con el mismo
-  nombre en el mismo dominio y tipo iban a la misma carpeta de `organizado` y la copia de uno sustituía a la del otro.
-  Ahora cada uno va a su carpeta (`<nombre>-<código>`); reconstruye el contexto para corregirlo.
 - **Sin sitio**: no se pidió o falló (por ejemplo, superó el tiempo máximo de `DOW_CONTEXT_SITE_TIMEOUT_SECONDS`, 600 s
   por defecto). La ejecución dice por qué.
 
