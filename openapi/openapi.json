@@ -13492,7 +13492,33 @@
           "content": {
             "application/json": {
               "schema": {
-                "anyOf": [
+                "discriminator": {
+                  "mapping": {
+                    "context_audit": "#/components/schemas/ContextAuditParams",
+                    "context_build": "#/components/schemas/ContextBuildParams",
+                    "context_delete": "#/components/schemas/ContextDeleteParams",
+                    "context_dry_run": "#/components/schemas/ContextDryRunParams",
+                    "context_evaluate": "#/components/schemas/ContextEvaluateParams",
+                    "context_review_agent": "#/components/schemas/ContextReviewAgentParams",
+                    "dedup_apply": "#/components/schemas/DedupApplyParams",
+                    "dedup_preview": "#/components/schemas/DedupPreviewParams",
+                    "export_ai_bundle": "#/components/schemas/ExportAiBundleParams",
+                    "export_site": "#/components/schemas/ExportSiteParams",
+                    "export_xlsx": "#/components/schemas/ExportXlsxParams",
+                    "export_zip": "#/components/schemas/ExportZipParams",
+                    "history_clear": "#/components/schemas/HistoryClearParams",
+                    "noop": "#/components/schemas/NoopParams",
+                    "project_delete": "#/components/schemas/ProjectDeleteParams",
+                    "project_move": "#/components/schemas/ProjectMoveParams",
+                    "scan": "#/components/schemas/ScanParams",
+                    "search_index": "#/components/schemas/SearchIndexParams",
+                    "taxonomy_agent": "#/components/schemas/TaxonomyAgentParams",
+                    "taxonomy_check": "#/components/schemas/TaxonomyCheckParams",
+                    "taxonomy_draft": "#/components/schemas/TaxonomyDraftParams"
+                  },
+                  "propertyName": "operation"
+                },
+                "oneOf": [
                   {
                     "$ref": "#/components/schemas/NoopParams"
                   },
