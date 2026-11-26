@@ -19,6 +19,9 @@ ROADMAP (`0.<fase+1>.0`).
   enlaces simbólicos se omite si el sistema no permite crearlos; `add_member` común en `conftest.py`.
 - **backend** (tests): `config.db` migrada una vez por sesión y copiada en cada test, y Argon2id con parámetros
   mínimos solo en los tests; la suite completa baja de ~26 a ~17 min y los tests de API, cerca de un 70 %.
+- **backend**: `api/v1/schemas.py` (1813 líneas) pasa a un paquete con un módulo por área, que reexporta todos los
+  esquemas, y `api/v1/context.py` (1024 líneas) a un paquete con un router por subdominio (plantillas, documentos,
+  manifiesto, perfil, revisión y calidad). El contrato OpenAPI no cambia.
 - **docker**: entorno común de los workers en compose (`x-worker-env`); `models-init` sin el HEALTHCHECK de la
   imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
 - **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
