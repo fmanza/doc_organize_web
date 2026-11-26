@@ -3,6 +3,18 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/). Hasta la 1.0.0, una MINOR por fase del
 ROADMAP (`0.<fase+1>.0`).
 
+## [Unreleased]
+
+### Changed
+
+- **backend**: `update_user` (156 líneas) se parte en pasos con nombre: plan del cambio y permisos, guardas del último
+  administrador, perfil y rol, contraseña, desbloqueo, estado y auditoría. Sin cambio de comportamiento.
+- **backend** (tests): `tests/fixtures/schema_0033.sql` guarda la BD que deja la cadena de migraciones en `0033`
+  (DDL y filas semilla) y un test la compara; es la referencia del squash de Alembic de la 3.0
+  (`docs/plan/VERSION_3.0.md`). Se regenera con `uv run --frozen python -m tests.schema_snapshot`.
+- **backend** (dependencias de desarrollo): `httpx2` 2.16.0 para el `TestClient` de Starlette, que da por obsoleto
+  usarlo con `httpx`; `httpx` se queda porque lo usa la IA de doc_organize.
+
 ## [2.8.0] - 2026-11-26
 
 Versión de mantenimiento: pago de la deuda técnica del informe `/tech-debt` de la 2.7.0 sin cambios funcionales.

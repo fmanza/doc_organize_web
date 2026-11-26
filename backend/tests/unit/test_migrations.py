@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import Settings
 from app.db.base import Base
 from app.db.session import get_engine
+from tests import schema_snapshot
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -26,6 +27,14 @@ def _config() -> Config:
 
 def test_single_head() -> None:
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
+
+
+def test_0033_matches_the_schema_snapshot(settings: Settings) -> None:
+    """La BD en ``0033`` es exactamente ``tests/fixtures/schema_0033.sql``: la referencia del squash de la 3.0."""
+    command.upgrade(_config(), schema_snapshot.REVISION)
+    get_engine().dispose()
+
+    assert schema_snapshot.dump(settings.data_dir / "config.db") == schema_snapshot.SNAPSHOT.read_text(encoding="utf-8")
 
 
 def test_upgrade_and_downgrade(settings: Settings) -> None:

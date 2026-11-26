@@ -63,11 +63,16 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Settin
     get_engine.cache_clear()
 
 
-def run_migrations(revision: str = "head") -> None:
-    """Aplica Alembic sobre la ``config.db`` de los ajustes actuales."""
+def alembic_config() -> Config:
+    """Configuración de Alembic del backend, con la carpeta de migraciones absoluta."""
     config = Config(str(BACKEND_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
-    command.upgrade(config, revision)
+    return config
+
+
+def run_migrations(revision: str = "head") -> None:
+    """Aplica Alembic sobre la ``config.db`` de los ajustes actuales."""
+    command.upgrade(alembic_config(), revision)
 
 
 @pytest.fixture(autouse=True, scope="session")

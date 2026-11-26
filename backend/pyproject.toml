@@ -31,6 +31,7 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.12",
     "mypy>=1.17",
+    "httpx2>=2.16",
 ]
 docs = [
     "zensical>=0.1.1",  # sitio de documentación (zensical.toml en la raíz)
