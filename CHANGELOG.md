@@ -5,6 +5,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-26
+
+Bloquear y borrar usuarios con la garantía de que siempre queda un administrador de la instancia activo, filtros de
+usuarios por rol y estado, y exclusión de carpetas en todo el proyecto. Sigue con doc_organize 2.5.0. Migraciones
+`0032` y `0033` (aditivas).
+
 ### Added
 
 - **Bloquear y borrar usuarios** ([ADR-016](docs/adr/ADR-016-borrado-de-usuarios.md)). En «Administración → Usuarios»,
@@ -47,6 +53,23 @@ ROADMAP (`0.<fase+1>.0`).
       `GET /duplicates/last`) y aplicarla responde `409 exclusions_changed`.
     - La pantalla de escaneo muestra las exclusiones heredadas del proyecto; el detalle de la ejecución, las que usó; el
       listado de documentos avisa de que lo excluido sigue en la caché (hueco G47 de doc_organize).
+
+### Changed
+
+- **Estados de usuario en la interfaz**: «Desactivado» pasa a «Bloqueado» y «Bloqueado» pasa a «Bloqueado por
+  intentos». La API no cambia (`is_active`, `locked_until`).
+- **Proyectos nuevos**: se crean con «Excluir carpetas de sistema» activado.
+- **`ScanParams`**: los máximos suben a 150 exclusiones por carpeta y 100 patrones. Es compatible con los `run.params`
+  guardados.
+- **`PATCH /api/v1/roles/{id}`**: responde `409 last_tenant_manager` si quitar `users.manage` deja el tenant sin
+  gestores, salvo que actúe un admin de instancia.
+- **El problem details** admite campos de extensión RFC 9457, por ejemplo `reasons` en el `409` de borrado.
+
+### Notas
+
+- **Índice de búsqueda**: no aplica las exclusiones, porque se construye desde `Conversión/*.md`, no desde la caché.
+- **Caché**: lo excluido sigue en `cache.db` mientras doc_organize no permita borrar por ruta. Es el hueco G47 de
+  [DOC_ORGANIZE_GAPS](docs/plan/DOC_ORGANIZE_GAPS.md), y hasta entonces el rodeo es filtrar al leer.
 
 ## [2.6.0] - 2026-11-25
 

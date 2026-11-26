@@ -93,7 +93,7 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | Carpetas guardadas libres (cualquier subcarpeta del origen) | Las carpetas guardadas son las carpetas de origen del proyecto, sin anidar: la ruta de cada salida depende de la carpeta escaneada (Fase 4) |
 | Rutas libres desde `Path.home()` en el explorador | Sustituido por ubicaciones registradas por un admin (ADR-007) |
 | Registro de proyectos en `~/.doc_organize/projects.json` | Proyectos en `config.db`, empezando limpio (D4) |
-| Borrar usuarios (`DELETE /api/users/{user_id}`) | Se desactivan: la auditoría conserva quién hizo cada cosa (decisión de la Fase 1) |
+| Borrar usuarios (`DELETE /api/users/{user_id}`) | Hasta la 2.6, solo se desactivaban. Desde la 2.7 se pueden borrar si no dejan nada huérfano (`409` con motivos), y la auditoría conserva el nombre en `actor_name` ([ADR-016](../adr/ADR-016-borrado-de-usuarios.md)) |
 | Carpeta del proyecto = `<base>/<nombre>` y crear proyectos solo admin | La carpeta de salidas es nueva o vacía y no lleva el nombre (renombrar no la toca); cualquier usuario crea proyectos (decisión de la Fase 3) |
 | Descargas directas del ZIP y los Excel en la petición HTTP | Son ejecuciones con el fichero como artefacto (cuota, retención, cancelación); el ZIP comprueba antes su tamaño (Fase 5) |
 | `cache_export.json` y Excel con rutas absolutas del servidor | Rutas relativas a la carpeta de origen y mensajes de error enmascarados (Fase 5; los JSON del ZIP siguen con `source_path` absoluta, G23) |
