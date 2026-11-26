@@ -58,10 +58,6 @@ class LocationUsageOut(BaseModel):
     """Proyectos que usan una ubicación (2.1.1): mientras haya alguno, no se puede borrar."""
 
     active_projects: list[LocationProjectRef] = Field(description="Proyectos activos que la usan, por nombre")
-    deleted_projects: int = Field(
-        description="Obsoleto desde 2.3.1, siempre 0: los proyectos borrados sueltan sus ubicaciones",
-        json_schema_extra={"deprecated": True},
-    )
     can_delete: bool = Field(description="Ningún proyecto activo la usa")
 
 

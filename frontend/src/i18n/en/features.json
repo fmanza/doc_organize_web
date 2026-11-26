@@ -795,7 +795,6 @@
       "output_folder_name": "Reorganised folder",
       "domains": "Domains",
       "unclassified": "Unclassified",
-      "collisions": "With duplicate names (overwritten)",
       "missing_originals": "Originals that are gone",
       "site_built": "Site built",
       "ai": {
@@ -1266,14 +1265,11 @@
       "domains": "Domains",
       "documents": "Classified",
       "unclassified": "Unclassified",
-      "failed": "Not copied",
-      "collisions": "Duplicate name"
+      "failed": "Not copied"
     },
     "warnings": {
       "failed_one": "{{count}} document could not be copied to the reorganised folder (e.g. it goes through a link).",
       "failed_other": "{{count}} documents could not be copied to the reorganised folder (e.g. they go through a link).",
-      "collisions_one": "{{count}} document shares its name with another of the same domain and type: only one remains in the reorganised folder.",
-      "collisions_other": "{{count}} documents share their name with another of the same domain and type: only one of each name remains in the reorganised folder.",
       "noSite": "The context has no built site (it was not requested or it failed: check the run)."
     },
     "build": {
@@ -1323,7 +1319,6 @@
       "filter": "Filter documents",
       "all": "All",
       "failed": "Not copied",
-      "collision": "Duplicate name",
       "empty": "No documents.",
       "total_one": "{{formatted}} document",
       "total_other": "{{formatted}} documents",
@@ -1333,7 +1328,6 @@
       "copy": "Copy",
       "view": "View conversion",
       "notCopied": "Not copied",
-      "overwritten": "Duplicate name",
       "search": "Search documents",
       "aiDisagrees": "The AI suggested another",
       "language": "Language",
@@ -1742,9 +1736,6 @@
         "json_object": "The model does not support json_schema: doc_organize will use json_object and validate the response."
       },
       "budgetPlaceholder": "The general one from Parameters",
-      "legacyTitle": "Environment variables no longer read",
-      "legacy": "These variables are still defined on the server but the application no longer reads them. Replace them with their equivalent or delete them:",
-      "legacyRemoved": "no longer used (GitHub Copilot was removed in 2.1): delete it",
       "ownModelPlaceholder": "No model: disabled",
       "ownModelTitle": "Needs its own model",
       "ownModel": {

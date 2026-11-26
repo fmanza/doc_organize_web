@@ -82,8 +82,8 @@ class AxisInfo:
 @dataclass(frozen=True)
 class TemplateInfo:
     """Resumen de una plantilla: catálogo de dominios y tipos de material ``(slug, nombre)`` y, desde doc_organize 2.0,
-    sus ejes y lo que avisa ``inspect_taxonomy_front_matter``: ejes implícitos (formato de 1.x), claves que no se usan
-    y si el texto es de 1.x."""
+    sus ejes y lo que avisa ``inspect_taxonomy_front_matter``: ejes implícitos (formato de 1.x) y claves que no se
+    usan."""
 
     title: str | None
     description: str | None
@@ -92,7 +92,6 @@ class TemplateInfo:
     axes: list[AxisInfo] = field(default_factory=list)
     implicit_axes: list[str] = field(default_factory=list)
     ignored_keys: list[str] = field(default_factory=list)
-    legacy_format: bool = False
 
 
 @dataclass(frozen=True)
@@ -198,7 +197,6 @@ class ContextDoc:
     source_path: str
     organized_path: str | None
     failed: bool = False
-    collision: bool = False
     classified_by: str | None = None
     # 1.5.0: propiedades del documento y trazabilidad de la clasificación (``DomainDocument``).
     author: str | None = None
@@ -299,7 +297,6 @@ def _info(manifest: Any, text: str | None = None) -> TemplateInfo:
         ],
         implicit_axes=list(report.implicit_axes) if report else [],
         ignored_keys=list(report.ignored_keys) if report else [],
-        legacy_format=bool(report.legacy_format) if report else False,
     )
 
 

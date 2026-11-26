@@ -67,7 +67,7 @@ MAX_VERSION_BYTES: Final = 4 * 1024 * 1024
 TOO_LARGE_ETAG: Final = "too_large"
 #: Tamaño máximo del historial del contexto que lee la API (más grande: «Historial del contexto (Excel)»).
 MAX_HISTORY_BYTES: Final = 16 * 1024 * 1024
-DocumentFilter = Literal["failed", "collision", "ai_disagrees"]
+DocumentFilter = Literal["failed", "ai_disagrees"]
 
 
 @dataclass(frozen=True)
@@ -208,8 +208,6 @@ def list_documents(
     where.append(ContextDocument.domain_slug == domain if domain is not None else ContextDocument.domain_slug.is_(None))
     if only == "failed":
         where.append(ContextDocument.failed.is_(True))
-    elif only == "collision":
-        where.append(ContextDocument.collision.is_(True))
     elif only == "ai_disagrees":
         where.append(ContextDocument.ai_domain.is_not(None))
         where.append(

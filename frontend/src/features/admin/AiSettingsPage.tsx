@@ -37,18 +37,6 @@ export function AiSettingsPage() {
           {t('ai.settings.noEncryption')}
         </Alert>
       )}
-      {(settings.data.legacy_variables ?? []).length > 0 && (
-        <Alert color="orange" title={t('ai.settings.legacyTitle')}>
-          {t('ai.settings.legacy')}
-          <Stack gap={2} mt={4}>
-            {(settings.data.legacy_variables ?? []).map((item) => (
-              <Text key={item.name} size="sm" ff="monospace">
-                {item.name} → {item.replacement ?? t('ai.settings.legacyRemoved')}
-              </Text>
-            ))}
-          </Stack>
-        </Alert>
-      )}
       {settings.data.families.map((family) =>
         family.fields.some((field) => field.task) ? (
           <ModelsPanel

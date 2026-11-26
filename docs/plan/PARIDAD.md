@@ -96,5 +96,5 @@ ejecuciones encoladas con progreso por SSE (ADR-008): el run sobrevive al cierre
 | Borrar usuarios (`DELETE /api/users/{user_id}`) | Hasta la 2.6, solo se desactivaban. Desde la 2.7 se pueden borrar si no dejan nada huérfano (`409` con motivos), y la auditoría conserva el nombre en `actor_name` ([ADR-016](../adr/ADR-016-borrado-de-usuarios.md)) |
 | Carpeta del proyecto = `<base>/<nombre>` y crear proyectos solo admin | La carpeta de salidas es nueva o vacía y no lleva el nombre (renombrar no la toca); cualquier usuario crea proyectos (decisión de la Fase 3) |
 | Descargas directas del ZIP y los Excel en la petición HTTP | Son ejecuciones con el fichero como artefacto (cuota, retención, cancelación); el ZIP comprueba antes su tamaño (Fase 5) |
-| `cache_export.json` y Excel con rutas absolutas del servidor | Rutas relativas a la carpeta de origen y mensajes de error enmascarados (Fase 5; los JSON del ZIP siguen con `source_path` absoluta, G23) |
+| `cache_export.json` y Excel con rutas absolutas del servidor | Rutas relativas a la carpeta de origen y mensajes de error enmascarados (Fase 5; los JSON del ZIP siguen con `source_path` absoluta, G23; desde la 3.0 el visor solo muestra el nombre del fichero de esos JSON) |
 | Mover, vaciar o borrar con un modal de confirmación | Vista previa (`dry_run`) obligatoria + nombre tecleado + auditoría (regla 7, Fase 3) |

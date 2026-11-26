@@ -66,11 +66,9 @@ uso de GitHub Copilot.
   `_VIRTUAL_KEY`, `_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`: los mismos nombres que doc_organize 2.0) o **Sin valor**.
   Lo guardado aquí tiene prioridad.
 - Las variables de entorno de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`,
-  `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`) **ya no se leen** (decisión D15, sin periodo de transición). Si siguen
-  definidas, la página lo avisa con la equivalente de cada una y, si la IA queda sin configurar, encolar una ejecución
-  con IA falla con un error que dice qué variable usar en su lugar: nunca se queda sin IA en silencio. La API de
-  configuración las lista, sin valores. También avisa de `DOC_ORGANIZE_GITHUB_USERNAME` y `DOC_ORGANIZE_GITHUB_PAT`
-  (GitHub Copilot, quitado en la 2.1): ya no se usan y se pueden borrar.
+  `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`) y las de GitHub Copilot (`DOC_ORGANIZE_GITHUB_USERNAME`,
+  `DOC_ORGANIZE_GITHUB_PAT`, quitado en la 2.1) **no se leen** (decisión D15). Hasta la 2.8 la página avisaba de ellas;
+  desde la 3.0 ya no: quítalas del entorno (ver [Actualizar a la 3.0](despliegue.md#actualizar-a-la-30)).
 - Las **claves y tokens** se guardan cifrados y nunca se vuelven a mostrar: solo «Guardada: …ab12» (los 4 últimos
   caracteres, o `***` si son muy cortos). Para cambiar una, escribe la nueva. Para volver a la variable del servidor,
   pulsa «Borrar valor guardado».

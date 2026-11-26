@@ -64,7 +64,6 @@ def _row(project_id: int, seq: int, doc: ContextDoc, namer: DocumentNamer) -> di
         "path": path,
         "organized_path": doc.organized_path,
         "failed": doc.failed,
-        "collision": doc.collision,
         "classified_by": doc.classified_by if doc.domain_slug is not None else None,
         # 1.5.0: recortes defensivos al tamaño de las columnas (doc_organize ya limita la justificación a 500).
         "author": _cut(doc.author, 500),
@@ -154,7 +153,6 @@ def _project_rows(
                 documents_count=sum(1 for d in outcome.documents if d.domain_slug is not None),
                 unclassified_count=sum(1 for d in outcome.documents if d.domain_slug is None),
                 failed_count=len(outcome.failed),
-                collisions_count=0,  # desde 0.14.0 doc_organize no sobrescribe nombres repetidos (G30)
                 site_built=outcome.site_built,
                 ai_classification=params.ai_classification,
                 built_with_version=_cut(outcome.built_with_version, 128),

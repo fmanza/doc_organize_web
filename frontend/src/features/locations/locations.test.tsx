@@ -196,7 +196,7 @@ describe('LocationsPage', () => {
       ...session(ADMIN),
       'GET /api/v1/locations': { body: { items: [ADMIN_VIEW], total: 1 } },
       'GET /api/v1/locations/1/usage': {
-        body: { active_projects: [], deleted_projects: 0, can_delete: true },
+        body: { active_projects: [], can_delete: true },
       },
       'DELETE /api/v1/locations/1': { status: 204 },
     });
@@ -218,7 +218,7 @@ describe('LocationsPage', () => {
       ...session(ADMIN),
       'GET /api/v1/locations': { body: { items: [ADMIN_VIEW], total: 1 } },
       'GET /api/v1/locations/1/usage': {
-        body: { active_projects: [{ id: 7, name: 'Proyecto A' }], deleted_projects: 0, can_delete: false },
+        body: { active_projects: [{ id: 7, name: 'Proyecto A' }], can_delete: false },
       },
     });
     const user = userEvent.setup();

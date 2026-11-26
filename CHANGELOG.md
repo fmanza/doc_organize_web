@@ -21,6 +21,30 @@ ROADMAP (`0.<fase+1>.0`).
 - **backend** (dependencias de desarrollo): `httpx2` 2.16.0 para el `TestClient` de Starlette, que da por obsoleto
   usarlo con `httpx`; `httpx` se queda porque lo usa la IA de doc_organize.
 
+### Removed
+
+Compatibilidad heredada de la 1.x y la 2.x (`docs/plan/VERSION_3.0.md`). Clientes propios de la API: regenerarlos
+contra el nuevo `openapi.json`. Pasos en [Actualizar a la 3.0](docs/guides/despliegue.md#actualizar-a-la-30).
+
+- **backend** (**incompatible**): migración `3001`, que borra `context_documents.collision`,
+  `project_contexts.collisions_count` y `taxonomy_templates.markdown_v1`. Antes deja en el log un aviso con los ids de
+  los proyectos con colisiones (solo ids) para reconstruir su contexto. La bajada a `0033` recrea las columnas sin sus
+  valores.
+- **backend, frontend** (**incompatible**): `GET /locations/{id}/usage` sin `deleted_projects` (siempre 0 desde la
+  migración `0029`) y `LocationProjects.deleted` fuera del dominio.
+- **backend, frontend** (**incompatible**): rodeo de G30 (colisiones de nombre de doc_organize 0.13.0): el contexto
+  sin `collisions_count`, los documentos sin `collision`, sin el filtro `only=collision`, ni su aviso, su insignia,
+  su recuento y sus textos en la interfaz. En las ejecuciones antiguas, el recuento `collisions` ya no se muestra.
+- **backend** (**incompatible**): rodeo de G23. El visor ya no reescribe la `source_path` absoluta de los JSON
+  convertidos con doc_organize < 0.12.0: muestra solo el nombre del fichero, nunca la ruta del contenedor, hasta
+  «Forzar reconversión».
+- **backend, frontend** (**incompatible**): `GET /admin/ai-settings` sin `legacy_variables` (ni `AiLegacyVariableOut`)
+  y la página de IA sin su aviso: las variables `DOC_ORGANIZE_LITELLM_<CLIENTE>_*` de la 1.x y
+  `DOC_ORGANIZE_GITHUB_USERNAME`/`DOC_ORGANIZE_GITHUB_PAT` siguen sin leerse y ya no se avisa de ellas, ni en el error
+  de «IA sin configurar».
+- **backend** (**incompatible**): `front_matter` de plantillas y manifiesto sin `legacy_format`. Se mantienen
+  `implicit_axes` y la migración del texto 1.x al restaurar versiones antiguas del manifiesto.
+
 ## [2.8.0] - 2026-11-26
 
 Versión de mantenimiento: pago de la deuda técnica del informe `/tech-debt` de la 2.7.0 sin cambios funcionales.

@@ -571,8 +571,6 @@ class TaxonomyTemplate(Base):
     title: Mapped[str | None] = mapped_column(String(256), default=None)
     description: Mapped[str | None] = mapped_column(String(1024), default=None)
     markdown: Mapped[str] = mapped_column(Text)
-    #: Texto de 1.x que la migración ``0017`` pasó al formato 2.0 (``markdown``); nulo si ya era 2.0.
-    markdown_v1: Mapped[str | None] = mapped_column(Text, default=None)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
@@ -595,7 +593,6 @@ class ProjectContext(Base):
     documents_count: Mapped[int] = mapped_column(Integer, default=0)
     unclassified_count: Mapped[int] = mapped_column(Integer, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
-    collisions_count: Mapped[int] = mapped_column(Integer, default=0)
     site_built: Mapped[bool] = mapped_column(default=False)
     #: Se construyó con la Sub-fase B (IA, Fase 8).
     ai_classification: Mapped[bool] = mapped_column(default=False)
@@ -663,9 +660,7 @@ class ContextDocument(Base):
     """Documento del contexto (Fase 7): clasificado en un dominio o, con ``domain_slug`` nulo, sin clasificar.
 
     Rutas relativas: ``folder`` + ``path`` del original en el origen y ``organized_path`` de la copia dentro de la
-    carpeta del proyecto en el destino (nula si no se copió). ``failed`` marca los que doc_organize no pudo copiar (G27)
-    y ``collision`` los que compartían carpeta con otro y se sobrescribían en la copia (G30, contextos construidos con
-    doc_organize 0.13.0; desde 0.14.0 ya no ocurre).
+    carpeta del proyecto en el destino (nula si no se copió). ``failed`` marca los que doc_organize no pudo copiar (G27).
     """
 
     __tablename__ = "context_documents"
@@ -688,7 +683,6 @@ class ContextDocument(Base):
     path: Mapped[str] = mapped_column(String(4096))
     organized_path: Mapped[str | None] = mapped_column(String(4096), default=None)
     failed: Mapped[bool] = mapped_column(default=False)
-    collision: Mapped[bool] = mapped_column(default=False)
     #: ``rules`` o ``ai`` (quién lo clasificó, Fase 8); nulo si no se clasificó.
     classified_by: Mapped[str | None] = mapped_column(String(8), default=None)
     # 1.5.0 (doc_organize 1.5.0): propiedades del documento y trazabilidad de la clasificación. Nulos (o ``[]``) en

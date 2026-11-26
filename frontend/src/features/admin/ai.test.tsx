@@ -182,12 +182,6 @@ describe('AiSettingsPage', () => {
         body: {
           ...SETTINGS,
           families: [TASKS_FAMILY],
-          legacy_variables: [
-            {
-              name: 'DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL',
-              replacement: 'DOC_ORGANIZE_LITELLM_MODEL_ENRICH',
-            },
-          ],
         },
       },
     });
@@ -195,9 +189,6 @@ describe('AiSettingsPage', () => {
     renderRoute('/admin/ai/settings');
 
     const table = await screen.findByRole('region', { name: 'Modelos por funcionalidad' });
-    expect(
-      screen.getByText(/DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL → DOC_ORGANIZE_LITELLM_MODEL_ENRICH/),
-    ).toBeInTheDocument();
     const rows = within(table).getAllByRole('row');
     const row = (name: RegExp) => rows.find((item) => name.test(item.textContent ?? '')) as HTMLElement;
     expect(

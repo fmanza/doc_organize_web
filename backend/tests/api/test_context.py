@@ -59,7 +59,6 @@ def _seed_context(db: Session, project_id: int, *, site_built: bool = True) -> N
             documents_count=2,
             unclassified_count=1,
             failed_count=1,
-            collisions_count=0,
             site_built=site_built,
             domains=[
                 {"slug": "facturas", "name": "Facturas", "description": None, "status": "borrador", "documents": 2}
@@ -223,7 +222,7 @@ def test_manifest_is_validated_and_written_by_editors(
         "error": None,
         "domains": [],
         "material_types": [],
-        "front_matter": {"axes": [], "implicit_axes": [], "ignored_keys": [], "legacy_format": False},
+        "front_matter": {"axes": [], "implicit_axes": [], "ignored_keys": []},
         "etag": "none",
         "last_changed_at": None,
     }

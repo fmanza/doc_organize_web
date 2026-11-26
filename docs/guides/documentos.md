@@ -38,7 +38,9 @@ la fecha de la última actualización y el estado de la conversión:
   seguridad, el visor no ejecuta nada del documento: quita scripts, formularios, estilos y marcos, no carga imágenes de
   otros sitios y los enlaces externos se abren en otra pestaña.
 - **JSON**: los fragmentos (*chunks*) con sus títulos y páginas, tal como los usan el contexto y la IA. La ruta del
-  documento de origen aparece relativa a su carpeta.
+  documento de origen aparece relativa a su carpeta. En los convertidos con doc_organize anterior a 0.12.0 (web
+  anterior a la 0.6.x), desde la 3.0 solo aparece el nombre del fichero: usa «Forzar reconversión» para recuperar la
+  ruta relativa.
 - **Descargar Markdown** y **Descargar JSON** guardan el fichero.
 
 El visor muestra ficheros de hasta 20 MB; los más grandes se obtienen con el ZIP del proyecto. Si una salida ya no

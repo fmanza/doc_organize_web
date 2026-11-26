@@ -62,7 +62,6 @@ const COUNTS = new Set([
   'groups_done',
   'domains',
   'unclassified',
-  'collisions',
   'missing_originals',
   'calls',
   'classified',
@@ -88,8 +87,11 @@ const COUNTS = new Set([
 /** Datos que se muestran traducidos (`runs.result.values.<clave>.<valor>`). */
 const TRANSLATED = new Set(['mode', 'ai.stopped', 'ai_enrichment.stopped', 'ai.scope']);
 const SECONDS = new Set(['duration_seconds', 'discovery_duration_seconds', 'total_conversion_seconds']);
-/** Datos técnicos que no aportan al usuario (o que se muestran en otra pantalla, como el borrador del manifiesto). */
-const HIDDEN = new Set(['event_schema_version', 'manifest_markdown', 'segments']);
+/**
+ * Datos técnicos que no aportan al usuario (o que se muestran en otra pantalla, como el borrador del manifiesto).
+ * `collisions`: recuento de las ejecuciones antiguas con doc_organize 0.13 (G30), retirado en la 3.0.
+ */
+const HIDDEN = new Set(['event_schema_version', 'manifest_markdown', 'segments', 'collisions']);
 
 /** Aplana un nivel de objetos anidados (`ai.calls`) para mostrarlos como datos sueltos. */
 function flatten(result: Record<string, unknown>): [string, unknown][] {

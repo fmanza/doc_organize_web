@@ -12,7 +12,7 @@ import os
 import stat
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from app.core.config import Settings
@@ -354,7 +354,7 @@ def read_output(settings: Settings, project: Project, path: str) -> OutputConten
 
     target, data = run_with_timeout(_read, timeout)
     if content_type == "application/json":
-        data = json_output(settings, project, data, clean)
+        data = json_output(project, data, clean)
     return OutputContent(name=target.name, content=data, content_type=content_type)
 
 
@@ -377,12 +377,13 @@ def _folder_of(project: Project, output: str) -> str | None:
     return max(matches, key=len) if matches else None
 
 
-def json_output(settings: Settings, project: Project, raw: bytes, output: str) -> bytes:
+def json_output(project: Project, raw: bytes, output: str) -> bytes:
     """JSON de un documento convertido con ``source_path`` relativa a la carpeta de origen (``2024/facturas/a.pdf``).
 
     Desde doc_organize 0.12.0 (G23) ``source_path`` ya es relativa a la carpeta escaneada (``facturas/a.pdf``): se le
-    antepone la carpeta. Los JSON convertidos antes llevan la ruta absoluta del contenedor hasta reconvertirse: se
-    sustituye por la relativa. Si el fichero no es un objeto JSON válido, se sirve tal cual.
+    antepone la carpeta. Los JSON convertidos antes llevan la ruta absoluta del contenedor: desde la 3.0 ya no se
+    reescribe y queda solo el nombre del fichero (nunca la ruta del contenedor) hasta «Forzar reconversión». Si el
+    fichero no es un objeto JSON válido, se sirve tal cual.
     """
     try:
         data = json.loads(raw)
@@ -391,8 +392,8 @@ def json_output(settings: Settings, project: Project, raw: bytes, output: str) -
     source = data.get("source_path") if isinstance(data, dict) else None
     if not isinstance(source, str):
         return raw
-    if source.startswith("/"):
-        data["source_path"] = project_namer(settings, project).display(source)
+    if source.startswith("/"):  # doc_organize < 0.12.0: solo el nombre, sin la ruta del contenedor
+        data["source_path"] = PurePosixPath(source).name
     else:
         folder = _folder_of(project, output)
         data["source_path"] = f"{folder}/{source}" if folder else source

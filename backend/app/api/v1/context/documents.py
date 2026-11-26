@@ -47,7 +47,6 @@ def get_context(project_id: int, user: CurrentUser, db: DbSession) -> ContextOut
         documents_count=row.documents_count,
         unclassified_count=row.unclassified_count,
         failed_count=row.failed_count,
-        collisions_count=row.collisions_count,
         site_built=row.site_built,
         ai_classification=row.ai_classification,
         built_with_version=row.built_with_version,
@@ -109,12 +108,7 @@ def list_context_documents(
     ] = None,
     only: Annotated[
         context.DocumentFilter | None,
-        Query(
-            description=(
-                "Solo fallidos, con colisión (G30, contextos de doc_organize 0.13.0) o en los que la IA propuso otro "
-                "dominio (ai_disagrees, 1.5.0)"
-            )
-        ),
+        Query(description=("Solo fallidos o en los que la IA propuso otro dominio (ai_disagrees, 1.5.0)")),
     ] = None,
     language: Annotated[
         str | None, Query(min_length=2, max_length=8, description="Solo este idioma (ISO 639-1, 1.5.0)")

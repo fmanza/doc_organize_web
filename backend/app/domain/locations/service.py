@@ -47,17 +47,15 @@ class LocationProjects:
     """Proyectos que usan una ubicación (2.1.1): los activos, con nombre.
 
     Attributes:
-        active: ``(id, nombre)`` de cada proyecto activo, por nombre.
-        deleted: Proyectos borrados que la usan. Desde 2.3.1 siempre 0: al borrarse sueltan sus ubicaciones.
+        active: ``(id, nombre)`` de cada proyecto activo, por nombre. Los borrados sueltan sus ubicaciones (``0029``).
     """
 
     active: list[tuple[int, str]]
-    deleted: int
 
     @property
     def in_use(self) -> bool:
-        """Algún proyecto la usa."""
-        return bool(self.active) or self.deleted > 0
+        """Algún proyecto activo la usa."""
+        return bool(self.active)
 
 
 def location_projects(db: Session, location: Location) -> LocationProjects:
@@ -68,7 +66,6 @@ def location_projects(db: Session, location: Location) -> LocationProjects:
     projects = projects_on_location(db, location.id)
     return LocationProjects(
         active=[(project.id, project.name) for project in projects if project.status != "deleted"],
-        deleted=sum(1 for project in projects if project.status == "deleted"),
     )
 
 

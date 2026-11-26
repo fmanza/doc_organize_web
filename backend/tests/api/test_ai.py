@@ -38,8 +38,6 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         for field in family.fields:
             if field.env_var:
                 monkeypatch.delenv(field.env_var, raising=False)
-    for name in library_ai.legacy_env():
-        monkeypatch.delenv(name, raising=False)
     ai_usage.clear_cache()
     connection_test.clear_rate_limit()
     yield
@@ -195,31 +193,26 @@ def test_one_family_with_a_model_key_and_budget_per_task(admin_api: TestClient, 
     assert {row.field for row in db.scalars(select(AiSetting))} == set(fields)
 
 
-def test_legacy_environment_variables_are_reported(
+def test_legacy_environment_variables_are_ignored(
     admin_api: TestClient,
     fernet: str,
     monkeypatch: pytest.MonkeyPatch,
     project: dict[str, object],
     user_client: TestClient,
 ) -> None:
-    """D15/U17: las variables de 1.x ya no se leen; se listan (sin valores) y el error al encolar dice cuál usar."""
+    """3.0: las variables de 1.x no se leen ni se listan (sin ``legacy_variables``), y nada de ellas sale en las
+    respuestas."""
     monkeypatch.setenv("DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL", "modelo-antiguo")
     monkeypatch.setenv("DOC_ORGANIZE_LITELLM_CLASSIFICATION_VIRTUAL_KEY", "sk-antigua-0000")
 
     body = admin_api.get(URL).json()
     response = user_client.post(f"/api/v1/projects/{project['id']}/runs", json={"operation": "taxonomy_draft"})
 
-    assert body["legacy_variables"] == [
-        {
-            "name": "DOC_ORGANIZE_LITELLM_CLASSIFICATION_VIRTUAL_KEY",
-            "replacement": "DOC_ORGANIZE_LITELLM_VIRTUAL_KEY_CLASSIFY",
-        },
-        {"name": "DOC_ORGANIZE_LITELLM_ENRICHMENT_MODEL", "replacement": "DOC_ORGANIZE_LITELLM_MODEL_ENRICH"},
-    ]
+    assert "legacy_variables" not in body
     assert "sk-antigua" not in json.dumps(body) and "modelo-antiguo" not in json.dumps(body)
     assert _family(body, "litellm")["configured"] is False  # no se leen
     assert response.status_code == 422 and response.json()["code"] == "ai_not_configured"
-    assert "DOC_ORGANIZE_LITELLM_MODEL_ENRICH" in response.text and "sk-antigua" not in response.text
+    assert "sk-antigua" not in response.text and "ENRICHMENT" not in response.text
 
 
 def _usage_transport(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]) -> list[str]:
@@ -541,7 +534,7 @@ def test_probe_validation_and_permissions(
 def test_github_copilot_is_gone_and_its_variables_are_reported(
     admin_api: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """2.1: sin familia de GitHub Copilot; si sus variables siguen definidas, se avisa sin valores y sin sustituta."""
+    """2.1: sin familia de GitHub Copilot; sus variables, si siguen definidas, no se leen ni salen en la respuesta."""
     hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(401))
     monkeypatch.setenv("DOC_ORGANIZE_GITHUB_PAT", "ghp_fake_token_0001")
 
@@ -552,8 +545,8 @@ def test_github_copilot_is_gone_and_its_variables_are_reported(
 
     assert probe.status_code == 404 and hosts == []
     assert "github_copilot_usage" not in [family["key"] for family in settings["families"]]
-    assert {"name": "DOC_ORGANIZE_GITHUB_PAT", "replacement": None} in settings["legacy_variables"]
-    assert "ghp_fake" not in admin_api.get(URL).text
+    assert "legacy_variables" not in settings
+    assert "ghp_fake" not in admin_api.get(URL).text and "DOC_ORGANIZE_GITHUB" not in admin_api.get(URL).text
 
 
 def test_probe_never_leaks_the_key(
