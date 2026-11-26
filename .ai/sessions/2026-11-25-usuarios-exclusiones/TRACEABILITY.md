@@ -69,6 +69,14 @@
     - 2.7.0 sincronizada en CHANGELOG, `pyproject.toml`, `app/__init__.py`, `package.json` y su lock, `uv.lock`,
       `openapi.json` y `DOW_TAG`;
     - actualizados `.ai/product.md`, la fila de borrado de usuarios de `PARIDAD.md` e `INDEX.md`.
+- **Publicación**:
+    - PR #129 `release: v2.7.0` con el CI en verde, fusionado con squash en `develop` (`6617d05`);
+    - CI de `develop` en verde (run 45728171561);
+    - `main` por fast-forward de `54f239d` a `6617d05`;
+    - etiqueta `v2.7.0`;
+    - release de GitHub «Latest» con las notas del CHANGELOG y la sección «Actualizar» (copia de seguridad, migraciones
+      `0032` y `0033` aditivas, `recover-admin`, y volver atrás con `alembic downgrade 0031` y `DOW_TAG=2.6.0`).
+- Sin despliegue local en esta sesión.
 
 ## Artefactos generados
 
@@ -79,7 +87,7 @@
 | ADR-017 | `docs/adr/ADR-017-exclusion-efectiva.md` | aceptado |
 | Migraciones | `backend/alembic/versions/0032_audit_actor_name.py`, `0033_project_exclusions.py` | fusionadas |
 | Hueco G47 | `docs/plan/DOC_ORGANIZE_GAPS.md` | abierto |
-| Release | CHANGELOG `[2.7.0]` | preparada |
+| Release | [v2.7.0](https://github.com/fmanza/doc_organize_web/releases/tag/v2.7.0) | publicada |
 
 ## Directrices para Futuras IAs
 - **[usuarios]**: Bloquear equivale a desactivar (`is_active = false`). En la interfaz se muestra como «Bloqueado», y
@@ -108,7 +116,7 @@
   cuando cambian las exclusiones de una carpeta o los patrones de la ubicación.
 
 ## Veredicto final
-Veredicto: CLOSED (pendiente de publicar la 2.7.0)
+Veredicto: CLOSED (2.7.0 publicada)
 
 Pendientes al cierre:
 - Revisión humana del inglés nuevo (F2 y F3).
