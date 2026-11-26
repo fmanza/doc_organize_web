@@ -3,28 +3,35 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/). Hasta la 1.0.0, una MINOR por fase del
 ROADMAP (`0.<fase+1>.0`).
 
-## [Unreleased]
+## [2.8.0] - 2026-11-26
+
+Versión de mantenimiento: pago de la deuda técnica del informe `/tech-debt` de la 2.7.0 sin cambios funcionales.
+Ficheros grandes partidos, suite del backend más rápida, dependencias al día y acciones del CI fijadas por SHA. La
+única mejora visible es la cabecera en pantallas estrechas. Sigue con doc_organize 2.5.0. Sin migraciones ni
+variables nuevas obligatorias. El contrato HTTP no cambia: `openapi.json` solo describe de otra forma (FastAPI 0.162)
+el cuerpo de `POST /projects/{id}/runs`.
 
 ### Changed
 
 - **frontend**: cabecera en pantallas estrechas: por debajo de `sm`, título abreviado, selector de tenant más estrecho
   y menú de usuario con iniciales (nombre y rol dentro del desplegable); el error al cambiar de tenant flota bajo la
-  cabecera. `ConfirmModal` común para 7 confirmaciones, `useExclusionSet`, hooks de revisión y calidad en
-  `useReview.ts`/`useQuality.ts`, y `role="alert"` en los fallos de job. Fuera `@tanstack/react-virtual` (sin uso).
+  cabecera. `ConfirmModal` común para 7 confirmaciones, con el error dentro del diálogo; `useExclusionSet`, hooks de
+  revisión y calidad en `useReview.ts`/`useQuality.ts`, y `role="alert"` en los fallos de job. Fuera
+  `@tanstack/react-virtual` (sin uso).
+- **frontend**: los componentes grandes (`ContextPage`, `ReviewPage`, `QualityPage`, `ManifestCard`,
+  `AiSettingsPage` y `ScanPage`, de 555 a 1130 líneas) se parten en un fichero por tarjeta o modal; ninguno pasa de
+  433 líneas. Sin cambios visibles.
 - **backend**: un único filtro de exclusiones (`PathFilter`) también en la vista previa de «forzar»; `get_quality`
   solo trata como «sin decisiones» los errores de dominio; `affected_rows` tipado en lugar de `# type: ignore`;
   alias comunes de paginación (`LimitQuery`, `OffsetQuery`; el contrato no cambia); notas de firmas reverificadas
   con doc_organize 2.5.0.
-- **backend** (tests): `test_options_reach_scan_options` ya no carga Docling (de minutos a menos de 1 s); el test de
-  enlaces simbólicos se omite si el sistema no permite crearlos; `add_member` común en `conftest.py`.
-- **backend** (tests): `config.db` migrada una vez por sesión y copiada en cada test, y Argon2id con parámetros
-  mínimos solo en los tests; la suite completa baja de ~26 a ~17 min y los tests de API, cerca de un 70 %.
 - **backend**: `api/v1/schemas.py` (1813 líneas) pasa a un paquete con un módulo por área, que reexporta todos los
   esquemas, y `api/v1/context.py` (1024 líneas) a un paquete con un router por subdominio (plantillas, documentos,
   manifiesto, perfil, revisión y calidad). El contrato OpenAPI no cambia.
-- **frontend**: los componentes grandes (`ContextPage`, `ReviewPage`, `QualityPage`, `ManifestCard`,
-  `AiSettingsPage` y `ScanPage`, de 555 a 1130 líneas) se parten en un fichero por tarjeta o modal; ninguno pasa de
-  433 líneas. Sin cambios visibles.
+- **backend** (tests): `config.db` migrada una vez por sesión y copiada en cada test, y Argon2id con parámetros
+  mínimos solo en los tests; la suite completa baja de ~26 a ~17 min en local y el job `backend` del CI, de ~11 a
+  ~5 min. `test_options_reach_scan_options` ya no carga Docling (de minutos a menos de 1 s); el test de enlaces
+  simbólicos se omite si el sistema no permite crearlos; `add_member` común en `conftest.py`.
 - **backend** (dependencias): FastAPI 0.143.3 → 0.162.5, Starlette 1.8.0 → 1.10.0, SQLAlchemy 2.1.8, pydantic
   2.14.3, pydantic-settings 2.16.2, alembic 1.20.1; en desarrollo, ruff 0.17.5, mypy 2.4.1 y pytest 9.2.0.
   `openapi.json` describe ahora el cuerpo de `POST /projects/{id}/runs` como `oneOf` con `discriminator`
@@ -36,6 +43,13 @@ ROADMAP (`0.<fase+1>.0`).
   imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
 - **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
   desfasados.
+
+### Fixed
+
+- **backend**: «Calidad» y las decisiones de revisión comprueban la carpeta `.doc_organize` del destino con el límite
+  de tiempo de la ubicación (`DOW_LOCATION_PROBE_TIMEOUT_SECONDS`): un montaje de red colgado ya no bloquea la
+  petición, y una carpeta ilegible o un `decisions.json` que no es un objeto JSON se tratan como «sin decisiones» en
+  lugar de dar un error 500.
 
 ## [2.7.0] - 2026-11-26
 
