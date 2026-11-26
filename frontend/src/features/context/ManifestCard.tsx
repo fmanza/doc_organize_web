@@ -229,14 +229,24 @@ export function ManifestCard({
       />
       {editable && saved.markdown !== null && (
         <Group mt="sm">
-          <Button color="red" variant="light" onClick={() => setDeleting(true)}>
+          <Button
+            color="red"
+            variant="light"
+            onClick={() => {
+              remove.reset();
+              setDeleting(true);
+            }}
+          >
             {t('context.manifest.delete')}
           </Button>
         </Group>
       )}
       <ConfirmModal
         opened={deleting}
-        onClose={() => setDeleting(false)}
+        onClose={() => {
+          setDeleting(false);
+          remove.reset();
+        }}
         title={t('context.manifest.deleteTitle')}
         message={t('context.manifest.deleteConfirm')}
         error={remove.error}

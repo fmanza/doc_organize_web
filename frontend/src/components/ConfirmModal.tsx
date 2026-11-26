@@ -8,10 +8,13 @@ interface ConfirmModalProps {
   opened: boolean;
   onClose: () => void;
   title: ReactNode;
-  /** Texto principal (en un `Text`); lo demás va en `children`, debajo. */
+  /** Texto principal (en un `Text`; `null`/`undefined` no pinta nada); lo demás va en `children`, debajo. */
   message?: ReactNode;
   children?: ReactNode;
-  /** Error de la mutación (`mutation.error`); `null`/`undefined` no muestra nada. */
+  /**
+   * Error de la mutación (`mutation.error`); `null`/`undefined` no muestra nada. Quien lo pase debe llamar a
+   * `mutation.reset()` al abrir y al cerrar, para no enseñar el error de un intento anterior.
+   */
   error?: unknown;
   confirmLabel: ReactNode;
   onConfirm: () => void;
@@ -42,7 +45,7 @@ export function ConfirmModal({
   return (
     <Modal opened={opened} onClose={onClose} title={title}>
       <Stack>
-        {message !== undefined && <Text>{message}</Text>}
+        {message != null && <Text>{message}</Text>}
         {children}
         {error != null && <ErrorAlert error={error} />}
         <Group justify="flex-end">

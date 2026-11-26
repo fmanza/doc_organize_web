@@ -123,7 +123,10 @@ export function RunDetailPage() {
             <Button
               color="red"
               variant="light"
-              onClick={() => setConfirming(true)}
+              onClick={() => {
+                cancel.reset();
+                setConfirming(true);
+              }}
               disabled={run.cancel_requested}
             >
               {run.cancel_requested ? t('runs.cancelRequested') : t('runs.cancel')}
@@ -261,7 +264,10 @@ export function RunDetailPage() {
       </Card>
       <ConfirmModal
         opened={confirming}
-        onClose={() => setConfirming(false)}
+        onClose={() => {
+          setConfirming(false);
+          cancel.reset();
+        }}
         title={t('runs.cancelTitle')}
         message={t('runs.cancelBody')}
         error={cancel.error}

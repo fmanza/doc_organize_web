@@ -166,6 +166,32 @@ describe('RunDetailPage', () => {
     expect(await screen.findByRole('button', { name: 'Cancelación pedida' })).toBeDisabled();
   });
 
+  it('al reabrir el diálogo de cancelar no muestra el error del intento anterior', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    stubApi({
+      ...session(USER),
+      [`GET /api/v1/runs/${RUN_ID}`]: { body: runOut({ status: 'running' }) },
+      [`POST /api/v1/runs/${RUN_ID}/cancel`]: {
+        status: 409,
+        body: { type: 'about:blank', title: 'La ejecución ya terminó', status: 409 },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute(`/runs/${RUN_ID}`);
+    const open = await screen.findByRole('button', { name: 'Cancelar ejecución' });
+    await user.click(open);
+    let dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar ejecución' }));
+    expect(await within(dialog).findByText(/La ejecución ya terminó/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Volver' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    await user.click(open);
+    dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByText(/La ejecución ya terminó/)).not.toBeInTheDocument();
+  });
+
   it('muestra el error de una ejecución fallida', async () => {
     stubApi({
       ...session(USER),

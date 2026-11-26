@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -85,6 +86,40 @@ def test_gold_upload_is_checked(
     assert entry.details == {"labels": 3, "axes": ["domains"]}
     assert user_client.delete(f"/api/v1/projects/{project.id}/context/quality/gold").status_code == 204
     assert user_client.get(f"/api/v1/projects/{project.id}/context/quality").json()["gold"] is None
+
+
+@pytest.mark.parametrize("content", ["[]", "null", '"texto"'])
+def test_quality_survives_a_decisions_file_that_is_not_an_object(
+    project: Project, user_client: TestClient, migrated: Settings, content: str
+) -> None:
+    """Un ``decisions.json`` válido como JSON pero que no es un objeto no rompe la página: «sin decisiones»."""
+    store = migrated.locations_root / "salidas" / "Proyecto A" / ".doc_organize" / "decisions.json"
+    store.parent.mkdir(parents=True, exist_ok=True)
+    store.write_text(content, encoding="utf-8")
+
+    response = user_client.get(f"/api/v1/projects/{project.id}/context/quality")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["decisions_available"] is False
+
+
+def test_quality_survives_an_unreadable_decisions_folder(
+    project: Project, user_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sin permiso para ver ``.doc_organize`` (montaje de red), «sin decisiones» en lugar de un 500."""
+    real_lstat = os.lstat
+
+    def lstat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+        if ".doc_organize" in str(path):
+            raise PermissionError(13, "Permission denied", str(path))
+        return real_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", lstat)
+
+    response = user_client.get(f"/api/v1/projects/{project.id}/context/quality")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["decisions_available"] is False
 
 
 def test_evaluate_the_context_against_the_excel(

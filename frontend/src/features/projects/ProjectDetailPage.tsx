@@ -123,7 +123,14 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
         description={t('projects.ai.redactHelp')}
         checked={project.ai_redact_credentials}
         disabled={!writable || update.isPending}
-        onChange={(event) => (event.currentTarget.checked ? set(true) : setConfirming(true))}
+        onChange={(event) => {
+          if (event.currentTarget.checked) {
+            set(true);
+          } else {
+            update.reset();
+            setConfirming(true);
+          }
+        }}
       />
       {!project.ai_redact_credentials && (
         <Text size="sm" c="orange" mt="xs">
@@ -205,9 +212,13 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
       {update.isError && <ErrorAlert error={update.error} mt="xs" />}
       <ConfirmModal
         opened={confirming}
-        onClose={() => setConfirming(false)}
+        onClose={() => {
+          setConfirming(false);
+          update.reset();
+        }}
         title={t('projects.ai.confirmTitle')}
         message={t('projects.ai.confirm')}
+        error={confirming ? update.error : null}
         confirmLabel={t('projects.ai.confirmButton')}
         loading={update.isPending}
         onConfirm={() => set(false)}

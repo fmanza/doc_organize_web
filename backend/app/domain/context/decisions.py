@@ -13,6 +13,7 @@ de personas.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Final, Literal
 
 from sqlalchemy import func, select
@@ -51,22 +52,32 @@ class Decisions:
     applied: int = 0
 
 
-def _store_dir_is_safe(settings: Settings, project: Project) -> None:
+def _store_dir_is_safe(settings: Settings, root: Path) -> None:
     """La carpeta ``.doc_organize`` (si existe) es una carpeta normal: nunca se escribe a través de un enlace.
+
+    Los ``lstat`` van con límite de tiempo, como el resto de la E/S del destino (un montaje de red caído no bloquea la
+    petición).
 
     Raises:
         ProfileReplacedError: No lo es.
+        LocationUnavailableError: El destino no responde o no deja leer la carpeta.
     """
-    root = _output_root(settings, project)
-    folder = library.decisions_file(root).parent
-    _regular(folder, "dir")
-    _regular(library.decisions_file(root), "file")
+    store = library.decisions_file(root)
+
+    def check() -> None:
+        _regular(store.parent, "dir")
+        _regular(store, "file")
+
+    try:
+        run_with_timeout(check, settings.location_probe_timeout_seconds)
+    except OSError:
+        raise LocationUnavailableError("No se pudo comprobar la carpeta de decisiones del proyecto.") from None
 
 
 def load(db: Session, settings: Settings, project: Project) -> Decisions:
     """Decisiones vigentes y revocadas (del destino) y las no aplicadas de la última construcción (de la BD)."""
     root = _output_root(settings, project)
-    _store_dir_is_safe(settings, project)
+    _store_dir_is_safe(settings, root)
     try:
         active, revoked = run_with_timeout(
             lambda: library.load_decisions(root), settings.location_probe_timeout_seconds
@@ -158,8 +169,8 @@ def decide(
         raise DecisionDocumentNotFoundError("El documento no está en el contexto: reconstruye antes.")
     clean = _validate_axes(row, document, action, axes)
     _check_writable(db, project)
-    _store_dir_is_safe(settings, project)
     root = _output_root(settings, project)
+    _store_dir_is_safe(settings, root)
     with manifest_versions.project_lock(project.id):
         try:
             saved = run_with_timeout(
@@ -208,8 +219,8 @@ def revoke(
         DestinationReadOnlyError, WriteLockedError, ProfileReplacedError, LocationUnavailableError.
     """
     _check_writable(db, project)
-    _store_dir_is_safe(settings, project)
     root = _output_root(settings, project)
+    _store_dir_is_safe(settings, root)
     with manifest_versions.project_lock(project.id):
         try:
             found = run_with_timeout(

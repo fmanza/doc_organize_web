@@ -310,7 +310,7 @@ export function ContextPage() {
         opened={confirm !== null}
         onClose={() => setConfirm(null)}
         title={t('context.manifest.replaceTitle')}
-        message={confirm?.body ?? null}
+        message={confirm?.body}
         danger={false}
         confirmLabel={t('context.manifest.replace')}
         onConfirm={() => {
