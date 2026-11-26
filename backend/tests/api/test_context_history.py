@@ -121,9 +121,9 @@ def test_changes_are_capped_per_build(
     migrated: Settings,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.api.v1 import context as context_api
+    from app.api.v1.context import documents as context_documents
 
-    monkeypatch.setattr(context_api, "MAX_HISTORY_CHANGES", 2)
+    monkeypatch.setattr(context_documents, "MAX_HISTORY_CHANGES", 2)
     history = _history(migrated)
     history.parent.mkdir(parents=True)
     added = [ContextChange(source_path=_source(migrated, f"2024/{i}.pdf"), change="added") for i in range(5)]
