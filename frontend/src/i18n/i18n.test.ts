@@ -17,8 +17,8 @@ const SOURCES = import.meta.glob(
 
 /** Literales visibles permitidos fuera de `t()`, siempre con su motivo. Clave: `fichero|literal`. */
 const ALLOWED_LITERALS: Readonly<Record<string, string>> = {
-  '../features/context/ContextPage.tsx|es': 'código de idioma ISO de ejemplo, no texto',
-  '../features/context/QualityPage.tsx|doc-organize-classify': 'alias de modelo del proxy, no texto',
+  '../features/context/ContextDomains.tsx|es': 'código de idioma ISO de ejemplo, no texto',
+  '../features/context/CompareCard.tsx|doc-organize-classify': 'alias de modelo del proxy, no texto',
 };
 
 /** Atributos JSX y propiedades de objeto que llegan a la pantalla o a un lector de pantalla. */
