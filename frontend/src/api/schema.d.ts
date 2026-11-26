@@ -2386,9 +2386,8 @@ export interface components {
          */
         ContextAuditParams: {
             /**
-             * Operation
-             * @default context_audit
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_audit";
         };
@@ -2503,9 +2502,8 @@ export interface components {
             /** Domains */
             domains?: string[];
             /**
-             * Operation
-             * @default context_build
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_build";
             /** Output Folder Name */
@@ -2559,9 +2557,8 @@ export interface components {
              */
             dry_run: boolean;
             /**
-             * Operation
-             * @default context_delete
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_delete";
             /** Preview Run Id */
@@ -2694,9 +2691,8 @@ export interface components {
             /** Model Classify */
             model_classify?: string | null;
             /**
-             * Operation
-             * @default context_dry_run
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_dry_run";
             /** Profile Markdown */
@@ -2721,9 +2717,8 @@ export interface components {
              */
             gold: "xlsx" | "decisions";
             /**
-             * Operation
-             * @default context_evaluate
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_evaluate";
         };
@@ -2883,9 +2878,8 @@ export interface components {
              */
             max_steps: number;
             /**
-             * Operation
-             * @default context_review_agent
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "context_review_agent";
         };
@@ -3026,9 +3020,8 @@ export interface components {
              */
             mode: "move" | "copy" | "report_only";
             /**
-             * Operation
-             * @default dedup_apply
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "dedup_apply";
             /** Preview Run Id */
@@ -3070,9 +3063,8 @@ export interface components {
             /** Fuzzy Threshold */
             fuzzy_threshold?: number | null;
             /**
-             * Operation
-             * @default dedup_preview
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "dedup_preview";
             /** Semantic Threshold */
@@ -3327,9 +3319,8 @@ export interface components {
             /** Max Full Chars */
             max_full_chars?: number | null;
             /**
-             * Operation
-             * @default export_ai_bundle
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "export_ai_bundle";
             /**
@@ -3351,9 +3342,8 @@ export interface components {
              */
             llms_txt: boolean;
             /**
-             * Operation
-             * @default export_site
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "export_site";
         };
@@ -3370,9 +3360,8 @@ export interface components {
              */
             kind: "cache" | "errors" | "context_history" | "context_documents";
             /**
-             * Operation
-             * @default export_xlsx
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "export_xlsx";
         };
@@ -3389,9 +3378,8 @@ export interface components {
              */
             dry_run: boolean;
             /**
-             * Operation
-             * @default export_zip
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "export_zip";
         };
@@ -3561,9 +3549,8 @@ export interface components {
              */
             dry_run: boolean;
             /**
-             * Operation
-             * @default history_clear
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "history_clear";
             /** Preview Run Id */
@@ -4009,9 +3996,8 @@ export interface components {
             /** Fail At Step */
             fail_at_step?: number | null;
             /**
-             * Operation
-             * @default noop
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "noop";
             /**
@@ -4151,9 +4137,8 @@ export interface components {
              */
             dry_run: boolean;
             /**
-             * Operation
-             * @default project_delete
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "project_delete";
             /** Preview Run Id */
@@ -4232,9 +4217,8 @@ export interface components {
             /** New Folder */
             new_folder: string;
             /**
-             * Operation
-             * @default project_move
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "project_move";
             /** Preview Run Id */
@@ -4835,9 +4819,8 @@ export interface components {
              */
             include_audio_video: boolean;
             /**
-             * Operation
-             * @default scan
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "scan";
             /** Preview Run Id */
@@ -4932,9 +4915,8 @@ export interface components {
          */
         SearchIndexParams: {
             /**
-             * Operation
-             * @default search_index
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "search_index";
         };
@@ -5073,9 +5055,8 @@ export interface components {
              */
             max_steps: number;
             /**
-             * Operation
-             * @default taxonomy_agent
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "taxonomy_agent";
             /** Template Markdown */
@@ -5108,9 +5089,8 @@ export interface components {
             /** Markdown */
             markdown: string;
             /**
-             * Operation
-             * @default taxonomy_check
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "taxonomy_check";
         };
@@ -5122,9 +5102,8 @@ export interface components {
          */
         TaxonomyDraftParams: {
             /**
-             * Operation
-             * @default taxonomy_draft
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             operation: "taxonomy_draft";
             /**

@@ -25,6 +25,13 @@ ROADMAP (`0.<fase+1>.0`).
 - **frontend**: los componentes grandes (`ContextPage`, `ReviewPage`, `QualityPage`, `ManifestCard`,
   `AiSettingsPage` y `ScanPage`, de 555 a 1130 líneas) se parten en un fichero por tarjeta o modal; ninguno pasa de
   433 líneas. Sin cambios visibles.
+- **backend** (dependencias): FastAPI 0.143.3 → 0.162.5, Starlette 1.8.0 → 1.10.0, SQLAlchemy 2.1.8, pydantic
+  2.14.3, pydantic-settings 2.16.2, alembic 1.20.1; en desarrollo, ruff 0.17.5, mypy 2.4.1 y pytest 9.2.0.
+  `openapi.json` describe ahora el cuerpo de `POST /projects/{id}/runs` como `oneOf` con `discriminator`
+  (`operation`) en lugar de `anyOf`: mismos esquemas y misma validación; en `schema.d.ts` solo cambian comentarios.
+- **frontend** (dependencias): i18next 26 → 27.1.1 y react-i18next 17 → 18.0.1.
+- **ci**: acciones fijadas por SHA con la versión en un comentario (checkout v7.0.1, setup-node v7.1.0, setup-uv
+  v7.6.0, setup-buildx v4.4.1, build-push v7.4.0); Dependabot las sigue actualizando.
 - **docker**: entorno común de los workers en compose (`x-worker-env`); `models-init` sin el HEALTHCHECK de la
   imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
 - **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
