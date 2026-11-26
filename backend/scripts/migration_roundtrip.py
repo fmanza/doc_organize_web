@@ -9,9 +9,8 @@ Uso, con la web parada o sobre una copia ya hecha con ``python -m app.cli backup
 
     uv run python scripts/migration_roundtrip.py /ruta/a/una/copia/config.db
 
-Sale con 0 si la ida y vuelta deja las mismas filas en todas las tablas de la revisión de partida, salvo
-``ai_settings`` al partir de antes de la ``0024``: desde la 2.0.0 no se guarda la copia de la 1.x y la bajada rehace las
-familias de 1.x desde la configuración de 2.0 (se comparan sus familias y campos, no sus valores ni fechas).
+Sale con 0 si la ida y vuelta deja las mismas filas en todas las tablas de la revisión de partida. Desde la 3.0 la
+cadena empieza en la línea base ``0033`` (ADR-018): una copia de una web anterior a la 2.7 la rechaza ``alembic/env.py``.
 """
 
 from __future__ import annotations
@@ -44,16 +43,6 @@ def _snapshot(path: Path) -> dict[str, tuple[int, str]]:
             digest = hashlib.sha256("\n".join([*columns, *rows]).encode("utf-8")).hexdigest()
             result[table] = (len(rows), digest)
         return result
-
-
-#: Tablas que la bajada no deja idénticas si se parte de antes de la 0024 (ver el docstring del módulo).
-REBUILT_BELOW_0024 = {"ai_settings"}
-
-
-def _fields(path: Path, table: str) -> set[tuple[str, str]]:
-    """Pares (familia, campo) de ``table``: sin valores (pueden ser credenciales cifradas)."""
-    with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as conn:
-        return {(str(f), str(c)) for f, c in conn.execute(f'SELECT family, field FROM "{table}"')}  # noqa: S608
 
 
 def _revision(path: Path) -> str | None:
@@ -106,7 +95,6 @@ def _roundtrip(source: Path, workdir: Path) -> int:
         print("La copia no tiene revisión de Alembic.")
         return 2
     before = _snapshot(copy)
-    fields_before = {table: _fields(copy, table) for table in REBUILT_BELOW_0024 if table in before}
 
     os.environ["DOW_DATA_DIR"] = str(data_dir)
     os.environ.setdefault("DOW_ENVIRONMENT", "development")
@@ -134,14 +122,7 @@ def _roundtrip(source: Path, workdir: Path) -> int:
 
     get_engine().dispose()
 
-    rebuilt = REBUILT_BELOW_0024 if int(start) < 24 else set()
-    for table in sorted(rebuilt & set(before)):
-        kept = _fields(copy, table) == fields_before.get(table)
-        print(
-            f"  {table}: reconstruida desde la configuración de 2.0 (0024), {before[table][0]} filas antes y"
-            f" {after.get(table, (0, ''))[0]} después; familias y campos {'iguales' if kept else 'DISTINTOS (revisar)'}"
-        )
-    differences = [table for table in before if table not in rebuilt and before[table] != after.get(table)]
+    differences = [table for table in before if before[table] != after.get(table)]
     extra = sorted(set(after) - set(before))
     print(f"Tras bajar a {start}: {len(before)} tablas comparadas, {len(differences)} distintas, sobran {extra}")
     for table in differences:

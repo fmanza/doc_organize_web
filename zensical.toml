@@ -55,6 +55,7 @@ nav = [
       "adr/ADR-015-endurecimiento.md",
       "adr/ADR-016-borrado-de-usuarios.md",
       "adr/ADR-017-exclusion-efectiva.md",
+      "adr/ADR-018-linea-base-de-migraciones.md",
     ] },
     { "Plan" = [
       "plan/README.md",

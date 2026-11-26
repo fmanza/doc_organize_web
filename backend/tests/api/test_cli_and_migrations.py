@@ -59,7 +59,7 @@ def test_migration_upgrade_downgrade_upgrade(settings: Settings) -> None:
     run_migrations()
     assert {"users", "sessions", "audit_log"} <= set(inspect(get_engine()).get_table_names())
 
-    command.downgrade(Config(str(BACKEND_DIR / "alembic.ini")), "0001")
+    command.downgrade(Config(str(BACKEND_DIR / "alembic.ini")), "base")
     assert "users" not in inspect(get_engine()).get_table_names()
 
     run_migrations()
