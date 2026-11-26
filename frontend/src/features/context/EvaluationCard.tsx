@@ -78,7 +78,7 @@ export function EvaluationCard({
   const { t } = useTranslation();
   const run = useQualityRun(projectId);
   const last = quality.evaluation;
-  const report = (last?.result as { report?: Report } | undefined)?.report;
+  const report = last?.result.report;
   return (
     <Card withBorder component="section" aria-label={t('quality.evaluationTitle')}>
       <Group justify="space-between" mb="xs">

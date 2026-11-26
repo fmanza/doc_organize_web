@@ -23,13 +23,16 @@ import { BackLink } from '../../components/BackLink';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatBytes, formatCount, formatDateTime, formatDuration } from '../../components/format';
-import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
+import { canDo, useEnqueueRun, useProject } from '../projects/useProjects';
 import { AiUsageCard } from './AiUsageCard';
 import { RunResult } from './RunResult';
 import { RunStatusBadge } from './RunStatusBadge';
 import {
   artifactUrl,
   isActive,
+  isOperation,
+  isPreview,
+  type RunOf,
   type RunOut as Run,
   type RunLogEntry,
   type RunProgress,
@@ -115,7 +118,7 @@ export function RunDetailPage() {
       <Group justify="space-between">
         <Title order={2}>
           {t(`runs.operations.${run.operation}`)}
-          {run.params.dry_run === true && <> {t('runs.preview')}</>}
+          {isPreview(run) && <> {t('runs.preview')}</>}
         </Title>
         <Group>
           <RunStatusBadge status={run.status} />
@@ -172,7 +175,7 @@ export function RunDetailPage() {
         </Alert>
       )}
       {continuable(run) && <ContinueScan run={run} />}
-      {typeof run.result?.segments === 'number' && run.result.segments > 1 && (
+      {isOperation(run, 'scan') && typeof run.result?.segments === 'number' && run.result.segments > 1 && (
         <Text size="sm" c="dimmed">
           {t('runs.segments', { count: run.result.segments })}
         </Text>
@@ -195,7 +198,7 @@ export function RunDetailPage() {
             {t('runs.resultTitle')}
           </Title>
           <RunResult result={run.result} />
-          {run.operation === 'scan' && typeof run.result.errors === 'number' && run.result.errors > 0 && (
+          {isOperation(run, 'scan') && typeof run.result?.errors === 'number' && run.result.errors > 0 && (
             <Anchor component={Link} to={`/runs/${run.id}/errors`} mt="sm" display="inline-block">
               {t('runs.scanErrorsLink', { count: run.result.errors })}
             </Anchor>
@@ -235,7 +238,7 @@ export function RunDetailPage() {
         )}
         {!run.workspace_purged &&
           run.artifacts.length > 0 &&
-          (run.operation === 'export_site' || run.operation === 'export_ai_bundle') &&
+          (isOperation(run, 'export_site') || isOperation(run, 'export_ai_bundle')) &&
           typeof run.result?.sha256 === 'string' && (
             <Alert color="orange" mb="sm" title={t(`runs.delivery.${run.operation}`)}>
               <Text size="sm">{t(`runs.delivery.warning.${run.operation}`)}</Text>
@@ -280,18 +283,13 @@ export function RunDetailPage() {
   );
 }
 
-function continuable(run: Run): boolean {
+function continuable(run: Run): run is RunOf<'scan'> {
   return (
-    run.operation === 'scan' &&
+    isOperation(run, 'scan') &&
     run.project_id !== null &&
-    run.params.dry_run !== true &&
+    !isPreview(run) &&
     (run.status === 'cancelled' || (run.status === 'failed' && CONTINUABLE.has(run.error_code ?? '')))
   );
-}
-
-/** Rutas (relativas) y patrones de una lista de `params`, o vacío si no hay. */
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 /**
@@ -302,21 +300,14 @@ function RunExclusions({ run }: { run: Run }) {
   const { t } = useTranslation();
   let paths: string[] = [];
   let patterns: string[] = [];
-  if (run.operation === 'scan') {
-    const exclusions = run.params.exclusions;
-    if (typeof exclusions === 'object' && exclusions !== null) {
-      paths = Object.entries(exclusions).flatMap(([folder, rels]) =>
-        stringList(rels).map((rel) => `/${folder ? `${folder}/` : ''}${rel}`),
-      );
-    }
-    patterns = stringList(run.params.ignore_patterns);
-  } else if (run.operation === 'dedup_preview') {
-    const exclusion = run.params.exclusion;
-    if (typeof exclusion === 'object' && exclusion !== null) {
-      const snapshot = exclusion as { paths?: unknown; patterns?: unknown };
-      paths = stringList(snapshot.paths).map((path) => `/${path}`);
-      patterns = stringList(snapshot.patterns);
-    }
+  if (isOperation(run, 'scan')) {
+    paths = Object.entries(run.params.exclusions ?? {}).flatMap(([folder, rels]) =>
+      rels.map((rel) => `/${folder ? `${folder}/` : ''}${rel}`),
+    );
+    patterns = run.params.ignore_patterns ?? [];
+  } else if (isOperation(run, 'dedup_preview') && run.params.exclusion) {
+    paths = (run.params.exclusion.paths ?? []).map((path) => `/${path}`);
+    patterns = run.params.exclusion.patterns ?? [];
   }
   if (paths.length === 0 && patterns.length === 0) {
     return null;
@@ -342,7 +333,7 @@ function RunExclusions({ run }: { run: Run }) {
  * Relanza un escaneo que no terminó con sus mismas opciones (M1, Fase 10): la caché conserva lo convertido y el nuevo
  * solo convierte lo que falta. Sin «forzar»: ya vació la caché la primera vez y repetirlo empezaría de cero.
  */
-function ContinueScan({ run }: { run: Run }) {
+function ContinueScan({ run }: { run: RunOf<'scan'> }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const projectId = run.project_id ?? 0;
@@ -351,7 +342,7 @@ function ContinueScan({ run }: { run: Run }) {
   if (!project.data || !canDo(project.data, 'editor')) {
     return null;
   }
-  const { force: _force, dry_run: _dryRun, ...params } = run.params;
+  const { force: _force, dry_run: _dryRun, capture_owner: _owner, ...params } = run.params;
   return (
     <Alert color="blue" title={t('runs.continue.title')}>
       <Stack gap="xs">
@@ -363,9 +354,12 @@ function ContinueScan({ run }: { run: Run }) {
             loading={enqueue.isPending}
             disabled={project.data.active_run}
             onClick={() =>
-              enqueue.mutate({ ...params, operation: 'scan' } as RunRequest, {
-                onSuccess: (next) => void navigate(`/runs/${next.id}`),
-              })
+              enqueue.mutate(
+                { ...params, operation: 'scan', force: false, dry_run: false },
+                {
+                  onSuccess: (next) => void navigate(`/runs/${next.id}`),
+                },
+              )
             }
           >
             {t('runs.continue.button')}

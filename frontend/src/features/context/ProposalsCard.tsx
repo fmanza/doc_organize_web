@@ -20,19 +20,6 @@ import { type ContextOut } from './useContext';
 import { useFollowedRun } from './useFollowedRun';
 import { type Proposal, reviewKey, useProposalAction, useProposals } from './useReview';
 
-interface ReviewAgentResult {
-  stop_reason: string;
-  finished: boolean;
-  steps: number;
-  tool_calls: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  max_steps: number;
-  reviewed: number;
-  summary: string | null;
-  proposals: number;
-}
-
 /**
  * Propuestas del revisor (W7, `ReviewAgent`, tarea `agent`): se piden como un trabajo; se guardan sin aplicarse y cada
  * una se acepta (decisión de quien la acepta) o se descarta.
@@ -50,7 +37,7 @@ export function ProposalsCard({
   const queryClient = useQueryClient();
   const proposals = useProposals(projectId);
   const action = useProposalAction(projectId);
-  const agent = useFollowedRun<ReviewAgentResult>(projectId);
+  const agent = useFollowedRun(projectId, 'context_review_agent');
   const [items, setItems] = useState<number | string>(20);
   const [steps, setSteps] = useState<number | string>(40);
   const [instructions, setInstructions] = useState('');
@@ -133,14 +120,16 @@ export function ProposalsCard({
             <Stack gap={4}>
               <Group gap="xs">
                 <Badge color={result.finished ? 'teal' : 'orange'} variant="light">
-                  {t(`context.agent.stop.${result.stop_reason}`, { defaultValue: result.stop_reason })}
+                  {t(`context.agent.stop.${result.stop_reason}`, {
+                    defaultValue: result.stop_reason ?? undefined,
+                  })}
                 </Badge>
                 <Text size="xs" c="dimmed">
                   {t('review.proposals.usage', {
                     steps: result.steps,
                     max: result.max_steps,
                     tools: result.tool_calls,
-                    tokens: result.prompt_tokens + result.completion_tokens,
+                    tokens: (result.prompt_tokens ?? 0) + (result.completion_tokens ?? 0),
                     proposals: result.proposals,
                     reviewed: result.reviewed,
                   })}

@@ -17,44 +17,14 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { components } from '../../api/schema';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { can, useMe } from '../auth/useAuth';
 import { TEMPLATE_NAME, useSaveTemplate, useTemplates } from './useContext';
 import { useFollowedRun } from './useFollowedRun';
 
-interface AxisReport {
-  axis: string;
-  documents: number;
-  covered: number;
-  conflicts: number;
-  coverage: number;
-  empty_entries: string[];
-  unused_keywords: Record<string, string[]>;
-}
-interface RulesReport {
-  axes: AxisReport[];
-  documents: number;
-  markdown: string;
-}
-interface DesignResult {
-  stop_reason: string;
-  finished: boolean;
-  steps: number;
-  tool_calls: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  max_steps: number;
-  documents: number;
-  improves: boolean | null;
-  rationale: string | null;
-  edits: number;
-  markdown: string | null;
-  draft_markdown: string | null;
-  best_markdown: string | null;
-  base_report: RulesReport | null;
-  report: RulesReport | null;
-  best_report: RulesReport | null;
-}
+/** Informe de la comprobación por reglas (`TaxonomyRulesReport` de doc_organize). */
+type RulesReport = components['schemas']['TaxonomyRulesReport'];
 
 const pct = (value: number | undefined) => (typeof value === 'number' ? `${Math.round(value * 100)} %` : '—');
 
@@ -99,7 +69,7 @@ function RulesTable({ before, after }: { before: RulesReport | null; after: Rule
 /** «Comprobar manifiesto» (W7, `check_taxonomy_rules`): el texto del editor contra todos los documentos, sin IA. */
 export function RulesCheck({ projectId, markdown }: { projectId: number; markdown: string }) {
   const { t } = useTranslation();
-  const check = useFollowedRun<{ report: RulesReport }>(projectId);
+  const check = useFollowedRun(projectId, 'taxonomy_check');
   return (
     <Stack gap="xs" mt="xs">
       <Group>
@@ -122,7 +92,7 @@ export function RulesCheck({ projectId, markdown }: { projectId: number; markdow
           {check.failure}
         </Alert>
       )}
-      {check.result && (
+      {check.result?.report && (
         <>
           <Text size="xs">{t('context.agent.documents', { count: check.result.report.documents })}</Text>
           <RulesTable before={null} after={check.result.report} />
@@ -148,7 +118,7 @@ export function AgentPanel({
   const { t } = useTranslation();
   const me = useMe();
   const templates = useTemplates();
-  const agent = useFollowedRun<DesignResult>(projectId);
+  const agent = useFollowedRun(projectId, 'taxonomy_agent');
   const [base, setBase] = useState<'manifest' | 'template' | 'none'>(hasManifest ? 'manifest' : 'none');
   const [template, setTemplate] = useState<string | null>(null);
   const [instructions, setInstructions] = useState('');
@@ -234,9 +204,11 @@ export function AgentPanel({
           <Stack gap="xs">
             <Group gap="xs">
               <Badge color={result.finished ? 'teal' : 'orange'} variant="light">
-                {t(`context.agent.stop.${result.stop_reason}`, { defaultValue: result.stop_reason })}
+                {t(`context.agent.stop.${result.stop_reason}`, {
+                  defaultValue: result.stop_reason ?? undefined,
+                })}
               </Badge>
-              {result.improves !== null && (
+              {typeof result.improves === 'boolean' && (
                 <Badge color={result.improves ? 'teal' : 'gray'} variant="light">
                   {t(result.improves ? 'context.agent.improves' : 'context.agent.notImproves')}
                 </Badge>
@@ -246,13 +218,16 @@ export function AgentPanel({
                   steps: result.steps,
                   max: result.max_steps,
                   tools: result.tool_calls,
-                  tokens: result.prompt_tokens + result.completion_tokens,
+                  tokens: (result.prompt_tokens ?? 0) + (result.completion_tokens ?? 0),
                   edits: result.edits,
                 })}
               </Text>
             </Group>
             {result.rationale && <Text size="sm">{result.rationale}</Text>}
-            <RulesTable before={result.base_report} after={result.report ?? result.best_report} />
+            <RulesTable
+              before={result.base_report ?? null}
+              after={result.report ?? result.best_report ?? null}
+            />
             <Group>
               {proposal && (
                 <Button size="xs" onClick={() => onLoad(proposal)}>

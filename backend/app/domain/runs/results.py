@@ -1,7 +1,7 @@
 """Resultados de las ejecuciones (``runs.result``) como modelos Pydantic, uno por operación (3.0, PR 3a).
 
-Las operaciones construyen su modelo y el runner lo guarda con :meth:`RunResult.stored`; lo que llega a la BD (y a la
-API, que en este PR sigue devolviendo un diccionario) es lo mismo que antes de tiparlos:
+Las operaciones construyen su modelo y el runner lo guarda con :meth:`RunResult.stored`; lo que llega a la BD es lo
+mismo que antes de tiparlos:
 
 - todos los campos son opcionales: un run fallido o cancelado guarda un resultado parcial y hay resultados históricos
   con otra forma;
@@ -10,8 +10,11 @@ API, que en este PR sigue devolviendo un diccionario) es lo mismo que antes de t
   (``fuzzy_threshold``, ``output_files`` sin borrar salidas…). El orden de los campos de cada modelo es el orden en que
   la operación los escribe: la vista genérica de resultados los muestra en ese orden.
 
-Las estructuras que vienen tal cual de doc_organize (informes de evaluación, de reglas o del auditor) siguen como
-diccionarios: se tiparán, si hace falta, cuando cambie el contrato (PR 3b).
+Desde el PR 3b la API devuelve estos modelos (``RunOut`` es una unión discriminada por ``operation``) y se serializan
+siempre como se guardaron: solo las claves escritas (y las desconocidas), nunca un ``null`` por cada campo que la
+operación no escribió. Los informes que vienen de doc_organize (evaluación, comprobación por reglas
+y auditor) declaran los campos verificados en doc_organize 2.5.0; el resto de sus claves se conserva
+(``extra="allow"``).
 
 Para leer un resultado guardado: :func:`parse_result` (por operación) o :func:`parse_result_as` (con el modelo). Si no
 valida, se registra con el id de la ejecución (sin valores) y devuelven ``None``.
@@ -23,7 +26,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, Final
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, ValidationError, model_serializer
+from pydantic.json_schema import SkipJsonSchema
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +39,15 @@ class _Open(BaseModel):
     """Base de los resultados y de sus partes: campos opcionales y claves desconocidas conservadas."""
 
     model_config = ConfigDict(extra="allow")
+
+    # Sin anotación de retorno a propósito: con ella, el esquema de serialización (OpenAPI) sería ese tipo y no el del
+    # modelo.
+    @model_serializer(mode="wrap")
+    def _only_written(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        """Solo las claves escritas (``model_fields_set``) y las desconocidas: la forma guardada."""
+        data = handler(self)
+        written = self.model_fields_set | set(self.model_extra or {})
+        return {key: value for key, value in data.items() if key in written}
 
 
 class RunResult(_Open):
@@ -127,7 +140,8 @@ class ScanResult(RunResult):
     segments: int | None = None
     search_indexed: int | None = None
     failed_folders: int | None = None
-    resume: ScanResume | None = None
+    # Estado interno (no es resultado): fuera del esquema OpenAPI; la API lo quita antes de leer el resultado.
+    resume: SkipJsonSchema[ScanResume | None] = None
 
 
 # --- exportaciones y entrega ----------------------------------------------------------------------------------------
@@ -300,11 +314,69 @@ class TaxonomyDraftResult(RunResult):
 
 
 # --- calidad ---------------------------------------------------------------------------------------------------------
+# Informes de doc_organize 2.5.0 (``model_dump`` de sus modelos, con sus mismos valores por defecto):
+# ``EvaluationReport``, ``AxisEvaluation`` y ``LabelConfusion`` (``context/evaluation.py``), ``DocumentChange``
+# (``context/dry_run.py``), ``TaxonomyRulesReport``, ``AxisRulesReport`` y ``NearMiss`` (``context/taxonomy_check.py``)
+# y ``TaxonomyAudit``, ``AxisAudit`` y ``AuditFinding`` (``context/review_agent.py``). Se serializan enteros (con los
+# valores por defecto de lo que falte), como los da doc_organize; un informe que no valida deja el resultado en ``None``.
+
+
+class _Report(BaseModel):
+    """Base de los informes de doc_organize: las claves que la web no declara se conservan.
+
+    Se serializan con todos sus campos, así que en el esquema de la respuesta (OpenAPI) son obligatorios.
+    """
+
+    model_config = ConfigDict(extra="allow", json_schema_serialization_defaults_required=True)
+
+
+class LabelConfusion(_Report):
+    """Un error frecuente: lo que decía la referencia y lo que se asignó."""
+
+    label: str
+    assigned: str
+    count: int
+
+
+class AxisEvaluation(_Report):
+    """Métricas de un eje sobre los documentos etiquetados que están en el contexto."""
+
+    axis: str
+    multiple: bool = False
+    labelled: int = 0
+    accuracy: float | None = None
+    coverage: float | None = None
+    precision: float | None = None
+    recall: float | None = None
+    accuracy_by_classified_by: dict[str, float] = Field(default_factory=dict)
+    labelled_by_classified_by: dict[str, int] = Field(default_factory=dict)
+    confusions: list[LabelConfusion] = Field(default_factory=list)
+
+
+class EvaluationReport(_Report):
+    """Evaluación contra la referencia; la web recorta ``missing_documents`` y guarda su total en ``missing_total``."""
+
+    axes: dict[str, AxisEvaluation] = Field(default_factory=dict)
+    documents: int = 0
+    matched: int = 0
+    missing_documents: list[str] = Field(default_factory=list)
+    missing_total: int | None = None
+
+
+class DocumentChange(_Report):
+    """Un documento que cambia de valor en un eje en la clasificación de prueba."""
+
+    document_key: str
+    axis: str
+    before: list[str]
+    after: list[str]
+    before_by: str | None = None
+    after_by: str | None = None
 
 
 class ContextEvaluateResult(RunResult):
     gold: str | None = None
-    report: dict[str, Any] | None = None
+    report: EvaluationReport | None = None
 
 
 class DryRunAiResult(_Open):
@@ -318,10 +390,10 @@ class DryRunAiResult(_Open):
 
 
 class ContextDryRunResult(RunResult):
-    baseline: dict[str, Any] | None = None
+    baseline: EvaluationReport | None = None
     changes_total: int | None = None
-    changes: list[dict[str, Any]] | None = None
-    candidate: dict[str, Any] | None = None
+    changes: list[DocumentChange] | None = None
+    candidate: EvaluationReport | None = None
     documents: int | None = None
     ai: DryRunAiResult | None = None
     gold: str | None = None
@@ -332,6 +404,43 @@ class ContextDryRunResult(RunResult):
 
 
 # --- agentes ---------------------------------------------------------------------------------------------------------
+
+
+class NearMiss(_Report):
+    """La entrada que más se acercó al umbral en un documento sin valor."""
+
+    slug: str
+    score: float
+    matched: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+
+
+class AxisRulesReport(_Report):
+    """Comprobación por reglas de un eje (``coverage`` es un campo calculado de doc_organize)."""
+
+    axis: str
+    organizes: str | None = None
+    documents: int = 0
+    covered: int = 0
+    conflicts: int = 0
+    entry_counts: dict[str, int] = Field(default_factory=dict)
+    empty_entries: list[str] = Field(default_factory=list)
+    shared_terms: dict[str, list[str]] = Field(default_factory=dict)
+    unused_keywords: dict[str, list[str]] = Field(default_factory=dict)
+    uncovered_examples: list[str] = Field(default_factory=list)
+    conflict_examples: dict[str, list[str]] = Field(default_factory=dict)
+    conflict_terms: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
+    near_misses: dict[str, NearMiss] = Field(default_factory=dict)
+    coverage: float = 0.0
+
+
+class TaxonomyRulesReport(_Report):
+    """Comprobación de un manifiesto por reglas; ``markdown`` es su tabla (``to_markdown``, la añade la web)."""
+
+    axes: list[AxisRulesReport] = Field(default_factory=list)
+    documents: int = 0
+    unreadable: int = 0
+    markdown: str | None = None
 
 
 class _AgentRunResult(RunResult):
@@ -359,9 +468,9 @@ class TaxonomyAgentResult(_AgentRunResult):
     markdown: str | None = None
     draft_markdown: str | None = None
     best_markdown: str | None = None
-    base_report: dict[str, Any] | None = None
-    report: dict[str, Any] | None = None
-    best_report: dict[str, Any] | None = None
+    base_report: TaxonomyRulesReport | None = None
+    report: TaxonomyRulesReport | None = None
+    best_report: TaxonomyRulesReport | None = None
     catalog: str | None = None
     template_name: str | None = None
 
@@ -378,11 +487,41 @@ class ContextReviewAgentResult(_AgentRunResult):
 
 
 class TaxonomyCheckResult(RunResult):
-    report: dict[str, Any] | None = None
+    report: TaxonomyRulesReport | None = None
+
+
+class AxisAudit(_Report):
+    axis: str
+    documents: int = 0
+    with_value: int = 0
+    value_counts: dict[str, int] = Field(default_factory=dict)
+    classified_by: dict[str, int] = Field(default_factory=dict)
+    low_confidence: int = 0
+    unverified_evidence: int = 0
+
+
+class AuditFinding(_Report):
+    """Qué revisar del catálogo: ``kind`` es un ``AuditFindingKind`` de doc_organize (``empty_entry``…)."""
+
+    kind: str
+    axis: str | None = None
+    values: list[str] = Field(default_factory=list)
+    count: int = 0
+    message: str
+
+
+class TaxonomyAudit(_Report):
+    """Informe del auditor; ``markdown`` es su resumen (``to_markdown``, lo añade la web)."""
+
+    documents: int = 0
+    unclassified: int = 0
+    axes: list[AxisAudit] = Field(default_factory=list)
+    findings: list[AuditFinding] = Field(default_factory=list)
+    markdown: str | None = None
 
 
 class ContextAuditResult(RunResult):
-    audit: dict[str, Any] | None = None
+    audit: TaxonomyAudit | None = None
 
 
 #: Modelo del resultado de cada operación (las mismas claves que ``OPERATIONS``).

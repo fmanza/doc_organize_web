@@ -8,6 +8,8 @@ import type { components, operations } from '../../api/schema';
 export type RunOut = components['schemas']['RunOut'];
 export type RunStatus = RunOut['status'];
 export type Operation = RunOut['operation'];
+/** El run de una operación, con sus `params` y su `result` tipados (3.0). */
+export type RunOf<Op extends Operation> = Extract<RunOut, { operation: Op }>;
 export type RunProgress = components['schemas']['RunProgress'];
 export type RunFilters = NonNullable<operations['list_runs_api_v1_runs_get']['parameters']['query']>;
 
@@ -15,6 +17,16 @@ export const ACTIVE_STATUSES: readonly RunStatus[] = ['queued', 'running'];
 
 export function isActive(run: Pick<RunOut, 'status'>): boolean {
   return ACTIVE_STATUSES.includes(run.status);
+}
+
+/** Si `run` es de la operación `operation` (estrecha la unión `RunOut`). */
+export function isOperation<Op extends Operation>(run: RunOut, operation: Op): run is RunOf<Op> {
+  return run.operation === operation;
+}
+
+/** Si el run es una vista previa (`dry_run`), en las operaciones que la tienen. */
+export function isPreview(run: RunOut): boolean {
+  return 'dry_run' in run.params && run.params.dry_run === true;
 }
 
 /** Historial paginado; se refresca cada 5 s mientras alguna ejecución de la página siga activa. */

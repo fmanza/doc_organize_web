@@ -6,18 +6,29 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, status
 from pydantic import StringConstraints
+from sqlalchemy import select
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
 from app.api.v1.context._shared import ERRORS
 from app.api.v1.schemas import (
     GoldOut,
+    QualityAuditOut,
+    QualityDryRunOut,
+    QualityEvaluationOut,
     QualityOut,
-    QualityRunOut,
 )
 from app.core.errors import AppError
+from app.db.models import Run
 from app.domain.context import decisions as decisions_service
 from app.domain.context import quality
 from app.domain.projects import service as projects
+from app.domain.runs.results import (
+    ContextAuditResult,
+    ContextDryRunResult,
+    ContextEvaluateResult,
+    RunResult,
+    parse_result_as,
+)
 
 router = APIRouter(tags=["context"])
 
@@ -26,20 +37,40 @@ def _gold_out(gold: quality.Gold | None) -> GoldOut | None:
     return GoldOut.model_validate(gold.__dict__) if gold else None
 
 
-def _latest(db: DbSession, project_id: int, operation: str) -> QualityRunOut | None:
-    from sqlalchemy import select
-
-    from app.db.models import Run
-
+def _latest[ResultT: RunResult](
+    db: DbSession, project_id: int, operation: str, model: type[ResultT]
+) -> tuple[Run, ResultT] | None:
+    """El último run terminado de ``operation`` y su resultado; ``None`` si no hay o el resultado no valida (con un
+    aviso en el log, ``parse_result_as``)."""
     run = db.scalar(
         select(Run)
         .where(Run.project_id == project_id, Run.operation == operation, Run.status == "succeeded")
         .order_by(Run.finished_at.desc())
         .limit(1)
     )
-    if run is None or not isinstance(run.result, dict):
-        return None
-    return QualityRunOut(run_id=run.id, finished_at=run.finished_at, result=run.result)
+    result = parse_result_as(model, run.result, run_id=run.id) if run is not None else None
+    return (run, result) if run is not None and result is not None else None
+
+
+def _evaluation(db: DbSession, project_id: int) -> QualityEvaluationOut | None:
+    latest = _latest(db, project_id, "context_evaluate", ContextEvaluateResult)
+    return (
+        QualityEvaluationOut(run_id=latest[0].id, finished_at=latest[0].finished_at, result=latest[1])
+        if latest
+        else None
+    )
+
+
+def _dry_run(db: DbSession, project_id: int) -> QualityDryRunOut | None:
+    latest = _latest(db, project_id, "context_dry_run", ContextDryRunResult)
+    return (
+        QualityDryRunOut(run_id=latest[0].id, finished_at=latest[0].finished_at, result=latest[1]) if latest else None
+    )
+
+
+def _audit(db: DbSession, project_id: int) -> QualityAuditOut | None:
+    latest = _latest(db, project_id, "context_audit", ContextAuditResult)
+    return QualityAuditOut(run_id=latest[0].id, finished_at=latest[0].finished_at, result=latest[1]) if latest else None
 
 
 @router.get(
@@ -59,9 +90,9 @@ def get_quality(project_id: int, user: CurrentUser, db: DbSession, settings: Set
     return QualityOut(
         gold=_gold_out(quality.read_gold(settings, access.project)),
         decisions_available=decisions,
-        evaluation=_latest(db, project_id, "context_evaluate"),
-        dry_run=_latest(db, project_id, "context_dry_run"),
-        audit=_latest(db, project_id, "context_audit"),
+        evaluation=_evaluation(db, project_id),
+        dry_run=_dry_run(db, project_id),
+        audit=_audit(db, project_id),
     )
 
 

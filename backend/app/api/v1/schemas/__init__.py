@@ -128,8 +128,10 @@ from app.api.v1.schemas.quality import (
     DiagnosticsIn,
     DiagnosticsOut,
     GoldOut,
+    QualityAuditOut,
+    QualityDryRunOut,
+    QualityEvaluationOut,
     QualityOut,
-    QualityRunOut,
 )
 from app.api.v1.schemas.review import (
     DecisionIn,
@@ -144,7 +146,16 @@ from app.api.v1.schemas.review import (
     ReviewPage,
     ReviewReason,
 )
-from app.api.v1.schemas.runs import AiUsageRowOut, ArtifactOut, ContextLeftoverOut, RunOut, RunPage, RunProgress
+from app.api.v1.schemas.runs import (
+    PARAMS_OUT_MODELS,
+    RUN_OUT_MODELS,
+    AiUsageRowOut,
+    ArtifactOut,
+    ContextLeftoverOut,
+    RunOut,
+    RunPage,
+    RunProgress,
+)
 from app.api.v1.schemas.scan import (
     ProjectExclusionPathOut,
     ProjectExclusionsOut,
@@ -184,6 +195,8 @@ from app.api.v1.schemas.users import (
 )
 
 __all__ = [
+    "PARAMS_OUT_MODELS",
+    "RUN_OUT_MODELS",
     "AiFamilyKey",
     "AiFamilyOut",
     "AiFamilyUpdate",
@@ -302,7 +315,9 @@ __all__ = [
     "ProposalList",
     "ProposalOut",
     "QualityOut",
-    "QualityRunOut",
+    "QualityAuditOut",
+    "QualityDryRunOut",
+    "QualityEvaluationOut",
     "RelativePath",
     "ReviewDocumentOut",
     "ReviewItemOut",

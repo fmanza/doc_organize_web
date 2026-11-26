@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import threading
 import time
 import weakref
@@ -17,6 +18,7 @@ from typing import Annotated, Any, Final, cast
 
 from fastapi import APIRouter, Header, Query, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
@@ -24,6 +26,8 @@ from starlette.concurrency import run_in_threadpool
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
 from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, RunSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.schemas import (
+    PARAMS_OUT_MODELS,
+    RUN_OUT_MODELS,
     AiUsageRowOut,
     ArtifactOut,
     Operation,
@@ -43,8 +47,11 @@ from app.domain.identity.sessions import acting_user, resolve_session
 from app.domain.runs import events, service
 from app.domain.runs.errors import ArtifactGoneError, ArtifactNotFoundError, RunNotFoundError
 from app.domain.runs.operations import HIDDEN_PARAMS
+from app.domain.runs.results import RESUME_KEY, parse_result
 from app.domain.scan import scan_errors
 from app.workspace import runs as workspace
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -87,13 +94,46 @@ def public_params(params: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in params.items() if key not in hidden}
 
 
+def params_out(run: Run) -> BaseModel:
+    """Parámetros públicos del run con el modelo de su operación.
+
+    Unos parámetros guardados que ya no validan (de una versión anterior) se devuelven tal cual, sin validar, y se
+    registra un aviso con el id del run: el historial no puede dar un 500.
+    """
+    model = PARAMS_OUT_MODELS[run.operation]
+    data = public_params(run.params)
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        logger.warning(
+            "Parámetros de ejecución con una forma no válida",
+            extra={"run_id": run.id, "model": model.__name__, "errors": exc.error_count()},
+        )
+        return model.model_construct(**data)
+
+
 def run_out(
-    db: Session, run: Run, user: User, role: MemberRole | None, *, names: dict[int, str] | None = None
+    db: Session,
+    run: Run,
+    user: User,
+    role: MemberRole | None,
+    *,
+    names: dict[int, str] | None = None,
+    ai_usage: list[AiUsageRowOut] | None = None,
 ) -> RunOut:
-    """Respuesta HTTP de un run."""
+    """Respuesta HTTP de un run: el modelo de su operación con ``params`` y ``result`` tipados (3.0).
+
+    Un resultado guardado que no valida se devuelve como ``null`` (``parse_result`` registra el aviso).
+    """
     if names is None:
         names = service.project_names(db, {run.project_id} if run.project_id is not None else set())
-    return RunOut(
+    # ``resume`` es estado interno entre tramos de un escaneo (G38): no es parte del resultado.
+    # Lo que no es un objeto (una forma que no se espera) llega tal cual a ``parse_result``, que lo descarta.
+    stored: object = run.result
+    if isinstance(run.result, dict):
+        stored = {key: value for key, value in run.result.items() if key != RESUME_KEY}
+    model = RUN_OUT_MODELS[run.operation]
+    out = model(
         id=run.id,
         project_id=run.project_id,
         project_name=names.get(run.project_id) if run.project_id is not None else None,
@@ -101,10 +141,9 @@ def run_out(
         queue=run.queue,
         status=run.status,
         is_write=run.is_write,
-        params=public_params(run.params),
+        params=params_out(run),
         progress=RunProgress.model_validate(run.progress) if run.progress else None,
-        # ``resume`` es estado interno entre tramos de un escaneo (G38): no es parte del resultado.
-        result={key: value for key, value in run.result.items() if key != "resume"} if run.result else None,
+        result=parse_result(run.operation, stored, run_id=run.id) if stored else None,
         error_code=run.error_code,
         error_message=run.error_message,
         cancel_requested=run.cancel_requested,
@@ -115,7 +154,9 @@ def run_out(
         workspace_purged=run.workspace_purged_at is not None,
         artifacts=[ArtifactOut.model_validate(a) for a in run.artifacts],
         can_cancel=_can_cancel(run, user, role),
+        ai_usage=ai_usage or [],
     )
+    return RunOut(out)
 
 
 @router.get("", response_model=RunPage, summary="Historial de ejecuciones", responses={401: _ERRORS[401]})
@@ -163,9 +204,8 @@ def _roles(db: Session, user: User, project_ids: set[int]) -> dict[int, MemberRo
 def get_run(run_id: str, user: CurrentUser, db: DbSession) -> RunOut:
     """Estado, progreso, resultado y artefactos, y el consumo de IA por tarea (2.1)."""
     run, role = service.get_run(db, run_id, user)
-    out = run_out(db, run, user, role)
-    out.ai_usage = [AiUsageRowOut.model_validate(item, from_attributes=True) for item in usage_log.for_run(db, run.id)]
-    return out
+    usage = [AiUsageRowOut.model_validate(item, from_attributes=True) for item in usage_log.for_run(db, run.id)]
+    return run_out(db, run, user, role, ai_usage=usage)
 
 
 @router.get("/{run_id}/scan-errors", response_model=ScanErrorPage, summary="Errores de un escaneo", responses=_ERRORS)

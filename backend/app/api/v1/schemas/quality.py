@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+
+from app.domain.runs.results import ContextAuditResult, ContextDryRunResult, ContextEvaluateResult
 
 
 class GoldOut(BaseModel):
@@ -20,12 +22,29 @@ class GoldOut(BaseModel):
     uploaded_by: str | None = None
 
 
-class QualityRunOut(BaseModel):
+class _QualityRunOut(BaseModel):
     """El último run terminado de una comprobación de calidad, con su resultado."""
 
     run_id: str
     finished_at: AwareDatetime | None
-    result: dict[str, Any]
+
+
+class QualityEvaluationOut(_QualityRunOut):
+    """La última evaluación terminada (``context_evaluate``)."""
+
+    result: ContextEvaluateResult
+
+
+class QualityDryRunOut(_QualityRunOut):
+    """La última comparación terminada (``context_dry_run``)."""
+
+    result: ContextDryRunResult
+
+
+class QualityAuditOut(_QualityRunOut):
+    """El último informe del auditor terminado (``context_audit``)."""
+
+    result: ContextAuditResult
 
 
 class QualityOut(BaseModel):
@@ -33,9 +52,9 @@ class QualityOut(BaseModel):
 
     gold: GoldOut | None = None
     decisions_available: bool = Field(description="Hay decisiones de personas con las que hacer una referencia")
-    evaluation: QualityRunOut | None = None
-    dry_run: QualityRunOut | None = None
-    audit: QualityRunOut | None = Field(default=None, description="Último informe del auditor (W7)")
+    evaluation: QualityEvaluationOut | None = None
+    dry_run: QualityDryRunOut | None = None
+    audit: QualityAuditOut | None = Field(default=None, description="Último informe del auditor (W7)")
 
 
 class DiagnosticsIn(BaseModel):
