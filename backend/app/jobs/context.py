@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.db.models import Artifact, ArtifactKind, Run
 from app.domain.runs import events
+from app.domain.runs.results import RunResult
 
 PROGRESS_MIN_INTERVAL: Final = 1.0
 CANCEL_POLL_SECONDS: Final = 2.0
@@ -34,7 +35,7 @@ class JobCancelled(Exception):
         result: Lo hecho hasta parar (p. ej. los recuentos de un escaneo), que se guarda en el run.
     """
 
-    def __init__(self, result: dict[str, Any] | None = None) -> None:
+    def __init__(self, result: RunResult | None = None) -> None:
         super().__init__("cancelled")
         self.result = result
 
@@ -52,7 +53,7 @@ class JobRecycle(Exception):
         result: Lo hecho hasta parar y lo necesario para retomar.
     """
 
-    def __init__(self, result: dict[str, Any]) -> None:
+    def __init__(self, result: RunResult) -> None:
         super().__init__("recycle")
         self.result = result
 
@@ -64,7 +65,7 @@ class JobFailed(Exception):
         result: Lo hecho antes de fallar (p. ej. las carpetas ya escaneadas), que se guarda en el run.
     """
 
-    def __init__(self, code: str, message: str, *, result: dict[str, Any] | None = None) -> None:
+    def __init__(self, code: str, message: str, *, result: RunResult | None = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message

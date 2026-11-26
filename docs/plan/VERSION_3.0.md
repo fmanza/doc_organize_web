@@ -28,7 +28,7 @@ antiguas del manifiesto se pueden restaurar.
 | 0 | `refactor` / `test` | Partir `update_user`; `httpx2` para el `TestClient` de Starlette (si cumple los 14 días); volcar el esquema que deja la cadena `0001→0033` en un fixture | — |
 | 1 | `refactor(db)` | Squash de Alembic: una línea base **con id `0033`**, DDL copiado del fixture y datos semilla literales; puerta de versión en `alembic/env.py`; test contra el snapshot; ADR-018 | 0 |
 | 2 | `feat!` | Retirar lo heredado: migración `3001` (borra las tres columnas y deja en el log los proyectos con colisiones), código, claves de i18n, OpenAPI y cliente; G23 sin exponer rutas del contenedor | 1 |
-| 3a | `refactor(backend)` | Un modelo `*Result` por operación (campos opcionales, `extra="allow"`), las operaciones devuelven modelos y las columnas JSON usan un `TypeDecorator` de Pydantic | 2 |
+| 3a | `refactor(backend)` | Un modelo `*Result` por operación (campos opcionales, `extra="allow"`), las operaciones devuelven modelos y la lectura tipada (`parse_result`) valida con tolerancia. Sin `TypeDecorator`: la forma de `Run.result` depende de la columna `operation`, que el decorador no ve | 2 |
 | 3b | `feat!` | `RunOut` como unión discriminada por `operation` con `params` y `result` tipados; `QualityRunOut.result` tipado; el frontend quita los casts y `useFollowedRun` pasa a ser genérico | 3a |
 | 4 | `test(frontend)` | jsdom 31: la prueba del menú móvil pasa a Playwright con un viewport estrecho; en Vitest queda el cableado ARIA | — |
 

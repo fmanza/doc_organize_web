@@ -18,11 +18,12 @@ import shutil
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Final
+from typing import Final
 
 from app.db.models import Project
 from app.domain.documents.paths import DocumentNamer, folder_roots
 from app.domain.runs.operations import ExportXlsxParams, ExportZipParams
+from app.domain.runs.results import ExportXlsxResult, ExportZipResult
 from app.domain.runs.service import MB, quota_used_bytes
 from app.domain.scan.state import folder_state
 from app.integrations import doc_organize as library
@@ -94,13 +95,13 @@ def _progress(ctx: JobContext) -> ProgressFn:
     return on_progress
 
 
-def run_zip(ctx: JobContext, params: ExportZipParams, project: Project | None) -> dict[str, Any]:
+def run_zip(ctx: JobContext, params: ExportZipParams, project: Project | None) -> ExportZipResult:
     """Calcula el tamaño del ZIP y, sin ``dry_run``, lo escribe como artefacto del run."""
     project = require_project(project)
     request = _request(ctx, project)
     ctx.progress("preview", 0, None)
     size = library.zip_preview(request)
-    result: dict[str, Any] = {"file_count": size.files, "total_size_bytes": size.bytes}
+    result = ExportZipResult(file_count=size.files, total_size_bytes=size.bytes)
     if params.dry_run:
         return result
     if ctx.cancelled:
@@ -118,7 +119,7 @@ def run_zip(ctx: JobContext, params: ExportZipParams, project: Project | None) -
         target.unlink(missing_ok=True)
         raise JobFailed("export_failed", "No se pudo escribir la exportación.") from None
     ctx.add_artifact(f"{EXPORT_DIR}/{name}", name=name)
-    return {"file_count": written.files, "total_size_bytes": written.bytes, "size_bytes": target.stat().st_size}
+    return ExportZipResult(file_count=written.files, total_size_bytes=written.bytes, size_bytes=target.stat().st_size)
 
 
 #: Sufijo del fichero y función que lo escribe, por ``ExportXlsxParams.kind``.
@@ -130,7 +131,7 @@ XLSX_KINDS: Final[dict[str, tuple[str, Callable[..., int]]]] = {
 }
 
 
-def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None) -> dict[str, Any]:
+def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None) -> ExportXlsxResult:
     """Escribe el Excel pedido (``XLSX_KINDS``) como artefacto del run."""
     project = require_project(project)
     request = _request(ctx, project)
@@ -151,4 +152,4 @@ def run_xlsx(ctx: JobContext, params: ExportXlsxParams, project: Project | None)
         target.unlink(missing_ok=True)
         raise JobFailed("export_failed", "No se pudo escribir la exportación.") from None
     ctx.add_artifact(f"{EXPORT_DIR}/{name}", name=name)
-    return {"rows": rows, "size_bytes": target.stat().st_size}
+    return ExportXlsxResult(rows=rows, size_bytes=target.stat().st_size)

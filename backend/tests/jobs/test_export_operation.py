@@ -86,8 +86,8 @@ def _no_container_paths(text: str, settings: Settings) -> None:
 def test_zip_has_outputs_and_snapshot_without_container_paths(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
-    preview = export.run_zip(ctx, ExportZipParams(dry_run=True), project)
-    result = export.run_zip(ctx, ExportZipParams(), project)
+    preview = export.run_zip(ctx, ExportZipParams(dry_run=True), project).stored()
+    result = export.run_zip(ctx, ExportZipParams(), project).stored()
 
     assert (preview["file_count"], preview["total_size_bytes"]) == (result["file_count"], result["total_size_bytes"])
     artifact = db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).one()
@@ -103,7 +103,7 @@ def test_zip_has_outputs_and_snapshot_without_container_paths(
 
 
 def test_zip_preview_writes_nothing(ctx: JobContext, project: Project, db: Session) -> None:
-    result = export.run_zip(ctx, ExportZipParams(dry_run=True), project)
+    result = export.run_zip(ctx, ExportZipParams(dry_run=True), project).stored()
 
     assert result["file_count"] == 3
     assert db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).first() is None
@@ -130,7 +130,7 @@ def test_cancelled_zip_leaves_no_partial_file(
     with pytest.raises(JobCancelled) as cancelled:
         export.run_zip(ctx, ExportZipParams(), project)
 
-    assert cancelled.value.result is not None and cancelled.value.result["file_count"] == 3
+    assert cancelled.value.result is not None and cancelled.value.result.stored()["file_count"] == 3
     # Se atiende entre la vista previa y la escritura: no se llega a crear nada.
     assert not (ctx.workdir / export.EXPORT_DIR).exists()
 
@@ -157,7 +157,7 @@ def test_zip_cancelled_while_writing_removes_the_partial_file(
 def test_xlsx_exports_without_container_paths(
     ctx: JobContext, project: Project, db: Session, migrated: Settings, kind: str, sheets: list[str]
 ) -> None:
-    result: dict[str, Any] = export.run_xlsx(ctx, ExportXlsxParams(kind=kind), project)  # type: ignore[arg-type]
+    result: dict[str, Any] = export.run_xlsx(ctx, ExportXlsxParams(kind=kind), project).stored()
 
     artifact = db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).one()
     workbook = load_workbook(ctx.workdir / artifact.rel_path, read_only=True)
@@ -171,11 +171,11 @@ def test_xlsx_exports_without_container_paths(
 
 
 def test_search_index_is_incremental(ctx: JobContext, project: Project, migrated: Settings) -> None:
-    first = search_index.run(ctx, SearchIndexParams(), project)
-    second = search_index.run(ctx, SearchIndexParams(), project)
+    first = search_index.run(ctx, SearchIndexParams(), project).stored()
+    second = search_index.run(ctx, SearchIndexParams(), project).stored()
     conversion = Path(project.destination_location.container_path) / "Proyecto A" / CONVERSION_DIR
     (conversion / "2025" / "acta.md").unlink()
-    third = search_index.run(ctx, SearchIndexParams(), project)
+    third = search_index.run(ctx, SearchIndexParams(), project).stored()
 
     assert (first["added"], first["indexed"]) == (2, 2)
     assert (second["added"], second["updated"], second["removed"]) == (0, 0, 0)
@@ -193,7 +193,7 @@ def test_excluded_folders_still_in_the_cache_are_not_exported(ctx: JobContext, p
     stored.excluded_paths = ["2025"]
     db.commit()
 
-    result = export.run_zip(ctx, ExportZipParams(), project)
+    result = export.run_zip(ctx, ExportZipParams(), project).stored()
 
     artifact = db.scalars(select(Artifact).where(Artifact.run_id == ctx.run_id)).one()
     with zipfile.ZipFile(ctx.workdir / artifact.rel_path) as archive:

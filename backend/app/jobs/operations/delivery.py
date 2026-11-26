@@ -19,6 +19,7 @@ from app.db.models import Project
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import ExportAiBundleParams, ExportSiteParams
+from app.domain.runs.results import ExportAiBundleResult, ExportSiteResult
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.delivery import (
     AiBundleRequest,
@@ -53,7 +54,7 @@ def _audit(ctx: JobContext, project: Project, action: str, details: dict[str, An
         db.commit()
 
 
-def run_site(ctx: JobContext, params: ExportSiteParams, project: Project | None) -> dict[str, Any]:
+def run_site(ctx: JobContext, params: ExportSiteParams, project: Project | None) -> ExportSiteResult:
     """Construye el sitio sin conexión, lo comprueba y deja su ZIP como artefacto, con su SHA-256."""
     project = require_project(project)
     request = _request(ctx, project)
@@ -119,10 +120,10 @@ def run_site(ctx: JobContext, params: ExportSiteParams, project: Project | None)
         ctx.log(f"Contenido de terceros neutralizado en {result['neutralized_pages']} páginas ({detail}).")
     ctx.log(f"Sitio sin conexión: {name} · SHA-256 {result['sha256']}")
     ctx.progress("done", 1, 1)
-    return {**result, "file_name": name, "redact_credentials": site.redact}
+    return ExportSiteResult.model_validate({**result, "file_name": name, "redact_credentials": site.redact})
 
 
-def run_ai_bundle(ctx: JobContext, params: ExportAiBundleParams, project: Project | None) -> dict[str, Any]:
+def run_ai_bundle(ctx: JobContext, params: ExportAiBundleParams, project: Project | None) -> ExportAiBundleResult:
     """Escribe el paquete para IA como artefacto, con su SHA-256."""
     project = require_project(project)
     request = _request(ctx, project)
@@ -161,4 +162,6 @@ def run_ai_bundle(ctx: JobContext, params: ExportAiBundleParams, project: Projec
         ctx.log("Paquete SIN redactar credenciales (lo pidió un administrador).", level="warning")
     ctx.log(f"Paquete para IA: {name} · SHA-256 {stats['sha256']}")
     ctx.progress("done", 1, 1)
-    return {**stats, "file_name": name, "zip_size_bytes": target.stat().st_size, **options}
+    return ExportAiBundleResult.model_validate(
+        {**stats, "file_name": name, "zip_size_bytes": target.stat().st_size, **options}
+    )

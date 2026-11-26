@@ -6,10 +6,9 @@ escaneado antes de la 0.6.0 o si el índice se ha perdido.
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.db.models import Project
 from app.domain.runs.operations import SearchIndexParams
+from app.domain.runs.results import SearchIndexResult
 from app.domain.scan.state import CONVERSION_DIR
 from app.domain.search.index import IndexStats, reindex, search_db
 from app.jobs.context import JobContext
@@ -30,8 +29,8 @@ def reindex_project(ctx: JobContext, paths: ProjectPaths, *, cancellable: bool =
     )
 
 
-def run(ctx: JobContext, params: SearchIndexParams, project: Project | None) -> dict[str, Any]:
+def run(ctx: JobContext, params: SearchIndexParams, project: Project | None) -> SearchIndexResult:
     """Reindexa y devuelve los recuentos."""
     project = require_project(project)
     stats = reindex_project(ctx, project_paths(project, ctx))
-    return {"indexed": stats.total, "added": stats.added, "updated": stats.updated, "removed": stats.removed}
+    return SearchIndexResult(indexed=stats.total, added=stats.added, updated=stats.updated, removed=stats.removed)

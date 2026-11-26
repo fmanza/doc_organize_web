@@ -90,7 +90,7 @@ def test_one_call_per_folder_with_summed_counts(
 
     monkeypatch.setattr(library, "run_scan", fake)
 
-    result = scan_op.run(ctx, ScanParams(), project)
+    result = scan_op.run(ctx, ScanParams(), project).stored()
 
     assert [c.folders for c in calls] == [[source / "2024"], [source / "2025"]]
     assert all(not c.force and c.use_ocr for c in calls)
@@ -128,7 +128,7 @@ def test_force_works_folder_by_folder_and_is_audited(
     monkeypatch.setattr(library, "run_scan", fake)
     monkeypatch.setattr(library, "cached_paths", lambda output, state: [])
 
-    result = scan_op.run(ctx, ScanParams(force=True), project)
+    result = scan_op.run(ctx, ScanParams(force=True), project).stored()
 
     assert len(calls) == 2 and all(c.force and len(c.folders) == 1 for c in calls)
     assert result["converted"] == 10
@@ -159,7 +159,7 @@ def test_cancel_midway_keeps_what_was_done(
     with pytest.raises(JobCancelled) as stopped:
         scan_op.run(ctx, ScanParams(), project)
 
-    assert stopped.value.result is not None and stopped.value.result["converted"] == 1
+    assert stopped.value.result is not None and stopped.value.result.stored()["converted"] == 1
     assert db.scalar(select(ScanError.path).where(ScanError.run_id == ctx.run_id)) == "2024/x.pdf"
     folders = db.scalars(select(ScannedFolder).where(ScannedFolder.project_id == project.id)).all()
     assert not any(f.used for f in folders)  # ninguna carpeta terminó
@@ -186,7 +186,7 @@ def test_document_over_the_time_limit_stops_in_order(
     with pytest.raises(JobCancelled) as stopped:
         scan_op.run(ctx, ScanParams(), project)
 
-    assert stopped.value.result is not None and stopped.value.result["converted"] == 3
+    assert stopped.value.result is not None and stopped.value.result.stored()["converted"] == 3
     assert db.scalar(select(Run.cancel_reason).where(Run.id == ctx.run_id)) == "timeout"
 
 
@@ -198,7 +198,7 @@ def test_missing_folder_is_skipped_with_a_warning(
     calls: list[ScanRequest] = []
     monkeypatch.setattr(library, "run_scan", lambda request, **_: calls.append(request) or _outcome(request))
 
-    result = scan_op.run(ctx, ScanParams(), project)
+    result = scan_op.run(ctx, ScanParams(), project).stored()
 
     assert result["folders"] == 1 and len(calls) == 1
     logs = [e.data["message"] for e in db.scalars(select(RunEvent).where(RunEvent.type == "log"))]
@@ -235,7 +235,7 @@ def test_force_preview_counts_cache_and_orphans(
     monkeypatch.setattr(library, "cached_paths", _caches(project, ctx, cached))
     monkeypatch.setattr(library, "conversion_dir", lambda output, state, subdir: conversions / subdir)
 
-    result = scan_op.run(ctx, ScanParams(force=True, dry_run=True), project)
+    result = scan_op.run(ctx, ScanParams(force=True, dry_run=True), project).stored()
 
     assert result == {
         "cached": 2,
@@ -274,8 +274,8 @@ def test_a_failing_folder_does_not_stop_the_others(
         scan_op.run(ctx, ScanParams(), project)
 
     assert failed.value.code == "scan_failed"
-    assert failed.value.result is not None and failed.value.result["converted"] == 4
-    assert failed.value.result["failed_folders"] == 1
+    assert failed.value.result is not None and failed.value.result.stored()["converted"] == 4
+    assert failed.value.result.stored()["failed_folders"] == 1
     used = {f.subpath: f.used for f in db.scalars(select(ScannedFolder).where(ScannedFolder.project_id == project.id))}
     assert used == {"2024": False, "2025": True}
 
@@ -292,7 +292,7 @@ def test_cancel_between_folders_keeps_the_counts(
     with pytest.raises(JobCancelled) as stopped:
         scan_op.run(ctx, ScanParams(), project)
 
-    assert stopped.value.result is not None and stopped.value.result["converted"] == 2
+    assert stopped.value.result is not None and stopped.value.result.stored()["converted"] == 2
 
 
 # --- Fase 10: tramos (G38) -----------------------------------------------------------------------------------------
@@ -337,11 +337,11 @@ def test_a_long_scan_continues_in_a_new_segment(
 
     with pytest.raises(JobRecycle) as first:
         scan_op.run(ctx, ScanParams(), project)
-    assert first.value.result[scan_op.RESUME] == {"done": [], "partial": "2024", "failed": []}
-    assert first.value.result["converted"] == 3
-    _save_segment(db, ctx.run_id, first.value.result)
+    assert first.value.result.stored()[scan_op.RESUME] == {"done": [], "partial": "2024", "failed": []}
+    assert first.value.result.stored()["converted"] == 3
+    _save_segment(db, ctx.run_id, first.value.result.stored())
 
-    result = scan_op.run(ctx, ScanParams(), project)
+    result = scan_op.run(ctx, ScanParams(), project).stored()
 
     assert [c.output_subdir for c in calls] == ["2024", "2024", "2025"]
     assert all(c.max_conversions == 3 for c in calls)
@@ -375,8 +375,8 @@ def test_a_forced_scan_does_not_empty_the_cache_again_when_resuming(
 
     with pytest.raises(JobRecycle) as first:
         scan_op.run(ctx, ScanParams(force=True), project)
-    _save_segment(db, ctx.run_id, first.value.result)
-    result = scan_op.run(ctx, ScanParams(force=True), project)
+    _save_segment(db, ctx.run_id, first.value.result.stored())
+    result = scan_op.run(ctx, ScanParams(force=True), project).stored()
 
     assert [c.force for c in calls] == [True, False, True]
     assert result["converted"] == 206
@@ -394,7 +394,7 @@ def test_a_finished_folder_is_not_scanned_again(
         {"folders": 2, "force": False, "converted": 4, scan_op.RESUME: {"done": ["2024"], "partial": "2025"}},
     )
 
-    result = scan_op.run(ctx, ScanParams(), project)
+    result = scan_op.run(ctx, ScanParams(), project).stored()
 
     assert [c.output_subdir for c in calls] == ["2025"]
     assert result["converted"] == 5 and result["segments"] == 2
@@ -430,7 +430,7 @@ def test_without_exclusions_the_request_is_the_one_of_1_3_0(
 
     monkeypatch.setattr(library, "run_scan", fake)
 
-    result = scan_op.run(ctx, ScanParams(), project)
+    result = scan_op.run(ctx, ScanParams(), project).stored()
 
     assert all(c.exclude_paths == [] and c.ignore_patterns == [] for c in calls)
     assert "excluded_cached" not in result
@@ -458,7 +458,7 @@ def test_every_segment_uses_the_copy_made_when_enqueued(
 
     with pytest.raises(JobRecycle) as first:
         scan_op.run(ctx, params, project)
-    _save_segment(db, ctx.run_id, first.value.result)
+    _save_segment(db, ctx.run_id, first.value.result.stored())
     db.execute(
         update(ScannedFolder)
         .where(ScannedFolder.project_id == project.id, ScannedFolder.subpath == "2024")
@@ -466,7 +466,7 @@ def test_every_segment_uses_the_copy_made_when_enqueued(
     )
     db.execute(update(Location).where(Location.id == project.source_location_id).values(ignore_patterns=["*.pdf"]))
     db.commit()
-    result = scan_op.run(ctx, params, project)
+    result = scan_op.run(ctx, params, project).stored()
 
     assert [[p.name for p in c.exclude_paths] for c in calls] == [["fotos"], ["fotos"], []]
     assert all(c.ignore_patterns == ["~$*"] for c in calls)
@@ -497,7 +497,7 @@ def test_force_preview_counts_what_exclusions_and_patterns_will_delete(
     monkeypatch.setattr(library, "conversion_dir", lambda output, state, subdir: tmp_path / "nada" / subdir)
     params = ScanParams(force=True, dry_run=True, exclusions={"2024": ["fotos"]}, ignore_patterns=["~$*", "@eaDir"])
 
-    result = scan_op.run(ctx, params, project)
+    result = scan_op.run(ctx, params, project).stored()
 
     # Lo excluido se cuenta aparte (también se borra); «orphaned» es solo lo que ya no existe.
     assert (result["cached"], result["excluded"], result["orphaned"]) == (5, 3, 1)
@@ -512,6 +512,6 @@ def test_patterns_never_apply_to_the_scanned_folder_itself(
     monkeypatch.setattr(library, "cached_paths", _caches(project, ctx, cached))
     monkeypatch.setattr(library, "conversion_dir", lambda output, state, subdir: tmp_path / "nada" / subdir)
 
-    result = scan_op.run(ctx, ScanParams(force=True, dry_run=True, ignore_patterns=["2024"]), project)
+    result = scan_op.run(ctx, ScanParams(force=True, dry_run=True, ignore_patterns=["2024"]), project).stored()
 
     assert result["excluded"] == 0

@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
 
 from sqlalchemy import delete
 
@@ -23,6 +22,12 @@ from app.domain.runs.operations import (
     ContextReviewAgentParams,
     TaxonomyAgentParams,
     TaxonomyCheckParams,
+)
+from app.domain.runs.results import (
+    ContextAuditResult,
+    ContextReviewAgentResult,
+    TaxonomyAgentResult,
+    TaxonomyCheckResult,
 )
 from app.integrations.doc_organize import agents as library
 from app.integrations.doc_organize.context import TemplateInvalidError
@@ -40,7 +45,7 @@ STOPPED: dict[str, str] = {
 }
 
 
-def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | None) -> dict[str, Any]:
+def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | None) -> TaxonomyAgentResult:
     """Pide la propuesta al diseñador y la devuelve sin guardar nada."""
     project = require_project(project)
     output, folders, namer = context_folders(ctx, project)
@@ -55,7 +60,7 @@ def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | 
     )
     ctx.check_cancelled()
     try:
-        result = library.design_taxonomy(
+        proposal = library.design_taxonomy(
             request,
             on_progress=lambda phase: ctx.progress(phase, 0, None),
             is_cancelled=lambda: ctx.cancelled,
@@ -69,15 +74,17 @@ def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | 
         raise JobFailed("template_invalid", f"El manifiesto de partida no es válido: {namer.text(str(exc))}") from None
     except DocOrganizeOperationError as exc:
         raise JobFailed("ai_error", str(exc)) from None
-    if result["stop_reason"] == "cancelled":
-        raise JobCancelled(result)
-    if result["stop_reason"] in STOPPED:
-        ctx.log(STOPPED[result["stop_reason"]], level="warning")
+    if proposal["stop_reason"] == "cancelled":
+        raise JobCancelled(TaxonomyAgentResult.model_validate(proposal))
+    if proposal["stop_reason"] in STOPPED:
+        ctx.log(STOPPED[proposal["stop_reason"]], level="warning")
     ctx.log(
-        f"Agente: {result['steps']} pasos, {result['tool_calls']} herramientas y "
-        f"{result['prompt_tokens'] + result['completion_tokens']} tokens en {result['duration_s']} s."
+        f"Agente: {proposal['steps']} pasos, {proposal['tool_calls']} herramientas y "
+        f"{proposal['prompt_tokens'] + proposal['completion_tokens']} tokens en {proposal['duration_s']} s."
     )
-    result |= {"catalog": params.catalog, "template_name": params.template_name}
+    result = TaxonomyAgentResult.model_validate(
+        proposal | {"catalog": params.catalog, "template_name": params.template_name}
+    )
     with ctx.session_factory() as db:
         audit.record(
             db,
@@ -88,9 +95,9 @@ def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | 
             target_id=project.id,
             details={
                 "run_id": ctx.run_id,
-                "stop_reason": result["stop_reason"],
-                "steps": result["steps"],
-                "documents": result["documents"],
+                "stop_reason": result.stop_reason,
+                "steps": result.steps,
+                "documents": result.documents,
             },
         )
         db.commit()
@@ -98,7 +105,7 @@ def run_design(ctx: JobContext, params: TaxonomyAgentParams, project: Project | 
     return result
 
 
-def run_check(ctx: JobContext, params: TaxonomyCheckParams, project: Project | None) -> dict[str, Any]:
+def run_check(ctx: JobContext, params: TaxonomyCheckParams, project: Project | None) -> TaxonomyCheckResult:
     """Comprueba el manifiesto por reglas, sin IA."""
     project = require_project(project)
     _, folders, namer = context_folders(ctx, project)
@@ -113,10 +120,10 @@ def run_check(ctx: JobContext, params: TaxonomyCheckParams, project: Project | N
     except TemplateInvalidError as exc:
         raise JobFailed("template_invalid", f"El manifiesto no es válido: {namer.text(str(exc))}") from None
     ctx.progress("done", 1, 1)
-    return {"report": report}
+    return TaxonomyCheckResult(report=report)
 
 
-def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Project | None) -> dict[str, Any]:
+def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Project | None) -> ContextReviewAgentResult:
     """Pide propuestas al revisor y las guarda como pendientes (sustituyen a las pendientes anteriores). No aplica
     ninguna (D14): las acepta o descarta una persona en «Revisar clasificación»."""
     project = require_project(project)
@@ -143,7 +150,9 @@ def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Proje
     except DocOrganizeOperationError as exc:
         raise JobFailed("ai_error", namer.text(str(exc))) from None
     if result["stop_reason"] == "cancelled":
-        raise JobCancelled({k: v for k, v in result.items() if k != "proposals"})
+        raise JobCancelled(
+            ContextReviewAgentResult.model_validate({k: v for k, v in result.items() if k != "proposals"})
+        )
     proposals = result.pop("proposals")
     with ctx.session_factory() as db:
         db.execute(
@@ -181,10 +190,10 @@ def run_review(ctx: JobContext, params: ContextReviewAgentParams, project: Proje
         )
     ctx.log(f"Revisor: {len(proposals)} propuestas de {result['reviewed']} documentos revisados.")
     ctx.progress("done", 1, 1)
-    return {**result, "proposals": len(proposals)}
+    return ContextReviewAgentResult.model_validate({**result, "proposals": len(proposals)})
 
 
-def run_audit(ctx: JobContext, params: ContextAuditParams, project: Project | None) -> dict[str, Any]:
+def run_audit(ctx: JobContext, params: ContextAuditParams, project: Project | None) -> ContextAuditResult:
     """Informe del auditor de la taxonomía, sin IA."""
     del params
     project = require_project(project)
@@ -195,4 +204,4 @@ def run_audit(ctx: JobContext, params: ContextAuditParams, project: Project | No
     except DocOrganizeOperationError as exc:
         raise JobFailed("context_failed", namer.text(str(exc))) from None
     ctx.progress("done", 1, 1)
-    return {"audit": report}
+    return ContextAuditResult(audit=report)

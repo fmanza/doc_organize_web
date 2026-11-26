@@ -33,6 +33,13 @@ from app.domain.documents.paths import DocumentNamer
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import ContextBuildParams, ContextDeleteParams, context_ai_tasks
+from app.domain.runs.results import (
+    AiPhaseResult,
+    ContextBuildResult,
+    ContextDeleteResult,
+    SemanticResult,
+    parse_result_as,
+)
 from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.ai import AiConnection, FamilyKey
@@ -308,7 +315,7 @@ def _log_ai(ctx: JobContext, outcome: ContextOutcome) -> None:
             ctx.log(ENRICHMENT_STOPPED[outcome.enrichment["stopped"]], level="warning")
 
 
-def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | None) -> dict[str, Any]:
+def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | None) -> ContextBuildResult:
     """Construye el contexto y devuelve sus recuentos."""
     project = require_project(project)
     require_rw(project.destination_location)
@@ -386,21 +393,23 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
     ctx.progress("context_save", 0, None)
     _project_rows(ctx, project, params, outcome, namer)
     refresh_freshness(ctx, project)  # recién construido: al día, salvo lo que no tenga huella (``unknown``)
-    result: dict[str, Any] = {
-        "output_folder_name": outcome.output_folder_name,
-        "domains": len(outcome.domains),
-        "documents": sum(1 for d in outcome.documents if d.domain_slug is not None),
-        "unclassified": sum(1 for d in outcome.documents if d.domain_slug is None),
-        "failed": len(outcome.failed),
-        "failed_paths": [namer.display(path) for path, _ in outcome.failed[:MAX_FAILED_SHOWN]],
-        "missing_originals": outcome.missing,
-        "site_built": outcome.site_built,
-        "ai": {"enabled": True, **outcome.ai} if outcome.ai is not None else {"enabled": False},
-        "ai_enrichment": (
+    result = ContextBuildResult(
+        output_folder_name=outcome.output_folder_name,
+        domains=len(outcome.domains),
+        documents=sum(1 for d in outcome.documents if d.domain_slug is not None),
+        unclassified=sum(1 for d in outcome.documents if d.domain_slug is None),
+        failed=len(outcome.failed),
+        failed_paths=[namer.display(path) for path, _ in outcome.failed[:MAX_FAILED_SHOWN]],
+        missing_originals=outcome.missing,
+        site_built=outcome.site_built,
+        ai=AiPhaseResult.model_validate(
+            {"enabled": True, **outcome.ai} if outcome.ai is not None else {"enabled": False}
+        ),
+        ai_enrichment=AiPhaseResult.model_validate(
             {"enabled": True, **outcome.enrichment} if outcome.enrichment is not None else {"enabled": False}
         ),
-        "semantic": outcome.semantic or {"enabled": False},
-    }
+        semantic=SemanticResult.model_validate(outcome.semantic or {"enabled": False}),
+    )
     with ctx.session_factory() as db:
         audit.record(
             db,
@@ -409,7 +418,7 @@ def run_build(ctx: JobContext, params: ContextBuildParams, project: Project | No
             actor_id=ctx.created_by,
             target_type="project",
             target_id=project.id,
-            details={k: v for k, v in result.items() if k != "failed_paths"} | {"run_id": ctx.run_id},
+            details={k: v for k, v in result.stored().items() if k != "failed_paths"} | {"run_id": ctx.run_id},
         )
         db.commit()
     ctx.progress("done", 1, 1)
@@ -448,7 +457,7 @@ def _measure_context(ctx: JobContext, output: Path, folder_name: str | None) -> 
     return TreeSize(files=files, bytes=size)
 
 
-def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | None) -> dict[str, Any]:
+def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | None) -> ContextDeleteResult:
     """Cuenta (``dry_run``) o borra el contexto del proyecto."""
     project = require_project(project)
     paths = project_paths(project, ctx)
@@ -459,18 +468,15 @@ def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | 
             stored = db.get(ProjectContext, project.id)
             folder_name = stored.output_folder_name if stored else None
     size = _measure_context(ctx, output, folder_name)
-    result: dict[str, Any] = {
-        "output_folder_name": folder_name,
-        "files": size.files,
-        "bytes": size.bytes,
-    }
+    result = ContextDeleteResult(output_folder_name=folder_name, files=size.files, bytes=size.bytes)
     if params.dry_run:
         return result
     require_rw(project.destination_location)
     # Solo se borra la carpeta que mostró la vista previa confirmada (la API comprobó que es de esta operación).
     with ctx.session_factory() as db:
         preview = db.get(Run, params.preview_run_id) if params.preview_run_id else None
-        expected = (preview.result or {}).get("output_folder_name") if preview else None
+        shown = parse_result_as(ContextDeleteResult, preview.result, run_id=preview.id) if preview else None
+        expected = shown.output_folder_name if shown else None
     if expected != folder_name:
         raise JobFailed("context_changed", "El contexto ha cambiado desde la vista previa: vuelve a lanzarla.")
     ctx.check_cancelled()
@@ -498,7 +504,7 @@ def run_delete(ctx: JobContext, params: ContextDeleteParams, project: Project | 
                 actor_id=ctx.created_by,
                 target_type="project",
                 target_id=project.id,
-                details={"run_id": ctx.run_id, **result},
+                details={"run_id": ctx.run_id, **result.stored()},
             )
             db.commit()
     ctx.progress("context_delete", 1, 1)

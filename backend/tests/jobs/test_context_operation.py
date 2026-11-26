@@ -127,7 +127,7 @@ DOMAINS = {"operation": "context_build", "catalog": "domains", "domains": ["fact
 def test_build_classifies_copies_and_projects(run: Any, project: Project, db: Session, migrated: Settings) -> None:
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     output = migrated.locations_root / "salidas" / "Proyecto A"
     assert result["output_folder_name"] == "organizado"
@@ -191,7 +191,7 @@ def test_two_builds_leave_their_history_and_its_excel(
     assert first["changes_total"] == 4 and {c["change"] for c in first["changes"]} == {"added"}
     assert newest["changes_total"] >= 1 and newest["previous_built_at"] == first["built_at"]
     ctx, _ = run({"operation": "export_xlsx", "kind": "context_history"})
-    result = export.run_xlsx(ctx, ExportXlsxParams(kind="context_history"), project)
+    result = export.run_xlsx(ctx, ExportXlsxParams(kind="context_history"), project).stored()
     (artifact,) = ctx.workdir.glob("export/*-historial-contexto.xlsx")
     assert result["rows"] > 0
     assert load_workbook(artifact, read_only=True).sheetnames == ["Construcciones", "Cambios"]
@@ -204,7 +204,7 @@ def test_rebuild_replaces_the_projection_and_keeps_the_folder(run: Any, project:
     first = db.scalar(select(ProjectContext.output_folder_name).where(ProjectContext.project_id == project.id))
 
     ctx, params = run({"operation": "context_build", "build_site": False})
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert first == "por-temas" and result["output_folder_name"] == "por-temas"
     count = db.scalar(
@@ -249,7 +249,7 @@ def test_build_skips_originals_that_are_gone(run: Any, project: Project, db: Ses
     (migrated.locations_root / "origen" / "2025" / "receta.txt").unlink()
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["missing_originals"] == 1
     assert ("2025", "receta.txt") not in {(d.folder, d.path) for d in db.scalars(select(ContextDocument))}
@@ -266,7 +266,7 @@ def test_build_needs_a_writable_destination(run: Any, project: Project, db: Sess
 def test_build_with_the_site(run: Any, project: Project, db: Session, migrated: Settings) -> None:
     ctx, params = run(DOMAINS | {"build_site": True})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     output = migrated.locations_root / "salidas" / "Proyecto A"
     assert result["site_built"] is True, _logs(db, ctx.run_id)
@@ -290,7 +290,7 @@ def test_a_failed_site_logs_the_cause_not_the_head_of_the_traceback(
     monkeypatch.setattr(SiteGenerator, "build_site", failing_build)
     ctx, params = run(DOMAINS | {"build_site": True})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["site_built"] is False
     assert f"El sitio no se pudo construir: {cause}" in _logs(db, ctx.run_id)
@@ -312,7 +312,7 @@ def test_pages_left_out_of_the_site_search_are_reported(
     monkeypatch.setattr(SiteGenerator, "generate", generate_with_exclusions)
     ctx, params = run(DOMAINS | {"build_site": True})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["site_built"] is True, _logs(db, ctx.run_id)
     assert (
@@ -341,7 +341,7 @@ def test_linked_artifacts_are_never_copied(
     os.symlink(tmp_path / "img", images)
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["missing_originals"] == 1
     assert result["failed"] == 1 and result["failed_paths"] == ["2024/factura.txt"]
@@ -358,7 +358,7 @@ def test_incomplete_conversions_are_left_out(run: Any, project: Project, migrate
     (conversion / output_paths("2024", "obras/informe.txt").markdown).unlink()
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["missing_originals"] == 1 and result["documents"] + result["unclassified"] == 3
 
@@ -377,7 +377,7 @@ def test_an_invalid_folder_in_context_json_touches_nothing(
     (output / "context.json").write_text(json.dumps(data | {"output_folder_name": folder}), encoding="utf-8")
     ctx, params = run(DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["output_folder_name"] == "organizado"
     assert json.loads((output / "context.json").read_text(encoding="utf-8"))["output_folder_name"] == "organizado"
@@ -424,7 +424,7 @@ def test_delete_previews_then_removes_only_the_context(
     _finish(db, ctx)
 
     preview_ctx, preview_params = run({"operation": "context_delete"})
-    preview = operation.run_delete(preview_ctx, preview_params, project)
+    preview = operation.run_delete(preview_ctx, preview_params, project).stored()
     assert preview["output_folder_name"] == "organizado" and preview["files"] > 0
     assert (output / "context.json").is_file()
     _finish(db, preview_ctx)
@@ -459,7 +459,7 @@ def test_delete_refuses_a_folder_other_than_the_previewed_one(
     operation.run_build(ctx, params, project)
     _finish(db, ctx)
     preview_ctx, preview_params = run({"operation": "context_delete"})
-    preview = operation.run_delete(preview_ctx, preview_params, project)
+    preview = operation.run_delete(preview_ctx, preview_params, project).stored()
     _finish(db, preview_ctx)
     db.execute(update(Run).where(Run.id == preview_ctx.run_id).values(finished_at=Run.created_at, result=preview))
     db.commit()
@@ -504,7 +504,7 @@ def test_a_context_left_on_disk_is_detected_and_can_be_deleted(
     assert user_client.get(url).json() == {"output_folder_name": "organizado"}
 
     preview_ctx, preview_params = run({"operation": "context_delete"})
-    preview = operation.run_delete(preview_ctx, preview_params, project)
+    preview = operation.run_delete(preview_ctx, preview_params, project).stored()
     assert preview["output_folder_name"] == "organizado" and preview["files"] > 0
     _finish(db, preview_ctx)
     db.execute(update(Run).where(Run.id == preview_ctx.run_id).values(finished_at=Run.created_at, result=preview))

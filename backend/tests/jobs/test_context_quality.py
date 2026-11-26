@@ -131,7 +131,7 @@ def test_evaluate_the_context_against_the_excel(
     _upload(user_client, project, GOLD)
 
     ctx2, params2 = run({"operation": "context_evaluate", "gold": "xlsx"})
-    result = quality.run_evaluate(ctx2, params2, project)
+    result = quality.run_evaluate(ctx2, params2, project).stored()
 
     report = result["report"]
     assert report["matched"] == 3 and report["missing_total"] == 0
@@ -188,7 +188,7 @@ def test_dry_run_compares_without_saving(
             "max_documents": 1,
         }
     )
-    result = quality.run_dry_run(ctx2, params2, project)
+    result = quality.run_dry_run(ctx2, params2, project).stored()
 
     assert result["baseline"]["axes"]["domains"]["labelled"] == 3
     assert result["candidate"]["axes"]["domains"]["labelled"] == 3 and result["documents"] == 3

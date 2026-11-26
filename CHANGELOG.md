@@ -20,6 +20,10 @@ ROADMAP (`0.<fase+1>.0`).
   (`docs/plan/VERSION_3.0.md`). Se regenera con `uv run --frozen python -m tests.schema_snapshot`.
 - **backend** (dependencias de desarrollo): `httpx2` 2.16.0 para el `TestClient` de Starlette, que da por obsoleto
   usarlo con `httpx`; `httpx` se queda porque lo usa la IA de doc_organize.
+- **backend**: resultados de las ejecuciones tipados por dentro: un modelo Pydantic por operación
+  (`app/domain/runs/results.py`, campos opcionales y `extra="allow"`) que las operaciones devuelven y el runner guarda
+  con `exclude_unset` (mismas claves y valores en `runs.result`); `parse_result` lee con tolerancia los guardados (si
+  no validan, `None` y un aviso con el id del run). Sin cambio de contrato: la API sigue devolviendo diccionarios.
 
 ### Removed
 

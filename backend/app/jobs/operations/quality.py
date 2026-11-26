@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
 
 from app.db.models import Project
 from app.domain.context import quality
@@ -19,6 +18,7 @@ from app.domain.context.errors import GoldNotFoundError
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import ContextDryRunParams, ContextEvaluateParams
+from app.domain.runs.results import ContextDryRunResult, ContextEvaluateResult
 from app.integrations.doc_organize import evaluation as library
 from app.integrations.doc_organize.context import TemplateInvalidError
 from app.integrations.doc_organize.projects import DocOrganizeOperationError
@@ -34,7 +34,7 @@ def _gold(ctx: JobContext, project: Project, source: library.GoldSource) -> libr
         raise JobFailed("gold_not_found", "La referencia ya no está: súbela de nuevo.") from None
 
 
-def run_evaluate(ctx: JobContext, params: ContextEvaluateParams, project: Project | None) -> dict[str, Any]:
+def run_evaluate(ctx: JobContext, params: ContextEvaluateParams, project: Project | None) -> ContextEvaluateResult:
     """Evalúa el contexto guardado y devuelve el informe."""
     project = require_project(project)
     output, folders, _ = context_folders(ctx, project)
@@ -48,10 +48,10 @@ def run_evaluate(ctx: JobContext, params: ContextEvaluateParams, project: Projec
     except DocOrganizeOperationError as exc:
         raise JobFailed("context_failed", str(exc)) from None
     ctx.progress("done", 1, 1)
-    return {"gold": params.gold, "report": report}
+    return ContextEvaluateResult(gold=params.gold, report=report)
 
 
-def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project | None) -> dict[str, Any]:
+def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project | None) -> ContextDryRunResult:
     """Clasificación de prueba con la configuración candidata, comparada con el contexto actual."""
     project = require_project(project)
     output, folders, namer = context_folders(ctx, project)
@@ -84,7 +84,7 @@ def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project |
 
     ctx.check_cancelled()
     try:
-        result = library.dry_run(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)
+        comparison = library.dry_run(request, on_progress=on_progress, is_cancelled=lambda: ctx.cancelled)
     except library.GoldInvalidError as exc:
         raise JobFailed("gold_invalid", f"La referencia no sirve: {exc}") from None
     except TemplateInvalidError as exc:
@@ -93,17 +93,21 @@ def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project |
         ) from None
     except DocOrganizeOperationError as exc:
         raise JobFailed("context_failed", str(exc)) from None
-    if result is None:
+    if comparison is None:
         raise JobCancelled()
-    result |= {
-        "gold": params.gold,
-        "catalog": params.catalog,
-        "template_name": params.template_name,
-        "ai_scope": params.ai_scope,
-        "profile_changed": params.profile_markdown is not None,
-    }
-    if result["ai"]["stopped"]:
-        ctx.log(f"La IA se detuvo ({result['ai']['stopped']}): la comparación es parcial.", level="warning")
+    result = ContextDryRunResult.model_validate(
+        comparison
+        | {
+            "gold": params.gold,
+            "catalog": params.catalog,
+            "template_name": params.template_name,
+            "ai_scope": params.ai_scope,
+            "profile_changed": params.profile_markdown is not None,
+        }
+    )
+    stopped = result.ai.stopped if result.ai else None
+    if stopped:
+        ctx.log(f"La IA se detuvo ({stopped}): la comparación es parcial.", level="warning")
     with ctx.session_factory() as db:
         audit.record(
             db,
@@ -114,9 +118,9 @@ def run_dry_run(ctx: JobContext, params: ContextDryRunParams, project: Project |
             target_id=project.id,
             details={
                 "run_id": ctx.run_id,
-                "documents": result["documents"],
+                "documents": result.documents,
                 "ai_scope": params.ai_scope,
-                "calls": result["ai"]["calls"],
+                "calls": result.ai.calls if result.ai else None,
             },
         )
         db.commit()

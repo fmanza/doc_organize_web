@@ -40,6 +40,7 @@ from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.projects.exclusions import PathFilter
 from app.domain.runs.operations import ScanParams
+from app.domain.runs.results import RESUME_KEY, ScanResult, ScanResume, parse_result_as
 from app.domain.scan.options import missing_options
 from app.domain.scan.state import folder_state
 from app.integrations import doc_organize as library
@@ -74,7 +75,7 @@ SUMMARY_SECONDS: Final = ("duration_seconds", "discovery_duration_seconds", "tot
 #: Recuentos del descubrimiento: al retomar una carpeta a medias se cuentan solo en su primer tramo.
 DISCOVERY_COUNTS: Final = frozenset({"scanned", "new", "modified", "unchanged", "io_errors", "excluded_cached"})
 #: Clave de ``runs.result`` con lo necesario para retomar en otro tramo (se quita al terminar).
-RESUME: Final = "resume"
+RESUME: Final = RESUME_KEY
 #: Fase de doc_organize → fase que ve el usuario.
 PHASES: Final = {"started": "discovery", "discovery": "discovery", "conversion": "conversion", "ocr": "ocr"}
 
@@ -188,7 +189,7 @@ def _check_force(folders: list[Folder], output: Path) -> dict[str, list[str]]:
     return cached
 
 
-def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: list[str]) -> dict[str, Any]:
+def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: list[str]) -> ScanResult:
     """Vista previa de «forzar reconversión»: documentos en caché, cuántos ya no existen, cuántos quedan fuera por una
     exclusión o un patrón (``excluded``, también se borran; no se cuentan además como ``orphaned``) y tamaño de las
     salidas."""
@@ -212,7 +213,7 @@ def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: lis
         tree = measure(library.conversion_dir(output, folder.state, folder.subpath), ctx, "measure_outputs")
         files, size = files + tree.files, size + tree.bytes
     ctx.progress("preview", total, total)
-    return {"cached": total, "orphaned": missing, "excluded": excluded, "output_files": files, "output_bytes": size}
+    return ScanResult(cached=total, orphaned=missing, excluded=excluded, output_files=files, output_bytes=size)
 
 
 def _save_failures(ctx: JobContext, project: Project, failures: list[ScanFailure], masker: PathMasker) -> None:
@@ -282,27 +283,27 @@ class Resume:
     partial: str | None
     failed: list[str]
 
-    def dump(self) -> dict[str, Any]:
-        return {"done": sorted(self.done), "partial": self.partial, "failed": self.failed}
+    def dump(self) -> ScanResume:
+        return ScanResume(done=sorted(self.done), partial=self.partial, failed=self.failed)
 
 
 def _previous_segment(ctx: JobContext) -> tuple[dict[str, Any], Resume] | None:
-    """Lo guardado por el tramo anterior de este run, o ``None`` si es el primero."""
+    """Lo guardado por el tramo anterior de este run (recuentos y estado para retomar), o ``None`` si es el primero."""
     with ctx.session_factory() as db:
-        previous = db.scalar(select(Run.result).where(Run.id == ctx.run_id))
-    if not isinstance(previous, dict) or not isinstance(state := previous.get(RESUME), dict):
+        stored = db.scalar(select(Run.result).where(Run.id == ctx.run_id))
+    previous = parse_result_as(ScanResult, stored, run_id=ctx.run_id)
+    if previous is None or (state := previous.resume) is None:
         return None
-    result = {key: value for key, value in previous.items() if key != RESUME}
-    partial = state.get("partial")
-    return result, Resume(
-        done={str(f) for f in state.get("done") or []},
-        partial=partial if isinstance(partial, str) else None,
-        failed=[str(f) for f in state.get("failed") or []],
-    )
+    result = {key: value for key, value in previous.stored().items() if key != RESUME}
+    return result, Resume(done=set(state.done or []), partial=state.partial, failed=list(state.failed or []))
 
 
-def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[str, Any]:
-    """Escanea (o, con ``force`` y ``dry_run``, hace la vista previa) y devuelve los recuentos."""
+def run(ctx: JobContext, params: ScanParams, project: Project | None) -> ScanResult:
+    """Escanea (o, con ``force`` y ``dry_run``, hace la vista previa) y devuelve los recuentos.
+
+    Los recuentos se suman en un diccionario (claves de ``SUMMARY_COUNTS``/``SUMMARY_SECONDS``) y se entregan como
+    ``ScanResult`` al terminar, parar o fallar.
+    """
     project = require_project(project)
     paths = project_paths(project, ctx)
     source = project.source_location
@@ -341,7 +342,7 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
     saved = min(int(result.get("errors", 0)), MAX_SAVED_ERRORS)
     for index, folder in enumerate(folders, start=1):
         if ctx.cancelled:
-            raise JobCancelled(result)
+            raise JobCancelled(ScanResult.model_validate(result))
         if folder.subpath in resume.done:
             continue
         resumed = folder.subpath == resume.partial
@@ -393,9 +394,11 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
                 f"Tramo {result.get('segments', 1)} terminado: quedan {pending} conversiones en esta carpeta; "
                 "el escaneo sigue en un proceso nuevo."
             )
-            raise JobRecycle({**result, RESUME: Resume(resume.done, folder.subpath, failed).dump()})
+            segment = ScanResult.model_validate(result)
+            segment.resume = Resume(resume.done, folder.subpath, failed).dump()
+            raise JobRecycle(segment)
         if outcome.cancelled:
-            raise JobCancelled(result)
+            raise JobCancelled(ScanResult.model_validate(result))
         resume.done.add(folder.subpath)
         _mark_used(ctx, project, folder.subpath)
     if params.force:
@@ -417,10 +420,12 @@ def run(ctx: JobContext, params: ScanParams, project: Project | None) -> dict[st
     if failed:
         result["failed_folders"] = len(failed)
         raise JobFailed(
-            "scan_failed", f"No se pudieron escanear {len(failed)} de {len(folders)} carpetas.", result=result
+            "scan_failed",
+            f"No se pudieron escanear {len(failed)} de {len(folders)} carpetas.",
+            result=ScanResult.model_validate(result),
         )
     ctx.progress("done", 1, 1)
-    return result
+    return ScanResult.model_validate(result)
 
 
 def _freshness(ctx: JobContext, project: Project) -> None:

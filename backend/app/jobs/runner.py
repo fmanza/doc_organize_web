@@ -24,6 +24,7 @@ from app.db.models import Project, Run
 from app.db.session import get_engine
 from app.domain.ai import usage_log
 from app.domain.runs.operations import RUN_PARAMS
+from app.domain.runs.results import RunResult
 from app.domain.settings.service import effective_settings
 from app.jobs import queue
 from app.jobs.context import RECYCLE_EXIT, JobCancelled, JobContext, JobFailed, JobRecycle
@@ -65,7 +66,7 @@ def _summary(run: Run, status: str, result: dict[str, Any] | None, error: str | 
 
 
 def _record_ai_usage(
-    factory: Callable[[], Session], run: Run, project: Project | None, result: dict[str, Any] | None
+    factory: Callable[[], Session], run: Run, project: Project | None, result: RunResult | None
 ) -> None:
     """Guarda el consumo de IA del run (IA › Uso, web 2.1). Un fallo aquí se registra y no cambia el run (A10)."""
     try:
@@ -114,7 +115,7 @@ def main(run_id: str) -> None:
     status = "failed"
     code: str | None = "internal"
     message: str | None = "Error interno al ejecutar la operación."
-    result: dict[str, Any] | None = None
+    result: RunResult | None = None
     recycle = False
     try:
         params = RUN_PARAMS.validate_python(run.params)
@@ -136,6 +137,9 @@ def main(run_id: str) -> None:
         logger.error("Error no controlado en el run", extra={"run_id": run_id, "exc_type": type(exc).__name__})
     finally:
         ctx.stop_cancel_watch()
+    # Lo que se guarda en ``runs.result`` y en ``run.json``: el modelo de la operación en JSON (PR 3a: lo mismo que
+    # cuando las operaciones devolvían diccionarios).
+    stored = result.stored() if result is not None else None
 
     if recycle:
         # El run sigue ``running``: el worker lanza otro subproceso que retoma con ``result`` (sin cerrar el run).
@@ -143,20 +147,20 @@ def main(run_id: str) -> None:
         file_handler.close()
         logging.getLogger().removeHandler(file_handler)
         with factory() as db:
-            db.execute(update(Run).where(Run.id == run_id).values(result=result))
+            db.execute(update(Run).where(Run.id == run_id).values(result=stored))
             db.commit()
         sys.exit(RECYCLE_EXIT)
 
     logger.info("Run terminado", extra={"run_id": run_id, "status": status})
     file_handler.close()
     logging.getLogger().removeHandler(file_handler)
-    workspace.write_run_json(settings, run_id, _summary(run, status, result, code))
+    workspace.write_run_json(settings, run_id, _summary(run, status, stored, code))
     if (workdir / workspace.LOG_REL).is_file():
         ctx.add_artifact(workspace.LOG_REL, name="run.log", kind="log")
     # Antes de cerrar el run: quien recarga su detalle al terminar ya ve el consumo.
     _record_ai_usage(factory, run, project, result)
     with factory() as db:
-        if result is not None:
-            db.execute(update(Run).where(Run.id == run_id).values(result=result))
+        if stored is not None:
+            db.execute(update(Run).where(Run.id == run_id).values(result=stored))
             db.commit()
         queue.finish(db, run_id, status, code=code, message=message)
