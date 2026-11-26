@@ -22,6 +22,9 @@ ROADMAP (`0.<fase+1>.0`).
 - **backend**: `api/v1/schemas.py` (1813 líneas) pasa a un paquete con un módulo por área, que reexporta todos los
   esquemas, y `api/v1/context.py` (1024 líneas) a un paquete con un router por subdominio (plantillas, documentos,
   manifiesto, perfil, revisión y calidad). El contrato OpenAPI no cambia.
+- **frontend**: los componentes grandes (`ContextPage`, `ReviewPage`, `QualityPage`, `ManifestCard`,
+  `AiSettingsPage` y `ScanPage`, de 555 a 1130 líneas) se parten en un fichero por tarjeta o modal; ninguno pasa de
+  433 líneas. Sin cambios visibles.
 - **docker**: entorno común de los workers en compose (`x-worker-env`); `models-init` sin el HEALTHCHECK de la
   imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
 - **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
