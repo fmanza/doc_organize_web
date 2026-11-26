@@ -5,9 +5,11 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
+from alembic.script import ScriptDirectory
 
 import app.db.models  # noqa: F401  (registra los modelos en Base.metadata)
 from app.db.base import Base
+from app.db.migrations import check_revision_is_known
 from app.db.session import get_engine
 
 config = context.config
@@ -30,6 +32,8 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     with get_engine().connect() as connection:
+        check_revision_is_known(connection, ScriptDirectory.from_config(config))  # ADR-018: solo desde 2.7.x/2.8.x
+        connection.rollback()  # la comprobación solo lee: sin transacción abierta, el PRAGMA de abajo sí se aplica
         sqlite = connection.dialect.name == "sqlite"
         if sqlite:
             # Las migraciones «batch» recrean tablas (copiar, borrar, renombrar). Con las claves activas, borrar una tabla

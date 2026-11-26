@@ -294,6 +294,13 @@ docker compose up -d --build     # entrypoint.sh aplica las migraciones de confi
 ```
 
 Antes, haz una copia (`app.cli backup`, arriba). Para volver atrás: imagen anterior y, si la versión nueva añadió
-migraciones (la última es la `0029`), `alembic downgrade <revisión>` dentro del contenedor antes de cambiar de imagen.
-El CHANGELOG avisa de las que no se pueden deshacer (p. ej. la `0029` si algún proyecto borrado ya soltó sus
-ubicaciones): en ese caso, se vuelve atrás restaurando la copia.
+migraciones, `alembic downgrade <revisión>` dentro del contenedor antes de cambiar de imagen. El CHANGELOG avisa de las
+que no se pueden deshacer: en ese caso, se vuelve atrás restaurando la copia.
+
+### Desde qué versión se actualiza
+
+Desde la 3.0 las migraciones parten de una **línea base** con la revisión `0033`
+([ADR-018](../adr/ADR-018-linea-base-de-migraciones.md)), la de la 2.7.x y la 2.8.x. Una `config.db` de una versión
+anterior a la 2.7 no arranca: el contenedor se para con el mensaje «La base de datos está en la revisión …, de una
+versión de la web anterior a la 2.7». En ese caso instala antes la 2.8.x, arráncala una vez para que migre y vuelve a
+instalar la versión nueva.

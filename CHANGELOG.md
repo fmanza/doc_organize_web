@@ -7,6 +7,12 @@ ROADMAP (`0.<fase+1>.0`).
 
 ### Changed
 
+- **backend** (**incompatible**, [ADR-018](docs/adr/ADR-018-linea-base-de-migraciones.md)): las 33 migraciones de
+  Alembic de la 1.x y la 2.x se sustituyen por una **línea base** con la revisión `0033`, que crea el esquema y las
+  filas semilla de la 2.7/2.8 (comprobado contra `tests/fixtures/schema_0033.sql`). Solo se actualiza desde la 2.7.x o
+  la 2.8.x: una `config.db` anterior se rechaza al migrar con un mensaje que pide pasar antes por la 2.8.x.
+  `scripts/migration_roundtrip.py` pierde el caso especial de la `0024`.
+
 - **backend**: `update_user` (156 líneas) se parte en pasos con nombre: plan del cambio y permisos, guardas del último
   administrador, perfil y rol, contraseña, desbloqueo, estado y auditoría. Sin cambio de comportamiento.
 - **backend** (tests): `tests/fixtures/schema_0033.sql` guarda la BD que deja la cadena de migraciones en `0033`
