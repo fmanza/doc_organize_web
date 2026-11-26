@@ -18,29 +18,35 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
-import { api, unwrap } from '../../api/client';
-import type { components } from '../../api/schema';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox } from '../../components/listing';
-import { type PageState, usePageState } from '../../components/usePageState';
+import { usePageState } from '../../components/usePageState';
 import { formatCount, formatDateTime } from '../../components/format';
 import { canDo, useProject } from '../projects/useProjects';
 import { AxisBadges } from './Axes';
 import { type ContextOut, useProjectContext } from './useContext';
 import { useFollowedRun } from './useFollowedRun';
+import {
+  type Decision,
+  type DecisionIn,
+  type Proposal,
+  type ReviewItem,
+  type ReviewReason,
+  reviewKey,
+  useDecide,
+  useDecisions,
+  useProposalAction,
+  useProposals,
+  useReview,
+  useRevoke,
+} from './useReview';
 import { ContextNav } from './ContextNav';
-
-type ReviewItem = components['schemas']['ReviewItemOut'];
-type ReviewReason = components['schemas']['ReviewItemOut']['reason'];
-type Decision = components['schemas']['DecisionOut'];
-type DecisionIn = components['schemas']['DecisionIn'];
-type Proposal = components['schemas']['ProposalOut'];
 
 interface ReviewAgentResult {
   stop_reason: string;
@@ -63,102 +69,6 @@ const REASONS: ReviewReason[] = [
   'low_confidence',
   'unconfirmed_version',
 ];
-
-const reviewKey = (projectId: number) => ['projects', projectId, 'context', 'review'] as const;
-
-function useReview(projectId: number, reason: ReviewReason | null, q: string, paging: PageState) {
-  const { pageSize, offset } = paging;
-  return useQuery({
-    queryKey: [...reviewKey(projectId), { reason, q, pageSize, offset }],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/projects/{project_id}/context/review', {
-          params: {
-            path: { project_id: projectId },
-            query: { reason, ...(q ? { q } : {}), limit: pageSize, offset },
-          },
-        }),
-      ),
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useDecisions(projectId: number) {
-  return useQuery({
-    queryKey: [...reviewKey(projectId), 'decisions'],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/projects/{project_id}/context/decisions', {
-          params: { path: { project_id: projectId } },
-        }),
-      ),
-  });
-}
-
-function useDecide(projectId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: DecisionIn) =>
-      unwrap(
-        await api.POST('/api/v1/projects/{project_id}/context/decisions', {
-          params: { path: { project_id: projectId } },
-          body,
-        }),
-      ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewKey(projectId) }),
-  });
-}
-
-function useRevoke(projectId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string | null }) =>
-      unwrap(
-        await api.POST('/api/v1/projects/{project_id}/context/decisions/{decision_id}/revoke', {
-          params: { path: { project_id: projectId, decision_id: id } },
-          body: { reason },
-        }),
-      ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewKey(projectId) }),
-  });
-}
-
-function useProposals(projectId: number) {
-  return useQuery({
-    queryKey: [...reviewKey(projectId), 'proposals'],
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/projects/{project_id}/context/review/proposals', {
-          params: { path: { project_id: projectId } },
-        }),
-      ),
-  });
-}
-
-function useProposalAction(projectId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, accept }: { id: number; accept: boolean }) => {
-      const params = { params: { path: { project_id: projectId, proposal_id: id } } };
-      if (accept) {
-        unwrap(
-          await api.POST(
-            '/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/accept',
-            params,
-          ),
-        );
-      } else {
-        unwrap(
-          await api.POST(
-            '/api/v1/projects/{project_id}/context/review/proposals/{proposal_id}/discard',
-            params,
-          ),
-        );
-      }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewKey(projectId) }),
-  });
-}
 
 /**
  * Revisar la clasificación (W5, doc_organize 2.0 F6): la cola de la última construcción (`review_queue`) y las
@@ -678,7 +588,11 @@ function ProposalsCard({
             </Button>
           </Group>
           {agent.error && <ErrorAlert error={agent.error} />}
-          {agent.failure && <Alert color="red">{agent.failure}</Alert>}
+          {agent.failure && (
+            <Alert color="red" role="alert">
+              {agent.failure}
+            </Alert>
+          )}
           {result && (
             <Stack gap={4}>
               <Group gap="xs">

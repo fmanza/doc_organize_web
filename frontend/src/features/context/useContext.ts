@@ -53,10 +53,13 @@ export function buildParams(change: Partial<ContextBuildParams>): ContextBuildPa
 }
 
 /** Tarea de IA que clasifica (doc_organize 2.0): la misma con cualquier catálogo (`litellm`, modelo por tarea). */
-export function aiTask(catalog: Catalog): 'classify' {
-  void catalog;
-  return 'classify';
-}
+export const AI_CLASSIFY_TASK = 'classify';
+
+/**
+ * Carpeta de salida por omisión de la construcción, dentro del destino. Es un dato, no texto de la interfaz: coincide
+ * con `DEFAULT_FOLDER_NAME` del backend (y de doc_organize), así que no se traduce con el idioma.
+ */
+export const DEFAULT_OUTPUT_FOLDER = 'organizado';
 
 /** Resultado del run `taxonomy_draft` (lo que devuelve el job). */
 export interface TaxonomyDraftResult {

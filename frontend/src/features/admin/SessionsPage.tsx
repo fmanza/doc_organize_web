@@ -4,7 +4,6 @@ import {
   Center,
   Group,
   Loader,
-  Modal,
   Stack,
   Table,
   Text,
@@ -14,6 +13,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
 import { useListState } from '../../components/useListState';
@@ -126,33 +126,30 @@ export function SessionsPage() {
         </Table.ScrollContainer>
       )}
       {data && <PageControls state={list.paging} total={data.total} label={t('paging.label')} />}
-      <Modal opened={revoking !== null} onClose={close} title={t('admin.sessions.confirmTitle')}>
-        {revoking && (
-          <Stack>
-            <Text>
-              {t('admin.sessions.confirmBody', { username: revoking.username, ip: revoking.ip ?? '—' })}
-            </Text>
-            {revoking.current && (
-              <Text c="orange" fw={500}>
-                {t('admin.sessions.confirmCurrent')}
-              </Text>
-            )}
-            {revoke.isError && <ErrorAlert error={revoke.error} />}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={close}>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                color="red"
-                loading={revoke.isPending}
-                onClick={() => revoke.mutate(revoking, { onSuccess: close })}
-              >
-                {t('admin.sessions.revoke')}
-              </Button>
-            </Group>
-          </Stack>
+      <ConfirmModal
+        opened={revoking !== null}
+        onClose={close}
+        title={t('admin.sessions.confirmTitle')}
+        message={
+          revoking
+            ? t('admin.sessions.confirmBody', { username: revoking.username, ip: revoking.ip ?? '—' })
+            : undefined
+        }
+        error={revoke.error}
+        confirmLabel={t('admin.sessions.revoke')}
+        loading={revoke.isPending}
+        onConfirm={() => {
+          if (revoking) {
+            revoke.mutate(revoking, { onSuccess: close });
+          }
+        }}
+      >
+        {revoking?.current && (
+          <Text c="orange" fw={500}>
+            {t('admin.sessions.confirmCurrent')}
+          </Text>
         )}
-      </Modal>
+      </ConfirmModal>
     </Stack>
   );
 }

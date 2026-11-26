@@ -12,9 +12,8 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, DbSession, SettingsDep
-from app.api.v1.listing import DocumentSort, OrderQuery, listing
+from app.api.v1.listing import DocumentSort, LimitQuery, OffsetQuery, OrderQuery, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     DocumentOut,
     DocumentPage,
     MimeTypeList,
@@ -65,8 +64,8 @@ def list_documents(
     conversion_status: Annotated[
         ConversionFilter | None, Query(description="Solo documentos con este estado de conversión")
     ] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 100,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 100,
+    offset: OffsetQuery = 0,
     sort: Annotated[
         DocumentSort | None,
         Query(description="Columna por la que ordenar (sin ella, carpeta y ruta); owner_name solo para owners"),
@@ -175,8 +174,8 @@ def search_content(
     settings: SettingsDep,
     q: Annotated[str, Query(min_length=1, max_length=200, description="Palabras a buscar (todas)")],
     folder: Annotated[str | None, Query(max_length=4096, description="Solo esta carpeta de origen")] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
 ) -> SearchPage:
     """Documentos convertidos que contienen todas las palabras, los más relevantes primero."""
     access = projects.get_access(db, project_id, user)

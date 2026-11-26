@@ -380,6 +380,25 @@ describe('W4: IA del proyecto', () => {
     const [request] = callsTo(fetchMock, 'PUT', '/api/v1/projects/7/ai-settings');
     expect(await request?.json()).toEqual({ ai_redact_credentials: false });
   });
+
+  it('si desactivar la redacción falla, el error se ve dentro del diálogo', async () => {
+    stubApi({
+      ...detailRoutes(),
+      'PUT /api/v1/projects/7/ai-settings': {
+        status: 409,
+        body: { type: 'about:blank', title: 'Destino en solo lectura', status: 409 },
+      },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/projects/7');
+    const card = await screen.findByRole('region', { name: 'Contexto e IA del proyecto' });
+    await user.click(within(card).getByRole('switch', { name: /Redactar credenciales/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Desactivar' }));
+
+    expect(await within(dialog).findByText(/Destino en solo lectura/)).toBeInTheDocument();
+  });
 });
 
 describe('W6: semántica del proyecto', () => {

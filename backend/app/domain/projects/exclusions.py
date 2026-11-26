@@ -246,8 +246,8 @@ def set_exclusions(
 class PathFilter:
     """Si una ruta absoluta de la caché queda excluida (worker, ADR-017).
 
-    Mismo criterio que ``EntryFilter.covers_cached`` de doc_organize (que es de uso interno y no se importa, como
-    ``ExclusionMatcher`` de la vista previa de «forzar»): rutas comparadas con ``normcase`` por prefijo, y patrones
+    Mismo criterio que ``EntryFilter.covers_cached`` de doc_organize (que es de uso interno y no se importa); también lo
+    usa la vista previa de «forzar» del escaneo: rutas comparadas con ``normcase`` por prefijo, y patrones
     ``fnmatch`` sobre el nombre en minúsculas de cada tramo por debajo de la carpeta escaneada que la contiene.
     """
 

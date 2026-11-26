@@ -21,7 +21,7 @@ from app.domain.locations.errors import LocationUnavailableError
 from app.integrations.doc_organize import DocOrganizeOperationError
 from app.integrations.doc_organize import context as library
 from tests.api.test_context import TEMPLATE
-from tests.conftest import login_as, project_payload
+from tests.conftest import add_member, login_as, project_payload
 
 OTHER = TEMPLATE.replace("title: Obras", "title: Otra")
 
@@ -57,13 +57,6 @@ def _versions(client: TestClient, url: str) -> list[dict[str, object]]:
     response = client.get(f"{url}/versions")
     assert response.status_code == 200, response.text
     return list(response.json()["items"])
-
-
-def _member(client: TestClient, project_id: object, make_user: Callable[..., User], name: str, role: str) -> TestClient:
-    other = make_user(name)
-    added = client.post(f"/api/v1/projects/{project_id}/members", json={"user_id": other.id, "role": role})
-    assert added.status_code == 201
-    return login_as(client, name)
 
 
 def test_saving_needs_the_etag_and_keeps_what_was_there(user_client: TestClient, url: str, target: Path) -> None:
@@ -175,7 +168,7 @@ def test_versions_follow_project_permissions(
 ) -> None:
     _save(user_client, url, TEMPLATE)
     [version] = _versions(user_client, url)
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
 
     assert len(_versions(viewer, url)) == 1
     assert viewer.get(f"{url}/versions/{version['id']}").status_code == 200

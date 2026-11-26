@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import Settings
 from app.core.security import hash_token, new_session_token
 from app.db.models import User, UserSession, utcnow
+from app.db.results import affected_rows
 from app.domain.identity.audit import RequestContext
 from app.domain.identity.errors import SessionNotFoundError
 from app.domain.listing import ListQuery, apply_search, apply_sort
@@ -97,7 +98,7 @@ def purge_expired(db: Session, settings: Settings, *, now: datetime | None = Non
     result = db.execute(
         delete(UserSession).where(or_(UserSession.expires_at <= now, UserSession.last_seen_at <= now - _idle(settings)))
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    return affected_rows(result)
 
 
 def revoke_user_sessions(db: Session, user_id: int, *, except_id: int | None = None) -> int:
@@ -106,7 +107,7 @@ def revoke_user_sessions(db: Session, user_id: int, *, except_id: int | None = N
     if except_id is not None:
         query = query.where(UserSession.id != except_id)
     result = db.execute(query)
-    return int(getattr(result, "rowcount", 0) or 0)
+    return affected_rows(result)
 
 
 def get_session_by_id(db: Session, session_id: int) -> UserSession:

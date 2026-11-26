@@ -14,7 +14,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.db.models import DuplicateGroupRow, Location, Run, User, utcnow
-from tests.conftest import login_as, project_payload
+from tests.conftest import add_member, project_payload
 
 GROUP = "11111111-2222-4333-8444-555555555555"
 MEMBERS = [
@@ -55,15 +55,6 @@ def _finished_preview(client: TestClient, db: Session, project_id: object, *, ag
     return run_id
 
 
-def _member(client: TestClient, project_id: object, make_user: Callable[..., User], name: str, role: str) -> TestClient:
-    other = make_user(name)
-    assert (
-        client.post(f"/api/v1/projects/{project_id}/members", json={"user_id": other.id, "role": role}).status_code
-        == 201
-    )
-    return login_as(client, name)
-
-
 def _apply(groups_run_id: str, mode: str = "copy", **extra: object) -> dict[str, object]:
     return {
         "operation": "dedup_apply",
@@ -77,8 +68,8 @@ def _apply(groups_run_id: str, mode: str = "copy", **extra: object) -> dict[str,
 def test_preview_is_for_editors(
     user_client: TestClient, project: dict[str, object], make_user: Callable[..., User]
 ) -> None:
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
     runs = f"/api/v1/projects/{project['id']}/runs"
 
     assert viewer.post(runs, json={"operation": "dedup_preview"}).status_code == 403
@@ -141,7 +132,7 @@ def test_apply_checks_preview_groups_and_keep(user_client: TestClient, project: 
 def test_move_is_for_owners_and_needs_a_writable_source(
     user_client: TestClient, project: dict[str, object], db: Session, make_user: Callable[..., User]
 ) -> None:
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
     runs = f"/api/v1/projects/{project['id']}/runs"
     preview = _finished_preview(user_client, db, project["id"])
 

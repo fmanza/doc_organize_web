@@ -384,7 +384,10 @@ def test_swapped_output_folder_is_not_touched(
     (salidas / "ajena").mkdir()
     (salidas / "ajena" / "no-borrar.txt").write_text("x", encoding="utf-8")
     (salidas / "Proyecto A").rmdir()
-    (salidas / "Proyecto A").symlink_to(salidas / "ajena", target_is_directory=True)
+    try:
+        (salidas / "Proyecto A").symlink_to(salidas / "ajena", target_is_directory=True)
+    except OSError:  # Windows sin privilegio para crear enlaces (WinError 1314); en el CI (Linux) siempre se ejecuta
+        pytest.skip("Este sistema no permite crear enlaces simbólicos")
 
     run = _drive(worker, db, _enqueue(user_client, project_id, operation="history_clear"))
 

@@ -25,7 +25,6 @@
     "@mantine/hooks": "9.7.4",
     "@tabler/icons-react": "3.50.0",
     "@tanstack/react-query": "5.105.0",
-    "@tanstack/react-virtual": "3.14.25",
     "dompurify": "3.4.17",
     "i18next": "26.5.11",
     "marked": "18.1.2",

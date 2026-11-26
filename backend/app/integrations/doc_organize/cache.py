@@ -1,7 +1,7 @@
 """Lectura paginada de la caché de doc_organize para la API (WB-5.1).
 
 Es lo único de doc_organize que carga el proceso de la API, y solo al listar documentos: ``doc_organize.cache`` no
-importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas verificadas en el tag ``v0.12.0``::
+importa Docling ni torch (G15; decisión del mantenedor en la Fase 5). Firmas verificadas en el tag ``v2.5.0`` (reverificadas el 2026-11-26)::
 
     async with CacheManager(db_path, read_only=True) as cache:
         await cache.count_entries(search=None, *, relative_to=None, conversion_status=None) -> int

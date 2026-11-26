@@ -5,8 +5,8 @@ Cada carpeta de origen es un **ámbito propio de doc_organize** (decisión del m
 - salidas en ``<salidas>/Conversión/<carpeta>/…`` y caché e historiales en ``/data/projects/<id>/folders/<clave>/``.
   doc_organize deriva la ruta de cada salida de la carpeta escaneada **sin su nombre**: con una salida común,
   ``2024/x/a.pdf`` y ``2025/x/a.pdf`` acabarían en el mismo ``x/a.md`` (G18);
-- una llamada a doc_organize por carpeta: la caché solo se guarda al final de cada llamada (G16), así que un corte a
-  mitad pierde como mucho la carpeta en curso; si una carpeta falla, se sigue con las demás;
+- una llamada a doc_organize por carpeta: si una carpeta falla, se sigue con las demás. La caché se guarda durante la
+  conversión (cada 20 documentos o 30 s, G16), así que un corte a mitad pierde como mucho los últimos documentos;
 - «forzar» (vacía la caché y borra las salidas de lo que ya no está) actúa carpeta a carpeta, sin tocar las de las
   demás ni las de carpetas que ya no son del proyecto. Su vista previa (``dry_run``) cuenta la caché, cuántos
   documentos ya no existen y el tamaño de las salidas, sin hashear el origen.
@@ -27,10 +27,8 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import sqlite3
 from dataclasses import dataclass, field
-from fnmatch import translate
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
@@ -40,6 +38,7 @@ from app.core.redact import PathRedactor
 from app.db.models import Project, Run, ScanError, ScannedFolder, Worker, utcnow
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
+from app.domain.projects.exclusions import PathFilter
 from app.domain.runs.operations import ScanParams
 from app.domain.scan.options import missing_options
 from app.domain.scan.state import folder_state
@@ -189,27 +188,6 @@ def _check_force(folders: list[Folder], output: Path) -> dict[str, list[str]]:
     return cached
 
 
-class ExclusionMatcher:
-    """Si un documento de la caché queda fuera del escaneo por una exclusión o un patrón (vista previa de «forzar»).
-
-    Replica ``EntryFilter.covers_cached`` de doc_organize 1.3.0 sin importarla: rutas comparadas con ``normcase``;
-    patrones ``fnmatch`` sobre el nombre en minúsculas de cada tramo bajo la carpeta escaneada (nunca la propia).
-    """
-
-    def __init__(self, folder: Folder, patterns: list[str]) -> None:
-        self._root = folder.absolute
-        self._excluded = [os.path.normcase(str(path)) for path in folder.excluded]
-        self._regex = re.compile("|".join(translate(p.lower()) for p in patterns)) if patterns else None
-
-    def covers(self, path: str) -> bool:
-        key = os.path.normcase(path)
-        if any(key == ex or key.startswith(ex.rstrip(os.sep) + os.sep) for ex in self._excluded):
-            return True
-        if self._regex is None or not _inside(path, self._root):
-            return False
-        return any(self._regex.match(part.lower()) for part in Path(path).parts[len(self._root.parts) :])
-
-
 def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: list[str]) -> dict[str, Any]:
     """Vista previa de «forzar reconversión»: documentos en caché, cuántos ya no existen, cuántos quedan fuera por una
     exclusión o un patrón (``excluded``, también se borran; no se cuentan además como ``orphaned``) y tamaño de las
@@ -219,7 +197,7 @@ def _preview(ctx: JobContext, folders: list[Folder], output: Path, patterns: lis
     total = sum(len(paths) for paths in caches.values())
     index = missing = excluded = 0
     for folder in folders:
-        matcher = ExclusionMatcher(folder, patterns)
+        matcher = PathFilter([folder.absolute], folder.excluded, patterns)
         for path in caches[folder.subpath]:
             index += 1
             if index % 200 == 0:

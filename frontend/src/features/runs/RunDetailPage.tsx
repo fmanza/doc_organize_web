@@ -8,7 +8,6 @@ import {
   Group,
   List,
   Loader,
-  Modal,
   Progress,
   SimpleGrid,
   Stack,
@@ -21,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { BackLink } from '../../components/BackLink';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatBytes, formatCount, formatDateTime, formatDuration } from '../../components/format';
 import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
@@ -123,7 +123,10 @@ export function RunDetailPage() {
             <Button
               color="red"
               variant="light"
-              onClick={() => setConfirming(true)}
+              onClick={() => {
+                cancel.reset();
+                setConfirming(true);
+              }}
               disabled={run.cancel_requested}
             >
               {run.cancel_requested ? t('runs.cancelRequested') : t('runs.cancel')}
@@ -259,24 +262,20 @@ export function RunDetailPage() {
           </List>
         )}
       </Card>
-      <Modal opened={confirming} onClose={() => setConfirming(false)} title={t('runs.cancelTitle')}>
-        <Stack>
-          <Text>{t('runs.cancelBody')}</Text>
-          {cancel.isError && <ErrorAlert error={cancel.error} />}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirming(false)}>
-              {t('common.back')}
-            </Button>
-            <Button
-              color="red"
-              loading={cancel.isPending}
-              onClick={() => cancel.mutate(run.id, { onSuccess: () => setConfirming(false) })}
-            >
-              {t('runs.cancel')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <ConfirmModal
+        opened={confirming}
+        onClose={() => {
+          setConfirming(false);
+          cancel.reset();
+        }}
+        title={t('runs.cancelTitle')}
+        message={t('runs.cancelBody')}
+        error={cancel.error}
+        cancelLabel={t('common.back')}
+        confirmLabel={t('runs.cancel')}
+        loading={cancel.isPending}
+        onConfirm={() => cancel.mutate(run.id, { onSuccess: () => setConfirming(false) })}
+      />
     </Stack>
   );
 }

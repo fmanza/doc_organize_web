@@ -11,9 +11,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep, UserManager
-from app.api.v1.listing import OrderQuery, UserSort, listing
+from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, UserSort, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     UserBrief,
     UserCreate,
     UserDeletionCheck,
@@ -41,8 +40,8 @@ def list_users(
     manager: UserManager,
     db: DbSession,
     q: Annotated[str | None, Query(max_length=64, description="Texto en usuario, nombre o rol")] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     sort: Annotated[UserSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
     role_id: Annotated[int | None, Query(ge=1, description="Solo usuarios de este rol del tenant")] = None,

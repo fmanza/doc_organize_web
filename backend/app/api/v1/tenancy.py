@@ -12,9 +12,8 @@ from fastapi import APIRouter, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import Context, DbSession, InstanceAdmin, RoleManager, RoleReader
-from app.api.v1.listing import OrderQuery, SearchQuery, TenantSort, UserSort, listing
+from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, SearchQuery, TenantSort, UserSort, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     Permission,
     PermissionList,
     RoleCreate,
@@ -61,8 +60,8 @@ def _tenant_out(item: TenantView) -> TenantOut:
 def list_tenants(
     _: InstanceAdmin,
     db: DbSession,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[TenantSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
@@ -118,8 +117,8 @@ def list_tenant_users(
     _: InstanceAdmin,
     db: DbSession,
     q: Annotated[str | None, Query(max_length=64)] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     sort: Annotated[UserSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
 ) -> UserPage:

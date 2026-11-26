@@ -9,8 +9,8 @@ from fastapi import APIRouter, Query
 from pydantic import AwareDatetime
 
 from app.api.deps import AuditReader, Context, DbSession, InstanceAdmin
-from app.api.v1.listing import AuditSort, OrderQuery, SearchQuery, listing
-from app.api.v1.schemas import MAX_PAGE_SIZE, AuditEntryOut, AuditPage, AuditPurgeIn, AuditPurgeOut
+from app.api.v1.listing import AuditSort, LimitQuery, OffsetQuery, OrderQuery, SearchQuery, listing
+from app.api.v1.schemas import AuditEntryOut, AuditPage, AuditPurgeIn, AuditPurgeOut
 from app.domain.identity import audit
 
 router = APIRouter(prefix="/audit", tags=["audit"])
@@ -30,8 +30,8 @@ def list_audit(
     actor: Annotated[str | None, Query(max_length=64, description="Nombre de usuario del autor")] = None,
     since: Annotated[AwareDatetime | None, Query(description="Desde (incluido), ISO 8601 con zona")] = None,
     until: Annotated[AwareDatetime | None, Query(description="Hasta (excluido), ISO 8601 con zona")] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[AuditSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",

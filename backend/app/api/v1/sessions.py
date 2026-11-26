@@ -7,8 +7,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep
-from app.api.v1.listing import OrderQuery, SearchQuery, SessionSort, listing
-from app.api.v1.schemas import MAX_PAGE_SIZE, SessionOut, SessionPage
+from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, SearchQuery, SessionSort, listing
+from app.api.v1.schemas import SessionOut, SessionPage
 from app.domain.identity import auth, sessions
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -26,8 +26,8 @@ def list_sessions(
     db: DbSession,
     settings: SettingsDep,
     user_id: Annotated[int | None, Query(ge=1, description="Solo admin: sesiones de ese usuario")] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[SessionSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",

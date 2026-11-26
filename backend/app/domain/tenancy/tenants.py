@@ -19,6 +19,7 @@ from app.db.models import (
     TenantRole,
     User,
 )
+from app.db.results import affected_rows
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 from app.domain.listing import ListQuery, apply_search, apply_sort
@@ -155,7 +156,7 @@ def delete_tenant(db: Session, tenant: Tenant, *, actor: User, ctx: RequestConte
             f"{templates} plantillas."
         )
     result = db.execute(update(AuditEntry).where(AuditEntry.tenant_id == tenant.id).values(tenant_id=DEFAULT_TENANT_ID))
-    moved = int(getattr(result, "rowcount", 0) or 0)
+    moved = affected_rows(result)
     for role in db.scalars(select(TenantRole).where(TenantRole.tenant_id == tenant.id)):
         db.delete(role)
     audit.record(

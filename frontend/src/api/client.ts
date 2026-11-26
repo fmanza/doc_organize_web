@@ -102,3 +102,15 @@ export function ensureOk(result: { error?: unknown; response: Response }): void 
 export function isApiError(error: unknown, status?: number): error is ApiError {
   return error instanceof ApiError && (status === undefined || error.status === status);
 }
+
+/**
+ * Opciones de openapi-fetch para enviar bytes tal cual (`application/octet-stream`). El esquema declara esos cuerpos
+ * como `string` (`format: binary`) y el serializador por omisión haría `JSON.stringify`: se pasa el buffer sin tocar.
+ */
+export function octetStreamBody(data: ArrayBuffer) {
+  return {
+    body: data as unknown as string,
+    bodySerializer: (body: unknown) => body as BodyInit,
+    headers: { 'Content-Type': 'application/octet-stream' },
+  };
+}

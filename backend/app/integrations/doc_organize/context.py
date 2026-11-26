@@ -448,8 +448,13 @@ def load_decisions(output_root: Path) -> tuple[list[dict[str, Any]], list[dict[s
     from doc_organize import ClassificationDecisionStore
 
     store = ClassificationDecisionStore(output_root)
-    active = asyncio.run(store.load())
-    revoked = asyncio.run(store.revoked())
+    try:
+        active = asyncio.run(store.load())
+        revoked = asyncio.run(store.revoked())
+    except (AttributeError, TypeError) as exc:
+        # ``ClassificationDecisionStore`` hace ``json.loads(...).get(...)``: un ``decisions.json`` que no es un objeto
+        # (``[]``, ``null``) da AttributeError/TypeError. Se trata como fichero no válido, igual que un JSON roto.
+        raise ValueError("decisions.json no es un objeto JSON") from exc
     return [_decision_dict(d) for d in active], [_decision_dict(d) for d in revoked]
 
 

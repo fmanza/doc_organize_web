@@ -27,6 +27,7 @@ from app.db.models import (
     UserSession,
     utcnow,
 )
+from app.db.results import affected_rows
 from app.domain.identity import audit
 from app.domain.identity.audit import CLI_CONTEXT, AuditAction, RequestContext
 from app.domain.identity.errors import (
@@ -340,7 +341,7 @@ def _move(db: Session, user: User, tenant_id: int, role: TenantRole, *, actor: U
     """Pasa ``user`` a otro tenant: pierde sus membresías de proyecto y sus sesiones."""
     old = user.tenant_id
     result = db.execute(delete(ProjectMember).where(ProjectMember.user_id == user.id))
-    removed = int(getattr(result, "rowcount", 0) or 0)
+    removed = affected_rows(result)
     user.tenant_id = tenant_id
     user.role_id = role.id
     revoke_user_sessions(db, user.id)
