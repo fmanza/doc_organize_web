@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "doc_organize web"
+    "title": "doc_organize web",
+    "shortTitle": "doc_organize"
   },
   "common": {
     "loading": "Loading…",

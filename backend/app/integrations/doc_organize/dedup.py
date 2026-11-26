@@ -1,7 +1,7 @@
 """Duplicados con ``DeduplicationManager`` de doc_organize 0.12.1 (WB-6.1, L-6, L-11a).
 
 Solo se llama desde el subproceso de un job (importa doc_organize **dentro** de las funciones). Firmas verificadas en el
-tag ``v0.12.1``::
+tag ``v2.5.0`` (reverificadas el 2026-11-26; ``move_group`` acepta además ``conversions``/``conversion_dir``, sin uso aquí)::
 
     DeduplicationManager().find_duplicates(docs: list[DocumentMetadata], fuzzy_threshold: int | None = None)
         -> list[DuplicateGroup]

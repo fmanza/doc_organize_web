@@ -117,7 +117,11 @@ export function RulesCheck({ projectId, markdown }: { projectId: number; markdow
         </Text>
       </Group>
       {check.error && <ErrorAlert error={check.error} />}
-      {check.failure && <Alert color="red">{check.failure}</Alert>}
+      {check.failure && (
+        <Alert color="red" role="alert">
+          {check.failure}
+        </Alert>
+      )}
       {check.result && (
         <>
           <Text size="xs">{t('context.agent.documents', { count: check.result.report.documents })}</Text>
@@ -221,7 +225,11 @@ export function AgentPanel({
         </Group>
         <Alert color="orange">{t('context.agent.warning')}</Alert>
         {agent.error && <ErrorAlert error={agent.error} />}
-        {agent.failure && <Alert color="red">{agent.failure}</Alert>}
+        {agent.failure && (
+          <Alert color="red" role="alert">
+            {agent.failure}
+          </Alert>
+        )}
         {result && (
           <Stack gap="xs">
             <Group gap="xs">

@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import PeriodicTask, Run, UTCDateTime, utcnow
+from app.db.results import affected_rows
 from app.domain.runs import events
 
 _CLAIM: Final = text(
@@ -75,11 +76,15 @@ def finish(db: Session, run_id: str, status: str, *, code: str | None = None, me
     """
     data = {"status": status, **({"error_code": code} if code else {})}
     for _ in range(5):
-        closed = db.execute(
-            update(Run)
-            .where(Run.id == run_id, Run.status == "running")
-            .values(status=status, finished_at=utcnow(), error_code=code, error_message=message, uninterruptible=False)
-        ).rowcount  # type: ignore[attr-defined]
+        closed = affected_rows(
+            db.execute(
+                update(Run)
+                .where(Run.id == run_id, Run.status == "running")
+                .values(
+                    status=status, finished_at=utcnow(), error_code=code, error_message=message, uninterruptible=False
+                )
+            )
+        )
         if not closed:
             db.rollback()
             return False
@@ -115,13 +120,15 @@ def claim_periodic(db: Session, name: str, worker_id: str, interval: timedelta) 
         except IntegrityError:
             db.rollback()
     now = utcnow()
-    claimed = db.execute(
-        update(PeriodicTask)
-        .where(
-            PeriodicTask.name == name,
-            (PeriodicTask.last_run_at.is_(None)) | (PeriodicTask.last_run_at <= now - interval),
+    claimed = affected_rows(
+        db.execute(
+            update(PeriodicTask)
+            .where(
+                PeriodicTask.name == name,
+                (PeriodicTask.last_run_at.is_(None)) | (PeriodicTask.last_run_at <= now - interval),
+            )
+            .values(last_run_at=now, claimed_by=worker_id)
         )
-        .values(last_run_at=now, claimed_by=worker_id)
-    ).rowcount  # type: ignore[attr-defined]
+    )
     db.commit()
     return bool(claimed)

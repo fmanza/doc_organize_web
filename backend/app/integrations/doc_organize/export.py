@@ -1,7 +1,7 @@
 """Exportaciones del proyecto con ``doc_organize.export`` 0.11.0 (WB-5.3, L-7; cierra G8).
 
 Solo se llama desde el subproceso de un job (importa doc_organize **dentro** de la función). Firmas verificadas en el
-tag ``v0.11.0``::
+tag ``v2.5.0`` (reverificadas el 2026-11-26; las funciones del ZIP aceptan además ``layout=``, sin uso aquí)::
 
     await load_cache_entries(cache_dbs: Iterable[str | Path]) -> list[CacheEntry]
     load_scan_error_history(history_logs: Iterable[str | Path]) -> list[ScanErrorReport]

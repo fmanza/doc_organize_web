@@ -6,7 +6,6 @@ import {
   Group,
   List,
   Loader,
-  Modal,
   Stack,
   Table,
   Text,
@@ -18,6 +17,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
@@ -194,10 +194,23 @@ export function LocationsPage() {
           onClose={() => setEditing(null)}
         />
       )}
-      <Modal opened={deleting !== null} onClose={closeDelete} title={t('locations.deleteTitle')}>
+      <ConfirmModal
+        opened={deleting !== null}
+        onClose={closeDelete}
+        title={t('locations.deleteTitle')}
+        message={deleting ? t('locations.deleteBody', { name: deleting.name }) : undefined}
+        error={remove.error}
+        confirmLabel={t('locations.delete')}
+        disabled={!deleting || !usage.data?.can_delete || confirmName !== deleting.name}
+        loading={remove.isPending}
+        onConfirm={() => {
+          if (deleting) {
+            remove.mutate(deleting.id, { onSuccess: closeDelete });
+          }
+        }}
+      >
         {deleting && (
-          <Stack>
-            <Text>{t('locations.deleteBody', { name: deleting.name })}</Text>
+          <>
             <LocationUsageNotice usage={usage.data} />
             {usage.isPending && <Loader size="sm" aria-label={t('locations.inUse.checking')} />}
             {usage.isError && <ErrorAlert error={usage.error} />}
@@ -209,23 +222,9 @@ export function LocationsPage() {
                 autoComplete="off"
               />
             )}
-            {remove.isError && <ErrorAlert error={remove.error} />}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={closeDelete}>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                color="red"
-                disabled={!usage.data?.can_delete || confirmName !== deleting.name}
-                loading={remove.isPending}
-                onClick={() => remove.mutate(deleting.id, { onSuccess: closeDelete })}
-              >
-                {t('locations.delete')}
-              </Button>
-            </Group>
-          </Stack>
+          </>
         )}
-      </Modal>
+      </ConfirmModal>
     </Stack>
   );
 }

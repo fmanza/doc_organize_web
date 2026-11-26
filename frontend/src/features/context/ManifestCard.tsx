@@ -20,6 +20,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
 import { useAiStatus } from '../admin/useAi';
@@ -233,35 +234,27 @@ export function ManifestCard({
           </Button>
         </Group>
       )}
-      <Modal opened={deleting} onClose={() => setDeleting(false)} title={t('context.manifest.deleteTitle')}>
-        <Stack>
-          <Text>{t('context.manifest.deleteConfirm')}</Text>
-          {remove.isError && <ErrorAlert error={remove.error} />}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setDeleting(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              color="red"
-              loading={remove.isPending}
-              onClick={() =>
-                remove.mutate(
-                  { etag: saved.etag },
-                  {
-                    onSuccess: () => {
-                      setDeleting(false);
-                      onDraftChange(null);
-                      setNotice('deleted');
-                    },
-                  },
-                )
-              }
-            >
-              {t('context.manifest.delete')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <ConfirmModal
+        opened={deleting}
+        onClose={() => setDeleting(false)}
+        title={t('context.manifest.deleteTitle')}
+        message={t('context.manifest.deleteConfirm')}
+        error={remove.error}
+        confirmLabel={t('context.manifest.delete')}
+        loading={remove.isPending}
+        onConfirm={() =>
+          remove.mutate(
+            { etag: saved.etag },
+            {
+              onSuccess: () => {
+                setDeleting(false);
+                onDraftChange(null);
+                setNotice('deleted');
+              },
+            },
+          )
+        }
+      />
     </Card>
   );
 }

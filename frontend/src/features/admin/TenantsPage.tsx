@@ -16,6 +16,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatCount } from '../../components/format';
 import { PageControls } from '../../components/Paging';
@@ -228,23 +229,15 @@ function DeleteModal({ tenant, onClose }: { tenant: Tenant; onClose: () => void 
   const { t } = useTranslation();
   const remove = useDeleteTenant();
   return (
-    <Modal opened onClose={onClose} title={t('tenants.deleteLabel', { name: tenant.name })}>
-      <Stack>
-        <Text>{t('tenants.deleteBody', { name: tenant.name })}</Text>
-        {remove.isError && <ErrorAlert error={remove.error} />}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            color="red"
-            onClick={() => remove.mutate(tenant.id, { onSuccess: onClose })}
-            loading={remove.isPending}
-          >
-            {t('common.delete')}
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+    <ConfirmModal
+      opened
+      onClose={onClose}
+      title={t('tenants.deleteLabel', { name: tenant.name })}
+      message={t('tenants.deleteBody', { name: tenant.name })}
+      error={remove.error}
+      confirmLabel={t('common.delete')}
+      loading={remove.isPending}
+      onConfirm={() => remove.mutate(tenant.id, { onSuccess: onClose })}
+    />
   );
 }

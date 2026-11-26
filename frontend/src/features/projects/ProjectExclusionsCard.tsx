@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
+import { useExclusionSet } from '../../components/useExclusionSet';
 import {
   canDo,
   type ProjectExclusions,
@@ -56,21 +57,9 @@ function EditExclusionsModal({
 }) {
   const { t } = useTranslation();
   const save = useSetProjectExclusions(project.id);
-  const [excluded, setExcluded] = useState<Set<string>>(() => new Set(value.excluded.map((e) => e.path)));
+  const { excluded, toggle, known, list } = useExclusionSet(value.excluded);
   const [patterns, setPatterns] = useState<string[]>(value.ignore_patterns);
   const [system, setSystem] = useState(value.exclude_system_folders);
-  const known = new Map(value.excluded.map((e) => [e.path, e.exists]));
-  const toggle = (path: string, checked: boolean) =>
-    setExcluded((current) => {
-      const next = new Set(current);
-      if (checked) {
-        next.add(path);
-      } else {
-        next.delete(path);
-      }
-      return next;
-    });
-  const list = [...excluded].sort((a, b) => a.localeCompare(b));
   return (
     <Modal opened onClose={onClose} size="lg" title={t('projects.exclusions.editTitle')}>
       <Stack>

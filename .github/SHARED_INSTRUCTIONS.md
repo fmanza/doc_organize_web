@@ -115,7 +115,7 @@ uv run --frozen pytest
 uv run --frozen python scripts/export_openapi.py --check   # contrato al día
 ```
 
-Sin uv local, la misma imagen de herramientas que usa el CI (desde la raíz):
+Sin uv local, la imagen de herramientas `backend-dev` (mismo uv que el CI, que no la construye; desde la raíz):
 
 ```bash
 docker build -f docker/Dockerfile --target backend-dev -t doc_organize_web:backend-dev .
@@ -223,4 +223,4 @@ PLAN → AUDIT_PLAN → IMPLEMENT → AUDIT_CODE → VERSION
 
 ---
 
-*Actualizado: 2026-11-05*
+*Actualizado: 2026-11-26*

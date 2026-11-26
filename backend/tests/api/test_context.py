@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.db.models import AuditEntry, ContextDocument, Location, ProjectContext, Run, User, UserSession, utcnow
 from app.domain.context import site
-from tests.conftest import ADMIN_PASSWORD, login_as, project_payload
+from tests.conftest import ADMIN_PASSWORD, add_member, login_as, project_payload
 
 TEMPLATE = """---
 title: Obras
@@ -47,15 +47,6 @@ def project(user_client: TestClient, project_locations: dict[str, Location]) -> 
     )
     assert response.status_code == 201, response.text
     return dict(response.json())
-
-
-def _member(client: TestClient, project_id: object, make_user: Callable[..., User], name: str, role: str) -> TestClient:
-    other = make_user(name)
-    assert (
-        client.post(f"/api/v1/projects/{project_id}/members", json={"user_id": other.id, "role": role}).status_code
-        == 201
-    )
-    return login_as(client, name)
 
 
 def _seed_context(db: Session, project_id: int, *, site_built: bool = True) -> None:
@@ -224,7 +215,7 @@ def test_manifest_is_validated_and_written_by_editors(
     make_user: Callable[..., User],
 ) -> None:
     url = f"/api/v1/projects/{project['id']}/context/taxonomy-manifest"
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
     target = migrated.locations_root / "salidas" / "Proyecto A" / "taxonomy_manifest.md"
 
     assert user_client.get(url).json() == {
@@ -288,7 +279,7 @@ def test_build_is_for_editors_and_resolves_the_template(
     make_user: Callable[..., User],
 ) -> None:
     runs = f"/api/v1/projects/{project['id']}/runs"
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
     admin_client = login_as(user_client, admin.username, ADMIN_PASSWORD)
     assert admin_client.put("/api/v1/taxonomy-templates/obras", json={"markdown": TEMPLATE}).status_code == 201
 
@@ -340,7 +331,7 @@ def test_delete_is_for_owners_with_a_preview(
     user_client: TestClient, project: dict[str, object], db: Session, make_user: Callable[..., User]
 ) -> None:
     runs = f"/api/v1/projects/{project['id']}/runs"
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
     assert editor.post(runs, json={"operation": "context_delete"}).status_code == 403
 
     preview = user_client.post(runs, json={"operation": "context_delete"}).json()
@@ -462,7 +453,7 @@ def test_site_token_stops_working_for_removed_members(
 ) -> None:
     _seed_context(db, int(str(project["id"])))
     _write_site(migrated)
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
     url = _site_url(viewer, project["id"])
     assert viewer.get(url).status_code == 200
     lectora = db.scalars(select(User).where(User.username == "lectora")).one()

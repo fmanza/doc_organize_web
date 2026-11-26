@@ -1,4 +1,4 @@
-import { Badge, Select } from '@mantine/core';
+import { Badge, Portal, Select } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -21,7 +21,12 @@ export function TenantSwitcher() {
   }
   if (!instance) {
     return (
-      <Badge variant="light" color="gray" aria-label={t('tenants.current', { name: me.tenant.name })}>
+      <Badge
+        variant="light"
+        color="gray"
+        maw={{ base: 110, sm: 200 }}
+        aria-label={t('tenants.current', { name: me.tenant.name })}
+      >
         {me.tenant.name}
       </Badge>
     );
@@ -31,7 +36,7 @@ export function TenantSwitcher() {
       <Select
         aria-label={t('tenants.switch')}
         size="xs"
-        w={200}
+        w={{ base: 120, sm: 200 }}
         data={(tenants.data?.items ?? [me.acting_tenant]).map((tenant) => ({
           value: String(tenant.id),
           label: tenant.name,
@@ -44,7 +49,24 @@ export function TenantSwitcher() {
         disabled={switchTenant.isPending}
         comboboxProps={{ withinPortal: true }}
       />
-      {switchTenant.isError && <ErrorAlert error={switchTenant.error} />}
+      {/* Fuera del flujo de la cabecera (altura fija): flota bajo ella hasta cerrarlo o reintentar. */}
+      {switchTenant.isError && (
+        <Portal>
+          <ErrorAlert
+            error={switchTenant.error}
+            withCloseButton
+            closeButtonLabel={t('common.close')}
+            onClose={() => switchTenant.reset()}
+            style={{
+              position: 'fixed',
+              top: 64,
+              right: 16,
+              zIndex: 1000,
+              width: 'min(420px, calc(100vw - 32px))',
+            }}
+          />
+        </Portal>
+      )}
     </>
   );
 }

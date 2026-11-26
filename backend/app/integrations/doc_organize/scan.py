@@ -4,7 +4,7 @@ Solo se llama desde el subproceso de un job: importa doc_organize **dentro** de 
 tipos propios con rutas absolutas del contenedor; el job las convierte en relativas a la ubicación antes de que
 lleguen a la BD o al usuario.
 
-Firma verificada en el tag ``v0.10.0``::
+Firma verificada en el tag ``v2.5.0`` (reverificada el 2026-11-26)::
 
     ScanCommand().run_streaming(paths, output_dir, cache_db, folders_json, error_log_path=, history_log_path=, *,
                                 options: ScanOptions, on_progress: ProgressCallback, cancel_token: CancelToken)
@@ -266,7 +266,7 @@ def run_scan(
 def cached_paths(output_root: Path, state_root: Path) -> list[str]:
     """Rutas absolutas de los documentos de la caché del proyecto (vista previa de «forzar reconversión»).
 
-    ``CacheManager(db_path).load_cache() -> dict[str, CacheEntry]`` (verificado en ``v0.10.0``). Sin caché, lista vacía.
+    ``CacheManager(db_path).load_cache() -> dict[str, CacheEntry]`` (reverificado en ``v2.5.0``). Sin caché, lista vacía.
     """
     from doc_organize import CacheManager, ProjectLayout
 

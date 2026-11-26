@@ -27,6 +27,7 @@ import { BackLink } from '../../components/BackLink';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { FolderBrowser } from '../../components/FolderBrowser';
 import { formatDateTime } from '../../components/format';
+import { useExclusionSet } from '../../components/useExclusionSet';
 import { useCapabilities } from '../admin/useSettings';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import {
@@ -225,20 +226,10 @@ function ExcludeFoldersModal({
   const { t } = useTranslation();
   const save = useSetExclusions(project.id);
   const saved = folder.excluded ?? [];
-  const [excluded, setExcluded] = useState<Set<string>>(() => new Set(saved.map((e) => e.subpath)));
-  const known = new Map(saved.map((e) => [e.subpath, e.exists]));
+  const { excluded, toggle, known, list } = useExclusionSet(
+    saved.map((e) => ({ path: e.subpath, exists: e.exists })),
+  );
   const removedSaved = saved.some((e) => !excluded.has(e.subpath));
-  const toggle = (path: string, checked: boolean) =>
-    setExcluded((current) => {
-      const next = new Set(current);
-      if (checked) {
-        next.add(path);
-      } else {
-        next.delete(path);
-      }
-      return next;
-    });
-  const list = [...excluded].sort((a, b) => a.localeCompare(b));
   return (
     <Modal
       opened

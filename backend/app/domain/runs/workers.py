@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import Run, User, Worker, utcnow
+from app.db.results import affected_rows
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction, RequestContext
 
@@ -114,7 +115,7 @@ def capabilities(db: Session, settings: Settings) -> CapabilitiesView:
 def request_refresh(db: Session, *, actor: User, ctx: RequestContext) -> int:
     """Pide a los workers vivos que vuelvan a sondear sus capacidades; devuelve cuántos lo harán."""
     since = utcnow() - timedelta(minutes=5)
-    count = db.execute(update(Worker).where(Worker.heartbeat_at >= since).values(refresh_requested=True)).rowcount  # type: ignore[attr-defined]
+    count = affected_rows(db.execute(update(Worker).where(Worker.heartbeat_at >= since).values(refresh_requested=True)))
     audit.record(
         db,
         action=AuditAction.WORKER_CAPABILITIES_REFRESH,

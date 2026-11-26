@@ -170,6 +170,16 @@ def login_as(client: TestClient, username: str, password: str = USER_PASSWORD) -
     return other
 
 
+def add_member(
+    client: TestClient, project_id: object, make_user: Callable[..., User], name: str, role: str
+) -> TestClient:
+    """Crea ``name``, lo añade al proyecto con ``role`` (``client`` debe poder gestionar miembros) y devuelve su cliente."""
+    other = make_user(name)
+    added = client.post(f"/api/v1/projects/{project_id}/members", json={"user_id": other.id, "role": role})
+    assert added.status_code == 201
+    return login_as(client, name)
+
+
 @pytest.fixture
 def project_locations(db: Session, migrated: Settings, admin: User) -> dict[str, Location]:
     """Ubicación de origen ``ro`` (``origen/{2024,2025}``) y de destino ``rw`` (``salidas``) bajo la raíz."""

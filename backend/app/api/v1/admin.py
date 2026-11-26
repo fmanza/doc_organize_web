@@ -8,8 +8,8 @@ from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, DbSession, InstanceAdmin, SettingsDep
 from app.api.v1.fs import FS_ERRORS, listing
+from app.api.v1.listing import FolderLimitQuery, OffsetQuery
 from app.api.v1.schemas import (
-    MAX_FOLDER_PAGE,
     FolderListing,
     SettingOut,
     SettingsPage,
@@ -65,8 +65,8 @@ def browse_mounts(
     _: InstanceAdmin,
     settings: SettingsDep,
     path: Annotated[str, Query(max_length=4096, description="Ruta relativa a DOW_LOCATIONS_ROOT")] = "",
-    limit: Annotated[int, Query(ge=1, le=MAX_FOLDER_PAGE)] = 200,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: FolderLimitQuery = 200,
+    offset: OffsetQuery = 0,
 ) -> FolderListing:
     """Subcarpetas bajo ``DOW_LOCATIONS_ROOT`` para elegir la carpeta de una ubicación nueva."""
     return listing(locations.browse_mounts(path, settings=settings, limit=limit, offset=offset), None)

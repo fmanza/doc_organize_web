@@ -13,9 +13,8 @@ from fastapi import APIRouter, Header, Path, Query, Request, Response, status
 from pydantic import StringConstraints
 
 from app.api.deps import Context, CurrentSession, CurrentUser, DbSession, SettingsDep, TemplateManager
-from app.api.v1.listing import ContextDocumentSort, OrderQuery, SearchQuery, listing
+from app.api.v1.listing import ContextDocumentSort, LimitQuery, OffsetQuery, OrderQuery, SearchQuery, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     AxisValueOut,
     CatalogEntryOut,
     ContextAxisOut,
@@ -64,6 +63,7 @@ from app.api.v1.schemas import (
     TemplatePromptPreviewIn,
     VersionGroupOut,
 )
+from app.core.errors import AppError
 from app.db.models import ContextDocument, ContextDocumentAxisValue
 from app.domain.context import decisions as decisions_service
 from app.domain.context import manifest_versions, quality, site, templates
@@ -266,6 +266,23 @@ def _document_out(row: ContextDocument, axes: list[ContextDocumentAxisValue] | N
     return out
 
 
+def _review_document_out(doc: ContextDocument, axes: list[ContextDocumentAxisValue] | None) -> ReviewDocumentOut:
+    """El documento de una fila de revisión o de una propuesta."""
+    out = _document_out(doc, axes)
+    return ReviewDocumentOut(
+        seq=doc.seq,
+        title=doc.title,
+        folder=doc.folder,
+        path=doc.path,
+        domain_slug=doc.domain_slug,
+        output_path=out.output_path,
+        version=doc.version,
+        version_group=doc.version_group,
+        is_current=doc.is_current,
+        axes=out.axes,
+    )
+
+
 #: ``clave:slug`` de un filtro por eje (P10 del plan web): clave de eje de doc_organize y slug en kebab-case.
 AXIS_FILTER_PATTERN = r"^[a-z][a-z0-9_]{0,40}:[a-z0-9-]{1,128}$"
 AxisFilter = Annotated[str, StringConstraints(pattern=AXIS_FILTER_PATTERN)]
@@ -312,8 +329,8 @@ def list_context_documents(
             ),
         ),
     ] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[ContextDocumentSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
@@ -734,8 +751,8 @@ def get_review(
         str | None,
         Query(max_length=200, description="Texto en el título, la carpeta, la ruta o la clave del documento"),
     ] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
 ) -> ReviewPage:
     """Lo que habría que revisar según la última construcción (``review_queue``), por prioridad, con el documento y,
     si la hay, su decisión vigente (pendiente de aplicar hasta reconstruir). Con ``q`` (2.5.0), solo lo que coincide;
@@ -748,21 +765,7 @@ def get_review(
     axes = context.document_axes(db, access.project.id, [doc.seq for _, doc in rows if doc is not None])
     items = []
     for item, doc in rows:
-        document = None
-        if doc is not None:
-            out = _document_out(doc, axes.get(doc.seq))
-            document = ReviewDocumentOut(
-                seq=doc.seq,
-                title=doc.title,
-                folder=doc.folder,
-                path=doc.path,
-                domain_slug=doc.domain_slug,
-                output_path=out.output_path,
-                version=doc.version,
-                version_group=doc.version_group,
-                is_current=doc.is_current,
-                axes=out.axes,
-            )
+        document = _review_document_out(doc, axes.get(doc.seq)) if doc is not None else None
         decision = active.get(item.document_key)
         items.append(
             ReviewItemOut(
@@ -883,7 +886,7 @@ def get_quality(project_id: int, user: CurrentUser, db: DbSession, settings: Set
     access = projects.get_access(db, project_id, user)
     try:
         decisions = bool(decisions_service.load(db, settings, access.project).active)
-    except Exception:  # noqa: BLE001 - informativo: sin destino o sin contexto, no hay decisiones que usar
+    except AppError:  # informativo: sin destino, sin contexto o carpeta sustituida, no hay decisiones que usar
         decisions = False
     return QualityOut(
         gold=_gold_out(quality.read_gold(settings, access.project)),
@@ -973,21 +976,7 @@ def get_proposals(project_id: int, user: CurrentUser, db: DbSession) -> Proposal
     axes = context.document_axes(db, access.project.id, [doc.seq for _, doc in rows if doc is not None])
     items = []
     for proposal, doc in rows:
-        document = None
-        if doc is not None:
-            out = _document_out(doc, axes.get(doc.seq))
-            document = ReviewDocumentOut(
-                seq=doc.seq,
-                title=doc.title,
-                folder=doc.folder,
-                path=doc.path,
-                domain_slug=doc.domain_slug,
-                output_path=out.output_path,
-                version=doc.version,
-                version_group=doc.version_group,
-                is_current=doc.is_current,
-                axes=out.axes,
-            )
+        document = _review_document_out(doc, axes.get(doc.seq)) if doc is not None else None
         items.append(
             ProposalOut(
                 id=proposal.id,

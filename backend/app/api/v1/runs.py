@@ -22,9 +22,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
-from app.api.v1.listing import OrderQuery, RunSort, ScanErrorSort, SearchQuery, listing
+from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, RunSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     AiUsageRowOut,
     ArtifactOut,
     Operation,
@@ -126,8 +125,8 @@ def list_runs(
     project_id: Annotated[int | None, Query(ge=1)] = None,
     status_: Annotated[RunStatus | None, Query(alias="status")] = None,
     operation: Annotated[Operation | None, Query()] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[RunSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
@@ -174,8 +173,8 @@ def list_scan_errors(
     run_id: str,
     user: CurrentUser,
     db: DbSession,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[ScanErrorSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",

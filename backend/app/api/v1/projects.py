@@ -13,10 +13,9 @@ from fastapi import APIRouter, Body, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, SettingsDep
 from app.api.v1.fs import FS_ERRORS
-from app.api.v1.listing import OrderQuery, ProjectSort, ScanErrorSort, SearchQuery, listing
+from app.api.v1.listing import LimitQuery, OffsetQuery, OrderQuery, ProjectSort, ScanErrorSort, SearchQuery, listing
 from app.api.v1.runs import run_out
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     LocationRef,
     MemberCreate,
     MemberList,
@@ -100,8 +99,8 @@ def list_projects(
     user: CurrentUser,
     db: DbSession,
     q: Annotated[str | None, Query(max_length=128, description="Texto en el nombre o en el de sus ubicaciones")] = None,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     sort: Annotated[ProjectSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",
 ) -> ProjectPage:
@@ -416,8 +415,8 @@ def list_project_scan_errors(
     project_id: int,
     user: CurrentUser,
     db: DbSession,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[ScanErrorSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",

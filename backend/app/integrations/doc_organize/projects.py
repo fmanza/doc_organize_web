@@ -18,7 +18,7 @@ class DocOrganizeOperationError(Exception):
 def clear_project_history(output_root: Path, state_root: Path, *, name: str, created_at: datetime) -> None:
     """Vacía las salidas (``output_root``) y el estado (``state_root``) y regenera ``project.json`` en las salidas.
 
-    Usa ``ProjectHistoryCleaner.clear(project, *, state_root=)`` (firma verificada en el tag ``v0.10.0``). ``Project``
+    Usa ``ProjectHistoryCleaner.clear(project, *, state_root=)`` (firma reverificada en el tag ``v2.5.0``). ``Project``
     se construye sin ``tenant_id`` (obsoleto desde 0.10.0, L-6c).
 
     Raises:

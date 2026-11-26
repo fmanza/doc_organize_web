@@ -17,21 +17,17 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
-import { api, unwrap } from '../../api/client';
-import type { components } from '../../api/schema';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { formatDateTime } from '../../components/format';
-import { canDo, type RunRequest, useEnqueueRun, useProject } from '../projects/useProjects';
-import { useRun } from '../runs/useRuns';
+import { canDo, useProject } from '../projects/useProjects';
 import { useTemplates } from './useContext';
 import { ContextNav } from './ContextNav';
+import { GOLD_DEFAULTS, type Quality, useQuality, useQualityRun, useUploadGold } from './useQuality';
 
-type Quality = components['schemas']['QualityOut'];
 type GoldSource = 'xlsx' | 'decisions';
 
 interface AxisReport {
@@ -53,41 +49,8 @@ interface Report {
   missing_total?: number;
 }
 
-const qualityKey = (projectId: number) => ['projects', projectId, 'context', 'quality'] as const;
 const pct = (value: number | null | undefined) =>
   typeof value === 'number' ? `${Math.round(value * 100)} %` : '—';
-
-function useQuality(projectId: number) {
-  return useQuery({
-    queryKey: qualityKey(projectId),
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/api/v1/projects/{project_id}/context/quality', {
-          params: { path: { project_id: projectId } },
-        }),
-      ),
-  });
-}
-
-/** Lanza un run de calidad y lo sigue; al terminar bien, recarga la página de calidad. */
-function useQualityRun(projectId: number) {
-  const queryClient = useQueryClient();
-  const enqueue = useEnqueueRun(projectId);
-  const [runId, setRunId] = useState<string | null>(null);
-  const run = useRun(runId, 2_000);
-  const status = run.data?.status;
-  useEffect(() => {
-    if (status === 'succeeded') {
-      void queryClient.invalidateQueries({ queryKey: qualityKey(projectId) });
-    }
-  }, [status, projectId, queryClient]);
-  return {
-    running: enqueue.isPending || status === 'queued' || status === 'running',
-    error: enqueue.error ?? run.error,
-    failure: status === 'failed' || status === 'cancelled' ? (run.data?.error_message ?? status) : null,
-    start: (body: RunRequest) => enqueue.mutate(body, { onSuccess: (created) => setRunId(created.id) }),
-  };
-}
 
 /**
  * Calidad de la clasificación (W5, doc_organize 2.0 G3): métricas por eje contra una referencia (Excel subido o
@@ -153,34 +116,11 @@ function GoldCard({
   editable: boolean;
 }) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
-  const [sheet, setSheet] = useState('Referencia');
-  const [documentColumn, setDocumentColumn] = useState('documento');
-  const [columns, setColumns] = useState('domains:dominio_ok, material_types:tipo_ok');
-  const upload = useMutation({
-    mutationFn: async (selected: File) =>
-      unwrap(
-        await api.PUT('/api/v1/projects/{project_id}/context/quality/gold', {
-          params: {
-            path: { project_id: projectId },
-            query: {
-              filename: selected.name,
-              sheet,
-              document_column: documentColumn,
-              columns: columns
-                .split(',')
-                .map((item) => item.trim())
-                .filter(Boolean),
-            },
-          },
-          body: (await selected.arrayBuffer()) as unknown as string,
-          bodySerializer: (body: unknown) => body as BodyInit,
-          headers: { 'Content-Type': 'application/octet-stream' },
-        }),
-      ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: qualityKey(projectId) }),
-  });
+  const [sheet, setSheet] = useState<string>(GOLD_DEFAULTS.sheet);
+  const [documentColumn, setDocumentColumn] = useState<string>(GOLD_DEFAULTS.documentColumn);
+  const [columns, setColumns] = useState<string>(GOLD_DEFAULTS.columns);
+  const upload = useUploadGold(projectId);
   const gold = quality.gold;
   return (
     <Card withBorder component="section" aria-label={t('quality.goldTitle')}>
@@ -228,7 +168,22 @@ function GoldCard({
           />
           {upload.isError && <ErrorAlert error={upload.error} />}
           <Group justify="flex-end">
-            <Button disabled={!file} loading={upload.isPending} onClick={() => file && upload.mutate(file)}>
+            <Button
+              disabled={!file}
+              loading={upload.isPending}
+              onClick={() =>
+                file &&
+                upload.mutate({
+                  file,
+                  sheet,
+                  documentColumn,
+                  columns: columns
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                })
+              }
+            >
               {t('quality.upload')}
             </Button>
           </Group>
@@ -327,7 +282,11 @@ function EvaluationCard({
         </Button>
       </Group>
       {run.error && <ErrorAlert error={run.error} />}
-      {run.failure && <Alert color="red">{run.failure}</Alert>}
+      {run.failure && (
+        <Alert color="red" role="alert">
+          {run.failure}
+        </Alert>
+      )}
       {report && last ? (
         <>
           <Text size="xs" c="dimmed" mb="xs">
@@ -432,7 +391,11 @@ function CompareCard({
         />
         {scope !== 'off' && <Alert color="orange">{t('quality.aiWarning')}</Alert>}
         {run.error && <ErrorAlert error={run.error} />}
-        {run.failure && <Alert color="red">{run.failure}</Alert>}
+        {run.failure && (
+          <Alert color="red" role="alert">
+            {run.failure}
+          </Alert>
+        )}
         <Group justify="flex-end">
           <Button
             disabled={!ready}
@@ -575,7 +538,11 @@ function AuditCard({ projectId, quality }: { projectId: number; quality: Quality
         {t('quality.audit.intro')}
       </Text>
       {run.error && <ErrorAlert error={run.error} />}
-      {run.failure && <Alert color="red">{run.failure}</Alert>}
+      {run.failure && (
+        <Alert color="red" role="alert">
+          {run.failure}
+        </Alert>
+      )}
       {!report ? (
         <Text size="sm" c="dimmed">
           {t('quality.audit.none')}

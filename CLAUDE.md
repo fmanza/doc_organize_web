@@ -31,7 +31,7 @@ Ejemplo:
 Fase: 0
 Alcance: completa
 Mejoras opcionales: no
-Restricciones: doc_organize 0.9.x como wheel local (G9); sin GPU en desarrollo
+Restricciones: doc_organize fijado en backend/pyproject.toml; sin GPU en desarrollo
 ```
 
 ---
@@ -45,4 +45,4 @@ personales van a `.claude/settings.local.json` (git-ignored). Detalle: [`.claude
 
 ---
 
-*Actualizado: 2026-11-01*
+*Actualizado: 2026-11-26*

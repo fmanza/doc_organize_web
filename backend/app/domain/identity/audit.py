@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, aliased
 from app.core.errors import AppError
 from app.core.request_context import current_tenant_id
 from app.db.models import DEFAULT_TENANT_ID, AuditEntry, User, utcnow
+from app.db.results import affected_rows
 from app.domain.listing import ListQuery, apply_search, apply_sort
 
 logger = logging.getLogger(__name__)
@@ -278,7 +279,7 @@ def purge(
         raise PurgeChangedError(
             f"Ahora hay {matched} entradas en ese rango, no {confirm_count}: vuelve a comprobarlo antes de borrar."
         )
-    deleted = db.execute(delete(AuditEntry).where(*in_range)).rowcount  # type: ignore[attr-defined]
+    deleted = affected_rows(db.execute(delete(AuditEntry).where(*in_range)))
     record(
         db,
         action=AuditAction.AUDIT_PURGE,

@@ -10,9 +10,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import Context, CurrentUser, DbSession, InstanceAdmin, SettingsDep
-from app.api.v1.listing import LocationSort, OrderQuery, SearchQuery, listing
+from app.api.v1.listing import LimitQuery, LocationSort, OffsetQuery, OrderQuery, SearchQuery, listing
 from app.api.v1.schemas import (
-    MAX_PAGE_SIZE,
     LocationCreate,
     LocationOut,
     LocationPage,
@@ -43,8 +42,8 @@ def _out(location: Location, user: User) -> LocationOut | LocationPublic:
 def list_locations(
     user: CurrentUser,
     db: DbSession,
-    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: LimitQuery = 50,
+    offset: OffsetQuery = 0,
     q: SearchQuery = None,
     sort: Annotated[LocationSort | None, Query(description="Columna por la que ordenar")] = None,
     order: OrderQuery = "asc",

@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { AppShell, Box, Burger, Group, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink as RouterNavLink, Outlet, useLocation, useMatch } from 'react-router';
@@ -135,15 +135,22 @@ export function Layout() {
               aria-expanded={navOpened}
               aria-controls="app-navbar"
             />
+            {/* Por debajo de `sm`, el título abreviado; el nombre accesible es siempre el completo. */}
             <Title
               order={1}
               size="h3"
+              aria-label={t('app.title')}
               style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('app.title')}
+              <Box component="span" visibleFrom="sm">
+                {t('app.title')}
+              </Box>
+              <Box component="span" hiddenFrom="sm" aria-hidden>
+                {t('app.shortTitle')}
+              </Box>
             </Title>
           </Group>
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
             <TenantSwitcher />
             <UserMenu />
           </Group>

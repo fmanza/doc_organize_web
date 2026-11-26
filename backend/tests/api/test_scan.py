@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.db.models import AuditEntry, Location, Run, ScanError, ScannedFolder, User, Worker, utcnow
 from app.integrations.doc_organize import Capabilities
-from tests.conftest import login_as, project_payload
+from tests.conftest import add_member, login_as, project_payload
 
 
 @pytest.fixture
@@ -22,15 +22,6 @@ def project(user_client: TestClient, project_locations: dict[str, Location]) -> 
     response = user_client.post("/api/v1/projects", json=project_payload(project_locations))
     assert response.status_code == 201, response.text
     return dict(response.json())
-
-
-def _member(client: TestClient, project_id: object, make_user: Callable[..., User], name: str, role: str) -> TestClient:
-    other = make_user(name)
-    assert (
-        client.post(f"/api/v1/projects/{project_id}/members", json={"user_id": other.id, "role": role}).status_code
-        == 201
-    )
-    return login_as(client, name)
 
 
 def _worker(db: Session, queues: list[str], **capabilities: bool) -> None:
@@ -102,7 +93,7 @@ def test_nested_folders_are_rejected(user_client: TestClient, project: dict[str,
 def test_only_owner_changes_folders(
     user_client: TestClient, project: dict[str, object], make_user: Callable[..., User]
 ) -> None:
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
     base = f"/api/v1/projects/{project['id']}/scanned-folders"
 
     assert editor.get(base).status_code == 200
@@ -124,7 +115,7 @@ def test_folders_cannot_change_with_an_active_run(user_client: TestClient, proje
 def test_editor_launches_scan_of_all_folders(
     user_client: TestClient, project: dict[str, object], make_user: Callable[..., User], db: Session
 ) -> None:
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
 
     response = editor.post(f"/api/v1/projects/{project['id']}/runs", json={"operation": "scan", "folders": ["2024"]})
 
@@ -140,7 +131,7 @@ def test_editor_launches_scan_of_all_folders(
 def test_scan_rejects_unknown_folders_and_viewers(
     user_client: TestClient, project: dict[str, object], make_user: Callable[..., User]
 ) -> None:
-    viewer = _member(user_client, project["id"], make_user, "lectora", "viewer")
+    viewer = add_member(user_client, project["id"], make_user, "lectora", "viewer")
     url = f"/api/v1/projects/{project['id']}/runs"
 
     assert viewer.post(url, json={"operation": "scan"}).status_code == 403
@@ -156,7 +147,7 @@ def test_force_requires_owner_all_folders_and_preview(
         user_client.post(f"/api/v1/projects/{project['id']}/scanned-folders", json={"subpath": "2025"}).status_code
         == 201
     )
-    editor = _member(user_client, project["id"], make_user, "editora", "editor")
+    editor = add_member(user_client, project["id"], make_user, "editora", "editor")
 
     assert editor.post(url, json={"operation": "scan", "force": True, "dry_run": True}).status_code == 403
     subset = user_client.post(url, json={"operation": "scan", "force": True, "folders": ["2024"]})

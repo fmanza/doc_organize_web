@@ -7,7 +7,6 @@ import {
   Center,
   Group,
   Loader,
-  Modal,
   NumberInput,
   SegmentedControl,
   SimpleGrid,
@@ -24,6 +23,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { PageControls } from '../../components/Paging';
 import { SearchBox, SortableTh } from '../../components/listing';
@@ -33,10 +33,11 @@ import { useAiStatus } from '../admin/useAi';
 import { DangerousOperationModal } from '../projects/DangerousOperationModal';
 import { canDo, type ProjectOut, useEnqueueRun, useProject } from '../projects/useProjects';
 import {
-  aiTask,
+  AI_CLASSIFY_TASK,
   appendProfile,
   buildParams,
   CONTEXT_HISTORY_XLSX,
+  DEFAULT_OUTPUT_FOLDER,
   type ContextBuild,
   type ContextBuildParams,
   type ContextDocument,
@@ -305,28 +306,18 @@ export function ContextPage() {
           onClose={() => setDeleting(false)}
         />
       )}
-      <Modal
+      <ConfirmModal
         opened={confirm !== null}
         onClose={() => setConfirm(null)}
         title={t('context.manifest.replaceTitle')}
-      >
-        <Stack>
-          <Text>{confirm?.body}</Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirm(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                confirm?.apply();
-                setConfirm(null);
-              }}
-            >
-              {t('context.manifest.replace')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        message={confirm?.body ?? null}
+        danger={false}
+        confirmLabel={t('context.manifest.replace')}
+        onConfirm={() => {
+          confirm?.apply();
+          setConfirm(null);
+        }}
+      />
     </Stack>
   );
 }
@@ -478,7 +469,7 @@ function BuildCard({
   const navigate = useNavigate();
   const enqueue = useEnqueueRun(project.id);
   const { catalog, template } = selection;
-  const [folder, setFolder] = useState('organizado');
+  const [folder, setFolder] = useState(DEFAULT_OUTPUT_FOLDER);
   const [threshold, setThreshold] = useState(0.5);
   const [buildSite, setBuildSite] = useState(true);
   const status = useAiStatus();
@@ -489,7 +480,7 @@ function BuildCard({
   const [scope, setScope] = useState<AiScope>('unclassified');
   const scopable = catalog === 'template' || catalog === 'manifest';
   const aiScope: AiScope = scopable ? scope : 'unclassified';
-  const aiAvailable = status.data?.[aiTask(catalog)] === true;
+  const aiAvailable = status.data?.[AI_CLASSIFY_TASK] === true;
   const enrichmentAvailable = status.data?.enrich === true;
 
   const launch = () =>
@@ -562,7 +553,7 @@ function BuildCard({
         <Switch
           label={t('context.ai.classify')}
           description={t(
-            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${aiTask(catalog)}`,
+            aiAvailable ? 'context.ai.classifyHelp' : `context.ai.notConfigured.${AI_CLASSIFY_TASK}`,
           )}
           checked={withAi && aiAvailable}
           disabled={!aiAvailable}

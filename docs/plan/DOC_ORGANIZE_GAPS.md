@@ -1,17 +1,11 @@
 # Huecos de la API de doc_organize
 
-Mismo contrato que `UTIL_BBDD_GAPS.md`: **no se parchea doc_organize desde la web**; cada hueco tiene un rodeo en
+Contrato: **no se parchea doc_organize desde la web**; cada hueco tiene un rodeo en
 `backend/app/integrations/doc_organize/` hasta que la librería lo resuelva (tareas `L-*` de `TAREAS_DOC_ORGANIZE.md`).
 
-Versión analizada: **doc_organize 0.9.0** (rama `develop`, commit `1e40c8c`, 2026-10-31). Versión consumida desde la
-Fase 0: **0.9.3**; desde 2026-10-31 (antes de la Fase 3): **0.10.0** (ver «Resueltos»). Desde la Fase 5: **0.11.0**; desde el 2026-11-02
-(antes de la Fase 6): **0.12.0**, que resuelve G16–G23; desde el cierre de la Fase 6: **0.12.1**, que resuelve G24 y G26. Desde la Fase 7: **0.13.0**; desde el 2026-11-03 (tras la Fase 8): **0.14.0**, que resuelve G30–G37; desde el 2026-11-05
-(antes de la Fase 10): **1.0.0rc2**, la librería pura (sin huecos nuevos); desde el 2026-11-06: **1.0.0** (L-15), la misma API. La Fase 10 abre G38 (L-16, después de la
-1.0) y la prueba local de la 1.0.0 abre G39 (L-17, hotfix 1.0.1). Desde el 2026-11-06 (web 1.0.1): **1.1.0**, que resuelve
-G39 y trae la API que piden G38, G11 y G25 (la web la adopta en su 1.1.0); La web 1.1.0 (2026-11-06) usa la API de 1.1.0 y cierra G38, G11 y G25. La 1.2.0 abrió G40 (L-18), que la 1.3.0 cierra con doc_organize 1.2.0. El 2026-11-07 se abrió G41 (L-19), que la web 1.4.0 cierra con doc_organize 1.3.0: no quedan huecos abiertos. Desde el 2026-11-16 (web 1.4.8):
-**1.5.0**, sin huecos nuevos al subir el pin (las novedades se adoptan en la web 1.5.0). Al adoptarlas, la web 1.5.0
-abre G42 y G43, menores. La medición en red del 2026-11-16 (`MEDICION_CONTEXTO_RED.md`) abre G44. Desde el 2026-11-16
-(web 1.6.0): **1.6.0**, que resuelve G42, G43 y G44: no quedan huecos abiertos.
+**Estado (2026-11-26)**: la web 2.7.0 consume **doc_organize 2.5.0**, la última release publicada. Queda **un hueco
+abierto, G47**. El historial de versiones fijadas desde la 0.9.3 está en la columna «Resuelto en» de la tabla
+«Resueltos» y en el `CHANGELOG.md`.
 
 | # | Hueco | Impacto en la web | Rodeo hasta resolverlo | Petición | Tarea |
 |---|---|---|---|---|---|

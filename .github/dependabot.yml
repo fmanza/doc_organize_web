@@ -1,6 +1,6 @@
 version: 2
 # Una vez al mes, PR agrupados contra develop, solo con versiones publicadas hace al menos 14 días (`cooldown`, regla
-# de ADR-001 §6; suspendida del 2026-11-01 a la Fase 10, que la reactiva).
+# de ADR-001 §6; vigente desde la Fase 10, 2026-11-05).
 updates:
   - package-ecosystem: uv
     directory: /backend

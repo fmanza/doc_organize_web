@@ -26,6 +26,7 @@ from app.db.models import (
     User,
     utcnow,
 )
+from app.db.results import affected_rows
 from app.domain.ai import settings as ai_settings
 from app.domain.context import quality
 from app.domain.context import service as context
@@ -413,7 +414,7 @@ def cancel(db: Session, run: Run, *, role: MemberRole | None, actor: User, ctx: 
         .where(Run.id == run.id, Run.status == "queued")
         .values(status="cancelled", finished_at=now, cancel_requested=True, cancel_reason="user")
     )
-    if not claimed.rowcount:  # type: ignore[attr-defined]
+    if not affected_rows(claimed):
         db.execute(
             update(Run)
             .where(Run.id == run.id, Run.status == "running")
@@ -429,7 +430,7 @@ def cancel(db: Session, run: Run, *, role: MemberRole | None, actor: User, ctx: 
         details={"project_id": run.project_id, "operation": run.operation},
     )
     db.commit()
-    if claimed.rowcount:  # type: ignore[attr-defined]
+    if affected_rows(claimed):
         events.append(db, run.id, "status", {"status": "cancelled"})
         events.append(db, run.id, "end", {"status": "cancelled"})
     else:

@@ -27,7 +27,9 @@ def _fake(monkeypatch: pytest.MonkeyPatch, final: ScanEventType, summary: dict[s
             seen.append(options)
             yield _Event(final, summary)
 
-    monkeypatch.setattr(doc_organize, "ScanCommand", FakeScanCommand)
+    # En el ``__dict__`` del módulo y no con ``setattr``: este lee antes el valor original, lo que dispara la importación
+    # perezosa de ``ScanCommand`` y carga Docling (de 1 a 4 minutos en Windows) solo para sustituirlo.
+    monkeypatch.setitem(vars(doc_organize), "ScanCommand", FakeScanCommand)
     return seen
 
 

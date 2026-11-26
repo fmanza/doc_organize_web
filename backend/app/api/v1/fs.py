@@ -10,7 +10,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentUser, DbSession, SettingsDep
-from app.api.v1.schemas import MAX_FOLDER_PAGE, FolderEntry, FolderListing
+from app.api.v1.listing import FolderLimitQuery, OffsetQuery
+from app.api.v1.schemas import FolderEntry, FolderListing
 from app.domain.locations import service
 from app.domain.locations.service import FolderPage
 
@@ -42,8 +43,8 @@ def browse(
     settings: SettingsDep,
     location_id: Annotated[int, Query(ge=1)],
     path: Annotated[str, Query(max_length=4096, description="Ruta relativa con «/»; vacía = la raíz")] = "",
-    limit: Annotated[int, Query(ge=1, le=MAX_FOLDER_PAGE)] = 200,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: FolderLimitQuery = 200,
+    offset: OffsetQuery = 0,
 ) -> FolderListing:
     """Subcarpetas de ``path`` dentro de la ubicación, ordenadas por nombre."""
     location = service.get_location(db, location_id, tenant_id=user.scope_tenant_id)

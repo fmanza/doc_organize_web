@@ -1,4 +1,4 @@
-import { Badge, Button, Menu } from '@mantine/core';
+import { Avatar, Badge, Button, Group, Menu } from '@mantine/core';
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
@@ -44,6 +44,12 @@ export function UserMenu() {
     });
   };
 
+  const adminBadge = me.is_instance_admin ? (
+    <Badge size="xs" variant="light">
+      {t('roles.instanceAdmin')}
+    </Badge>
+  ) : null;
+
   const onLogout = () => {
     logout.mutate(undefined, { onSettled: () => void navigate('/login', { replace: true }) });
   };
@@ -53,21 +59,31 @@ export function UserMenu() {
       <ToastStack toasts={toasts} onClose={dismiss} />
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
+          {/* Por debajo de `sm`, solo las iniciales; el nombre y el rol pasan al desplegable. */}
           <Button
             variant="subtle"
-            rightSection={
-              me.is_instance_admin ? (
-                <Badge size="xs" variant="light">
-                  {t('roles.instanceAdmin')}
-                </Badge>
-              ) : undefined
-            }
+            px={{ base: 4, sm: 'sm' }}
             aria-label={t('auth.userMenu', { name: me.display_name })}
           >
-            {me.display_name}
+            <Avatar
+              hiddenFrom="sm"
+              size={28}
+              radius="xl"
+              color="initials"
+              name={me.display_name}
+              aria-hidden
+            />
+            <Group gap={8} wrap="nowrap" visibleFrom="sm">
+              {me.display_name}
+              {adminBadge}
+            </Group>
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
+          <Group hiddenFrom="sm" gap={8} px="sm" py={6} wrap="nowrap">
+            {me.display_name}
+            {adminBadge}
+          </Group>
           <Menu.Label>
             {me.username} · {me.tenant.name}
           </Menu.Label>

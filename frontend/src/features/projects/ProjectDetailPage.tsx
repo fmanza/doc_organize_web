@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { BackLink } from '../../components/BackLink';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { StatusLight } from '../../components/StatusLight';
 import { useAiStatus } from '../admin/useAi';
@@ -202,19 +203,15 @@ function AiSettingsCard({ project }: { project: ProjectOut }) {
         </Text>
       )}
       {update.isError && <ErrorAlert error={update.error} mt="xs" />}
-      <Modal opened={confirming} onClose={() => setConfirming(false)} title={t('projects.ai.confirmTitle')}>
-        <Stack>
-          <Text>{t('projects.ai.confirm')}</Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirming(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button color="red" loading={update.isPending} onClick={() => set(false)}>
-              {t('projects.ai.confirmButton')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <ConfirmModal
+        opened={confirming}
+        onClose={() => setConfirming(false)}
+        title={t('projects.ai.confirmTitle')}
+        message={t('projects.ai.confirm')}
+        confirmLabel={t('projects.ai.confirmButton')}
+        loading={update.isPending}
+        onConfirm={() => set(false)}
+      />
     </Card>
   );
 }

@@ -5,6 +5,23 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Changed
+
+- **frontend**: cabecera en pantallas estrechas: por debajo de `sm`, título abreviado, selector de tenant más estrecho
+  y menú de usuario con iniciales (nombre y rol dentro del desplegable); el error al cambiar de tenant flota bajo la
+  cabecera. `ConfirmModal` común para 7 confirmaciones, `useExclusionSet`, hooks de revisión y calidad en
+  `useReview.ts`/`useQuality.ts`, y `role="alert"` en los fallos de job. Fuera `@tanstack/react-virtual` (sin uso).
+- **backend**: un único filtro de exclusiones (`PathFilter`) también en la vista previa de «forzar»; `get_quality`
+  solo trata como «sin decisiones» los errores de dominio; `affected_rows` tipado en lugar de `# type: ignore`;
+  alias comunes de paginación (`LimitQuery`, `OffsetQuery`; el contrato no cambia); notas de firmas reverificadas
+  con doc_organize 2.5.0.
+- **backend** (tests): `test_options_reach_scan_options` ya no carga Docling (de minutos a menos de 1 s); el test de
+  enlaces simbólicos se omite si el sistema no permite crearlos; `add_member` común en `conftest.py`.
+- **docker**: entorno común de los workers en compose (`x-worker-env`); `models-init` sin el HEALTHCHECK de la
+  imagen; `.env.example` con `DOW_WORKER_GPU_MEM_LIMIT` y `DOW_SCAN_*`. CI con `timeout-minutes` en cada job.
+- **docs**: cabecera de `DOC_ORGANIZE_GAPS.md` al día (G47 abierto), estado del plan, y comentarios e instrucciones
+  desfasados.
+
 ## [2.7.0] - 2026-11-26
 
 Bloquear y borrar usuarios con la garantía de que siempre queda un administrador de la instancia activo, filtros de

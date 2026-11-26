@@ -56,8 +56,8 @@ av = [
 package = false
 default-groups = ["dev", "cpu"]
 conflicts = [[{ group = "cpu" }, { group = "gpu" }]]
-# Cadena de suministro (ADR-001 §6): solo versiones publicadas hace al menos 2 semanas. Suspendida del 2026-11-01 a la
-# Fase 10, que la reactiva. doc_organize llega por URL de su release (ADR-006), fuera de esta regla.
+# Cadena de suministro (ADR-001 §6): solo versiones publicadas hace al menos 2 semanas (vigente desde la Fase 10,
+# 2026-11-05). doc_organize llega por URL de su release (ADR-006), fuera de esta regla.
 exclude-newer = "2 weeks"
 # Exenciones permanentes (decisión del mantenedor, 2026-11-14): estos paquetes no esperan las 2 semanas. zensical y
 # zensical-ui porque doc_organize exige la versión de zensical que corrige el sitio de contexto (1.4.0: >=0.1.1);

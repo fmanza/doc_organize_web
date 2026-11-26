@@ -1,8 +1,9 @@
 # Plan — separar doc_organize (librería) y doc_organize_web (React + FastAPI)
 
-> **Estado: propuesta (2026-10-31).** Todavía no hay código: esta carpeta es el plan de partida para abrir
-> `/phase 0` en doc_organize_web. Lo que dependa de verificar una API o una herramienta está marcado
-> `PENDIENTE DE VERIFICAR`.
+> **Estado: plan ejecutado (2026-11-26).** Esta carpeta fue el plan de partida (2026-10-31) para abrir `/phase 0`. Las
+> fases 0–10 están cerradas (web 1.0.0, 2026-11-06) y la web va por la 2.7.0: lo que sigue aquí es la referencia de
+> cómo se decidió. Lo vivo es [DOC_ORGANIZE_GAPS.md](DOC_ORGANIZE_GAPS.md) (huecos abiertos) y
+> [MEJORAS.md](MEJORAS.md) (mejoras pendientes).
 
 ## Contexto
 

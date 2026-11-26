@@ -10,12 +10,17 @@ from typing import Annotated, Literal
 
 from fastapi import Query
 
+from app.api.v1.schemas import MAX_FOLDER_PAGE, MAX_PAGE_SIZE
 from app.domain.listing import ListQuery, Order
 
 SearchQuery = Annotated[
     str | None, Query(max_length=100, description="Texto a buscar: contiene, sin distinguir mayúsculas")
 ]
 OrderQuery = Annotated[Order, Query(description="Sentido del orden")]
+# Paginación ``limit``/``offset`` acotada; el valor por defecto lo pone cada endpoint.
+LimitQuery = Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)]
+FolderLimitQuery = Annotated[int, Query(ge=1, le=MAX_FOLDER_PAGE)]
+OffsetQuery = Annotated[int, Query(ge=0)]
 
 UserSort = Literal["username", "display_name", "role", "status", "created_at"]
 TenantSort = Literal["name", "slug", "users", "projects", "locations"]
