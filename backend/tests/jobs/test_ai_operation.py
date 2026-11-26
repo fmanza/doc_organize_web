@@ -72,7 +72,7 @@ def test_build_with_ai_classifies_what_rules_leave(
     litellm.answers["classify"] = classify_answer({"domains": ["informes"]}, confidence=0.8)
     ctx, params = run(AI_DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     ai = result["ai"]
     sent = litellm.sent("classify")
@@ -104,12 +104,12 @@ def test_rebuilding_without_changes_uses_the_ai_cache(
     """doc_organize 2.0 (M4): reconstruir sin cambios no vuelve a llamar al modelo."""
     litellm.answers["classify"] = classify_answer({"domains": ["informes"]})
     ctx, params = run(AI_DOMAINS)
-    first = operation.run_build(ctx, params, project)
+    first = operation.run_build(ctx, params, project).stored()
     calls = len(litellm.sent("classify"))
     _finish(db, ctx)
 
     ctx2, params2 = run(AI_DOMAINS)
-    second = operation.run_build(ctx2, params2, project)
+    second = operation.run_build(ctx2, params2, project).stored()
 
     assert first["ai"]["calls"] == calls >= 1
     assert second["ai"]["calls"] == 0 and second["ai"]["cached"] == calls
@@ -123,7 +123,7 @@ def test_build_falls_back_once_to_json_object(run: Any, project: Project, litell
     litellm.answers["classify"] = classify_answer({"domains": ["informes"]})
     ctx, params = run(AI_DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     formats = [r.response_format for r in litellm.sent("classify")]
     assert formats[:2] == ["json_schema", "json_object"] and formats.count("json_schema") == 1
@@ -137,7 +137,7 @@ def test_build_with_ai_enrichment_describes_the_classified_documents(
     litellm.answers["enrich"] = lambda _: {"description": "Resumen de la IA.", "keywords": ["clave"]}
     ctx, params = run({**DOMAINS, "ai_enrichment": True})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     enrichment = result["ai_enrichment"]
     assert enrichment["enabled"] is True and enrichment["calls"] == len(litellm.sent("enrich")) >= 1
@@ -187,7 +187,7 @@ def test_classification_and_enrichment_each_have_their_own_budget(
     ctx, params = run({**AI_DOMAINS, "ai_enrichment": True})
     ctx.settings = migrated.model_copy(update={"ai_max_documents_per_run": 1})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["ai"]["calls"] <= 1 and result["ai_enrichment"]["calls"] == 1
     assert result["ai_enrichment"]["stopped"] == "budget"
@@ -202,7 +202,7 @@ def test_task_budget_overrides_the_general_one(
     litellm.answers["enrich"] = lambda _: {"description": "Resumen.", "keywords": []}
     ctx, params = run({**DOMAINS, "ai_enrichment": True})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["ai_enrichment"]["calls"] == 1 and result["ai_enrichment"]["stopped"] == "budget"
 
@@ -213,7 +213,7 @@ def test_build_stops_calling_after_a_rejected_key(
     litellm.keys = {"sk-otra"}
     ctx, params = run(AI_DOMAINS)
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert len(litellm.sent("classify")) == 1 and result["ai"]["stopped"] == "auth" and result["ai"]["failed"] == 1
     assert result["documents"] + result["unclassified"] == 4  # el contexto se construye igualmente
@@ -226,7 +226,7 @@ def test_build_respects_the_budget(run: Any, project: Project, migrated: Setting
     ctx, params = run(AI_DOMAINS)
     ctx.settings = migrated.model_copy(update={"ai_max_documents_per_run": 1})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     if result["ai"]["calls"]:  # solo si las reglas dejaron más de uno sin clasificar se llega al tope
         assert len(litellm.sent("classify")) == 1
@@ -248,7 +248,7 @@ def test_build_stops_after_consecutive_connection_errors(
     ctx, params = run(AI_DOMAINS)
     ctx.settings = migrated.model_copy(update={"ai_retries": 0})
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert len(calls) == 1 and result["ai"]["stopped"] == "connection" and result["ai"]["failed"] == 1
 
@@ -282,7 +282,7 @@ def test_taxonomy_draft_returns_the_markdown_without_saving(
     litellm.answers["taxonomy_design"] = lambda _: DRAFT
     ctx, params = run({"operation": "taxonomy_draft", "sample_size": 3})
 
-    result = draft_operation.run(ctx, params, project)
+    result = draft_operation.run(ctx, params, project).stored()
 
     assert result["manifest_markdown"].startswith("---\nschema: 2\naxes:")  # manifiesto v2
     assert "Proyecto sintético de pruebas." in result["manifest_markdown"]  # perfil inicial en el cuerpo
@@ -470,7 +470,7 @@ def test_ai_scope_fills_empty_tag_axes_only_when_asked(
         }
     )
 
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
 
     assert result["ai"]["scope"] == scope
     page = user_client.get(f"/api/v1/projects/{project.id}/context/documents", params={"domain": "facturas"}).json()

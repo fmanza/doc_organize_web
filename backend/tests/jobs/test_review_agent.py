@@ -37,7 +37,7 @@ def _review(run: Any, project: Project, monkeypatch: pytest.MonkeyPatch, *propos
         [tool_call("finish", {"summary": "Propongo lo que veo claro."})],
     ]
     ctx, params = run({"operation": "context_review_agent", "max_items": 5, "max_steps": 10})
-    return operation.run_review(ctx, params, project)
+    return operation.run_review(ctx, params, project).stored()
 
 
 def test_the_reviewer_stores_proposals_without_applying_them(
@@ -133,7 +133,7 @@ def test_the_auditor_reports_without_ai(
     proxy = FakeLiteLLM(keys={KEY}).install(monkeypatch)
     ctx, params = run({"operation": "context_audit"})
 
-    result = operation.run_audit(ctx, params, project)
+    result = operation.run_audit(ctx, params, project).stored()
 
     report = result["audit"]
     assert report["documents"] >= 1 and {a["axis"] for a in report["axes"]} >= {"domains", "impuestos"}

@@ -26,7 +26,7 @@ def _excel(run: Any, project: Project, db: Session, user_client: TestClient, adm
     _setup(user_client, admin)
     _build(run, project, db)
     ctx, _ = run({"operation": "export_xlsx", "kind": "context_documents"})
-    result = export.run_xlsx(ctx, ExportXlsxParams(kind="context_documents"), project)
+    result = export.run_xlsx(ctx, ExportXlsxParams(kind="context_documents"), project).stored()
     (artifact,) = ctx.workdir.glob("export/*-contexto.xlsx")
     assert result["rows"] > 0
     return load_workbook(artifact, read_only=True), result
@@ -85,7 +85,7 @@ def test_offline_site_zip_with_its_sha256_without_touching_the_destination(
     before = {p.relative_to(destination): p.stat().st_mtime_ns for p in destination.rglob("*") if p.is_file()}
     ctx, params = run({"operation": "export_site", "llms_txt": True})
 
-    result = delivery.run_site(ctx, params, project)
+    result = delivery.run_site(ctx, params, project).stored()
 
     (artifact,) = ctx.workdir.glob("export/*-sitio.zip")
     assert result["sha256"] == _sha256(artifact) and result["llms_txt"] is True
@@ -107,7 +107,7 @@ def test_offline_site_zip_with_its_sha256_without_touching_the_destination(
     assert entry.details["sha256"] == result["sha256"]  # type: ignore[index]
 
     again, params = run({"operation": "export_site", "llms_txt": True})
-    assert delivery.run_site(again, params, project)["sha256"] == result["sha256"]  # reproducible
+    assert delivery.run_site(again, params, project).sha256 == result["sha256"]  # reproducible
 
 
 def test_ai_bundle_is_redacted_and_audited(
@@ -117,7 +117,7 @@ def test_ai_bundle_is_redacted_and_audited(
     _build(run, project, db)
     ctx, params = run({"operation": "export_ai_bundle", "max_full_chars": 50_000})
 
-    result = delivery.run_ai_bundle(ctx, params, project)
+    result = delivery.run_ai_bundle(ctx, params, project).stored()
 
     (artifact,) = ctx.workdir.glob("export/*-ia.zip")
     assert result["sha256"] == _sha256(artifact) and result["documents"] >= 1 and result["redact"] is True

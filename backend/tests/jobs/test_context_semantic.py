@@ -54,7 +54,7 @@ def test_semantic_fills_empty_axes_with_embeddings(
     proxy = FakeLiteLLM(keys={KEY}).install(monkeypatch)
     ctx, params = run(TEMPLATE_RUN)
 
-    result = operation.run_build(ctx, params, semantic)
+    result = operation.run_build(ctx, params, semantic).stored()
 
     embeddings = proxy.sent(path="/embeddings")
     assert embeddings and {r.body["model"] for r in embeddings} == {"embebedor-sintetico"}
@@ -89,7 +89,7 @@ def test_semantic_fills_empty_axes_with_embeddings(
 def test_without_ai_configured_it_builds_without_semantic(run: Any, semantic: Project, db: Session) -> None:
     ctx, params = run(TEMPLATE_RUN)
 
-    result = operation.run_build(ctx, params, semantic)
+    result = operation.run_build(ctx, params, semantic).stored()
 
     assert result["semantic"] == {"enabled": False}
     events = " ".join(str(e.data) for e in db.scalars(select(RunEvent).where(RunEvent.run_id == ctx.run_id)))

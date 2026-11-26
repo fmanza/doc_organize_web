@@ -8,7 +8,6 @@ para que se puedan eliminar; cuáles eran queda en la auditoría.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from sqlalchemy import update
 
@@ -17,6 +16,7 @@ from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.projects.service import state_dir
 from app.domain.runs.operations import ProjectDeleteParams
+from app.domain.runs.results import ProjectDeleteResult
 from app.jobs.context import JobContext
 from app.jobs.operations._files import delete_tree, measure, project_paths, require_rw
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
@@ -24,20 +24,20 @@ from app.jobs.operations.common import WORKER_CONTEXT, require_project
 logger = logging.getLogger(__name__)
 
 
-def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -> dict[str, Any]:
+def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -> ProjectDeleteResult:
     """Cuenta (``dry_run``) o borra; devuelve los recuentos y, si quedó algo sin borrar, cuántos elementos."""
     project = require_project(project)
     paths = project_paths(project, ctx) if params.delete_outputs else None
     outputs = measure(paths.output.absolute, ctx, "measure_outputs") if paths else None
     state_root = state_dir(ctx.settings, project.id)
     state = measure(state_root, ctx, "measure_state")
-    result: dict[str, Any] = {
-        "delete_outputs": params.delete_outputs,
-        "output_files": outputs.files if outputs else None,
-        "output_bytes": outputs.bytes if outputs else None,
-        "state_files": state.files,
-        "state_bytes": state.bytes,
-    }
+    result = ProjectDeleteResult(
+        delete_outputs=params.delete_outputs,
+        output_files=outputs.files if outputs else None,
+        output_bytes=outputs.bytes if outputs else None,
+        state_files=state.files,
+        state_bytes=state.bytes,
+    )
     if params.dry_run:
         return result
     ctx.check_cancelled()
@@ -65,7 +65,7 @@ def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -
     if leftovers:
         logger.warning("Restos tras borrar el proyecto", extra={"run_id": ctx.run_id, "items": leftovers[:1000]})
         ctx.log(f"No se pudieron borrar {len(leftovers)} elementos; revisa el registro del run.", level="warning")
-    result["leftovers"] = len(leftovers)
+    result.leftovers = len(leftovers)
     with ctx.session_factory() as db:
         audit.record(
             db,
@@ -74,7 +74,7 @@ def run(ctx: JobContext, params: ProjectDeleteParams, project: Project | None) -
             actor_id=ctx.created_by,
             target_type="project",
             target_id=project.id,
-            details={"run_id": ctx.run_id, "name": project.name, **locations, **result},
+            details={"run_id": ctx.run_id, "name": project.name, **locations, **result.stored()},
         )
         db.commit()
     return result

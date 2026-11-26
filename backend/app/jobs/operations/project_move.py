@@ -14,7 +14,6 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy import update
 
@@ -25,6 +24,7 @@ from app.domain.locations.paths import join_relative
 from app.domain.projects import service as projects
 from app.domain.projects.errors import InvalidProjectError, ProjectConflictError
 from app.domain.runs.operations import ProjectMoveParams
+from app.domain.runs.results import ProjectMoveResult
 from app.jobs.context import JobCancelled, JobContext, JobFailed
 from app.jobs.operations._files import copy_tree, delete_tree, measure, project_paths, require_rw, resolve_in
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
@@ -53,7 +53,7 @@ def _destination(ctx: JobContext, project: Project, params: ProjectMoveParams) -
     return location
 
 
-def run(ctx: JobContext, params: ProjectMoveParams, project: Project | None) -> dict[str, Any]:
+def run(ctx: JobContext, params: ProjectMoveParams, project: Project | None) -> ProjectMoveResult:
     """Comprueba y cuenta (``dry_run``) o mueve; devuelve recuentos, si es el mismo sistema de ficheros y el destino."""
     project = require_project(project)
     paths = project_paths(project, ctx)
@@ -66,20 +66,20 @@ def run(ctx: JobContext, params: ProjectMoveParams, project: Project | None) -> 
     same_fs = os.stat(source).st_dev == os.stat(parent.absolute).st_dev
     size = measure(source, ctx, "measure_outputs")
     free = shutil.disk_usage(parent.absolute).free
-    result: dict[str, Any] = {
-        "files": size.files,
-        "bytes": size.bytes,
-        "same_filesystem": same_fs,
-        "free_bytes": free,
-        "destination_location": destination.name,
-        "destination_subpath": join_relative(parent.relative, params.new_folder),
-    }
+    subpath = join_relative(parent.relative, params.new_folder)
+    result = ProjectMoveResult(
+        files=size.files,
+        bytes=size.bytes,
+        same_filesystem=same_fs,
+        free_bytes=free,
+        destination_location=destination.name,
+        destination_subpath=subpath,
+    )
     if not same_fs and size.bytes > free:
         raise JobFailed("no_space", "No hay espacio suficiente en el destino.")
     if params.dry_run:
         return result
     ctx.check_cancelled()
-    subpath = str(result["destination_subpath"])
     with ctx.uninterruptible():
         moved = False
         if same_fs:
@@ -102,7 +102,7 @@ def run(ctx: JobContext, params: ProjectMoveParams, project: Project | None) -> 
         _switch(ctx, project, destination, subpath, size.files, size.bytes)
         if not moved:
             leftovers = delete_tree(source, ctx, "delete_source", total=size.files)
-            result["leftovers"] = len(leftovers)
+            result.leftovers = len(leftovers)
             if leftovers:
                 logger.warning("Restos en la carpeta anterior", extra={"run_id": ctx.run_id, "items": leftovers[:1000]})
                 ctx.log(

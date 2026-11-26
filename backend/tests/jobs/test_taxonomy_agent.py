@@ -62,7 +62,7 @@ def test_the_designer_proposes_without_saving(
     )
     manifest_file = migrated.locations_root / "salidas" / "Proyecto A" / "taxonomy_manifest.md"
 
-    result = operation.run_design(ctx, params, project)
+    result = operation.run_design(ctx, params, project).stored()
 
     assert result["stop_reason"] == "finished" and result["finished"] is True
     assert result["improves"] is True and result["edits"] == 1
@@ -92,7 +92,7 @@ def test_the_designer_stops_at_the_step_limit(
     proxy.tool_calls = [[tool_call("overview", {}, i)] for i in range(5)]
     ctx, params = run({"operation": "taxonomy_agent", "catalog": "template", "template_name": "ejes", "max_steps": 2})
 
-    result = operation.run_design(ctx, params, project)
+    result = operation.run_design(ctx, params, project).stored()
 
     assert result["stop_reason"] == "max_steps" and result["markdown"] is None and result["steps"] == 2
 
@@ -101,7 +101,7 @@ def test_rules_check_without_ai(run: Any, project: Project, monkeypatch: pytest.
     proxy = FakeLiteLLM(keys={KEY}).install(monkeypatch)
     ctx, params = run({"operation": "taxonomy_check", "markdown": AXES_TEMPLATE})
 
-    result = operation.run_check(ctx, params, project)
+    result = operation.run_check(ctx, params, project).stored()
 
     report = result["report"]
     assert report["documents"] == 4 and {a["axis"] for a in report["axes"]} == {

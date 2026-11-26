@@ -28,6 +28,7 @@ from app.domain.duplicates.service import member_key
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import DedupApplyParams, DedupPreviewParams
+from app.domain.runs.results import DedupApplyResult, DedupPreviewResult
 from app.domain.scan.state import folder_cache
 from app.integrations import doc_organize as library
 from app.integrations.doc_organize.dedup import DedupDocument, DedupGroup
@@ -137,7 +138,7 @@ def _write_excel(ctx: JobContext, project: Project, rows: list[DuplicateGroupRow
     ctx.add_artifact(f"{EXPORT_DIR}/{target.name}", name=target.name)
 
 
-def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | None) -> dict[str, Any]:
+def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | None) -> DedupPreviewResult:
     """Busca duplicados en las cachés del proyecto y guarda los grupos (no toca ficheros)."""
     project = require_project(project)
     paths = project_paths(project, ctx)
@@ -192,33 +193,29 @@ def run_preview(ctx: JobContext, params: DedupPreviewParams, project: Project | 
         _write_excel(ctx, project, rows)
     ctx.progress("done", 1, 1)
     by_reason = {reason: sum(1 for g in groups if g.reason == reason) for reason in REASON_ORDER}
-    result: dict[str, Any] = {
-        "documents": len(docs),
-        "groups": len(groups),
-        "exact_groups": by_reason["exact_duplicate"],
-        "version_groups": by_reason["version_conflict"],
-        "fuzzy_groups": by_reason["fuzzy_name_match"],
-        "duplicate_files": sum(len(g.members) - 1 for g in groups),
-        "reclaimable_bytes": sum(
+    result = DedupPreviewResult(
+        documents=len(docs),
+        groups=len(groups),
+        exact_groups=by_reason["exact_duplicate"],
+        version_groups=by_reason["version_conflict"],
+        fuzzy_groups=by_reason["fuzzy_name_match"],
+        duplicate_files=sum(len(g.members) - 1 for g in groups),
+        reclaimable_bytes=sum(
             g.members[0].size_bytes * (len(g.members) - 1) for g in groups if g.reason == "exact_duplicate"
         ),
-        "stale_cache": stale,
-        "excluded": excluded,
-        "fuzzy_threshold": params.fuzzy_threshold,
-    }
+        stale_cache=stale,
+        excluded=excluded,
+        fuzzy_threshold=params.fuzzy_threshold,
+    )
     if content is not None:  # web 2.2: solo si se pidió la búsqueda por contenido
-        result |= {
-            "content_groups": by_reason["same_content"],
-            "content_compared": content.compared,
-            "content_not_compared": len(content.not_compared),
-        }
+        result.content_groups = by_reason["same_content"]
+        result.content_compared = content.compared
+        result.content_not_compared = len(content.not_compared)
         if params.semantic_threshold is not None:
-            result |= {
-                "semantic_groups": by_reason["semantic_content_match"],
-                "semantic_threshold": params.semantic_threshold,
-                "embedded": content.embedded,
-                "reused": content.reused,
-            }
+            result.semantic_groups = by_reason["semantic_content_match"]
+            result.semantic_threshold = params.semantic_threshold
+            result.embedded = content.embedded
+            result.reused = content.reused
     return result
 
 
@@ -339,7 +336,7 @@ def _duplicates_dir(output: Path, duplicates_dir: Path) -> None:
         )
 
 
-def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None) -> dict[str, Any]:
+def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None) -> DedupApplyResult:
     """Aplica (o, con ``dry_run``, cuenta) los grupos confirmados de la vista previa ``groups_run_id``."""
     project = require_project(project)
     paths = project_paths(project, ctx)
@@ -374,13 +371,13 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
                 changed += 1
             else:
                 ready.append(prepared)
-        return {
-            "mode": params.mode,
-            "groups": len(ready),
-            "files": sum(len(group.members) - 1 for group, _ in ready),
-            "bytes": sum(m.size_bytes for group, keep in ready for m in group.members if m.path != keep),
-            "skipped_changed": changed,
-        }
+        return DedupApplyResult(
+            mode=params.mode,
+            groups=len(ready),
+            files=sum(len(group.members) - 1 for group, _ in ready),
+            bytes=sum(m.size_bytes for group, keep in ready for m in group.members if m.path != keep),
+            skipped_changed=changed,
+        )
 
     duplicates_dir, report_dir = library.dedup.dedup_dirs(paths.output.absolute, paths.state)
     # Web 2.2: al mover, la conversión de cada descartado va con él (deja de entrar en el contexto; reversible).
@@ -414,7 +411,7 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
             db.commit()
 
     outcome = library.dedup.ApplyOutcome()
-    result: dict[str, Any] = {"mode": params.mode, "groups": len(rows)}
+    result = DedupApplyResult(mode=params.mode, groups=len(rows))
     try:
         # Cada grupo se comprueba (hash, sin enlaces) justo antes de aplicarlo y se aplica entero: la cancelación se
         # atiende entre grupos, nunca a mitad de un fichero.
@@ -436,13 +433,11 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
             "dedup_report_failed", "Se aplicaron los grupos, pero no se pudo escribir el informe."
         ) from None
     finally:
-        result.update(
-            processed=outcome.processed,
-            failed=len(outcome.failed),
-            failed_paths=[namer.display(p) for p in outcome.failed[:MAX_FAILED_SHOWN]],
-            groups_done=outcome.groups_done,
-            skipped_changed=outcome.skipped,
-        )
+        result.processed = outcome.processed
+        result.failed = len(outcome.failed)
+        result.failed_paths = [namer.display(p) for p in outcome.failed[:MAX_FAILED_SHOWN]]
+        result.groups_done = outcome.groups_done
+        result.skipped_changed = outcome.skipped
         # El resumen se audita también si algo falla a mitad: lo ya movido no puede quedar sin rastro.
         with ctx.session_factory() as db:
             audit.record(
@@ -452,7 +447,7 @@ def run_apply(ctx: JobContext, params: DedupApplyParams, project: Project | None
                 actor_id=ctx.created_by,
                 target_type="project",
                 target_id=project.id,
-                details={k: v for k, v in result.items() if k != "failed_paths"} | {"run_id": ctx.run_id},
+                details={k: v for k, v in result.stored().items() if k != "failed_paths"} | {"run_id": ctx.run_id},
             )
             db.commit()
     if outcome.cancelled:

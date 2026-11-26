@@ -7,17 +7,17 @@ artefacto de texto en el workspace del run.
 from __future__ import annotations
 
 import time
-from typing import Any
 
 from app.db.models import Project
 from app.domain.runs.operations import NoopParams
+from app.domain.runs.results import NoopResult
 from app.jobs.context import JobContext, JobFailed
 
 _SLICE = 0.2
 
 
-def run(ctx: JobContext, params: NoopParams, project: Project | None) -> dict[str, Any]:
-    """Ejecuta los pasos y devuelve ``{"steps": n}``."""
+def run(ctx: JobContext, params: NoopParams, project: Project | None) -> NoopResult:
+    """Ejecuta los pasos y devuelve el número de pasos."""
     ctx.progress("noop", 0, params.steps)
     for step in range(1, params.steps + 1):
         waited = 0.0
@@ -33,4 +33,4 @@ def run(ctx: JobContext, params: NoopParams, project: Project | None) -> dict[st
     output = ctx.workdir / "outputs" / "noop.txt"
     output.write_text(f"noop: {params.steps} pasos completados\n", encoding="utf-8")
     ctx.add_artifact("outputs/noop.txt")
-    return {"steps": params.steps}
+    return NoopResult(steps=params.steps)

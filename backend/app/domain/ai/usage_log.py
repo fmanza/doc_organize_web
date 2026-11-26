@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Final, Literal
@@ -24,6 +24,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import AiUsageRecord, Project, Run
+from app.domain.runs.results import (
+    AiPhaseResult,
+    ContextBuildResult,
+    ContextDryRunResult,
+    ContextReviewAgentResult,
+    RunResult,
+    SemanticResult,
+    TaxonomyAgentResult,
+    TaxonomyDraftResult,
+    parse_result,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,65 +62,130 @@ class UsageRow:
         return bool(self.calls or self.cached or self.prompt_tokens or self.completion_tokens)
 
 
-def _int(value: Any) -> int:
+def _int(value: int | None) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
 
 
-def _row(task: str, data: dict[str, Any], *, calls: int | None = None) -> UsageRow:
-    model = data.get("model")
+def _row(
+    task: str,
+    *,
+    model: str | None,
+    calls: int | None,
+    cached: int | None = None,
+    failed: int | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    tokens_estimated: bool | None = None,
+) -> UsageRow:
     return UsageRow(
         task=task,
-        model=model[:128] if isinstance(model, str) and model else None,
-        calls=_int(data.get("calls")) if calls is None else calls,
-        cached=_int(data.get("cached")),
-        failed=_int(data.get("failed")),
-        prompt_tokens=_int(data.get("prompt_tokens")),
-        completion_tokens=_int(data.get("completion_tokens")),
-        tokens_estimated=bool(data.get("tokens_estimated")),
+        model=model[:128] if model else None,
+        calls=_int(calls),
+        cached=_int(cached),
+        failed=_int(failed),
+        prompt_tokens=_int(prompt_tokens),
+        completion_tokens=_int(completion_tokens),
+        tokens_estimated=bool(tokens_estimated),
     )
 
 
-def _enabled(value: Any) -> dict[str, Any] | None:
-    return value if isinstance(value, dict) and value.get("enabled") else None
+def _phase_row(task: str, phase: AiPhaseResult | None) -> UsageRow | None:
+    """Fila de una fase de IA de la construcción, si se activó."""
+    if phase is None or not phase.enabled:
+        return None
+    return _row(
+        task,
+        model=phase.model,
+        calls=phase.calls,
+        cached=phase.cached,
+        failed=phase.failed,
+        prompt_tokens=phase.prompt_tokens,
+        completion_tokens=phase.completion_tokens,
+    )
 
 
-def rows_from_result(operation: str, result: Any) -> list[UsageRow]:
+def _semantic_row(semantic: SemanticResult | None) -> UsageRow | None:
+    """Fila de la sub-fase semántica (``embed``): las llamadas son los textos embebidos."""
+    if semantic is None or not semantic.enabled:
+        return None
+    return _row(
+        "embed",
+        model=semantic.model,
+        calls=semantic.embedded,
+        cached=semantic.cached,
+        failed=semantic.failed,
+        prompt_tokens=semantic.prompt_tokens,
+    )
+
+
+def _agent_row(result: TaxonomyAgentResult | ContextReviewAgentResult) -> UsageRow:
+    """Fila de un agente (tarea ``agent``): las llamadas son sus pasos."""
+    return _row(
+        "agent",
+        model=result.model,
+        calls=result.steps,
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        tokens_estimated=result.tokens_estimated,
+    )
+
+
+def rows_from_result(
+    operation: str, result: RunResult | Mapping[str, Any] | None, *, run_id: str | None = None
+) -> list[UsageRow]:
     """Una fila por tarea de IA que usó ``operation`` según su ``result``; las que no gastaron nada no salen.
+
+    ``result`` es el modelo que devolvió la operación o un ``runs.result`` guardado (se lee con ``parse_result``: si
+    no valida, no hay filas).
 
     >>> [r.task for r in rows_from_result("context_build", {"ai": {"enabled": True, "calls": 2, "model": "m"}})]
     ['classify']
     >>> rows_from_result("scan", {"documents": 3})
     []
     """
-    if not isinstance(result, dict):
-        return []
-    found: list[UsageRow] = []
-    if operation == "context_build":
-        if (ai := _enabled(result.get("ai"))) is not None:
-            found.append(_row("classify", ai))
-        if (enrich := _enabled(result.get("ai_enrichment"))) is not None:
-            found.append(_row("enrich", enrich))
-        if (semantic := _enabled(result.get("semantic"))) is not None:
-            found.append(_row("embed", semantic, calls=_int(semantic.get("embedded"))))
-    elif operation == "taxonomy_draft" and isinstance(result.get("manifest_markdown"), str):
-        cached = bool(result.get("ai_cached"))
-        row = _row("taxonomy_design", result, calls=0 if cached else 1)
-        found.append(UsageRow(**{**vars(row), "cached": 1 if cached else 0}))
-    elif operation in ("taxonomy_agent", "context_review_agent"):
-        found.append(_row("agent", result, calls=_int(result.get("steps"))))
-    elif operation == "context_dry_run" and isinstance(result.get("ai"), dict):
-        ai = result["ai"]
-        if ai.get("scope") not in (None, "off"):
-            found.append(_row("classify", ai))
-    return [row for row in found if row.used]
+    parsed = result if isinstance(result, RunResult) else parse_result(operation, result, run_id=run_id)
+    found: list[UsageRow | None] = []
+    if isinstance(parsed, ContextBuildResult):
+        found += [
+            _phase_row("classify", parsed.ai),
+            _phase_row("enrich", parsed.ai_enrichment),
+            _semantic_row(parsed.semantic),
+        ]
+    elif isinstance(parsed, TaxonomyDraftResult) and parsed.manifest_markdown is not None:
+        cached = bool(parsed.ai_cached)
+        found.append(
+            _row(
+                "taxonomy_design",
+                model=parsed.model,
+                calls=0 if cached else 1,
+                cached=1 if cached else 0,
+                prompt_tokens=parsed.prompt_tokens,
+                completion_tokens=parsed.completion_tokens,
+            )
+        )
+    elif isinstance(parsed, TaxonomyAgentResult | ContextReviewAgentResult):
+        found.append(_agent_row(parsed))
+    elif isinstance(parsed, ContextDryRunResult) and parsed.ai is not None and parsed.ai.scope not in (None, "off"):
+        ai = parsed.ai
+        found.append(
+            _row(
+                "classify",
+                model=ai.model,
+                calls=ai.calls,
+                failed=ai.failed,
+                prompt_tokens=ai.prompt_tokens,
+                completion_tokens=ai.completion_tokens,
+            )
+        )
+    return [row for row in found if row is not None and row.used]
 
 
-def record(db: Session, run: Run, project: Project | None, result: dict[str, Any] | None) -> int:
+def record(db: Session, run: Run, project: Project | None, result: RunResult | Mapping[str, Any] | None) -> int:
     """Guarda el consumo de ``run`` (una fila por tarea; si ya estaba, la actualiza). Devuelve las filas escritas.
 
     No hace ``commit``: lo hace quien llama.
     """
-    rows = rows_from_result(run.operation, result)
+    rows = rows_from_result(run.operation, result, run_id=run.id)
     if not rows:
         return 0
     existing = {item.task: item for item in db.scalars(select(AiUsageRecord).where(AiUsageRecord.run_id == run.id))}

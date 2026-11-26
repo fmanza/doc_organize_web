@@ -117,7 +117,7 @@ def _apply(
         if g.reason != "fuzzy_name_match"
     ]
     params = DedupApplyParams(groups_run_id=ctx.run_id, mode=mode, groups=choices, dry_run=dry_run)  # type: ignore[arg-type]
-    return dedup.run_apply(ctx, params, ctx_project(ctx, db))
+    return dedup.run_apply(ctx, params, ctx_project(ctx, db)).stored()
 
 
 def ctx_project(ctx: JobContext, db: Session) -> Project:
@@ -131,7 +131,7 @@ def ctx_project(ctx: JobContext, db: Session) -> Project:
 def test_preview_groups_exact_and_versions_across_folders(
     ctx: JobContext, project: Project, db: Session, migrated: Settings
 ) -> None:
-    result = dedup.run_preview(ctx, DedupPreviewParams(), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(), project).stored()
 
     assert (result["exact_groups"], result["version_groups"], result["fuzzy_groups"]) == (1, 1, 0)
     assert result["documents"] == 6 and result["duplicate_files"] == 2 and result["stale_cache"] == 0
@@ -153,7 +153,7 @@ def test_preview_groups_exact_and_versions_across_folders(
 def test_fuzzy_names_and_their_limit(
     ctx: JobContext, project: Project, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    result = dedup.run_preview(ctx, DedupPreviewParams(fuzzy_threshold=80), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(fuzzy_threshold=80), project).stored()
 
     assert result["fuzzy_groups"] == 1
     fuzzy = [g for g in _groups(db, ctx.run_id) if g.reason == "fuzzy_name_match"][0]
@@ -168,7 +168,7 @@ def test_fuzzy_names_and_their_limit(
 def test_missing_documents_are_counted_as_stale(ctx: JobContext, project: Project, migrated: Settings) -> None:
     (migrated.locations_root / "origen" / "2025" / "factura copia.txt").unlink()
 
-    result = dedup.run_preview(ctx, DedupPreviewParams(), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(), project).stored()
 
     assert result["stale_cache"] == 1 and result["exact_groups"] == 0
 
@@ -340,7 +340,7 @@ def test_same_content_groups_what_the_first_pass_left_ungrouped(
         {("2024", "presupuesto obra.txt"): CONTENT, ("2025", "presupuesto obras.txt"): f"# {CONTENT.upper()}"},
     )
 
-    result = dedup.run_preview(ctx, DedupPreviewParams(content=True), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(content=True), project).stored()
 
     assert (result["exact_groups"], result["version_groups"], result["content_groups"]) == (1, 1, 1)
     assert "semantic_groups" not in result  # sin IA
@@ -372,7 +372,7 @@ def test_similar_content_uses_the_dedup_model(
         },
     )
 
-    result = dedup.run_preview(ctx, DedupPreviewParams(semantic_threshold=0.9), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(semantic_threshold=0.9), project).stored()
 
     assert (result["content_groups"], result["semantic_groups"], result["semantic_threshold"]) == (0, 1, 0.9)
     assert result["embedded"] == 2
@@ -409,10 +409,12 @@ def test_excluded_folders_and_patterns_are_not_compared(ctx: JobContext, project
     """Web 2.7 (ADR-017): lo excluido sigue en la caché, pero la vista previa no lo compara y lo cuenta."""
     from app.domain.runs.operations import ExclusionSnapshot
 
-    by_folder = dedup.run_preview(ctx, DedupPreviewParams(exclusion=ExclusionSnapshot(paths=["2025"])), project)
+    by_folder = dedup.run_preview(
+        ctx, DedupPreviewParams(exclusion=ExclusionSnapshot(paths=["2025"])), project
+    ).stored()
     by_pattern = dedup.run_preview(
         ctx, DedupPreviewParams(exclusion=ExclusionSnapshot(patterns=["* copia.*"])), project
-    )
+    ).stored()
 
     assert (by_folder["documents"], by_folder["excluded"], by_folder["exact_groups"]) == (3, 3, 0)
     assert (by_pattern["documents"], by_pattern["excluded"], by_pattern["exact_groups"]) == (5, 1, 0)
@@ -427,6 +429,6 @@ def test_without_a_snapshot_the_current_project_exclusion_applies(
     stored.excluded_paths = ["2025"]
     db.commit()
 
-    result = dedup.run_preview(ctx, DedupPreviewParams(), project)
+    result = dedup.run_preview(ctx, DedupPreviewParams(), project).stored()
 
     assert result["excluded"] == 3 and result["exact_groups"] == 0

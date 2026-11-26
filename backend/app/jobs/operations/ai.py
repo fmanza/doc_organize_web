@@ -10,12 +10,13 @@ de los documentos sale de la app.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any, Final
+from typing import Final
 
 from app.db.models import Project
 from app.domain.identity import audit
 from app.domain.identity.audit import AuditAction
 from app.domain.runs.operations import MAX_TEMPLATE_BYTES, TaxonomyDraftParams
+from app.domain.runs.results import CatalogEntry, TaxonomyDraftResult
 from app.integrations.doc_organize import ai as library_ai
 from app.jobs.context import JobContext, JobFailed
 from app.jobs.operations.common import WORKER_CONTEXT, require_project
@@ -28,7 +29,7 @@ AI_ERRORS: Final[dict[str, str]] = {
 }
 
 
-def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -> dict[str, Any]:
+def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -> TaxonomyDraftResult:
     """Pide el borrador y lo devuelve como resultado del run (Markdown + resumen del catálogo)."""
     project = require_project(project)
     # Redacción por proyecto (D7, W4): también en la muestra del borrador.
@@ -60,19 +61,19 @@ def run(ctx: JobContext, params: TaxonomyDraftParams, project: Project | None) -
         raise JobFailed(exc.code, AI_ERRORS[exc.code]) from None
     if len(draft.markdown.encode("utf-8")) > MAX_TEMPLATE_BYTES:  # va a runs.result (config.db) y al editor
         raise JobFailed("ai_error", "El borrador de la IA supera el tamaño máximo de un manifiesto (256 KiB).")
-    result: dict[str, Any] = {
-        "manifest_markdown": draft.markdown,
-        "reasoning": draft.reasoning,
-        "sample_documents": draft.sample_documents,
-        "total_documents": draft.total_documents,
-        "domains": [{"slug": slug, "name": name} for slug, name in draft.domains],
-        "material_types": [{"slug": slug, "name": name} for slug, name in draft.material_types],
+    result = TaxonomyDraftResult(
+        manifest_markdown=draft.markdown,
+        reasoning=draft.reasoning,
+        sample_documents=draft.sample_documents,
+        total_documents=draft.total_documents,
+        domains=[CatalogEntry(slug=slug, name=name) for slug, name in draft.domains],
+        material_types=[CatalogEntry(slug=slug, name=name) for slug, name in draft.material_types],
         # Consumo (2.1, IA › Uso): una llamada al modelo de `taxonomy_design`.
-        "model": draft.model,
-        "prompt_tokens": draft.prompt_tokens,
-        "completion_tokens": draft.completion_tokens,
-        "ai_cached": draft.cached,
-    }
+        model=draft.model,
+        prompt_tokens=draft.prompt_tokens,
+        completion_tokens=draft.completion_tokens,
+        ai_cached=draft.cached,
+    )
     with ctx.session_factory() as db:
         audit.record(
             db,

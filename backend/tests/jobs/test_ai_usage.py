@@ -39,7 +39,7 @@ def test_context_build_records_one_row_per_task_without_duplicates(
 ) -> None:
     fake_litellm.answers["classify"] = classify_answer({"domains": ["informes"]}, confidence=0.8)
     ctx, params = run(AI_DOMAINS)
-    result = operation.run_build(ctx, params, project)
+    result = operation.run_build(ctx, params, project).stored()
     stored = db.get(Run, ctx.run_id)
     assert stored is not None
 
@@ -65,7 +65,7 @@ def test_taxonomy_draft_records_its_tokens_and_model(
     fake_litellm.answers["taxonomy_design"] = lambda _: DRAFT
     ctx, params = run({"operation": "taxonomy_draft", "sample_size": 3})
 
-    result = draft_operation.run(ctx, params, project)
+    result = draft_operation.run(ctx, params, project).stored()
 
     [row] = usage_log.rows_from_result("taxonomy_draft", result)
     assert row.task == "taxonomy_design" and row.calls == 1 and row.model == result["model"]
