@@ -7,6 +7,9 @@ ROADMAP (`0.<fase+1>.0`).
 
 ### Changed
 
+- **frontend** (tests): jsdom 30 → 31.0.0. jsdom 31 evalúa las media queries con un ancho fijo de 1024 px, así que la
+  prueba del menú en pantallas estrechas pasa a Playwright (`e2e/mobile-menu.spec.ts`, viewport de 375 px) y en Vitest
+  queda el cableado ARIA del botón.
 - **backend** (**incompatible**, [ADR-018](docs/adr/ADR-018-linea-base-de-migraciones.md)): las 33 migraciones de
   Alembic de la 1.x y la 2.x se sustituyen por una **línea base** con la revisión `0033`, que crea el esquema y las
   filas semilla de la 2.7/2.8 (comprobado contra `tests/fixtures/schema_0033.sql`). Solo se actualiza desde la 2.7.x o
