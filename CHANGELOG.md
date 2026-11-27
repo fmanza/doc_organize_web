@@ -5,6 +5,11 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-27
+
+Mejoras de la interfaz de administración y navegación, sin cambio de contrato HTTP ni migraciones. Sigue con
+doc_organize 2.5.0; se actualiza desde la 3.0.0 cambiando la imagen.
+
 ### Added
 
 - **frontend**: el menú lateral se contrae a una barra de iconos en pantallas anchas (botón en la cabecera; se recuerda
