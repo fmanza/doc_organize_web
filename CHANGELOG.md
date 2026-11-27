@@ -3,7 +3,19 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/). Hasta la 1.0.0, una MINOR por fase del
 ROADMAP (`0.<fase+1>.0`).
 
-## [Unreleased]
+## [3.0.0] - 2026-11-27
+
+Versión **mayor**: rompe el contrato HTTP y la ruta de actualización a propósito para retirar la compatibilidad
+heredada de la 1.x y la 2.x, tipar los resultados de las ejecuciones y partir de una línea base de migraciones
+([plan](docs/plan/VERSION_3.0.md), [ADR-018](docs/adr/ADR-018-linea-base-de-migraciones.md)). Sigue con doc_organize
+2.5.0. **Antes de actualizar**, lee «Actualizar a la 3.0» en [despliegue](docs/guides/despliegue.md):
+
+- solo se actualiza desde la **2.7.x o la 2.8.x** (desde una anterior, instala antes la 2.8.x y arráncala una vez);
+- haz una copia de `config.db`; la migración `3001` borra tres columnas heredadas y lista en el log los proyectos con
+  colisiones de nombre, que hay que reconstruir;
+- quita del entorno las variables de IA de la 1.x y de Copilot (`DOC_ORGANIZE_LITELLM_*`, `DOC_ORGANIZE_GITHUB_*`);
+- los clientes propios de la API tienen que regenerarse contra `openapi/openapi.json` (`RunOut`, `QualityRunOut` y
+  los campos retirados).
 
 ### Changed
 
