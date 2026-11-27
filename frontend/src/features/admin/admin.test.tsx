@@ -213,7 +213,7 @@ describe('AuditPage', () => {
               target_type: null,
               target_id: null,
               ip: '10.0.0.9',
-              details: { reason: 'unknown_user' },
+              details: { reason: 'unknown_user', attempts: 3, scope: { tenant: 'default' } },
             },
           ],
           total: 1,
@@ -227,6 +227,11 @@ describe('AuditPage', () => {
     expect(await screen.findByText('Inicio de sesión')).toBeInTheDocument();
     expect(screen.getByText('Fallido')).toBeInTheDocument();
     expect(screen.getByText('Sistema')).toBeInTheDocument();
+    // Los detalles, completos: cada clave con su valor (el texto tal cual, lo demás en JSON).
+    expect(screen.getByText('reason:')).toBeInTheDocument();
+    expect(screen.getByText('unknown_user')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('{"tenant":"default"}')).toBeInTheDocument();
 
     await user.click(screen.getByRole('radio', { name: 'Autenticación' }));
 

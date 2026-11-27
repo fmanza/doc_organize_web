@@ -97,8 +97,19 @@ export function SettingsTable({
 }) {
   const { t } = useTranslation();
   return (
-    <Table.ScrollContainer minWidth={720}>
-      <Table>
+    <Table.ScrollContainer minWidth={760}>
+      {/*
+        Anchos fijos: cada sección de «Ajustes» es una tabla, y con anchos automáticos sus columnas no coincidían de
+        una a otra. Así todas se alinean con la primera («Sesión e inicio de sesión») y el texto del ajuste se lleva
+        el ancho que sobre.
+      */}
+      <Table layout="fixed">
+        <colgroup>
+          <col />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 190 }} />
+          <col style={{ width: 210 }} />
+        </colgroup>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>{t('settings.setting')}</Table.Th>

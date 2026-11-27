@@ -1736,7 +1736,8 @@
         "json_object": "El modelo no admite json_schema: doc_organize usará json_object y validará la respuesta."
       },
       "budgetPlaceholder": "El general de Parámetros",
-      "ownModelPlaceholder": "Sin modelo: desactivada",
+      "useAlias": "Usar el alias recomendado",
+      "useAliasLabel": "Escribir en {{label}} el alias recomendado {{alias}}",
       "ownModelTitle": "Necesita su propio modelo",
       "ownModel": {
         "dedup": "La búsqueda de duplicados por contenido parecido solo funciona con un modelo propio, independiente del de embeddings del contexto, porque envía el texto completo de cada documento. Usa un modelo local (por ejemplo bge-m3 en Ollama, alias doc-organize-dedup)."
@@ -1755,6 +1756,7 @@
         "usedIn": "Se usa en: {{features}}",
         "alias": "(alias recomendado)",
         "disabled": "Desactivada: sin modelo",
+        "recommended": "Alias recomendado: {{alias}}",
         "generalBudget": "El general",
         "testOk": "Correcta · {{ms}} ms",
         "testFailed": "Falló",

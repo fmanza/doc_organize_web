@@ -75,6 +75,37 @@ describe('RunsPage', () => {
       ).toBe(true),
     );
   });
+
+  it('filtros en orden Buscar, Operación y Estado; Operación ofrece todas las operaciones', async () => {
+    const fetchMock = stubApi({ ...session(USER), 'GET /api/v1/runs': { body: { items: [], total: 0 } } });
+    const user = userEvent.setup();
+
+    renderRoute('/runs');
+
+    const search = await screen.findByRole('textbox', { name: 'Buscar ejecuciones' });
+    const operation = screen.getByRole('combobox', { name: 'Operación' });
+    const status = screen.getByRole('combobox', { name: 'Estado' });
+    const follows = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(search.compareDocumentPosition(operation) & follows).toBeTruthy();
+    expect(operation.compareDocumentPosition(status) & follows).toBeTruthy();
+
+    await user.click(operation);
+    // Antes solo había cuatro (las de mantenimiento): ahora las 21 del contrato.
+    const listbox = await waitFor(() => {
+      const element = document.getElementById(operation.getAttribute('aria-controls') ?? '');
+      expect(element).not.toBeNull();
+      return element as HTMLElement;
+    });
+    expect(within(listbox).getAllByRole('option', { hidden: true })).toHaveLength(21);
+    await user.click(screen.getByRole('option', { name: 'Escaneo', hidden: true }));
+    await waitFor(() =>
+      expect(
+        callsTo(fetchMock, 'GET', '/api/v1/runs').some(
+          (request) => new URL(request.url).searchParams.get('operation') === 'scan',
+        ),
+      ).toBe(true),
+    );
+  });
 });
 
 describe('RunDetailPage', () => {

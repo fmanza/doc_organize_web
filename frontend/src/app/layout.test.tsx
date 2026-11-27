@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ADMIN, session, stubApi, USER } from '../test/api';
 import { PROJECT } from '../test/fixtures';
 import { renderRoute } from '../test/render';
+import { NAV_RAIL_STORAGE_KEY } from './navRail';
 
 describe('Menú «Proyectos» (2.1.1)', () => {
   it('con un proyecto abierto, «Proyectos» sigue llevando a la lista', async () => {
@@ -76,5 +77,64 @@ describe('Layout: botón del menú', () => {
     await user.click(screen.getByRole('link', { name: 'Ejecuciones' }));
     await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'));
     expect(toggle).toHaveAttribute('aria-label', 'Abrir el menú');
+  });
+});
+
+/** Una pantalla ancha: el mock de `matchMedia` de los tests dice que no casa ninguna media query. */
+function wideScreen() {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+}
+
+describe('Layout: menú contraído a una barra de iconos', () => {
+  it('se contrae y se despliega, conserva los nombres accesibles y se recuerda', async () => {
+    wideScreen();
+    stubApi({ ...session(ADMIN), 'GET /api/v1/runs': { body: { items: [], total: 0 } } });
+    const user = userEvent.setup();
+
+    renderRoute('/');
+    const collapse = await screen.findByRole('button', { name: 'Contraer el menú a iconos' });
+    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    expect(collapse).toHaveAttribute('aria-controls', 'app-navbar');
+    const navbar = document.getElementById('app-navbar') as HTMLElement;
+    expect(within(navbar).getByRole('button', { name: 'Acceso' })).toBeInTheDocument();
+
+    await user.click(collapse);
+
+    const expand = screen.getByRole('button', { name: 'Desplegar el menú' });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    expect(window.localStorage.getItem(NAV_RAIL_STORAGE_KEY)).toBe('1');
+    // Los textos siguen siendo el nombre de cada enlace; los grupos se muestran abiertos, con su nombre.
+    expect(within(navbar).getByRole('link', { name: 'Ejecuciones' })).toHaveAttribute('href', '/runs');
+    const access = within(navbar).getByRole('group', { name: 'Acceso' });
+    expect(within(access).getByRole('link', { name: 'Usuarios' })).toHaveAttribute('href', '/admin/users');
+    expect(within(navbar).queryByRole('button', { name: 'Acceso' })).not.toBeInTheDocument();
+
+    await user.click(expand);
+
+    expect(screen.getByRole('button', { name: 'Contraer el menú a iconos' })).toBeInTheDocument();
+    expect(window.localStorage.getItem(NAV_RAIL_STORAGE_KEY)).toBeNull();
+    expect(within(navbar).getByRole('button', { name: 'Acceso' })).toBeInTheDocument();
+  });
+
+  it('en una pantalla estrecha no se ofrece aunque estuviera contraído', async () => {
+    window.localStorage.setItem(NAV_RAIL_STORAGE_KEY, '1');
+    stubApi({ ...session(ADMIN), 'GET /api/v1/runs': { body: { items: [], total: 0 } } });
+
+    renderRoute('/');
+
+    expect(await screen.findByRole('button', { name: 'Acceso' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Desplegar el menú' })).not.toBeInTheDocument();
   });
 });

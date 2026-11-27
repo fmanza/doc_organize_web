@@ -79,6 +79,8 @@
     "info": "Información",
     "open": "Abrir el menú",
     "close": "Cerrar el menú",
+    "collapse": "Contraer el menú a iconos",
+    "expand": "Desplegar el menú",
     "diagnostics": "Diagnóstico"
   },
   "auth": {

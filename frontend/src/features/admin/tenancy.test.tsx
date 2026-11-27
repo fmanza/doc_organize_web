@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ADMIN, callsTo, session, stubApi, USER } from '../../test/api';
 import { renderRoute } from '../../test/render';
+import { permissionGroups } from '../../app/adminMenu';
+import { PERMISSIONS } from './useTenancy';
 
 const OBRAS = { id: 2, slug: 'obras', name: 'Obras' };
 const TENANTS = {
@@ -226,6 +228,35 @@ describe('RolesPage', () => {
     const create = await screen.findByRole('dialog');
     expect(within(create).getByRole('checkbox', { name: /Consultar la auditoría/ })).toBeEnabled();
     expect(within(create).getByRole('checkbox', { name: /Todos los proyectos/ })).toBeDisabled();
+  });
+});
+
+describe('Permisos del rol agrupados por menú', () => {
+  it('cada permiso está en exactamente un grupo', () => {
+    const grouped = permissionGroups().flatMap((group) => group.permissions);
+    expect([...grouped].sort()).toEqual([...PERMISSIONS].sort());
+  });
+
+  it('el formulario los muestra en grupos con leyenda, en el orden del menú', async () => {
+    stubApi({ ...session(ADMIN), 'GET /api/v1/roles': { body: ROLES } });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/roles');
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo rol' }));
+    const dialog = await screen.findByRole('dialog');
+    // Solo los grupos con leyenda propia (el de todas las casillas lleva la etiqueta «Permisos»).
+    const groups = within(dialog)
+      .getAllByRole('group')
+      .filter((group) => group.querySelector(':scope > legend'));
+    const names = groups.map((group) => group.querySelector(':scope > legend')?.textContent);
+    expect(names).toEqual(['Proyectos', 'Acceso', 'Plantillas de taxonomía', 'Auditoría']);
+    const projects = groups.find(
+      (group) => group.querySelector(':scope > legend')?.textContent === 'Proyectos',
+    );
+    expect(
+      within(projects as HTMLElement).getByRole('checkbox', { name: /Todos los proyectos/ }),
+    ).toBeEnabled();
   });
 });
 

@@ -1,4 +1,4 @@
-import { Badge, MantineProvider, createTheme } from '@mantine/core';
+import { Badge, InputWrapper, MantineProvider, createTheme } from '@mantine/core';
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
@@ -12,6 +12,14 @@ const theme = createTheme({
     // La etiqueta de Badge recorta su texto (overflow oculto), así que su ancho mínimo es casi cero: en una celda de
     // tabla junto a un texto largo, el navegador la encogía hasta cortarla o dejarla en blanco. Nunca menos que su texto.
     Badge: Badge.extend({ styles: { root: { minWidth: 'max-content' } } }),
+    // Regla del proyecto (frontend.instructions.md, «Etiquetas, campos y ayuda»): la descripción de ayuda va debajo
+    // del campo. Con el orden por defecto (etiqueta, descripción, campo), en un formulario de varias columnas una
+    // descripción de dos líneas bajaba su campo y los de una misma fila quedaban desalineados. Vale para todos los
+    // campos de Mantine (todos pintan su etiqueta con InputWrapper); un campo concreto puede cambiarlo con su
+    // `inputWrapperOrder`, pero solo con un motivo escrito al lado.
+    InputWrapper: InputWrapper.extend({
+      defaultProps: { inputWrapperOrder: ['label', 'input', 'description', 'error'] },
+    }),
   },
 });
 

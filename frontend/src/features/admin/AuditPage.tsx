@@ -1,8 +1,8 @@
 import {
   Badge,
+  Box,
   Button,
   Center,
-  Code,
   Loader,
   Group,
   SegmentedControl,
@@ -33,6 +33,36 @@ const ACTION_FILTERS = [
   { value: 'user.', key: 'user' },
   { value: 'session.', key: 'session' },
 ] as const;
+
+/** Una línea sin cortes: fecha y acción se leen de un vistazo. */
+const NO_WRAP = { whiteSpace: 'nowrap' } as const;
+
+/** Un valor de los detalles tal cual: el texto sin comillas y lo demás (números, listas, objetos) en JSON compacto. */
+function detailValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+/**
+ * Detalles de un evento como lista `clave: valor`, completos (sin recortar) y partiendo las líneas donde haga falta,
+ * para que la columna sea estrecha sin perder información. Antes era un JSON en una línea que ensanchaba la tabla.
+ */
+function AuditDetails({ details }: { details: Record<string, unknown> }) {
+  return (
+    <Stack component="dl" gap={2} m={0}>
+      {Object.entries(details).map(([key, value]) => (
+        // `dl` solo admite `div` con sus `dt`/`dd` dentro: un `p` (lo que pinta Text) no es válido aquí.
+        <Box key={key} fz="xs" style={{ overflowWrap: 'anywhere' }}>
+          <Text component="dt" fw={600} ff="monospace" size="xs" display="inline">
+            {`${key}:`}
+          </Text>{' '}
+          <Text component="dd" ff="monospace" size="xs" display="inline" m={0}>
+            {detailValue(value)}
+          </Text>
+        </Box>
+      ))}
+    </Stack>
+  );
+}
 
 export function AuditPage() {
   const { t } = useTranslation();
@@ -128,8 +158,8 @@ export function AuditPage() {
             <Table.Tbody>
               {data.items.map((entry) => (
                 <Table.Tr key={entry.id}>
-                  <Table.Td>{formatDateTime(entry.ts)}</Table.Td>
-                  <Table.Td>
+                  <Table.Td style={NO_WRAP}>{formatDateTime(entry.ts)}</Table.Td>
+                  <Table.Td style={NO_WRAP}>
                     {t(`admin.audit.actions.${entry.action}`, { defaultValue: entry.action })}
                   </Table.Td>
                   <Table.Td>
@@ -148,7 +178,13 @@ export function AuditPage() {
                     {entry.target_type ? `${entry.target_type} #${entry.target_id ?? ''}` : '—'}
                   </Table.Td>
                   <Table.Td>{entry.ip ?? '—'}</Table.Td>
-                  <Table.Td>{entry.details ? <Code>{JSON.stringify(entry.details)}</Code> : '—'}</Table.Td>
+                  <Table.Td miw={200}>
+                    {entry.details && Object.keys(entry.details).length > 0 ? (
+                      <AuditDetails details={entry.details} />
+                    ) : (
+                      '—'
+                    )}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

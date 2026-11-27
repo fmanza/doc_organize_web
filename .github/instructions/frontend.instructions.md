@@ -28,6 +28,15 @@ applyTo: "frontend/**/*.{ts,tsx}"
 - Cada vista con estados de carga, vacío, error y sin permiso; ubicación `unavailable` visible con el semáforo.
 - Formularios: React Hook Form + Zod; errores asociados al campo; opciones de escaneo validadas contra las
   capacidades de la instancia (GPU, AV, LibreOffice).
+- **Etiquetas, campos y ayuda** (regla del proyecto, 2026-11-27): orden `etiqueta → campo → descripción → error`,
+  fijado para todos los campos en el tema (`InputWrapper` en `app/Providers.tsx`); no se cambia por campo salvo con
+  el motivo escrito al lado. Así, en un formulario de varias columnas, los campos de una misma fila quedan alineados
+  aunque sus descripciones tengan distinta longitud. Además: etiquetas cortas (una línea); cuadrículas
+  (`SimpleGrid`, `Group`) alineadas arriba; una ayuda larga va en un `Alert` o un párrafo encima del bloque, no en la
+  `description` de un campo; casillas agrupadas por tema en `Fieldset` con leyenda.
+- Tablas en varias secciones de una misma página (p. ej. «Ajustes»): mismo componente con `layout="fixed"` y anchos
+  de columna compartidos, para que las columnas coincidan entre secciones. Nombres, fechas y acciones en una línea
+  (`white-space: nowrap`); el texto libre se lleva el ancho que sobre.
 - Rutas elegidas siempre con el explorador de carpetas dentro de una ubicación; nunca campo de texto libre de ruta.
 - Acciones que mueven o borran ficheros: modal de confirmación que repite el nombre del recurso y muestra la vista
   previa (modo seco); si la ubicación es `ro`, la acción no se ofrece.

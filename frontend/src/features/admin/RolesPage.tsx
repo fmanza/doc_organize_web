@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Checkbox,
+  Fieldset,
   Group,
   Loader,
   Modal,
@@ -23,10 +24,10 @@ import { PageControls } from '../../components/Paging';
 import { formatDateTime } from '../../components/format';
 import { SearchBox, SortableTh } from '../../components/listing';
 import { useClientTable } from '../../components/useListState';
+import { permissionGroups } from '../../app/adminMenu';
 import { can, useMe } from '../auth/useAuth';
 import {
   type Permission,
-  PERMISSIONS,
   type TenantRole,
   useCreateRole,
   useDeleteRole,
@@ -173,18 +174,25 @@ function PermissionBoxes({
   const { data: me } = useMe();
   return (
     <Checkbox.Group label={label} value={value} onChange={(next) => onChange(next as Permission[])}>
-      <SimpleGrid cols={{ base: 1, sm: 2 }} mt="xs">
-        {PERMISSIONS.map((permission) => (
-          <Checkbox
-            key={permission}
-            value={permission}
-            label={t(`permissions.${permission}.label`)}
-            description={t(`permissions.${permission}.hint`)}
-            // Nadie da un permiso que no tiene (la API devuelve 403 igualmente).
-            disabled={disabled || !can(me, permission)}
-          />
+      {/* Agrupados como el menú lateral, cada grupo con su leyenda (WCAG 1.3.1). */}
+      <Stack gap="sm" mt="xs">
+        {permissionGroups().map((group) => (
+          <Fieldset key={group.key} legend={t(`nav.${group.key}`)} variant="filled" p="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              {group.permissions.map((permission) => (
+                <Checkbox
+                  key={permission}
+                  value={permission}
+                  label={t(`permissions.${permission}.label`)}
+                  description={t(`permissions.${permission}.hint`)}
+                  // Nadie da un permiso que no tiene (la API devuelve 403 igualmente).
+                  disabled={disabled || !can(me, permission)}
+                />
+              ))}
+            </SimpleGrid>
+          </Fieldset>
         ))}
-      </SimpleGrid>
+      </Stack>
     </Checkbox.Group>
   );
 }

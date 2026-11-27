@@ -1736,7 +1736,8 @@
         "json_object": "The model does not support json_schema: doc_organize will use json_object and validate the response."
       },
       "budgetPlaceholder": "The general one from Parameters",
-      "ownModelPlaceholder": "No model: disabled",
+      "useAlias": "Use the recommended alias",
+      "useAliasLabel": "Fill {{label}} with the recommended alias {{alias}}",
       "ownModelTitle": "Needs its own model",
       "ownModel": {
         "dedup": "Similar-content duplicate detection only works with its own model, separate from the context embeddings model, because it sends the full text of each document. Use a local model (for example bge-m3 in Ollama, alias doc-organize-dedup)."
@@ -1755,6 +1756,7 @@
         "usedIn": "Used in: {{features}}",
         "alias": "(recommended alias)",
         "disabled": "Disabled: no model",
+        "recommended": "Recommended alias: {{alias}}",
         "generalBudget": "General",
         "testOk": "Passed · {{ms}} ms",
         "testFailed": "Failed",
