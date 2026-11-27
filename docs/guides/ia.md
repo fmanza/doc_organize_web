@@ -13,8 +13,7 @@ La IA es opcional. La aplicación funciona sin ella. Cuando se configura, sirve 
 - Ver el **uso**: el gasto y el presupuesto de la clave de LiteLLM, y los tokens, documentos y caché de cada
   ejecución.
 
-Todo pasa por un [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) de tu organización. Desde la 2.1 ya no hay
-uso de GitHub Copilot.
+Todo pasa por un [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) de tu organización.
 
 !!! warning "El contenido de los documentos sale de la aplicación"
 
@@ -66,8 +65,8 @@ uso de GitHub Copilot.
   `_VIRTUAL_KEY`, `_MODEL_<TAREA>`, `_VIRTUAL_KEY_<TAREA>`: los mismos nombres que doc_organize 2.0) o **Sin valor**.
   Lo guardado aquí tiene prioridad.
 - Las variables de entorno de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`,
-  `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`) y las de GitHub Copilot (`DOC_ORGANIZE_GITHUB_USERNAME`,
-  `DOC_ORGANIZE_GITHUB_PAT`, quitado en la 2.1) **no se leen** (decisión D15). Hasta la 2.8 la página avisaba de ellas;
+  `_ENRICHMENT_*`, `_TAXONOMY_MANIFEST_DRAFT_*`), `DOC_ORGANIZE_GITHUB_USERNAME` y `DOC_ORGANIZE_GITHUB_PAT` **no se
+  leen** (decisión D15). Hasta la 2.8 la página avisaba de ellas;
   desde la 3.0 ya no: quítalas del entorno (ver [Actualizar a la 3.0](despliegue.md#actualizar-a-la-30)).
 - Las **claves y tokens** se guardan cifrados y nunca se vuelven a mostrar: solo «Guardada: …ab12» (los 4 últimos
   caracteres, o `***` si son muy cortos). Para cambiar una, escribe la nueva. Para volver a la variable del servidor,

@@ -1,14 +1,15 @@
-"""Configuración de las 3 familias de IA (WB-8.1, ADR-004; doc_organize 2.0, W2).
+"""Configuración de las 2 familias de IA (WB-8.1, ADR-004; doc_organize 2.0, W2).
 
 Desde 2.0 una sola familia, ``litellm``, configura todas las tareas de IA (clasificar, describir, diseñar la taxonomía,
 agentes y embeddings): URL y clave general obligatorias y, por tarea, modelo, clave propia y presupuesto opcionales. La
-migración ``0016`` pasó a ella las cuatro familias de 1.x. ``litellm_usage`` no cambia; ``github_copilot_usage`` se
-quitó en la 2.1 (migración ``0025``).
+otra familia, ``litellm_usage``, guarda la clave con la que se consulta el gasto.
 
 Precedencia: valor guardado por un admin en ``ai_settings`` > variable ``DOC_ORGANIZE_*`` del entorno (los mismos
 nombres que la librería: ``DOC_ORGANIZE_LITELLM_BASE_URL``, ``_VIRTUAL_KEY``, ``_MODEL_<TAREA>``,
-``_VIRTUAL_KEY_<TAREA>``). Las variables de 1.x (``DOC_ORGANIZE_LITELLM_<CLIENTE>_*``) y las de GitHub Copilot no se
-leen ni se avisa de ellas (3.0). Los campos secretos se guardan cifrados con MultiFernet. Nunca se devuelven, ni se auditan, ni se escriben en un log: solo se muestra que están configurados y su ``hint``
+``_VIRTUAL_KEY_<TAREA>``). Ninguna otra variable de IA del entorno se lee.
+
+Los campos secretos se guardan cifrados con MultiFernet. Nunca se devuelven, ni se auditan, ni se escriben en un log:
+solo se muestra que están configurados y su ``hint``
 («…ab12» o, si miden 4 caracteres o menos, «***»). Un token que no se descifra (porque se retiró la clave con la que se
 cifró) cuenta como «sin valor» y se marca ``undecryptable``.
 """

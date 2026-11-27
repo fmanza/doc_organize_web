@@ -71,7 +71,7 @@ manda sobre las variables.
 - Con modelos de **Ollama**, sube su `num_ctx`: por defecto es 4096 y recorta en silencio; los agentes necesitan 32768
   (ver [Modelos locales](ia.md#modelos-locales-ollama)).
 - Las variables de la 1.x (`DOC_ORGANIZE_LITELLM_CLASSIFICATION_*`, `_TAXONOMY_CLASSIFICATION_*`, `_ENRICHMENT_*`,
-  `_TAXONOMY_MANIFEST_DRAFT_*`) y las de GitHub Copilot (`DOC_ORGANIZE_GITHUB_USERNAME`, `DOC_ORGANIZE_GITHUB_PAT`) no
+  `_TAXONOMY_MANIFEST_DRAFT_*`), `DOC_ORGANIZE_GITHUB_USERNAME` y `DOC_ORGANIZE_GITHUB_PAT` no
   se leen y, desde la 3.0, tampoco se avisa de ellas: quítalas (ver [Actualizar a la 3.0](#actualizar-a-la-30)).
 
 ### Modelos de Docling

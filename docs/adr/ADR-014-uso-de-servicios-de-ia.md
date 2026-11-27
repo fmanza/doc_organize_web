@@ -56,3 +56,10 @@ migración `0025` borra su configuración guardada (el PAT cifrado incluido) y b
 El panel de uso muestra el gasto y el presupuesto de la clave de LiteLLM y, además, el consumo por ejecución que
 registra la web (`ai_usage`, migración `0026`). En doc_organize 2.1.0, Copilot queda obsoleto y se retira en 3.0. El
 texto de arriba se conserva tal como se decidió.
+
+## Nota (2026-11-27, web 3.0)
+
+No queda nada de GitHub Copilot en la API ni en la web: la configuración ya no avisa de `DOC_ORGANIZE_GITHUB_USERNAME`
+ni de `DOC_ORGANIZE_GITHUB_PAT` (se retiró `legacy_variables`) y se quitaron las menciones del código, los tests y las
+guías. Solo queda el paso de «Actualizar a la 3.0» en [despliegue](../guides/despliegue.md#actualizar-a-la-30) que
+pide borrar esas variables del entorno.
