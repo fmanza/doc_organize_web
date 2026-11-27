@@ -1,5 +1,8 @@
 # Plan de la 3.0.0
 
+> **Estado (2026-11-27):** ejecutado y publicado en la 3.0.0 (PRs #140 a #145). La fila 3a se ajustó: sin
+> `TypeDecorator`, con lectura tipada `parse_result`.
+
 Versión **mayor**: rompe el contrato HTTP a propósito para retirar la compatibilidad heredada, tipar los resultados de
 las ejecuciones y partir de una línea base de migraciones. Sale del informe `/tech-debt` de la 2.7.0 (veredicto
 `DEUDA_MENOR`), después de la 2.8.0 de mantenimiento. Veredicto del AUDIT_PLAN: **`GO_CONDICIONAL`** (condiciones al
