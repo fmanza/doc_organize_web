@@ -28,6 +28,8 @@ import {
   IconHelpCircle,
   IconHome,
   IconInfoCircle,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconStethoscope,
   IconListSearch,
   IconMoon,
@@ -122,5 +124,11 @@ export const SelectedIcon = IconCheck;
 export const FolderIcon = IconFolder;
 export const ParentFolderIcon = IconArrowUp;
 export const BackIcon = IconArrowLeft;
+/** Botón que contrae el menú lateral a una barra de iconos o lo despliega. */
+export const NAV_RAIL_ICONS = {
+  collapse: IconLayoutSidebarLeftCollapse,
+  expand: IconLayoutSidebarLeftExpand,
+} as const satisfies Record<string, AppIcon>;
+
 /** Menú de acciones de una fila (2.7: usuarios). */
 export const MoreActionsIcon = IconDots;

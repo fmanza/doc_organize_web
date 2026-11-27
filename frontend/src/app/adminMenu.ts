@@ -53,3 +53,36 @@ export function visibleAdminMenu(me: Me | null | undefined): AdminEntry[] {
     return allowed(entry) ? [entry] : [];
   });
 }
+
+/** Grupo de permisos en el formulario de un rol: el apartado del menú donde se usan (`nav.<clave>`). */
+export interface PermissionGroup {
+  key: NavIconKey;
+  permissions: Permission[];
+}
+
+/** Los permisos que no abren una página de administración: los de proyectos (crear, ver todos). */
+const PROJECT_PERMISSIONS: Permission[] = ['projects.create', 'projects.all'];
+
+/**
+ * Permisos agrupados como el menú lateral: «Proyectos» y, en el orden del menú de administración, cada grupo o página
+ * con los permisos que exige. Sale de `ADMIN_MENU`, así que un permiso nuevo en el menú llega aquí solo; cada permiso
+ * aparece una vez, en el primer apartado que lo usa (`users.manage` abre Usuarios y Sesiones, ambas en «Acceso»).
+ */
+export function permissionGroups(): PermissionGroup[] {
+  const seen = new Set<Permission>(PROJECT_PERMISSIONS);
+  const groups: PermissionGroup[] = [{ key: 'projects', permissions: [...PROJECT_PERMISSIONS] }];
+  for (const entry of ADMIN_MENU) {
+    const pages = 'group' in entry ? entry.pages : [entry];
+    const permissions: Permission[] = [];
+    for (const page of pages) {
+      if (page.permission && !seen.has(page.permission)) {
+        seen.add(page.permission);
+        permissions.push(page.permission);
+      }
+    }
+    if (permissions.length > 0) {
+      groups.push({ key: 'group' in entry ? entry.group : entry.key, permissions });
+    }
+  }
+  return groups;
+}

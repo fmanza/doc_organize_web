@@ -198,6 +198,7 @@ describe('AiSettingsPage', () => {
     expect(within(row(/^Describir/)).getByText(/Se usa en: construir el contexto/)).toBeInTheDocument();
     const dedup = row(/^Duplicados por contenido/);
     expect(within(dedup).getByText('Desactivada: sin modelo')).toBeInTheDocument();
+    expect(within(dedup).getByText('Alias recomendado: doc-organize-dedup')).toBeInTheDocument();
     expect(
       within(dedup).getByRole('button', { name: 'Probar el modelo de la tarea Duplicados por contenido' }),
     ).toBeDisabled();
@@ -241,6 +242,28 @@ describe('AiSettingsPage', () => {
       model_check: true,
       task: 'dedup',
     });
+    expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm')).toHaveLength(0);
+  });
+
+  it('duplicados por contenido: sin modelo dice que está desactivada y escribe el alias recomendado sin guardar', async () => {
+    const fetchMock = stubApi({
+      ...session(ADMIN),
+      'GET /api/v1/admin/ai-settings': { body: { ...SETTINGS, families: [TASKS_FAMILY] } },
+    });
+    const user = userEvent.setup();
+
+    renderRoute('/admin/ai/settings');
+    const table = await screen.findByRole('region', { name: 'Modelos por funcionalidad' });
+    await user.click(within(table).getByRole('button', { name: 'Editar Duplicados por contenido' }));
+    const drawer = await screen.findByRole('dialog', { name: 'Duplicados por contenido' });
+    const input = within(drawer).getByLabelText(/Modelo de embeddings de duplicados/, { selector: 'input' });
+    expect(input).toHaveAttribute('placeholder', 'Desactivada: sin modelo');
+    expect(within(drawer).getByText('Alias recomendado: doc-organize-dedup')).toBeInTheDocument();
+
+    await user.click(within(drawer).getByRole('button', { name: /alias recomendado doc-organize-dedup/ }));
+
+    expect(input).toHaveValue('doc-organize-dedup');
+    expect(within(drawer).queryByRole('button', { name: /alias recomendado doc-organize-dedup/ })).toBeNull();
     expect(callsTo(fetchMock, 'PUT', '/api/v1/admin/ai-settings/litellm')).toHaveLength(0);
   });
 

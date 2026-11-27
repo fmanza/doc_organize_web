@@ -20,3 +20,6 @@ Fuente: `.github/SHARED_INSTRUCTIONS.md` y `.github/instructions/`. Resumen de u
 | Accesibilidad | WCAG 2.2 AA | revisado por Frontend Reviewer |
 
 Estilo: español en textos de usuario, docstrings y documentación; identificadores de código en inglés.
+
+Formularios: etiqueta → campo → descripción → error, fijado en el tema (regla completa en
+`.github/instructions/frontend.instructions.md` § «UI y accesibilidad»).

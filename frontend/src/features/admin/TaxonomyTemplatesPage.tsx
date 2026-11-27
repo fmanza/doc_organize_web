@@ -115,7 +115,7 @@ export function TaxonomyTemplatesPage() {
         </Alert>
       )}
       <SearchBox value={table.q} onChange={table.setQ} label={t('templates.search')} />
-      <Table.ScrollContainer minWidth={640}>
+      <Table.ScrollContainer minWidth={760}>
         <Table>
           <Table.Thead>
             <Table.Tr>
@@ -186,6 +186,8 @@ export function TaxonomyTemplatesPage() {
   );
 }
 
+const NO_WRAP = { whiteSpace: 'nowrap' } as const;
+
 function TemplateRow({
   item,
   onEdit,
@@ -200,8 +202,9 @@ function TemplateRow({
   const { t } = useTranslation();
   return (
     <Table.Tr>
-      <Table.Td>
-        <Group gap="xs">
+      {/* Nombre y acciones en una sola línea: el título y la descripción se llevan el ancho que falte. */}
+      <Table.Td style={NO_WRAP}>
+        <Group gap="xs" wrap="nowrap">
           <Text ff="monospace" size="sm">
             {item.name}
           </Text>
@@ -220,8 +223,8 @@ function TemplateRow({
           </Text>
         )}
       </Table.Td>
-      <Table.Td>{item.updated_at ? formatDateTime(item.updated_at) : '—'}</Table.Td>
-      <Table.Td>
+      <Table.Td style={NO_WRAP}>{item.updated_at ? formatDateTime(item.updated_at) : '—'}</Table.Td>
+      <Table.Td style={NO_WRAP}>
         <Group gap="xs" wrap="nowrap">
           {item.builtin ? (
             <Button

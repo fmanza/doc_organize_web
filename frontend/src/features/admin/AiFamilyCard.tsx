@@ -62,11 +62,18 @@ export function FieldInput({ field, form }: { field: AiField; form: FamilyForm }
       )}
     </Stack>
   );
+  // Una tarea que solo funciona con su propio modelo (duplicados por contenido) no usa el alias por defecto: sin
+  // modelo está desactivada, y se le recomienda el alias, que se escribe con un botón y se guarda a propósito.
+  const ownModelTask =
+    !field.secret && field.task && field.name.startsWith('model') && OWN_MODEL_TASKS.has(field.task)
+      ? field.task
+      : null;
+  const typed = (form.values[field.name] ?? '').trim();
   const placeholder = field.secret
     ? t('ai.settings.secretPlaceholder')
     : field.task && field.name.startsWith('model')
-      ? OWN_MODEL_TASKS.has(field.task)
-        ? t('ai.settings.ownModelPlaceholder')
+      ? ownModelTask
+        ? t('ai.settings.table.disabled')
         : aliasFor(field.task) // alias recomendado (sin modelo propio)
       : field.name.startsWith('budget')
         ? t('ai.settings.budgetPlaceholder')
@@ -83,6 +90,23 @@ export function FieldInput({ field, form }: { field: AiField; form: FamilyForm }
         autoComplete={field.secret ? 'new-password' : 'off'}
         onChange={(event) => form.setValue(field.name, event.currentTarget.value)}
       />
+      {ownModelTask && (
+        <Group justify="space-between" gap="xs" wrap="nowrap">
+          <Text size="xs" c="dimmed">
+            {t('ai.settings.table.recommended', { alias: aliasFor(ownModelTask) })}
+          </Text>
+          {typed !== aliasFor(ownModelTask) && (
+            <Button
+              size="compact-xs"
+              variant="light"
+              onClick={() => form.setValue(field.name, aliasFor(ownModelTask))}
+              aria-label={t('ai.settings.useAliasLabel', { label, alias: aliasFor(ownModelTask) })}
+            >
+              {t('ai.settings.useAlias')}
+            </Button>
+          )}
+        </Group>
+      )}
       {field.source === 'db' && (
         <Group justify="flex-end">
           <Button

@@ -5,6 +5,27 @@ ROADMAP (`0.<fase+1>.0`).
 
 ## [Unreleased]
 
+### Added
+
+- **frontend**: el menú lateral se contrae a una barra de iconos en pantallas anchas (botón en la cabecera; se recuerda
+  en el navegador). Los enlaces conservan su nombre accesible y lo muestran en un aviso; los grupos «Acceso» e «IA» se
+  ven como iconos seguidos. En móvil no cambia.
+- **frontend**: en el formulario de un rol, los permisos se agrupan como el menú (Proyectos, Acceso, Plantillas de
+  taxonomía, Auditoría), cada grupo con su leyenda.
+- **frontend**: en IA › Configuración, «Duplicados por contenido» sin modelo dice «Desactivada: sin modelo» en la
+  tabla y en el panel, recomienda el alias `doc-organize-dedup` y ofrece escribirlo (sin guardar solo).
+- **frontend, docs**: regla del proyecto para formularios: etiqueta → campo → descripción → error, fijada en el tema
+  para todos los campos, para que los de una misma fila queden alineados en formularios de varias columnas
+  (`.github/instructions/frontend.instructions.md`).
+
+### Fixed
+
+- **frontend**: el filtro «Operación» de Ejecuciones solo ofrecía 4 de las 21 operaciones; ahora todas, en orden
+  alfabético y con búsqueda (`tsc` falla si falta una). Los filtros pasan a Buscar, Operación y Estado.
+- **frontend**: Plantillas de taxonomía con nombre y acciones en una línea; Ajustes con las columnas alineadas entre
+  secciones (anchos fijos compartidos); Auditoría con fecha y acción en una línea y los detalles completos como lista
+  `clave: valor` en una columna más estrecha.
+
 ### Changed
 
 - **backend, frontend, docs**: sin restos de GitHub Copilot (retirado en la 2.1): fuera las menciones de los

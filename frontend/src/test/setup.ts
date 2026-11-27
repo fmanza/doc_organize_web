@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { LANGUAGE_STORAGE_KEY, setLanguage } from '../i18n';
+import { NAV_RAIL_STORAGE_KEY } from '../app/navRail';
 
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
@@ -43,4 +44,6 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   await setLanguage('es');
   window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  // El menú contraído se recuerda en `localStorage`: cada test empieza con el menú desplegado.
+  window.localStorage.removeItem(NAV_RAIL_STORAGE_KEY);
 });

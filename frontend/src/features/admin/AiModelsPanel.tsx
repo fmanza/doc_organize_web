@@ -188,9 +188,14 @@ export function ModelsPanel({
                           {!model.own && ` ${t('ai.settings.table.alias')}`}
                         </Text>
                       ) : (
-                        <Badge color="gray" variant="light">
-                          {t('ai.settings.table.disabled')}
-                        </Badge>
+                        <Stack gap={2} align="flex-start">
+                          <Badge color="gray" variant="light">
+                            {t('ai.settings.table.disabled')}
+                          </Badge>
+                          <Text size="xs" c="dimmed">
+                            {t('ai.settings.table.recommended', { alias: aliasFor(task) })}
+                          </Text>
+                        </Stack>
                       )}
                     </Table.Td>
                     <Table.Td>{hasOwnKey(task) ? t('common.yes') : '—'}</Table.Td>
