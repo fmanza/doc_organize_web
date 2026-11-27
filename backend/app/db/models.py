@@ -262,9 +262,7 @@ class AiSetting(Base):
     """Campo de una familia de IA guardado por un admin (Fase 8, ADR-004); sin fila, vale ``DOC_ORGANIZE_*``.
 
     Desde doc_organize 2.0 (migración ``0016``) las familias son ``litellm`` (todas las tareas: URL y clave generales y,
-    por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``) y ``litellm_usage``
-    (``github_copilot_usage`` se borró en la ``0025``, web 2.1). Bajar a la 1.x rehace las cuatro familias ``litellm_*`` desde la familia ``litellm``
-    (la copia de 1.x, ``ai_settings_v1``, se borra en la ``0024``).
+    por tarea, ``model_<tarea>``, ``virtual_key_<tarea>`` y ``budget_<tarea>``) y ``litellm_usage``.
 
     De instancia (como en la web integrada): los tenants llegan en la Fase 9. Un campo secreto solo se guarda cifrado
     con MultiFernet en ``ciphertext``; uno no secreto, en claro en ``value``. Nunca los dos.

@@ -18,7 +18,7 @@ Firmas verificadas en el tag ``v2.0.0rc2``::
     ContextBuilder().build(project, documents, *, llm=None, ai_scope="off", enrich=False, ...,
         ai_max_failures=None, ai_max_documents=None) -> Context
     Context.ai_stats.classification / .enrichment: AiPhaseStats(sent, assigned, failed, stopped, cached, ...)
-    LiteLLMUsageClient                                        # sin cambios desde 1.x (Copilot fuera en la web 2.1)
+    LiteLLMUsageClient                                        # sin cambios desde 1.x
     AiError > AiAuthError, AiConnectionError, AiResponseError  # doc_organize.core.exceptions
 
 Los mensajes de error de doc_organize llevan la ``base_url``. Aquí se sustituyen por un código fijo (``AiErrorCode``),
@@ -84,7 +84,7 @@ class FieldSpec:
 
 @dataclass(frozen=True)
 class FamilySpec:
-    """Una de las 2 familias de configuración de IA (GitHub Copilot se quitó en la 2.1)."""
+    """Una de las 2 familias de configuración de IA."""
 
     key: FamilyKey
     fields: tuple[FieldSpec, ...]

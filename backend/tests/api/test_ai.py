@@ -119,7 +119,6 @@ def test_clearing_falls_back_to_the_environment(
         ("litellm_usage", {"model": "x"}, 422, "ai_setting_invalid"),
         ("litellm_usage", {"base_url": "file:///etc/passwd"}, 422, "ai_setting_invalid"),
         ("litellm_usage", {"base_url": "https://u:p@litellm.example.internal"}, 422, "ai_setting_invalid"),
-        ("github_copilot_usage", {"username": "octo-cat"}, 404, "ai_family_not_found"),  # quitada en la 2.1
         ("litellm_usage", {"virtual_key": "con espacio"}, 422, "ai_setting_invalid"),
         ("litellm_classification", {}, 404, "ai_family_not_found"),  # familias de 1.x: retiradas en 2.0
         ("litellm", {"model": "x"}, 422, "ai_setting_invalid"),  # el modelo va por tarea
@@ -240,7 +239,7 @@ def test_usage_panel_caches_and_reports_the_key_budget(
     second = admin_api.get("/api/v1/admin/ai-usage?refresh=true")  # dentro del mínimo de 30 s: sigue la caché
 
     assert first.status_code == 200 and KEY not in first.text
-    [source] = first.json()["sources"]  # 2.1: solo LiteLLM (sin GitHub Copilot)
+    [source] = first.json()["sources"]  # solo LiteLLM
     assert source["source"] == "litellm" and source["total_cost_usd"] == 1.25 and source["error"] is None
     assert source["budget"] == {
         "spend": 1.25,
@@ -529,24 +528,6 @@ def test_probe_validation_and_permissions(
     usage_model = admin_api.post(f"{URL}/litellm_usage/test", json={"fields": LITELLM, "model_check": True})
     assert usage_model.status_code == 422 and usage_model.json()["code"] == "ai_setting_invalid"
     assert paths == []
-
-
-def test_github_copilot_is_gone_and_its_variables_are_reported(
-    admin_api: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """2.1: sin familia de GitHub Copilot; sus variables, si siguen definidas, no se leen ni salen en la respuesta."""
-    hosts = _usage_transport(monkeypatch, lambda _: httpx.Response(401))
-    monkeypatch.setenv("DOC_ORGANIZE_GITHUB_PAT", "ghp_fake_token_0001")
-
-    probe = admin_api.post(
-        f"{URL}/github_copilot_usage/test", json={"fields": {"username": "octo-cat", "pat": "ghp_fake_token_0001"}}
-    )
-    settings = admin_api.get(URL).json()
-
-    assert probe.status_code == 404 and hosts == []
-    assert "github_copilot_usage" not in [family["key"] for family in settings["families"]]
-    assert "legacy_variables" not in settings
-    assert "ghp_fake" not in admin_api.get(URL).text and "DOC_ORGANIZE_GITHUB" not in admin_api.get(URL).text
 
 
 def test_probe_never_leaks_the_key(

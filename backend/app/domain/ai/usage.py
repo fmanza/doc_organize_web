@@ -1,6 +1,6 @@
 """Panel de uso y coste de IA (WB-8.3, ADR-014): el gasto de la clave de LiteLLM, con caché corta en el proceso.
 
-GitHub Copilot se quitó en la 2.1. El consumo por ejecución (tokens) está en ``usage_log``.
+El consumo por ejecución (tokens) está en ``usage_log``.
 
 No es un job (regla 4): es una lectura HTTP corta (``ai_timeout_seconds``, como mucho 10 s aquí) que se guardan
 ``CACHE_SECONDS`` por fuente. ``refresh`` salta la caché, pero no más de una vez cada ``MIN_REFRESH_SECONDS``. Si cambia

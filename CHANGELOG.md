@@ -3,6 +3,14 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/). Hasta la 1.0.0, una MINOR por fase del
 ROADMAP (`0.<fase+1>.0`).
 
+## [Unreleased]
+
+### Changed
+
+- **backend, frontend, docs**: sin restos de GitHub Copilot (retirado en la 2.1): fuera las menciones de los
+  comentarios, los tests que comprobaban que no aparecía y las guías de IA y despliegue; nota de la 3.0 en ADR-014. Solo
+  queda el paso de «Actualizar a la 3.0» que pide borrar `DOC_ORGANIZE_GITHUB_*` del entorno. Sin cambio de contrato.
+
 ## [3.0.0] - 2026-11-27
 
 Versión **mayor**: rompe el contrato HTTP y la ruta de actualización a propósito para retirar la compatibilidad

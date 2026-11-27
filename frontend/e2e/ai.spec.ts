@@ -51,10 +51,9 @@ test('IA: configurar, ver el uso, clasificar el contexto y pedir un borrador de 
     .getByRole('navigation', { name: 'Navegación principal' })
     .getByRole('link', { name: 'Uso' })
     .click();
-  // 2.1: el gasto de la clave (sin GitHub Copilot).
+  // El gasto de la clave de LiteLLM.
   const usage = page.getByRole('region', { name: 'Clave de LiteLLM' });
   await expect(usage.getByText('Gasto acumulado').locator('xpath=..')).toContainText('0,42');
-  await expect(page.getByText(/Copilot/)).toHaveCount(0);
 
   const id = await createProject(page, project, ['2024']);
   await page.goto(`/projects/${id}/scan`);

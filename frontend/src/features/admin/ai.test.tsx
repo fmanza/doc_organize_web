@@ -337,8 +337,6 @@ describe('AiSettingsPage', () => {
     await user.type(within(usage).getByLabelText(/Clave virtual/, { selector: 'input' }), 'sk-x');
     expect(within(usage).getByRole('button', { name: 'Guardar Uso de LiteLLM' })).toBeDisabled();
     expect(within(usage).getByText(/hace falta el cifrado/)).toBeInTheDocument();
-    // 2.1: sin GitHub Copilot.
-    expect(screen.queryByRole('region', { name: 'Uso de GitHub Copilot' })).not.toBeInTheDocument();
   });
 
   it('muestra el error de la API', async () => {
@@ -447,7 +445,6 @@ describe('AiUsagePage', () => {
       'href',
       '/runs/55555555-5555-4555-8555-555555555555',
     );
-    expect(screen.queryByText(/Copilot/)).not.toBeInTheDocument();
 
     // El periodo y la zona del navegador van a la API.
     await user.click(screen.getByRole('radio', { name: '7 días' }));
